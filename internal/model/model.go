@@ -347,8 +347,22 @@ type ContainerDatabaseLinkDO struct {
 	Host       string `json:"host"`
 	Port       int    `json:"port"`
 	User       string `json:"user"`
+	Password   string `json:"password"`
+	Database   string `json:"database"`
 	SSHEnabled bool   `json:"sshEnabled"`
 	SSHHostID  string `json:"sshHostId"`
+}
+
+// ContainerEnvVarDO 容器环境变量。
+type ContainerEnvVarDO struct {
+	Key       string `json:"key"`
+	Value     string `json:"value"`
+	Highlight bool   `json:"highlight"`
+}
+
+// ContainerEnvDO 容器启动环境变量。
+type ContainerEnvDO struct {
+	Vars []ContainerEnvVarDO `json:"vars"`
 }
 
 // ContainerDO 容器摘要。
@@ -366,4 +380,130 @@ type ContainerDO struct {
 // ContainerLogsDO 容器日志。
 type ContainerLogsDO struct {
 	Content string `json:"content"`
+}
+
+// ContainerPortMappingDO 容器端口映射。
+type ContainerPortMappingDO struct {
+	HostPort      int    `json:"hostPort"`
+	ContainerPort int    `json:"containerPort"`
+	Protocol      string `json:"protocol"`
+}
+
+// ContainerRunEnvFieldDO 运行容器环境变量字段说明。
+type ContainerRunEnvFieldDO struct {
+	Key         string `json:"key"`
+	Placeholder string `json:"placeholder"`
+	Required    bool   `json:"required"`
+	Secret      bool   `json:"secret"`
+	Default     string `json:"default"`
+}
+
+// ContainerRunPresetDO 从镜像运行容器的预设参数。
+type ContainerRunPresetDO struct {
+	Image     string                   `json:"image"`
+	Name      string                   `json:"name"`
+	Ports     []ContainerPortMappingDO `json:"ports"`
+	EnvFields []ContainerRunEnvFieldDO `json:"envFields"`
+	Restart   string                   `json:"restart"`
+}
+
+// ContainerRunDO 从镜像创建容器请求。
+type ContainerRunDO struct {
+	Image     string                   `json:"image"`
+	Name      string                   `json:"name"`
+	Ports     []ContainerPortMappingDO `json:"ports"`
+	Env       []ContainerEnvKVDO       `json:"env"`
+	Restart   string                   `json:"restart"`
+	AutoStart bool                     `json:"autoStart"`
+}
+
+// ContainerEnvKVDO 环境变量键值对。
+type ContainerEnvKVDO struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+// RuntimeDO 本机语言运行时状态。
+type RuntimeDO struct {
+	Lang              string `json:"lang"`
+	Label             string `json:"label"`
+	Version           string `json:"version"`
+	Manager           string `json:"manager"`
+	ManagerLabel      string `json:"managerLabel"`
+	Binary            string `json:"binary"`
+	Available         bool   `json:"available"`
+	CanInstall        bool   `json:"canInstall"`
+	NeedsManager      bool   `json:"needsManager"`
+	CanInstallManager bool   `json:"canInstallManager"`
+}
+
+// RuntimeVersionDO 可切换的运行时版本。
+type RuntimeVersionDO struct {
+	Version   string `json:"version"`
+	Label     string `json:"label"`
+	Formula   string `json:"formula"`
+	Installed bool   `json:"installed"`
+	Active    bool   `json:"active"`
+}
+
+// EnvPresetDO 工具链版本预设。
+type EnvPresetDO struct {
+	ID       string            `json:"id"`
+	Name     string            `json:"name"`
+	Active   bool              `json:"active"`
+	Runtimes map[string]string `json:"runtimes"`
+}
+
+// ProjectEnvHintDO 项目目录版本线索。
+type ProjectEnvHintDO struct {
+	Path      string            `json:"path"`
+	Hints     []string          `json:"hints"`
+	Suggested map[string]string `json:"suggested"`
+}
+
+// EnvApplyResultDO 应用预设结果。
+type EnvApplyResultDO struct {
+	Warnings []string `json:"warnings"`
+}
+
+// NotebookGroupDO 笔记本分组。
+type NotebookGroupDO struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	ParentID  string `json:"parentId"`
+	SortOrder int    `json:"sortOrder"`
+	CreatedAt int64  `json:"createdAt"`
+	UpdatedAt int64  `json:"updatedAt"`
+}
+
+// NoteDO 笔记全文。
+type NoteDO struct {
+	ID           string `json:"id"`
+	GroupID      string `json:"groupId"`
+	Title        string `json:"title"`
+	Content      string `json:"content"`
+	Language     string `json:"language"`
+	SSHHostID    string `json:"sshHostId"`
+	ConnectionID string `json:"connectionId"`
+	SortOrder    int    `json:"sortOrder"`
+	CreatedAt    int64  `json:"createdAt"`
+	UpdatedAt    int64  `json:"updatedAt"`
+}
+
+// NoteSummaryDO 笔记列表摘要（不含正文）。
+type NoteSummaryDO struct {
+	ID           string `json:"id"`
+	GroupID      string `json:"groupId"`
+	Title        string `json:"title"`
+	Language     string `json:"language"`
+	SSHHostID    string `json:"sshHostId"`
+	ConnectionID string `json:"connectionId"`
+	SortOrder    int    `json:"sortOrder"`
+	UpdatedAt    int64  `json:"updatedAt"`
+}
+
+// NotebookUIDO 笔记本 UI 状态（打开的标签页）。
+type NotebookUIDO struct {
+	OpenTabIDs  []string `json:"openTabIds"`
+	ActiveTabID string   `json:"activeTabId"`
 }

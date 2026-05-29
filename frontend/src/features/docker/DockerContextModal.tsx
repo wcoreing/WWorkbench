@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { SSHHost } from '../../api/types'
 import { api } from '../../api/client'
+import { useI18n } from '../../i18n'
 import { model } from '../../../wailsjs/go/models'
 import '../../components/ui.css'
 
@@ -14,6 +15,7 @@ interface DockerContextModalProps {
 
 /** DockerContextModal 添加 SSH 远程 Docker 上下文。 */
 export function DockerContextModal({ open, hosts, initialHostId, onClose, onSaved }: DockerContextModalProps) {
+  const { t } = useI18n()
   const [hostId, setHostId] = useState('')
   const [name, setName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -39,7 +41,7 @@ export function DockerContextModal({ open, hosts, initialHostId, onClose, onSave
 
   const submit = async () => {
     if (!hostId) {
-      setError('请选择 SSH 主机')
+      setError(t('docker.contextModal.pickHost'))
       return
     }
     setSaving(true)
@@ -47,7 +49,7 @@ export function DockerContextModal({ open, hosts, initialHostId, onClose, onSave
     try {
       const payload = new model.DockerContextDO({
         id: crypto.randomUUID(),
-        name: name.trim() || '远程 Docker',
+        name: name.trim() || t('docker.contextModal.namePlaceholder'),
         kind: 'ssh',
         sshHostId: hostId,
       })
@@ -72,21 +74,21 @@ export function DockerContextModal({ open, hosts, initialHostId, onClose, onSave
         <header className="wn-modal-header">
           <div className="wn-modal-title-row">
             <h2 id="docker-context-modal-title" className="wn-modal-title">
-              添加远程 Docker
+              {t('docker.contextModal.title')}
             </h2>
             <span className="wn-modal-tag">Docker</span>
           </div>
-          <p className="wn-modal-desc">通过 SSH 连接远端 Docker 引擎（/var/run/docker.sock）</p>
+          <p className="wn-modal-desc">{t('docker.contextModal.desc')}</p>
         </header>
 
         <div className="wn-modal-body">
           {hosts.length === 0 ? (
-            <p className="conn-ssh-hint">请先在「终端」产品线保存 SSH 主机。</p>
+            <p className="conn-ssh-hint">{t('docker.contextModal.noHosts')}</p>
           ) : (
             <div className="wn-form">
               <div className="wn-field">
                 <label className="wn-label" htmlFor="docker-ctx-host">
-                  SSH 主机
+                  {t('docker.contextModal.sshHost')}
                 </label>
                 <select
                   id="docker-ctx-host"
@@ -103,14 +105,14 @@ export function DockerContextModal({ open, hosts, initialHostId, onClose, onSave
               </div>
               <div className="wn-field">
                 <label className="wn-label" htmlFor="docker-ctx-name">
-                  显示名称
+                  {t('docker.contextModal.displayName')}
                 </label>
                 <input
                   id="docker-ctx-name"
                   className="wn-input"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="远程 Docker"
+                  placeholder={t('docker.contextModal.namePlaceholder')}
                 />
               </div>
             </div>
@@ -120,7 +122,7 @@ export function DockerContextModal({ open, hosts, initialHostId, onClose, onSave
 
         <footer className="wn-modal-footer">
           <button type="button" className="wn-btn wn-btn-tool" onClick={onClose} disabled={saving}>
-            取消
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -128,7 +130,7 @@ export function DockerContextModal({ open, hosts, initialHostId, onClose, onSave
             onClick={() => void submit()}
             disabled={saving || hosts.length === 0}
           >
-            {saving ? '保存中…' : '保存'}
+            {saving ? t('docker.contextModal.saving') : t('common.save')}
           </button>
         </footer>
       </div>

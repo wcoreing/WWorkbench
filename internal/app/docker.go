@@ -1,6 +1,7 @@
 package app
 
 import (
+	"WNavicat/internal/docker"
 	"WNavicat/internal/model"
 	"WNavicat/internal/session"
 )
@@ -145,4 +146,32 @@ func (s *Service) ResolveContainerDatabaseLink(contextID, containerID string) Ap
 		return ErrResult[model.ContainerDatabaseLinkDO](err)
 	}
 	return OkResult(*link)
+}
+
+// GetContainerEnv 获取容器启动环境变量。
+func (s *Service) GetContainerEnv(contextID, containerID string) ApiResult[model.ContainerEnvDO] {
+	ctx, cancel := session.WithTimeout(s.ctx, 15)
+	defer cancel()
+	env, err := s.docker.GetContainerEnv(ctx, contextID, containerID)
+	if err != nil {
+		return ErrResult[model.ContainerEnvDO](err)
+	}
+	return OkResult(*env)
+}
+
+// GetContainerRunPreset 获取镜像运行预设。
+func (s *Service) GetContainerRunPreset(image string) ApiResult[model.ContainerRunPresetDO] {
+	preset := docker.GetContainerRunPreset(image)
+	return OkResult(preset)
+}
+
+// RunContainer 从镜像创建并运行容器。
+func (s *Service) RunContainer(contextID string, spec model.ContainerRunDO) ApiResult[model.ContainerDO] {
+	ctx, cancel := session.WithTimeout(s.ctx, 120)
+	defer cancel()
+	out, err := s.docker.RunContainer(ctx, contextID, spec)
+	if err != nil {
+		return ErrResult[model.ContainerDO](err)
+	}
+	return OkResult(*out)
 }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
-import type { Connection, ExecuteResult, IndexMeta, QueryHistory, QueryPage, SQLBatchResult } from '../../api/types'
+import type { Connection, ExecuteResult, IndexMeta, QueryHistory, QueryPage, SQLBatchResult, SessionInfo } from '../../api/types'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconDisconnect, IconEdit, IconPlay, IconPlus, IconSql } from '../../components/Icons'
 import { ConnectionModal } from '../../features/connection/ConnectionModal'
 import { DdlEditor } from '../../features/ddl/DdlEditor'
@@ -10,7 +11,11 @@ import { SqlEditor, type SqlEditorHandle } from '../../features/sql-editor/SqlEd
 import { TableDesignEditor } from '../../features/table-design/TableDesignEditor'
 import { TableDataEditor } from '../../features/table-data/TableDataEditor'
 import { useAppStore } from '../../stores/appStore'
+import type { ProductLinkRequest } from '../../stores/appStore'
+import { openProductLink, useProductLink } from '../../stores/productLink'
 import { APP_SETTING_KEYS, saveAppSetting } from '../../stores/appPreferences'
+import { useI18n } from '../../i18n'
+import { defaultUntitledSql, localizeWorkTabTitle } from '../../i18n/databaseTabTitle'
 import { queryPageToCSV } from '../../utils/queryCsv'
 
 type SqlResult = QueryPage | ExecuteResult | SQLBatchResult
@@ -41,8 +46,6 @@ export function DatabaseWorkbench() {
     setActiveTabId,
     setStatusMessage,
     setActiveProduct,
-    setProductLink,
-    productLink,
     addTab,
     replaceTab,
     updateSqlTab,
@@ -50,8 +53,10 @@ export function DatabaseWorkbench() {
     clearDesignDraft,
     statusMessage,
   } = useAppStore()
+  const { t } = useI18n()
 
   const sqlEditorRef = useRef<SqlEditorHandle>(null)
+  const pendingSql = useRef<{ sql: string; run: boolean } | null>(null)
   const [connModalOpen, setConnModalOpen] = useState(false)
   const [editingConn, setEditingConn] = useState<Connection | null>(null)
   const [sqlResult, setSqlResult] = useState<SqlResult | null>(null)
@@ -61,42 +66,14 @@ export function DatabaseWorkbench() {
   const [lastQuery, setLastQuery] = useState<{ sql: string; page: QueryPage } | null>(null)
   const [resultLoading, setResultLoading] = useState(false)
   const [treeFilter, setTreeFilter] = useState('')
+  const [ddlConfirm, setDdlConfirm] = useState<
+    { type: 'truncate' | 'drop'; database: string; table: string } | null
+  >(null)
   const restoredConnection = useRef(false)
 
   useEffect(() => {
     refreshConnections()
   }, [])
-
-  useEffect(() => {
-    if (!productLink || productLink.action !== 'database') return
-    const draft = productLink.connectionDraft
-    setProductLink(null)
-    if (!draft) return
-    setEditingConn({
-      id: '',
-      name: draft.name ?? '',
-      group: draft.group ?? 'Docker',
-      dbType: draft.dbType ?? 'mysql',
-      host: draft.host ?? '127.0.0.1',
-      port: draft.port ?? 3306,
-      user: draft.user ?? 'root',
-      password: '',
-      database: draft.database ?? '',
-      charset: draft.charset ?? 'utf8mb4',
-      sshEnabled: Boolean(draft.sshEnabled),
-      sshHostId: draft.sshHostId ?? '',
-      sshHost: '',
-      sshPort: 22,
-      sshUser: '',
-      sshKeyPath: '',
-      sshPassword: '',
-      createdAt: 0,
-      updatedAt: 0,
-    })
-    setConnModalOpen(true)
-    setActiveProduct('database')
-    setStatusMessage('已根据容器生成连接配置，请补全密码后保存并连接')
-  }, [productLink, setProductLink, setActiveProduct, setStatusMessage])
 
   const refreshConnections = async () => {
     try {
@@ -113,7 +90,7 @@ export function DatabaseWorkbench() {
     if (!session) return
     try {
       setObjectTree(await api.getObjectTree(session.sessionId))
-      setStatusMessage('对象树已刷新')
+      setStatusMessage(t('database.treeRefreshed'))
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -124,7 +101,7 @@ export function DatabaseWorkbench() {
   const groupedConnections = useMemo(() => {
     const map = new Map<string, Connection[]>()
     for (const c of connectionList) {
-      const g = c.group?.trim() || '默认'
+      const g = c.group?.trim() || t('database.defaultGroup')
       if (!map.has(g)) map.set(g, [])
       map.get(g)!.push(c)
     }
@@ -133,46 +110,193 @@ export function DatabaseWorkbench() {
   const activeConn = connectionList.find((c) => c.id === activeConnectionId)
   const activeTab = tabs.find((t) => t.id === activeTabId)
 
-  const connect = async (connId: string) => {
-    const conn = connectionList.find((c) => c.id === connId)
-    if (!conn) return
-    if (session?.connectionId === connId) return
-    if (session) {
-      try {
-        await api.closeSession(session.sessionId)
-      } catch {
-        /* ignore */
+  /** applySqlResult 处理 SQL 执行返回值。 */
+  const applySqlResult = useCallback((res: unknown, sql: string) => {
+    if (res && typeof res === 'object' && isBatchResult(res as SqlResult)) {
+      const batch = res as SQLBatchResult
+      setSqlResult(batch)
+      setLastQuery(null)
+      const ok = batch.items.filter((i) => !i.error).length
+      setStatusMessage(t('database.batchDone', { ok, total: batch.items.length }))
+      return
+    }
+    if (res && typeof res === 'object' && isQueryPage(res as SqlResult)) {
+      const page = res as QueryPage
+      setSqlResult(page)
+      setLastQuery({ sql, page })
+      setStatusMessage(t('database.queryDone', { elapsed: page.elapsedMs, total: page.total }))
+      return
+    }
+    setSqlResult(res as ExecuteResult)
+    setLastQuery(null)
+    setStatusMessage(t('database.executeDone'))
+  }, [setStatusMessage])
+
+  /** applyNotebookSql 将笔记本 SQL 填入已有查询标签（避免重复开标签）。 */
+  const applyNotebookSql = useCallback(
+    (sql: string) => {
+      const state = useAppStore.getState()
+      const sqlTab =
+        state.tabs.find((t) => t.id === state.activeTabId && t.kind === 'sql') ??
+        state.tabs.find((t) => t.kind === 'sql')
+      if (sqlTab) {
+        updateSqlTab(sqlTab.id, sql)
+        setActiveTabId(sqlTab.id)
+        return
       }
-    }
-    setStatusMessage('正在连接...')
-    try {
-      const info = await api.openSession(connId, conn.database || '')
-      setSession(info)
-      setActiveConnectionId(connId)
-      void saveAppSetting(APP_SETTING_KEYS.lastConnectionId, connId)
-      setObjectTree(await api.getObjectTree(info.sessionId))
-      setHistory(await api.listQueryHistory(connId, 30))
-      setStatusMessage(`已连接到 ${conn.name}`)
-    } catch (e) {
-      setStatusMessage((e as Error).message)
-    }
-  }
+      addTab({ id: `sql-nb-${Date.now()}`, kind: 'sql', title: t('database.notebookTab'), sql })
+    },
+    [updateSqlTab, setActiveTabId, addTab]
+  )
+
+  /** executeSqlNow 使用指定会话执行 SQL（不依赖 React session 闭包）。 */
+  const executeSqlNow = useCallback(
+    async (sessionInfo: SessionInfo, sql: string) => {
+      if (!sql.trim()) return
+      setBottomTab('result')
+      setStatusMessage(t('database.executing'))
+      try {
+        const res = await api.executeSQL(sessionInfo.sessionId, sessionInfo.database, sql)
+        applySqlResult(res, sql)
+        setHistory(await api.listQueryHistory(sessionInfo.connectionId, 30))
+      } catch (e) {
+        setSqlResult(null)
+        setLastQuery(null)
+        setStatusMessage((e as Error).message)
+        setBottomTab('message')
+      }
+    },
+    [applySqlResult, setStatusMessage]
+  )
+
+  /** fulfillPendingSql 处理来自笔记本的 SQL 填入与执行。 */
+  const fulfillPendingSql = useCallback(
+    async (sessionInfo: SessionInfo) => {
+      const pending = pendingSql.current
+      if (!pending) return
+      pendingSql.current = null
+      applyNotebookSql(pending.sql)
+      if (pending.run) {
+        await executeSqlNow(sessionInfo, pending.sql)
+      } else {
+        setStatusMessage(t('database.sqlFilled'))
+      }
+    },
+    [applyNotebookSql, executeSqlNow, setStatusMessage]
+  )
+
+  const connect = useCallback(
+    async (connId: string) => {
+      let list = useAppStore.getState().connections
+      if (!list.length) {
+        list = await api.listConnections()
+        setConnections(list)
+      }
+      const conn = list.find((c) => c.id === connId)
+      if (!conn) {
+        pendingSql.current = null
+        setStatusMessage(t('database.connNotFound'))
+        return
+      }
+      const currentSession = useAppStore.getState().session
+      if (currentSession?.connectionId === connId) {
+        await fulfillPendingSql(currentSession)
+        return
+      }
+      if (currentSession) {
+        try {
+          await api.closeSession(currentSession.sessionId)
+        } catch {
+          /* ignore */
+        }
+      }
+      setStatusMessage(t('database.connecting'))
+      try {
+        const info = await api.openSession(connId, conn.database || '')
+        setSession(info)
+        setActiveConnectionId(connId)
+        void saveAppSetting(APP_SETTING_KEYS.lastConnectionId, connId)
+        setObjectTree(await api.getObjectTree(info.sessionId))
+        setHistory(await api.listQueryHistory(connId, 30))
+        setStatusMessage(t('database.connected', { name: conn.name }))
+        await fulfillPendingSql(info)
+      } catch (e) {
+        pendingSql.current = null
+        setStatusMessage((e as Error).message)
+      }
+    },
+    [setConnections, setSession, setActiveConnectionId, setObjectTree, setHistory, setStatusMessage, fulfillPendingSql]
+  )
+
+  /** onDatabaseLink 处理跨产品跳转到数据库（连接 + 填入/执行 SQL）。 */
+  const onDatabaseLink = useCallback(
+    (link: ProductLinkRequest) => {
+      const { connectionId, connectionDraft, initialSql, runSql } = link
+      setActiveProduct('database')
+      if (connectionId) {
+        const conn = useAppStore.getState().connections.find((c) => c.id === connectionId)
+        const sql = initialSql?.trim() ?? ''
+        pendingSql.current = sql ? { sql, run: Boolean(runSql) } : null
+        restoredConnection.current = true
+        if (sql && runSql) {
+          setStatusMessage(t('database.openingRunSql', { name: conn?.name ?? t('products.database.label') }))
+        } else if (sql) {
+          setStatusMessage(t('database.openingFillSql', { name: conn?.name ?? t('products.database.label') }))
+        } else {
+          setStatusMessage(t('database.opening', { name: conn?.name ?? t('products.database.label') }))
+        }
+        void connect(connectionId)
+        return
+      }
+      if (!connectionDraft) return
+      setEditingConn({
+        id: '',
+        name: connectionDraft.name ?? '',
+        group: connectionDraft.group ?? 'Docker',
+        dbType: connectionDraft.dbType ?? 'mysql',
+        host: connectionDraft.host ?? '127.0.0.1',
+        port: connectionDraft.port ?? 3306,
+        user: connectionDraft.user ?? 'root',
+        password: connectionDraft.password ?? '',
+        database: connectionDraft.database ?? '',
+        charset: connectionDraft.charset ?? 'utf8mb4',
+        sshEnabled: Boolean(connectionDraft.sshEnabled),
+        sshHostId: connectionDraft.sshHostId ?? '',
+        sshHost: '',
+        sshPort: 22,
+        sshUser: '',
+        sshKeyPath: '',
+        sshPassword: '',
+        createdAt: 0,
+        updatedAt: 0,
+      })
+      setConnModalOpen(true)
+      setStatusMessage(
+        connectionDraft.password
+          ? t('database.dockerPwdFilled')
+          : t('database.dockerConnDraft'),
+      )
+    },
+    [setActiveProduct, connect, setStatusMessage, t]
+  )
+
+  useProductLink('database', onDatabaseLink)
 
   const disconnect = async () => {
     if (session) await api.closeSession(session.sessionId)
     setSession(null)
     setObjectTree([])
     setActiveConnectionId(null)
-    setStatusMessage('已断开连接')
+    setStatusMessage(t('database.disconnected'))
   }
 
   useEffect(() => {
-    if (restoredConnection.current || !activeConnectionId || session) return
+    if (restoredConnection.current || !activeConnectionId || session || pendingSql.current) return
     const conn = connectionList.find((c) => c.id === activeConnectionId)
     if (!conn) return
     restoredConnection.current = true
     void connect(activeConnectionId)
-  }, [connectionList, activeConnectionId, session])
+  }, [connectionList, activeConnectionId, session, connect])
 
   /** getRunSQL 获取当前待执行 SQL。 */
   const getRunSQL = useCallback(() => {
@@ -182,33 +306,11 @@ export function DatabaseWorkbench() {
     return ''
   }, [activeTab])
 
-  /** applySqlResult 处理 SQL 执行返回值。 */
-  const applySqlResult = useCallback((res: unknown, sql: string) => {
-    if (res && typeof res === 'object' && isBatchResult(res as SqlResult)) {
-      const batch = res as SQLBatchResult
-      setSqlResult(batch)
-      setLastQuery(null)
-      const ok = batch.items.filter((i) => !i.error).length
-      setStatusMessage(`批量执行完成 · ${ok}/${batch.items.length} 条成功`)
-      return
-    }
-    if (res && typeof res === 'object' && isQueryPage(res as SqlResult)) {
-      const page = res as QueryPage
-      setSqlResult(page)
-      setLastQuery({ sql, page })
-      setStatusMessage(`查询完成 · ${page.elapsedMs} ms · 共 ${page.total} 行`)
-      return
-    }
-    setSqlResult(res as ExecuteResult)
-    setLastQuery(null)
-    setStatusMessage('执行完成')
-  }, [])
-
   const runSqlText = useCallback(
     async (sql: string) => {
       if (!session || !sql.trim()) return
       setBottomTab('result')
-      setStatusMessage('正在执行...')
+      setStatusMessage(t('database.executing'))
       try {
         const res = await api.executeSQL(session.sessionId, session.database, sql)
         applySqlResult(res, sql)
@@ -220,7 +322,7 @@ export function DatabaseWorkbench() {
         setBottomTab('message')
       }
     },
-    [session, applySqlResult]
+    [session, applySqlResult, setStatusMessage]
   )
 
   const runSql = useCallback(async () => {
@@ -274,7 +376,7 @@ export function DatabaseWorkbench() {
   const openCreateTableTab = (database: string) => {
     const id = `design-new-${database}`
     if (!tabs.find((t) => t.id === id)) {
-      addTab({ id, kind: 'design', title: `新建表 · ${database}`, database, mode: 'create' })
+      addTab({ id, kind: 'design', title: t('database.newTableTab', { database }), database, mode: 'create' })
     } else {
       setActiveTabId(id)
     }
@@ -283,7 +385,7 @@ export function DatabaseWorkbench() {
   const openDesignTableTab = (database: string, table: string) => {
     const id = `design-${database}-${table}`
     if (!tabs.find((t) => t.id === id)) {
-      addTab({ id, kind: 'design', title: `设计 · ${table}`, database, mode: 'alter', table })
+      addTab({ id, kind: 'design', title: t('database.designTab', { table }), database, mode: 'alter', table })
     } else {
       setActiveTabId(id)
     }
@@ -304,7 +406,7 @@ export function DatabaseWorkbench() {
     const next = tabs.filter((t) => !removeIds.has(t.id))
     if (next.length === tabs.length) return
     useAppStore.getState().setTabs(
-      next.length ? next : [{ id: 'sql-1', kind: 'sql', title: '无标题查询', sql: '-- 输入 SQL\nSELECT 1;\n' }]
+      next.length ? next : [{ id: 'sql-1', kind: 'sql', title: t('database.untitledQuery'), sql: defaultUntitledSql() }]
     )
     if (activeTabId && removeIds.has(activeTabId)) {
       setActiveTabId((next[0] || { id: 'sql-1' }).id)
@@ -316,7 +418,7 @@ export function DatabaseWorkbench() {
     const alterTab = {
       id: `design-${database}-${tableName}`,
       kind: 'design' as const,
-      title: `设计 · ${tableName}`,
+      title: t('database.designTab', { table: tableName }),
       database,
       mode: 'alter' as const,
       table: tableName,
@@ -335,7 +437,7 @@ export function DatabaseWorkbench() {
   /** runTableDDL 执行表级 DDL 并刷新对象树。 */
   const runTableDDL = async (sql: string, okMessage: string) => {
     if (!session) return false
-    setStatusMessage('正在执行...')
+    setStatusMessage(t('database.executing'))
     try {
       await api.executeSQL(session.sessionId, session.database, sql)
       setObjectTree(await api.getObjectTree(session.sessionId))
@@ -347,19 +449,34 @@ export function DatabaseWorkbench() {
     }
   }
 
-  const truncateTable = async (database: string, table: string) => {
+  const truncateTable = (database: string, table: string) => {
     if (!session) return
-    if (!window.confirm(`确定清空表 ${database}.${table} 的全部数据？\n（TRUNCATE，不可撤销）`)) return
-    const ok = await runTableDDL(`TRUNCATE TABLE \`${database}\`.\`${table}\``, `表 ${table} 已清空`)
-    if (ok && activeTab?.kind === 'table' && activeTab.database === database && activeTab.table === table) {
-      setActiveTabId(activeTab.id)
-    }
+    setDdlConfirm({ type: 'truncate', database, table })
   }
 
-  const dropTable = async (database: string, table: string) => {
+  const dropTable = (database: string, table: string) => {
     if (!session) return
-    if (!window.confirm(`确定删除表 ${database}.${table}？\n（DROP TABLE，不可撤销）`)) return
-    const ok = await runTableDDL(`DROP TABLE \`${database}\`.\`${table}\``, `表 ${table} 已删除`)
+    setDdlConfirm({ type: 'drop', database, table })
+  }
+
+  const confirmTableDDL = async () => {
+    if (!session || !ddlConfirm) return
+    const { type, database, table } = ddlConfirm
+    setDdlConfirm(null)
+    if (type === 'truncate') {
+      const ok = await runTableDDL(
+        `TRUNCATE TABLE \`${database}\`.\`${table}\``,
+        t('database.tableTruncated', { table })
+      )
+      if (ok && activeTab?.kind === 'table' && activeTab.database === database && activeTab.table === table) {
+        setActiveTabId(activeTab.id)
+      }
+      return
+    }
+    const ok = await runTableDDL(
+      `DROP TABLE \`${database}\`.\`${table}\``,
+      t('database.tableDropped', { table })
+    )
     if (ok) closeTabsForTable(database, table)
   }
 
@@ -367,7 +484,7 @@ export function DatabaseWorkbench() {
     if (!session) return
     try {
       const path = await api.exportTableInsertSQL(session.sessionId, database, table, 5000)
-      if (path) setStatusMessage(`已导出 ${path}`)
+      if (path) setStatusMessage(t('database.exported', { path }))
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -401,7 +518,7 @@ export function DatabaseWorkbench() {
       const content = `-- ${database}.${table} 索引\n${lines.join('\n')}\n`
       const id = `idx-${database}-${table}`
       if (!tabs.find((t) => t.id === id)) {
-        addTab({ id, kind: 'ddl', title: `索引 · ${table}`, content, editable: false })
+        addTab({ id, kind: 'ddl', title: t('database.indexTab', { table }), content, editable: false })
       } else {
         setActiveTabId(id)
       }
@@ -414,18 +531,18 @@ export function DatabaseWorkbench() {
     if (!lastQuery) return
     const { headers, rows } = queryPageToCSV(lastQuery.page)
     const path = await api.exportCSV({ fileName: 'query_result.csv', headers, rows })
-    if (path) setStatusMessage(`已导出 ${path}`)
+    if (path) setStatusMessage(t('database.exported', { path }))
   }
 
   const newSqlTab = () => {
-    addTab({ id: `sql-${Date.now()}`, kind: 'sql', title: '无标题查询', sql: '-- 输入 SQL\n' })
+    addTab({ id: `sql-${Date.now()}`, kind: 'sql', title: t('database.untitledQuery'), sql: defaultUntitledSql() })
   }
 
   const closeTab = (tabId: string) => {
     clearDesignDraft(tabId)
     const next = tabs.filter((x) => x.id !== tabId)
     useAppStore.getState().setTabs(
-      next.length ? next : [{ id: 'sql-1', kind: 'sql', title: '无标题查询', sql: '-- 输入 SQL\nSELECT 1;\n' }]
+      next.length ? next : [{ id: 'sql-1', kind: 'sql', title: t('database.untitledQuery'), sql: defaultUntitledSql() }]
     )
     if (activeTabId === tabId) setActiveTabId((next[0] || { id: 'sql-1' }).id)
   }
@@ -455,7 +572,7 @@ export function DatabaseWorkbench() {
   const runSqlFile = async () => {
     if (!session) return
     setBottomTab('result')
-    setStatusMessage('正在执行 SQL 文件...')
+    setStatusMessage(t('database.executingSqlFile'))
     try {
       const res = await api.executeSQLFile(session.sessionId, session.database)
       if (res) applySqlResult(res, '-- SQL 文件')
@@ -468,14 +585,14 @@ export function DatabaseWorkbench() {
 
   const exportConnections = async () => {
     const path = await api.exportConnectionsToFile(false)
-    if (path) setStatusMessage(`已导出连接 ${path}`)
+    if (path) setStatusMessage(t('database.exportedConnections', { path }))
   }
 
   const importConnections = async () => {
     const count = await api.importConnectionsFromFile()
     if (count > 0) {
       await refreshConnections()
-      setStatusMessage(`已导入 ${count} 个连接`)
+      setStatusMessage(t('database.importedConnections', { count }))
     }
   }
 
@@ -483,57 +600,70 @@ export function DatabaseWorkbench() {
   const openLinkedProduct = async (action: 'terminal' | 'sftp') => {
     if (!session) return
     try {
-      setStatusMessage('正在解析 SSH 主机…')
+      setStatusMessage(t('database.resolvingSsh'))
       const host = await api.ensureSSHHostFromConnection(session.connectionId)
-      setActiveProduct(action)
-      setProductLink({ action, hostId: host.id })
-      setStatusMessage(action === 'terminal' ? `正在打开终端 · ${host.name}` : `正在打开 SFTP · ${host.name}`)
+      openProductLink({ action, hostId: host.id })
+      setStatusMessage(
+        action === 'terminal'
+          ? t('database.openingTerminal', { name: host.name })
+          : t('database.openingSftp', { name: host.name })
+      )
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
   }
 
-  const connLabel = session && activeConn ? `${activeConn.name} · ${activeConn.host}:${activeConn.port}` : '未连接'
+  /** openNotebookFromConnection 从当前连接创建笔记本笔记。 */
+  const openNotebookFromConnection = () => {
+    if (!session) return
+    openProductLink({ action: 'notebook', connectionId: session.connectionId })
+    setStatusMessage(t('database.creatingNote'))
+  }
+
+  const connLabel =
+    session && activeConn
+      ? `${activeConn.name} · ${activeConn.host}:${activeConn.port}`
+      : t('database.notConnected')
   const sshLinked = Boolean(session && activeConn?.sshEnabled)
 
   return (
     <div className="product-workbench database-workbench">
       <div className="product-toolbar">
         <nav className="product-actions">
-          <button type="button" className="wn-btn wn-btn-chrome" onClick={() => openConnModal()} title="新建连接">
+          <button type="button" className="wn-btn wn-btn-chrome" onClick={() => openConnModal()} title={t('database.newConnection')}>
             <IconPlus size={13} />
-            <span>连接</span>
+            <span>{t('database.connection')}</span>
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-chrome"
             onClick={() => activeConn && openConnModal(activeConn)}
             disabled={!activeConn}
-            title="编辑连接"
+            title={t('database.editConnection')}
           >
             <IconEdit size={13} />
           </button>
           <span className="chrome-vrule" />
-          <button type="button" className="wn-btn wn-btn-chrome" onClick={newSqlTab} title="新建查询">
+          <button type="button" className="wn-btn wn-btn-chrome" onClick={newSqlTab} title={t('database.newQuery')}>
             <IconSql size={13} />
-            <span>查询</span>
+            <span>{t('database.newQuery')}</span>
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-chrome wn-btn-run"
             onClick={runSql}
             disabled={!session || activeTab?.kind !== 'sql'}
-            title="运行 (⌘+Enter)"
+            title={t('database.runTitle')}
           >
             <IconPlay size={12} />
-            <span>运行</span>
+            <span>{t('database.run')}</span>
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-chrome"
             onClick={runExplain}
             disabled={!session || activeTab?.kind !== 'sql'}
-            title="EXPLAIN 分析"
+            title={t('database.explain')}
           >
             <span>EXPLAIN</span>
           </button>
@@ -542,13 +672,26 @@ export function DatabaseWorkbench() {
             className="wn-btn wn-btn-chrome"
             onClick={() => void runSqlFile()}
             disabled={!session}
-            title="执行 SQL 文件"
+            title={t('database.runSqlFile')}
           >
-            <span>SQL 文件</span>
+            <span>{t('database.sqlFile')}</span>
           </button>
-          <button type="button" className="wn-btn wn-btn-chrome" onClick={disconnect} disabled={!session} title="断开">
+          <button type="button" className="wn-btn wn-btn-chrome" onClick={disconnect} disabled={!session} title={t('database.disconnect')}>
             <IconDisconnect size={13} />
           </button>
+          {session && (
+            <>
+              <span className="chrome-vrule" />
+              <button
+                type="button"
+                className="wn-btn wn-btn-chrome"
+                onClick={openNotebookFromConnection}
+                title={t('database.saveNotebook')}
+              >
+                <span>{t('database.notebook')}</span>
+              </button>
+            </>
+          )}
           {sshLinked && (
             <>
               <span className="chrome-vrule" />
@@ -556,17 +699,17 @@ export function DatabaseWorkbench() {
                 type="button"
                 className="wn-btn wn-btn-chrome"
                 onClick={() => void openLinkedProduct('terminal')}
-                title="打开 SSH 终端"
+                title={t('database.sshTerminal')}
               >
-                <span>SSH 终端</span>
+                <span>{t('database.sshTerminal')}</span>
               </button>
               <button
                 type="button"
                 className="wn-btn wn-btn-chrome"
                 onClick={() => void openLinkedProduct('sftp')}
-                title="打开 SFTP"
+                title={t('database.sftp')}
               >
-                <span>SFTP</span>
+                <span>{t('database.sftp')}</span>
               </button>
             </>
           )}
@@ -582,22 +725,22 @@ export function DatabaseWorkbench() {
         <aside className="app-sidebar">
           <section className="sidebar-section connections">
             <div className="sidebar-header">
-              <span>MySQL 连接</span>
+              <span>{t('database.mysqlConnections')}</span>
               <div className="sidebar-header-actions">
-                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => void importConnections()} title="导入">
+                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => void importConnections()} title={t('database.import')}>
                   ↓
                 </button>
-                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => void exportConnections()} title="导出">
+                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => void exportConnections()} title={t('database.export')}>
                   ↑
                 </button>
-                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => openConnModal()} title="新建">
+                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => openConnModal()} title={t('database.newConnection')}>
                   <IconPlus size={14} />
                 </button>
               </div>
             </div>
             <div className="sidebar-body connections-body">
               {connectionList.length === 0 ? (
-                <div className="empty-hint">创建 MySQL 连接以开始</div>
+                <div className="empty-hint">{t('database.emptyConnections')}</div>
               ) : (
                 groupedConnections.map(([group, list]) => (
                   <div key={group} className="conn-group">
@@ -632,13 +775,13 @@ export function DatabaseWorkbench() {
 
           <section className="sidebar-section objects">
             <div className="sidebar-header">
-              <span>对象浏览器</span>
+              <span>{t('database.objectBrowser')}</span>
               <button
                 type="button"
                 className="wn-btn wn-btn-icon wn-btn-sm"
                 onClick={() => void refreshObjectTree()}
                 disabled={!session}
-                title="刷新"
+                title={t('common.refresh')}
               >
                 ↻
               </button>
@@ -647,7 +790,7 @@ export function DatabaseWorkbench() {
               <div className="sidebar-filter">
                 <input
                   className="wn-input wn-input-sm"
-                  placeholder="筛选表/视图…"
+                  placeholder={t('database.filterPlaceholder')}
                   value={treeFilter}
                   onChange={(e) => setTreeFilter(e.target.value)}
                 />
@@ -669,19 +812,19 @@ export function DatabaseWorkbench() {
                   onExportInsert={exportTableInsert}
                 />
               ) : (
-                <div className="empty-hint">连接后浏览库表结构</div>
+                <div className="empty-hint">{t('database.connectToBrowse')}</div>
               )}
             </div>
           </section>
 
           <section className="sidebar-section history">
             <div className="sidebar-header">
-              <span>查询历史</span>
+              <span>{t('database.queryHistory')}</span>
             </div>
             <div className="sidebar-body">
               {history.length === 0 ? (
                 <div className="empty-hint" style={{ padding: '12px 8px' }}>
-                  暂无记录
+                  {t('database.noHistory')}
                 </div>
               ) : (
                 history.map((h) => (
@@ -689,7 +832,7 @@ export function DatabaseWorkbench() {
                     key={h.id}
                     className={`history-item ${h.success ? '' : 'failed'}`}
                     title={h.sql}
-                    onClick={() => addTab({ id: `sql-h-${h.id}`, kind: 'sql', title: '历史查询', sql: h.sql })}
+                    onClick={() => addTab({ id: `sql-h-${h.id}`, kind: 'sql', title: t('database.historyQuery'), sql: h.sql })}
                   >
                     {h.sql.slice(0, 50)}
                     {h.sql.length > 50 ? '…' : ''}
@@ -703,33 +846,33 @@ export function DatabaseWorkbench() {
         <main className="app-main">
           <div className="editor-chrome">
             <div className="wn-tabs">
-              {tabs.map((t) => (
+              {tabs.map((tab) => (
                 <button
-                  key={t.id}
+                  key={tab.id}
                   type="button"
-                  className={`wn-tab wn-tab-${t.kind} ${t.id === activeTabId ? 'active' : ''}`}
-                  onClick={() => setActiveTabId(t.id)}
+                  className={`wn-tab wn-tab-${tab.kind} ${tab.id === activeTabId ? 'active' : ''}`}
+                  onClick={() => setActiveTabId(tab.id)}
                 >
                   <span className="tab-dot" />
-                  <span className="tab-title">{t.title}</span>
-                  <span className="wn-tab-close" onClick={(e) => { e.stopPropagation(); closeTab(t.id) }}>
+                  <span className="tab-title">{localizeWorkTabTitle(tab.title, t)}</span>
+                  <span className="wn-tab-close" onClick={(e) => { e.stopPropagation(); closeTab(tab.id) }}>
                     ×
                   </span>
                 </button>
               ))}
-              <button type="button" className="wn-tab wn-tab-add" onClick={newSqlTab} title="新建查询">
+              <button type="button" className="wn-tab wn-tab-add" onClick={newSqlTab} title={t('database.newQuery')}>
                 +
               </button>
             </div>
             {session && activeTab?.kind === 'sql' && (
               <div className="query-bar">
-                <label>数据库</label>
+                <label>{t('database.database')}</label>
                 <select
                   className="wn-select"
                   value={session.database}
                   onChange={async (e) => setSession(await api.setDatabase(session.sessionId, e.target.value))}
                 >
-                  <option value="">选择…</option>
+                  <option value="">{t('database.selectDatabase')}</option>
                   {treeNodes.map((db) => (
                     <option key={db.id} value={db.label}>
                       {db.label}
@@ -743,7 +886,7 @@ export function DatabaseWorkbench() {
           <div className="workspace">
             {!activeTab && (
               <div className="pane-empty">
-                <span>新建查询或双击表打开数据</span>
+                <span>{t('database.emptyWorkspace')}</span>
               </div>
             )}
             {activeTab?.kind === 'sql' && (
@@ -776,14 +919,14 @@ export function DatabaseWorkbench() {
                       className={`bottom-panel-tab ${bottomTab === 'result' ? 'active' : ''}`}
                       onClick={() => setBottomTab('result')}
                     >
-                      结果
+                      {t('database.result')}
                     </button>
                     <button
                       type="button"
                       className={`bottom-panel-tab ${bottomTab === 'message' ? 'active' : ''}`}
                       onClick={() => setBottomTab('message')}
                     >
-                      消息
+                      {t('database.message')}
                     </button>
                   </div>
                   <div className="bottom-panel-body">
@@ -807,7 +950,7 @@ export function DatabaseWorkbench() {
             )}
             {activeTab?.kind === 'table' && !session && (
               <div className="pane-empty">
-                <span>请先连接数据库</span>
+                <span>{t('database.connectFirst')}</span>
               </div>
             )}
             {activeTab?.kind === 'ddl' && (
@@ -840,7 +983,7 @@ export function DatabaseWorkbench() {
             )}
             {activeTab?.kind === 'design' && !session && (
               <div className="pane-empty">
-                <span>请先连接数据库</span>
+                <span>{t('database.connectFirst')}</span>
               </div>
             )}
           </div>
@@ -852,6 +995,21 @@ export function DatabaseWorkbench() {
         initial={editingConn}
         onClose={() => setConnModalOpen(false)}
         onSaved={refreshConnections}
+      />
+      <ConfirmDialog
+        open={ddlConfirm != null}
+        title={ddlConfirm?.type === 'drop' ? t('database.dropTableTitle') : t('database.truncateTableTitle')}
+        message={
+          ddlConfirm
+            ? ddlConfirm.type === 'drop'
+              ? t('database.dropTableMsg', { database: ddlConfirm.database, table: ddlConfirm.table })
+              : t('database.truncateTableMsg', { database: ddlConfirm.database, table: ddlConfirm.table })
+            : undefined
+        }
+        confirmLabel={ddlConfirm?.type === 'drop' ? t('common.delete') : t('database.truncate')}
+        danger
+        onConfirm={() => void confirmTableDDL()}
+        onCancel={() => setDdlConfirm(null)}
       />
     </div>
   )

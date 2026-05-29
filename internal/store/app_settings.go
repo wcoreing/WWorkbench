@@ -13,6 +13,8 @@ const (
 	SettingTerminalOpacity    = "terminal_opacity"
 	SettingLastConnectionID   = "last_connection_id"
 	SettingLastDockerContext  = "last_docker_context_id"
+	SettingLocale             = "locale"
+	SettingEnvScanPath        = "env_scan_path"
 )
 
 // GetAppSetting 读取单项应用设置。

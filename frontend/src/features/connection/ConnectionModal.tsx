@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Connection, SSHHost } from '../../api/types'
 import { api } from '../../api/client'
+import { useI18n } from '../../i18n'
 import '../../components/ui.css'
 
 interface Props {
@@ -34,25 +35,29 @@ const emptyConn = (): Connection => ({
   updatedAt: 0,
 })
 
+type TFn = (key: string, params?: Record<string, string | number>) => string
+
 /** validateConnectionForm 校验连接表单必填项。 */
-function validateConnectionForm(form: Connection, sshSource: SSHSource): string | null {
-  if (!form.name.trim()) return '请填写连接名称'
-  if (!form.host.trim()) return '请填写主机地址'
-  if (!form.user.trim()) return '请填写用户名'
-  if (!form.port || form.port <= 0) return '请填写有效端口'
+function validateConnectionForm(form: Connection, sshSource: SSHSource, t: TFn): string | null {
+  if (!form.name.trim()) return t('connection.errName')
+  if (!form.host.trim()) return t('connection.errHost')
+  if (!form.user.trim()) return t('connection.errUser')
+  if (!form.port || form.port <= 0) return t('connection.errPort')
   if (form.sshEnabled) {
     if (sshSource === 'host') {
-      if (!form.sshHostId) return '请选择 SSH 主机'
+      if (!form.sshHostId) return t('connection.errSshHostPick')
     } else {
-      if (!form.sshHost.trim()) return '请填写 SSH 主机'
-      if (!form.sshUser.trim()) return '请填写 SSH 用户名'
-      if (!form.sshKeyPath.trim() && !form.sshPassword) return '请填写 SSH 密码或私钥路径'
+      if (!form.sshHost.trim()) return t('connection.errSshHost')
+      if (!form.sshUser.trim()) return t('connection.errSshUser')
+      if (!form.sshKeyPath.trim() && !form.sshPassword) return t('connection.errSshAuth')
     }
   }
   return null
 }
 
+/** ConnectionModal 数据库连接新建/编辑弹窗。 */
 export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
+  const { t } = useI18n()
   const [form, setForm] = useState<Connection>(emptyConn())
   const [sshHosts, setSshHosts] = useState<SSHHost[]>([])
   const [sshSource, setSshSource] = useState<SSHSource>('manual')
@@ -120,7 +125,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
 
   const handleTest = async () => {
     const payload = buildPayload()
-    const invalid = validateConnectionForm(payload, sshSource)
+    const invalid = validateConnectionForm(payload, sshSource, t)
     if (invalid) {
       setError(invalid)
       return
@@ -130,7 +135,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
     setSuccess('')
     try {
       await api.testConnection(payload)
-      setSuccess(payload.sshEnabled ? 'SSH 隧道与数据库连接成功' : '连接测试成功')
+      setSuccess(payload.sshEnabled ? t('connection.testOkSsh') : t('connection.testOk'))
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -140,7 +145,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
 
   const handleSave = async () => {
     const payload = buildPayload()
-    const invalid = validateConnectionForm(payload, sshSource)
+    const invalid = validateConnectionForm(payload, sshSource, t)
     if (invalid) {
       setError(invalid)
       return
@@ -169,58 +174,58 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
         <header className="wn-modal-header">
           <div className="wn-modal-title-row">
             <h2 id="conn-modal-title" className="wn-modal-title">
-              {isEdit ? '编辑连接' : '新建连接'}
+              {isEdit ? t('connection.editTitle') : t('connection.newTitle')}
             </h2>
             <span className="wn-modal-tag">MySQL</span>
           </div>
-          <p className="wn-modal-desc">连接信息加密保存在本地</p>
+          <p className="wn-modal-desc">{t('connection.desc')}</p>
         </header>
 
         <div className="wn-modal-body">
           <div className="wn-form">
             <div className="wn-field">
               <label className="wn-label" htmlFor="conn-name">
-                连接名称
+                {t('connection.name')}
               </label>
               <input
                 id="conn-name"
                 className="wn-input"
                 value={form.name}
                 onChange={(e) => update({ name: e.target.value })}
-                placeholder="例如：生产环境"
+                placeholder={t('connection.namePlaceholder')}
                 autoFocus
               />
             </div>
 
             <div className="wn-field">
               <label className="wn-label" htmlFor="conn-group">
-                分组
+                {t('connection.group')}
               </label>
               <input
                 id="conn-group"
                 className="wn-input"
                 value={form.group}
                 onChange={(e) => update({ group: e.target.value })}
-                placeholder="例如：生产 / 测试（可选）"
+                placeholder={t('connection.groupPlaceholder')}
               />
             </div>
 
             <div className="wn-form-row">
               <div className="wn-field">
                 <label className="wn-label" htmlFor="conn-host">
-                  主机
+                  {t('connection.host')}
                 </label>
                 <input
                   id="conn-host"
                   className="wn-input"
                   value={form.host}
                   onChange={(e) => update({ host: e.target.value })}
-                  placeholder="MySQL 地址（经 SSH 时为内网地址）"
+                  placeholder={t('connection.hostPlaceholder')}
                 />
               </div>
               <div className="wn-field wn-field-narrow">
                 <label className="wn-label" htmlFor="conn-port">
-                  端口
+                  {t('connection.port')}
                 </label>
                 <input
                   id="conn-port"
@@ -237,7 +242,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
             <div className="wn-form-row wn-form-row-equal">
               <div className="wn-field">
                 <label className="wn-label" htmlFor="conn-user">
-                  用户名
+                  {t('connection.user')}
                 </label>
                 <input
                   id="conn-user"
@@ -248,7 +253,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
               </div>
               <div className="wn-field">
                 <label className="wn-label" htmlFor="conn-pass">
-                  密码
+                  {t('connection.password')}
                 </label>
                 <input
                   id="conn-pass"
@@ -256,21 +261,21 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
                   type="password"
                   value={form.password}
                   onChange={(e) => update({ password: e.target.value })}
-                  placeholder="可选"
+                  placeholder={t('connection.optional')}
                 />
               </div>
             </div>
 
             <div className="wn-field">
               <label className="wn-label" htmlFor="conn-db">
-                默认数据库
+                {t('connection.defaultDb')}
               </label>
               <input
                 id="conn-db"
                 className="wn-input"
                 value={form.database}
                 onChange={(e) => update({ database: e.target.value })}
-                placeholder="可选"
+                placeholder={t('connection.optional')}
               />
             </div>
 
@@ -281,7 +286,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
                   checked={form.sshEnabled}
                   onChange={(e) => update({ sshEnabled: e.target.checked })}
                 />
-                <span>通过 SSH 隧道连接</span>
+                <span>{t('connection.sshTunnel')}</span>
               </label>
 
               {form.sshEnabled && (
@@ -289,21 +294,21 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
                   <div className="conn-ssh-source">
                     <label className="wn-check">
                       <input type="radio" name="ssh-source" checked={sshSource === 'host'} onChange={() => switchSSHSource('host')} />
-                      <span>使用已保存 SSH 主机</span>
+                      <span>{t('connection.useSavedHost')}</span>
                     </label>
                     <label className="wn-check">
                       <input type="radio" name="ssh-source" checked={sshSource === 'manual'} onChange={() => switchSSHSource('manual')} />
-                      <span>手动填写</span>
+                      <span>{t('connection.manual')}</span>
                     </label>
                   </div>
 
                   {sshSource === 'host' ? (
                     <div className="wn-field">
                       <label className="wn-label" htmlFor="ssh-host-pick">
-                        SSH 主机
+                        {t('connection.sshHost')}
                       </label>
                       {sshHosts.length === 0 ? (
-                        <p className="conn-ssh-hint">请先在「终端」或「文件」产品线添加 SSH 主机</p>
+                        <p className="conn-ssh-hint">{t('connection.noSshHosts')}</p>
                       ) : (
                         <select
                           id="ssh-host-pick"
@@ -311,7 +316,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
                           value={form.sshHostId}
                           onChange={(e) => update({ sshHostId: e.target.value })}
                         >
-                          <option value="">选择主机…</option>
+                          <option value="">{t('connection.pickHost')}</option>
                           {sshHosts.map((h) => (
                             <option key={h.id} value={h.id}>
                               {h.name} · {h.user}@{h.host}:{h.port}
@@ -321,7 +326,11 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
                       )}
                       {selectedHost && (
                         <p className="conn-ssh-hint">
-                          跳板机 {selectedHost.user}@{selectedHost.host}:{selectedHost.port}
+                          {t('connection.jumpHost', {
+                            user: selectedHost.user,
+                            host: selectedHost.host,
+                            port: selectedHost.port,
+                          })}
                         </p>
                       )}
                     </div>
@@ -330,19 +339,19 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
                       <div className="wn-form-row">
                         <div className="wn-field">
                           <label className="wn-label" htmlFor="ssh-host">
-                            SSH 主机
+                            {t('connection.sshHost')}
                           </label>
                           <input
                             id="ssh-host"
                             className="wn-input"
                             value={form.sshHost}
                             onChange={(e) => update({ sshHost: e.target.value })}
-                            placeholder="跳板机公网 IP 或域名"
+                            placeholder={t('connection.sshHostPlaceholder')}
                           />
                         </div>
                         <div className="wn-field wn-field-narrow">
                           <label className="wn-label" htmlFor="ssh-port">
-                            SSH 端口
+                            {t('connection.sshPort')}
                           </label>
                           <input
                             id="ssh-port"
@@ -357,7 +366,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
                       </div>
                       <div className="wn-field">
                         <label className="wn-label" htmlFor="ssh-user">
-                          SSH 用户名
+                          {t('connection.sshUser')}
                         </label>
                         <input
                           id="ssh-user"
@@ -368,19 +377,19 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
                       </div>
                       <div className="wn-field">
                         <label className="wn-label" htmlFor="ssh-key">
-                          私钥路径
+                          {t('connection.keyPath')}
                         </label>
                         <input
                           id="ssh-key"
                           className="wn-input"
                           value={form.sshKeyPath}
                           onChange={(e) => update({ sshKeyPath: e.target.value })}
-                          placeholder="例如 ~/.ssh/id_rsa"
+                          placeholder={t('connection.keyPathPlaceholder')}
                         />
                       </div>
                       <div className="wn-field">
                         <label className="wn-label" htmlFor="ssh-pass">
-                          SSH 密码 / 私钥口令
+                          {t('connection.sshPassword')}
                         </label>
                         <input
                           id="ssh-pass"
@@ -388,12 +397,12 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
                           type="password"
                           value={form.sshPassword}
                           onChange={(e) => update({ sshPassword: e.target.value })}
-                          placeholder="无密钥时填 SSH 登录密码；加密私钥填口令"
+                          placeholder={t('connection.sshPasswordPlaceholder')}
                         />
                       </div>
                     </>
                   )}
-                  <p className="conn-ssh-hint">MySQL 主机填 SSH 可达的内网地址，程序在本地建立端口转发</p>
+                  <p className="conn-ssh-hint">{t('connection.sshHint')}</p>
                 </div>
               )}
             </div>
@@ -405,13 +414,13 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
 
         <footer className="wn-modal-footer">
           <button type="button" className="wn-btn wn-btn-tool" onClick={onClose} disabled={busy}>
-            取消
+            {t('common.cancel')}
           </button>
           <button type="button" className="wn-btn wn-btn-tool" onClick={handleTest} disabled={busy}>
-            {testing ? '测试中…' : '测试连接'}
+            {testing ? t('connection.testing') : t('connection.test')}
           </button>
           <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" onClick={handleSave} disabled={busy}>
-            {saving ? '保存中…' : '保存'}
+            {saving ? t('connection.saving') : t('common.save')}
           </button>
         </footer>
       </div>

@@ -8,10 +8,12 @@ import {
 } from './databaseWorkspacePersist'
 import type { WorkTab } from './workTab'
 import { APP_SETTING_KEYS, saveAppSetting } from './appPreferences'
+import type { AppLocale } from '../i18n/types'
+import { applyDocumentLocale, READY_MESSAGES, translate } from '../i18n'
 
 export type { WorkTab } from './workTab'
 
-export type ProductLinkAction = 'terminal' | 'sftp' | 'database' | 'docker-context'
+export type ProductLinkAction = 'terminal' | 'sftp' | 'database' | 'docker-context' | 'notebook'
 
 export interface ConnectionDraft {
   name?: string
@@ -20,6 +22,7 @@ export interface ConnectionDraft {
   host?: string
   port?: number
   user?: string
+  password?: string
   database?: string
   charset?: string
   sshEnabled?: boolean
@@ -28,9 +31,13 @@ export interface ConnectionDraft {
 
 export interface ProductLinkRequest {
   action: ProductLinkAction
+  nonce?: number
   hostId?: string
+  connectionId?: string
   localShell?: boolean
   initialCommand?: string
+  initialSql?: string
+  runSql?: boolean
   connectionDraft?: ConnectionDraft
 }
 
@@ -38,6 +45,7 @@ interface AppState {
   version: string
   preferencesReady: boolean
   theme: 'light' | 'dark'
+  locale: AppLocale
   activeProduct: ProductId
   connections: Connection[]
   activeConnectionId: string | null
@@ -51,6 +59,7 @@ interface AppState {
   terminalOpacity: number
   setVersion: (v: string) => void
   setTheme: (t: 'light' | 'dark') => void
+  setLocale: (locale: AppLocale) => void
   setActiveProduct: (id: ProductId) => void
   setConnections: (c: Connection[]) => void
   setActiveConnectionId: (id: string | null) => void
@@ -75,6 +84,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   version: '0.0.0',
   preferencesReady: false,
   theme: 'light',
+  locale: 'zh',
   activeProduct: 'database',
   connections: [],
   activeConnectionId: null,
@@ -91,6 +101,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     document.documentElement.setAttribute('data-theme', theme)
     set({ theme })
     void saveAppSetting(APP_SETTING_KEYS.theme, theme)
+  },
+  setLocale: (locale) => {
+    applyDocumentLocale(locale)
+    set((state) => {
+      const patch: Partial<AppState> = { locale }
+      if (READY_MESSAGES.has(state.statusMessage)) {
+        patch.statusMessage = translate(locale, 'common.ready')
+      }
+      return patch
+    })
+    void saveAppSetting(APP_SETTING_KEYS.locale, locale)
   },
   setActiveProduct: (activeProduct) => {
     set({ activeProduct })

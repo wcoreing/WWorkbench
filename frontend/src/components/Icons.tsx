@@ -70,6 +70,16 @@ export function IconSun({ size = 16, className }: IconProps) {
   )
 }
 
+export function IconGlobe({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  )
+}
+
 export function IconDatabase({ size = 16, className }: IconProps) {
   return (
     <svg {...base(size)} className={className}>
@@ -138,6 +148,18 @@ export function IconLaptop({ size = 16, className }: IconProps) {
     <svg {...base(size)} className={className}>
       <rect x="3" y="4" width="18" height="12" rx="2" ry="2" />
       <path d="M2 20h20" />
+    </svg>
+  )
+}
+
+/** 笔记本图标 */
+export function IconNotebook({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <line x1="8" y1="7" x2="16" y2="7" />
+      <line x1="8" y1="11" x2="14" y2="11" />
     </svg>
   )
 }

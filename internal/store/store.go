@@ -127,6 +127,42 @@ CREATE TABLE IF NOT EXISTS app_settings (
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移应用设置表失败", err)
 	}
+	_, err = s.db.Exec(`
+CREATE TABLE IF NOT EXISTS env_presets (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  active INTEGER NOT NULL DEFAULT 0,
+  runtimes_json TEXT NOT NULL DEFAULT '{}',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);`)
+	if err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移环境预设表失败", err)
+	}
+	_, err = s.db.Exec(`
+CREATE TABLE IF NOT EXISTS notebook_groups (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  parent_id TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS notes (
+  id TEXT PRIMARY KEY,
+  group_id TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
+  language TEXT NOT NULL DEFAULT 'plaintext',
+  ssh_host_id TEXT NOT NULL DEFAULT '',
+  connection_id TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);`)
+	if err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移笔记本表失败", err)
+	}
 	return nil
 }
 

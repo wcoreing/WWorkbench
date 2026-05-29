@@ -4,6 +4,7 @@ import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import { IconPlus, IconServer } from '../../components/Icons'
 import { useAppStore } from '../../stores/appStore'
+import { openProductLink, useProductLink } from '../../stores/productLink'
 import { restoreSftpTab } from '../../features/sftp/restoreSftpWorkspace'
 import {
   loadSftpWorkspace,
@@ -47,7 +48,7 @@ type PaneSide = 'local' | 'remote'
 
 /** SFTP 产品线工作区 */
 export function SftpWorkbench() {
-  const { setStatusMessage, productLink, setProductLink, setActiveProduct } = useAppStore()
+  const { setStatusMessage } = useAppStore()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [hosts, setHosts] = useState<SSHHost[]>([])
   const [tabs, setTabs] = useState<SftpTab[]>([])
@@ -213,11 +214,9 @@ export function SftpWorkbench() {
     }
   }
 
-  useEffect(() => {
-    if (!productLink || productLink.action !== 'sftp') return
-    const { hostId } = productLink
+  useProductLink('sftp', (link) => {
+    const { hostId } = link
     if (!hostId) return
-    setProductLink(null)
     void (async () => {
       try {
         let host = hosts.find((h) => h.id === hostId)
@@ -230,7 +229,7 @@ export function SftpWorkbench() {
         setStatusMessage((e as Error).message)
       }
     })()
-  }, [productLink])
+  })
 
   const closeTab = async (tabId: string) => {
     const tab = tabs.find((t) => t.id === tabId)
@@ -609,8 +608,17 @@ export function SftpWorkbench() {
             className="wn-context-item"
             onClick={() => {
               setCtxMenu(null)
-              setActiveProduct('terminal')
-              setProductLink({ action: 'terminal', hostId: ctxMenu.host.id })
+              openProductLink({ action: 'notebook', hostId: ctxMenu.host.id })
+            }}
+          >
+            记入笔记本
+          </button>
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              setCtxMenu(null)
+              openProductLink({ action: 'terminal', hostId: ctxMenu.host.id })
             }}
           >
             打开终端

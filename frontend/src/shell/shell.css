@@ -21,6 +21,19 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+}
+
+.product-view-host {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-view-host[hidden] {
+  display: none !important;
 }
 
 /* 顶栏 */
@@ -68,6 +81,51 @@
   align-items: baseline;
   gap: 8px;
   min-width: 0;
+}
+
+.shell-locale-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.shell-locale-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 132px;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-chrome);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 200;
+}
+
+.shell-locale-item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 12px;
+  text-align: left;
+  cursor: default;
+}
+
+.shell-locale-item:hover {
+  background: var(--accent-muted);
+}
+
+.shell-locale-item.active {
+  color: var(--accent);
+  background: var(--accent-muted);
+}
+
+.chrome-spacer {
+  flex: 1;
+  min-width: 8px;
 }
 
 .chrome-product-name {
@@ -1161,6 +1219,212 @@
   color: var(--color-text-muted);
 }
 
+.env-version-install {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.env-version-install-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.env-version-installed .wn-label {
+  margin-bottom: 6px;
+}
+
+.env-version-modal {
+  width: min(640px, 92vw);
+  max-width: 640px;
+}
+
+.env-version-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.env-version-modal-head {
+  min-width: 0;
+  flex: 1;
+}
+
+.env-version-refresh-btn {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.env-version-table-wrap.is-refreshing {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.env-version-modal .wn-modal-body {
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+}
+
+.env-version-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--color-success, #22c55e);
+  background: color-mix(in srgb, var(--color-success, #22c55e) 15%, transparent);
+}
+
+.env-version-log {
+  margin-bottom: 12px;
+}
+
+.env-version-log-body {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  max-height: 160px;
+  overflow-y: auto;
+  background: var(--color-bg-elevated, #1a1d23);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.env-version-waiting {
+  margin: 0 0 10px;
+  color: var(--color-text-muted);
+}
+
+.env-version-table-wrap {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated, rgba(255, 255, 255, 0.02));
+}
+
+.env-version-table {
+  width: 100%;
+  min-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.env-version-table th,
+.env-version-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.env-version-table th {
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface-raised, var(--color-surface));
+}
+
+.env-version-table .col-source {
+  width: 42%;
+}
+
+.env-version-table .col-version {
+  width: 22%;
+}
+
+.env-version-table .col-installed {
+  width: 12%;
+  text-align: center;
+}
+
+.env-version-table .col-actions {
+  width: 24%;
+}
+
+.env-version-table tr:last-child td {
+  border-bottom: none;
+}
+
+.env-version-table tr.is-active {
+  background: color-mix(in srgb, var(--color-accent, #3b82f6) 10%, transparent);
+}
+
+.env-version-source {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+
+.env-version-ver {
+  font-variant-numeric: tabular-nums;
+}
+
+.env-version-installed-cell {
+  text-align: center;
+}
+
+.env-version-check {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.env-version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.env-version-text-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-accent, #3b82f6);
+  cursor: pointer;
+}
+
+.env-version-text-btn:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.env-version-text-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.env-version-text-btn.is-danger {
+  color: #ef4444;
+}
+
+.env-manager-install {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.env-manager-install .wn-btn {
+  margin-top: 8px;
+}
+
+.toolchain-runtime-warn {
+  margin-left: 8px;
+  color: var(--color-warning, #e9a23b);
+  font-size: 11px;
+}
+
 /* Docker 原型 */
 .docker-sidebar .docker-views {
   display: flex;
@@ -1444,7 +1708,7 @@
 }
 
 .docker-log-panel {
-  height: 140px;
+  height: 200px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -1462,6 +1726,89 @@
   color: var(--color-text-muted);
   background: var(--color-surface-2);
   border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.docker-detail-tabs {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.docker-detail-tab {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.docker-detail-tab.is-active {
+  color: var(--color-text);
+  background: var(--color-surface-3, rgba(255, 255, 255, 0.06));
+}
+
+.docker-detail-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 10px;
+}
+
+.docker-env-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.docker-env-empty {
+  margin: 0;
+  padding: 12px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.docker-env-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.docker-env-table th,
+.docker-env-table td {
+  padding: 4px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.docker-env-table th {
+  position: sticky;
+  top: 0;
+  background: #0c0c0e;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.docker-env-table tr.is-highlight {
+  background: color-mix(in srgb, var(--color-warning, #e9a23b) 12%, transparent);
+}
+
+.docker-env-key {
+  width: 42%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-accent, #60a5fa);
+}
+
+.docker-env-value {
+  word-break: break-all;
+  color: var(--color-text);
 }
 
 .docker-log-body {
@@ -1516,4 +1863,324 @@
 .docker-context-item:hover .docker-context-item-del,
 .docker-context-item.active .docker-context-item-del {
   opacity: 1;
+}
+
+.docker-table-images .docker-col-actions {
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+}
+
+.docker-run-modal {
+  width: min(520px, calc(100vw - 32px));
+}
+
+.docker-run-image {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  word-break: break-all;
+}
+
+.docker-run-body {
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+}
+
+.docker-run-form .wn-field + .wn-field {
+  margin-top: 12px;
+}
+
+.docker-run-ports,
+.docker-run-env {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.docker-run-port-row,
+.docker-run-env-row,
+.docker-run-extra-env-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.docker-run-port-input {
+  width: 88px;
+  flex-shrink: 0;
+}
+
+.docker-run-port-proto {
+  width: 72px;
+  flex-shrink: 0;
+}
+
+.docker-run-port-sep {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.docker-run-env-key {
+  width: 140px;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docker-run-env-row .wn-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.docker-run-env-key-input {
+  width: 120px;
+  flex-shrink: 0;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.docker-run-extra-env-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.docker-run-extra-env-head .wn-label {
+  margin-bottom: 0;
+}
+
+.docker-run-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.docker-run-option {
+  flex: 1;
+  min-width: 160px;
+  margin-top: 0 !important;
+}
+
+.docker-run-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding-bottom: 6px;
+  cursor: default;
+}
+
+.docker-run-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.docker-run-row-remove {
+  flex-shrink: 0;
+}
+
+/* 笔记本 */
+.notebook-workbench .notebook-sidebar {
+  width: 240px;
+}
+
+.notebook-search {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+}
+
+.notebook-search input {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: var(--bg-input, rgba(0, 0, 0, 0.2));
+  color: inherit;
+  font-size: 12px;
+}
+
+.notebook-group-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.notebook-group-toggle {
+  flex: 1;
+  text-align: left;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.notebook-group-delete {
+  opacity: 0.5;
+}
+
+.notebook-group-delete:hover {
+  opacity: 1;
+  color: var(--color-danger, #e55);
+}
+
+.notebook-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.notebook-editor-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.notebook-meta-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+  flex-shrink: 0;
+}
+
+.notebook-title-input {
+  flex: 1;
+  min-width: 120px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: var(--bg-input, rgba(0, 0, 0, 0.15));
+  color: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notebook-lang-select,
+.notebook-host-select {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: var(--bg-input, rgba(0, 0, 0, 0.15));
+  color: inherit;
+  font-size: 12px;
+  max-width: 160px;
+}
+
+.notebook-host-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted, #8a8a96);
+}
+
+.notebook-link-badge {
+  border: none;
+  background: rgba(91, 141, 239, 0.12);
+  color: var(--accent, #5b8def);
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.notebook-link-badge:hover {
+  background: rgba(91, 141, 239, 0.22);
+}
+
+.note-editor-wrap,
+.note-editor-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.notebook-editor-split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.notebook-editor-split.with-preview {
+  flex-direction: row;
+}
+
+.notebook-editor-split.with-preview .note-editor-wrap {
+  flex: 1;
+  min-width: 0;
+  border-right: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
+}
+
+.notebook-preview-pane {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 12px 16px;
+  background: var(--bg-elevated, rgba(0, 0, 0, 0.12));
+}
+
+.notebook-md-preview {
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.notebook-md-preview h1,
+.notebook-md-preview h2,
+.notebook-md-preview h3 {
+  margin: 0.8em 0 0.4em;
+  font-weight: 600;
+}
+
+.notebook-md-preview h1 { font-size: 1.4em; }
+.notebook-md-preview h2 { font-size: 1.2em; }
+.notebook-md-preview h3 { font-size: 1.05em; }
+
+.notebook-md-preview p {
+  margin: 0.4em 0;
+}
+
+.notebook-md-preview pre {
+  margin: 0.6em 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.notebook-md-preview code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.notebook-md-preview ul {
+  margin: 0.4em 0;
+  padding-left: 1.4em;
+}
+
+.notebook-md-preview a {
+  color: var(--accent, #5b8def);
+}
+
+.notebook-md-preview .md-table-row {
+  font-size: 12px;
+  color: var(--text-muted, #8a8a96);
 }

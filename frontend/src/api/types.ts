@@ -257,8 +257,20 @@ export interface ContainerDatabaseLink {
   host: string
   port: number
   user: string
+  password?: string
+  database?: string
   sshEnabled: boolean
   sshHostId: string
+}
+
+export interface ContainerEnvVar {
+  key: string
+  value: string
+  highlight: boolean
+}
+
+export interface ContainerEnv {
+  vars: ContainerEnvVar[]
 }
 
 export interface DockerContainer {
@@ -270,4 +282,84 @@ export interface DockerContainer {
   status: string
   ports: string
   createdAt: number
+}
+
+export type RuntimeLang = 'node' | 'go' | 'php' | 'java'
+
+export interface RuntimeInfo {
+  lang: RuntimeLang
+  label: string
+  version: string
+  manager: string
+  managerLabel: string
+  binary: string
+  available: boolean
+  canInstall: boolean
+  needsManager: boolean
+  canInstallManager: boolean
+}
+
+export interface RuntimeVersion {
+  version: string
+  label?: string
+  formula?: string
+  installed: boolean
+  active: boolean
+}
+
+export interface EnvPreset {
+  id: string
+  name: string
+  active: boolean
+  runtimes: Record<string, string>
+}
+
+export interface ProjectEnvHint {
+  path: string
+  hints: string[]
+  suggested: Record<string, string>
+}
+
+export interface EnvApplyResult {
+  warnings: string[]
+}
+
+export type NoteLanguage = 'plaintext' | 'shell' | 'markdown'
+
+export interface NotebookGroup {
+  id: string
+  name: string
+  parentId: string
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface Note {
+  id: string
+  groupId: string
+  title: string
+  content: string
+  language: NoteLanguage
+  sshHostId: string
+  connectionId: string
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface NoteSummary {
+  id: string
+  groupId: string
+  title: string
+  language: NoteLanguage
+  sshHostId: string
+  connectionId: string
+  sortOrder: number
+  updatedAt: number
+}
+
+export interface NotebookUI {
+  openTabIds: string[]
+  activeTabId: string
 }

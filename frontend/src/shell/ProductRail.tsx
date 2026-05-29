@@ -1,7 +1,7 @@
 import type { ProductId } from './products'
-import { IconDatabase, IconDocker, IconFolder, IconLayers, IconTerminal } from '../components/Icons'
+import { IconDatabase, IconDocker, IconFolder, IconLayers, IconNotebook, IconTerminal } from '../components/Icons'
+import { useI18n, useLocalizedProducts } from '../i18n'
 import { useAppStore } from '../stores/appStore'
-import { PRODUCTS } from './products'
 import './shell.css'
 
 const PRODUCT_ICONS: Record<ProductId, typeof IconDatabase> = {
@@ -10,16 +10,19 @@ const PRODUCT_ICONS: Record<ProductId, typeof IconDatabase> = {
   sftp: IconFolder,
   docker: IconDocker,
   environment: IconLayers,
+  notebook: IconNotebook,
 }
 
 /** 左侧产品线切换轨 */
 export function ProductRail() {
   const { activeProduct, setActiveProduct } = useAppStore()
+  const { t } = useI18n()
+  const products = useLocalizedProducts()
 
   return (
-    <nav className="product-rail" aria-label="产品线">
+    <nav className="product-rail" aria-label={t('shell.productRail')}>
       <div className="product-rail-main">
-        {PRODUCTS.map((p) => {
+        {products.map((p) => {
           const Icon = PRODUCT_ICONS[p.id]
           return (
             <button

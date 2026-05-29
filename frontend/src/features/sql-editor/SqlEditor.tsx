@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 import { useContainerHeight } from '../../hooks/useContainerHeight'
@@ -41,6 +41,9 @@ export const SqlEditor = forwardRef<SqlEditorHandle, Props>(function SqlEditor(
 
   const onMount: OnMount = (editorInstance, monaco) => {
     editorRef.current = editorInstance
+    if (editorInstance.getValue() !== sql) {
+      editorInstance.setValue(sql)
+    }
     editorInstance.addAction({
       id: 'execute-sql',
       label: 'Execute SQL',
@@ -48,6 +51,15 @@ export const SqlEditor = forwardRef<SqlEditorHandle, Props>(function SqlEditor(
       run: onExecute,
     })
   }
+
+  useEffect(() => {
+    const ed = editorRef.current
+    if (!ed) return
+    const model = ed.getModel()
+    if (model && model.getValue() !== sql) {
+      ed.setValue(sql)
+    }
+  }, [sql, tabId])
 
   return (
     <div className="sql-editor-wrap">

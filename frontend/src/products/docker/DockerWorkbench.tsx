@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
-import type { DockerContainer, DockerContext, DockerImage, SSHHost } from '../../api/types'
+import type { ContainerEnvVar, DockerContainer, DockerContext, DockerImage, SSHHost } from '../../api/types'
 import { IconDocker, IconPlus } from '../../components/Icons'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { DockerContextModal } from '../../features/docker/DockerContextModal'
+import { DockerRunModal } from '../../features/docker/DockerRunModal'
+import { READY_MESSAGES, useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { openProductLink, useProductLink } from '../../stores/productLink'
 import { APP_SETTING_KEYS, saveAppSetting } from '../../stores/appPreferences'
 import {
   loadDockerWorkspace,
@@ -24,10 +27,16 @@ function canDeleteDockerContext(ctx: DockerContext | undefined): boolean {
 
 const DEFAULT_LOCAL_CONTEXT: DockerContext = {
   id: LOCAL_CONTEXT,
-  name: '本地 Docker',
+  name: 'Local Docker',
   kind: 'local',
   endpoint: 'unix:///var/run/docker.sock',
   connected: false,
+}
+
+/** contextDisplayName 本地化上下文显示名。 */
+function contextDisplayName(ctx: DockerContext, localLabel: string) {
+  if (ctx.id === LOCAL_CONTEXT && ctx.kind === 'local') return localLabel
+  return ctx.name
 }
 
 /** formatUptime 格式化容器运行时长。 */
@@ -53,6 +62,12 @@ function formatImageSize(bytes: number): string {
   return `${n < 10 && i > 0 ? n.toFixed(1) : Math.round(n)} ${units[i]}`
 }
 
+/** primaryImageTag 取镜像第一个可用标签。 */
+function primaryImageTag(tags: string): string {
+  if (!tags || tags === '<none>') return ''
+  return tags.split(',')[0]?.trim() || tags
+}
+
 /** formatImageShort 截断展示镜像名。 */
 function formatImageShort(image: string, max = 32): string {
   if (!image) return '-'
@@ -71,6 +86,7 @@ interface DockerImageCellProps {
 
 /** DockerImageCell 镜像名单元格（截断 + 复制）。 */
 function DockerImageCell({ image, onCopied }: DockerImageCellProps) {
+  const { t } = useI18n()
   const copyImage = (e: React.MouseEvent) => {
     e.stopPropagation()
     void navigator.clipboard.writeText(image).then(onCopied)
@@ -84,10 +100,10 @@ function DockerImageCell({ image, onCopied }: DockerImageCellProps) {
       <button
         type="button"
         className="docker-copy-btn"
-        title={`复制：${image}`}
+        title={t('docker.copyTitle', { image })}
         onClick={copyImage}
       >
-        复制
+        {t('common.copy')}
       </button>
     </div>
   )
@@ -113,6 +129,7 @@ function DockerListBar({
   onPageChange,
   onRefresh,
 }: DockerListBarProps) {
+  const { t } = useI18n()
   const totalPages = Math.max(1, Math.ceil(Math.max(total, 1) / pageSize))
   const canPrev = total > 0 && page > 1
   const canNext = total > 0 && page < totalPages
@@ -126,11 +143,13 @@ function DockerListBar({
           disabled={loading || acting}
           onClick={onRefresh}
         >
-          刷新
+          {t('common.refresh')}
         </button>
         <span className="pane-meta">
-          {total > 0 ? `共 ${total} 条 · 第 ${page}/${totalPages} 页` : '暂无数据'}
-          {loading ? ' · 加载中…' : ''}
+          {total > 0
+            ? t('common.listMeta', { total, page, totalPages })
+            : t('common.noData')}
+          {loading ? ` · ${t('common.loading')}` : ''}
         </span>
       </div>
       {total > 0 && (
@@ -141,7 +160,7 @@ function DockerListBar({
             disabled={!canPrev || loading}
             onClick={() => onPageChange(page - 1)}
           >
-            上一页
+            {t('common.prevPage')}
           </button>
           <button
             type="button"
@@ -149,7 +168,7 @@ function DockerListBar({
             disabled={!canNext || loading}
             onClick={() => onPageChange(page + 1)}
           >
-            下一页
+            {t('common.nextPage')}
           </button>
         </div>
       )}
@@ -184,7 +203,8 @@ function clampPage(page: number, total: number, pageSize: number) {
 
 /** DockerWorkbench Docker 容器与镜像管理工作区。 */
 export function DockerWorkbench() {
-  const { setStatusMessage, setActiveProduct, setProductLink, productLink, statusMessage } = useAppStore()
+  const { setStatusMessage, setActiveProduct, statusMessage } = useAppStore()
+  const { t } = useI18n()
   const [contexts, setContexts] = useState<DockerContext[]>([DEFAULT_LOCAL_CONTEXT])
   const [activeContextId, setActiveContextId] = useState(LOCAL_CONTEXT)
   const [view, setView] = useState<DockerView>('containers')
@@ -192,11 +212,15 @@ export function DockerWorkbench() {
   const [images, setImages] = useState<DockerImage[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [logs, setLogs] = useState('')
+  const [containerEnv, setContainerEnv] = useState<ContainerEnvVar[]>([])
+  const [detailTab, setDetailTab] = useState<'logs' | 'env'>('logs')
+  const [envLoading, setEnvLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [acting, setActing] = useState(false)
   const [sshHosts, setSSHHosts] = useState<SSHHost[]>([])
   const [contextModalOpen, setContextModalOpen] = useState(false)
   const [contextModalHostId, setContextModalHostId] = useState<string | undefined>()
+  const [runModalImage, setRunModalImage] = useState<string | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; container: DockerContainer } | null>(null)
   const [contextCtxMenu, setContextCtxMenu] = useState<{ x: number; y: number; context: DockerContext } | null>(null)
   const [confirmState, setConfirmState] = useState<
@@ -235,11 +259,25 @@ export function DockerWorkbench() {
   const loadLogs = useCallback(async (contextId: string, containerId: string) => {
     try {
       const content = await api.getContainerLogs(contextId, containerId, 300)
-      setLogs(content || '（无日志）')
+      setLogs(content || t('docker.noLogs'))
     } catch (e) {
       setLogs((e as Error).message)
     }
-  }, [])
+  }, [t])
+
+  /** loadContainerEnv 加载容器启动环境变量。 */
+  const loadContainerEnv = useCallback(async (contextId: string, containerId: string) => {
+    setEnvLoading(true)
+    try {
+      const env = await api.getContainerEnv(contextId, containerId)
+      setContainerEnv(env?.vars ?? [])
+    } catch (e) {
+      setContainerEnv([])
+      setStatusMessage((e as Error).message)
+    } finally {
+      setEnvLoading(false)
+    }
+  }, [setStatusMessage])
 
   const refreshData = useCallback(async () => {
     if (!activeContextId) return
@@ -253,24 +291,35 @@ export function DockerWorkbench() {
         const list = await api.listImages(activeContextId)
         setImages(list)
         setImagePage((p) => clampPage(p, list.length, PAGE_SIZE))
-        setStatusMessage(`已加载 ${list.length} 个镜像`)
+        setStatusMessage(t('docker.loadedImages', { count: list.length }))
         return
       }
       const list = await api.listContainers(activeContextId)
       setContainers(list)
       setContainerPage((p) => clampPage(p, list.length, PAGE_SIZE))
       if (selectedId && list.some((c) => c.id === selectedId)) {
-        await loadLogs(activeContextId, selectedId)
+        await Promise.all([
+          loadLogs(activeContextId, selectedId),
+          loadContainerEnv(activeContextId, selectedId),
+        ])
       } else {
         setSelectedId(list[0]?.id ?? null)
-        if (list[0]) await loadLogs(activeContextId, list[0].id)
-        else setLogs('')
+        if (list[0]) {
+          await Promise.all([
+            loadLogs(activeContextId, list[0].id),
+            loadContainerEnv(activeContextId, list[0].id),
+          ])
+        } else {
+          setLogs('')
+          setContainerEnv([])
+        }
       }
-      setStatusMessage(`已加载 ${list.length} 个容器`)
+      setStatusMessage(t('docker.loadedContainers', { count: list.length }))
     } catch (e) {
       setContainers([])
       setImages([])
       setLogs('')
+      setContainerEnv([])
       setContexts((prev) =>
         prev.map((c) => (c.id === activeContextId ? { ...c, connected: false } : c))
       )
@@ -278,7 +327,7 @@ export function DockerWorkbench() {
     } finally {
       setLoading(false)
     }
-  }, [activeContextId, view, selectedId, loadLogs, setStatusMessage])
+  }, [activeContextId, view, selectedId, loadLogs, loadContainerEnv, setStatusMessage, t])
 
   useEffect(() => {
     if (workspaceLoaded.current) return
@@ -310,15 +359,13 @@ export function DockerWorkbench() {
     setImagePage(1)
   }, [activeContextId, view])
 
-  useEffect(() => {
-    if (!productLink || productLink.action !== 'docker-context') return
-    const { hostId } = productLink
-    setProductLink(null)
+  useProductLink('docker-context', (link) => {
+    const { hostId } = link
     setActiveProduct('docker')
     setContextModalHostId(hostId)
     setContextModalOpen(true)
-    if (hostId) setStatusMessage('从 SSH 主机添加远程 Docker 上下文')
-  }, [productLink, setProductLink, setActiveProduct, setStatusMessage])
+    if (hostId) setStatusMessage(t('docker.addFromSsh'))
+  })
 
   useEffect(() => {
     if (!ctxMenu && !contextCtxMenu) return
@@ -332,7 +379,11 @@ export function DockerWorkbench() {
 
   const selectContainer = async (container: DockerContainer) => {
     setSelectedId(container.id)
-    await loadLogs(activeContextId, container.id)
+    setDetailTab('logs')
+    await Promise.all([
+      loadLogs(activeContextId, container.id),
+      loadContainerEnv(activeContextId, container.id),
+    ])
   }
 
   /** runContainerAction 对指定容器执行操作。 */
@@ -356,17 +407,17 @@ export function DockerWorkbench() {
   }
 
   const startContainer = (container: DockerContainer) =>
-    runContainerAction(container, `正在启动 ${container.name || container.shortId}…`, async () => {
+    runContainerAction(container, t('docker.starting', { name: container.name || container.shortId }), async () => {
       await api.startContainer(activeContextId, container.id)
     })
 
   const stopContainer = (container: DockerContainer) =>
-    runContainerAction(container, `正在停止 ${container.name || container.shortId}…`, async () => {
+    runContainerAction(container, t('docker.stopping', { name: container.name || container.shortId }), async () => {
       await api.stopContainer(activeContextId, container.id)
     })
 
   const restartContainer = (container: DockerContainer) =>
-    runContainerAction(container, `正在重启 ${container.name || container.shortId}…`, async () => {
+    runContainerAction(container, t('docker.restarting', { name: container.name || container.shortId }), async () => {
       await api.restartContainer(activeContextId, container.id)
     })
 
@@ -379,12 +430,13 @@ export function DockerWorkbench() {
   const performRemoveContainer = async (container: DockerContainer) => {
     const name = container.name || container.shortId
     setActing(true)
-    setStatusMessage(`正在删除 ${name}…`)
+    setStatusMessage(t('docker.removing', { name }))
     try {
       await api.removeContainer(activeContextId, container.id)
       if (selectedId === container.id) {
         setSelectedId(null)
         setLogs('')
+        setContainerEnv([])
       }
       await refreshData()
     } catch (e) {
@@ -396,35 +448,33 @@ export function DockerWorkbench() {
 
   const openContainerShell = async (container: DockerContainer) => {
     if (container.state !== 'running') return
-    setStatusMessage('正在准备容器终端…')
+    setStatusMessage(t('docker.preparingShell'))
     try {
       const shell = await api.getContainerShell(activeContextId, container.id)
-      setActiveProduct('terminal')
       if (shell.mode === 'local') {
-        setProductLink({
+        openProductLink({
           action: 'terminal',
           localShell: true,
           initialCommand: `${shell.command}\r`,
         })
       } else {
-        setProductLink({
+        openProductLink({
           action: 'terminal',
           hostId: shell.hostId,
           initialCommand: `${shell.command}\r`,
         })
       }
-      setStatusMessage(`正在打开终端 · ${container.name || container.shortId}`)
+      setStatusMessage(t('docker.openingShell', { name: container.name || container.shortId }))
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
   }
 
   const openDatabaseLink = async (container: DockerContainer) => {
-    setStatusMessage('正在解析数据库端口…')
+    setStatusMessage(t('docker.resolvingDb'))
     try {
       const link = await api.resolveContainerDatabaseLink(activeContextId, container.id)
-      setActiveProduct('database')
-      setProductLink({
+      openProductLink({
         action: 'database',
         connectionDraft: {
           name: link.name,
@@ -433,12 +483,49 @@ export function DockerWorkbench() {
           host: link.host,
           port: link.port,
           user: link.user,
+          password: link.password,
+          database: link.database,
           sshEnabled: link.sshEnabled,
           sshHostId: link.sshHostId,
         },
       })
     } catch (e) {
       setStatusMessage((e as Error).message)
+    }
+  }
+
+  /** openRunModal 打开从镜像运行对话框。 */
+  const openRunModal = (img: DockerImage) => {
+    const tag = primaryImageTag(img.tags)
+    if (!tag) {
+      setStatusMessage(t('docker.noImageTag'))
+      return
+    }
+    setRunModalImage(tag)
+  }
+
+  /** handleRunCreated 运行成功后切换到容器视图并选中。 */
+  const handleRunCreated = async (container: DockerContainer) => {
+    setRunModalImage(null)
+    setView('containers')
+    setLoading(true)
+    try {
+      const list = await api.listContainers(activeContextId)
+      setContainers(list)
+      const idx = list.findIndex((c) => c.id === container.id)
+      const page = idx >= 0 ? clampPage(Math.floor(idx / PAGE_SIZE) + 1, list.length, PAGE_SIZE) : 1
+      setContainerPage(page)
+      setSelectedId(container.id)
+      setDetailTab('env')
+      await Promise.all([
+        loadLogs(activeContextId, container.id),
+        loadContainerEnv(activeContextId, container.id),
+      ])
+      setStatusMessage(t('docker.created', { name: container.name || container.shortId }))
+    } catch (e) {
+      setStatusMessage((e as Error).message)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -461,12 +548,13 @@ export function DockerWorkbench() {
       setContainers([])
       setImages([])
       setLogs('')
+      setContainerEnv([])
       setSelectedId(null)
       if (activeContextId === ctx.id) {
         setActiveContextId(LOCAL_CONTEXT)
       }
       await refreshContexts()
-      setStatusMessage(`已删除 ${ctx.name}`)
+      setStatusMessage(t('docker.contextDeleted', { name: ctx.name }))
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -485,28 +573,29 @@ export function DockerWorkbench() {
   }
 
   const toolbarStatus = useMemo(() => {
-    if (!activeContext) return '未连接'
-    if (!dockerReady) return 'Docker 未运行'
-    if (view === 'images') return `${images.length} 个镜像`
-    if (selected) return `${selected.name || selected.shortId} · ${selected.state}`
-    return `${containers.length} 个容器`
-  }, [activeContext, dockerReady, view, selected, images.length, containers.length])
+    if (!activeContext) return t('docker.notConnected')
+    if (!dockerReady) return t('docker.dockerDown')
+    if (view === 'images') return t('docker.imageCount', { count: images.length })
+    if (selected) return t('docker.containerState', { name: selected.name || selected.shortId, state: selected.state })
+    return t('docker.containerCount', { count: containers.length })
+  }, [activeContext, dockerReady, view, selected, images.length, containers.length, t])
 
   const confirmDialogProps = useMemo(() => {
     if (!confirmState) return null
     if (confirmState.type === 'context') {
       return {
-        title: '删除 Docker 上下文',
-        message: `确定删除「${confirmState.ctx.name}」？此操作不可恢复。`,
+        title: t('docker.deleteContextTitle'),
+        message: t('docker.deleteContextMsg', { name: confirmState.ctx.name }),
       }
     }
     const name = confirmState.container.name || confirmState.container.shortId
     return {
-      title: '删除容器',
-      message: `确定删除「${name}」？此操作不可恢复。`,
+      title: t('docker.deleteContainerTitle'),
+      message: t('docker.deleteContainerMsg', { name }),
     }
-  }, [confirmState])
+  }, [confirmState, t])
 
+  const localContextLabel = t('docker.localContext')
   const stopRowClick = (e: React.MouseEvent) => e.stopPropagation()
 
   return (
@@ -515,11 +604,11 @@ export function DockerWorkbench() {
         <aside className="app-sidebar docker-sidebar">
           <section className="sidebar-section">
             <div className="sidebar-header">
-              <span>Docker 上下文</span>
+              <span>{t('docker.sidebarTitle')}</span>
               <button
                 type="button"
                 className="wn-btn wn-btn-icon wn-btn-sm"
-                title="添加远程 Docker"
+                title={t('docker.addRemote')}
                 onClick={() => {
                   setContextModalHostId(undefined)
                   setContextModalOpen(true)
@@ -544,20 +633,20 @@ export function DockerWorkbench() {
                   >
                     <IconDocker size={14} className="mock-icon" />
                     <div className="conn-meta">
-                      <span className="conn-name">{ctx.name}</span>
+                      <span className="conn-name">{contextDisplayName(ctx, localContextLabel)}</span>
                       <span className="conn-host">{ctx.endpoint}</span>
                     </div>
                     {canDeleteDockerContext(ctx) && (
                       <button
                         type="button"
                         className="wn-btn wn-btn-text-danger docker-context-item-del"
-                        title="删除上下文"
+                        title={t('docker.deleteContext')}
                         onClick={(e) => {
                           e.stopPropagation()
                           requestDeleteDockerContext(ctx)
                         }}
                       >
-                        删除
+                        {t('common.delete')}
                       </button>
                     )}
                   </li>
@@ -569,17 +658,17 @@ export function DockerWorkbench() {
                   className="wn-btn wn-btn-tool wn-btn-sm docker-context-del"
                   onClick={() => activeContext && requestDeleteDockerContext(activeContext)}
                 >
-                  删除当前上下文
+                  {t('docker.deleteCurrentContext')}
                 </button>
               )}
               {contexts.some(canDeleteDockerContext) && (
-                <div className="empty-hint mock-hint">远程上下文：悬停删除 · 右键菜单</div>
+                <div className="empty-hint mock-hint">{t('docker.remoteHint')}</div>
               )}
             </div>
           </section>
           <section className="sidebar-section">
             <div className="sidebar-header">
-              <span>视图</span>
+              <span>{t('docker.viewSection')}</span>
             </div>
             <div className="sidebar-body docker-views">
               <button
@@ -587,20 +676,20 @@ export function DockerWorkbench() {
                 className={`docker-view-btn ${view === 'containers' ? 'active' : ''}`}
                 onClick={() => setView('containers')}
               >
-                容器
+                {t('docker.viewContainers')}
               </button>
               <button
                 type="button"
                 className={`docker-view-btn ${view === 'images' ? 'active' : ''}`}
                 onClick={() => setView('images')}
               >
-                镜像
+                {t('docker.viewImages')}
               </button>
-              <button type="button" className="docker-view-btn" disabled title="后续版本开放">
-                Compose
+              <button type="button" className="docker-view-btn" disabled title={t('docker.composeSoon')}>
+                {t('docker.compose')}
               </button>
-              <button type="button" className="docker-view-btn" disabled title="后续版本开放">
-                卷
+              <button type="button" className="docker-view-btn" disabled title={t('docker.swarmSoon')}>
+                {t('docker.volumes')}
               </button>
             </div>
           </section>
@@ -611,7 +700,7 @@ export function DockerWorkbench() {
             <div className="wn-tabs">
               <button type="button" className="wn-tab wn-tab-docker active">
                 <span className="tab-dot" />
-                <span className="tab-title">{view === 'images' ? '镜像' : '容器'}</span>
+                <span className="tab-title">{view === 'images' ? t('docker.viewImages') : t('docker.viewContainers')}</span>
               </button>
             </div>
             <span className="chrome-spacer" />
@@ -623,13 +712,13 @@ export function DockerWorkbench() {
 
           {!dockerReady && !loading ? (
             <div className="pane-empty docker-empty">
-              <span>无法连接 Docker 引擎</span>
+              <span>{t('docker.cannotConnect')}</span>
               <span className="docker-empty-hint">
-                {statusMessage && statusMessage !== '就绪'
+                {statusMessage && !READY_MESSAGES.has(statusMessage)
                   ? statusMessage
                   : isRemoteContext
-                    ? '请确认 SSH 可达，远端 Docker 已启动，且当前用户可访问 docker.sock（如在 docker 组）'
-                    : '请确认 Docker Desktop 已启动。将尝试：~/.docker/run/docker.sock、/var/run/docker.sock'}
+                    ? t('docker.sshHint')
+                    : t('docker.localHint')}
               </span>
               <button
                 type="button"
@@ -637,7 +726,7 @@ export function DockerWorkbench() {
                 onClick={() => void refreshData()}
                 disabled={loading}
               >
-                重试连接
+                {t('common.retry')}
               </button>
             </div>
           ) : view === 'images' ? (
@@ -655,17 +744,18 @@ export function DockerWorkbench() {
                 <table className="docker-table docker-table-images">
                 <thead>
                   <tr>
-                    <th>标签</th>
-                    <th>ID</th>
-                    <th>大小</th>
-                    <th>创建时间</th>
+                    <th>{t('docker.colTag')}</th>
+                    <th>{t('docker.colId')}</th>
+                    <th>{t('docker.colSize')}</th>
+                    <th>{t('docker.colCreated')}</th>
+                    <th className="docker-th-actions">{t('docker.colActions')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {images.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="grid-empty">
-                        {loading ? '加载中…' : '无镜像'}
+                      <td colSpan={5} className="grid-empty">
+                        {loading ? t('common.loading') : t('docker.noImages')}
                       </td>
                     </tr>
                   ) : (
@@ -674,12 +764,24 @@ export function DockerWorkbench() {
                         <td className="docker-col-image">
                           <DockerImageCell
                             image={img.tags}
-                            onCopied={() => setStatusMessage('已复制镜像标签')}
+                            onCopied={() => setStatusMessage(t('docker.copiedImageTag'))}
                           />
                         </td>
                         <td className="docker-mono">{img.shortId}</td>
                         <td>{formatImageSize(img.size)}</td>
                         <td>{img.createdAt ? new Date(img.createdAt * 1000).toLocaleString() : '-'}</td>
+                        <td className="docker-col-actions">
+                          <div className="docker-row-actions">
+                            <button
+                              type="button"
+                              className="docker-act-btn accent"
+                              disabled={acting || !dockerReady || primaryImageTag(img.tags) === ''}
+                              onClick={() => openRunModal(img)}
+                            >
+                              {t('common.run')}
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -711,19 +813,19 @@ export function DockerWorkbench() {
                   </colgroup>
                   <thead>
                     <tr>
-                      <th>名称</th>
-                      <th>镜像</th>
-                      <th>状态</th>
-                      <th>端口</th>
-                      <th>运行时长</th>
-                      <th className="docker-th-actions">操作</th>
+                      <th>{t('docker.colName')}</th>
+                      <th>{t('docker.colImage')}</th>
+                      <th>{t('docker.colState')}</th>
+                      <th>{t('docker.colPorts')}</th>
+                      <th>{t('docker.colUptime')}</th>
+                      <th className="docker-th-actions">{t('docker.colActions')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {containers.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="grid-empty">
-                          {loading ? '加载中…' : '无容器'}
+                          {loading ? t('common.loading') : t('docker.noContainers')}
                         </td>
                       </tr>
                     ) : (
@@ -742,7 +844,7 @@ export function DockerWorkbench() {
                             <td className="docker-col-image">
                               <DockerImageCell
                                 image={c.image}
-                                onCopied={() => setStatusMessage('已复制镜像名')}
+                                onCopied={() => setStatusMessage(t('docker.copiedImageName'))}
                               />
                             </td>
                             <td>
@@ -759,10 +861,10 @@ export function DockerWorkbench() {
                                     type="button"
                                     className="docker-act-btn"
                                     disabled={!dockerReady || acting}
-                                    title="启动"
+                                    title={t('docker.start')}
                                     onClick={() => void startContainer(c)}
                                   >
-                                    启动
+                                    {t('docker.start')}
                                   </button>
                                 )}
                                 {running && (
@@ -771,28 +873,28 @@ export function DockerWorkbench() {
                                       type="button"
                                       className="docker-act-btn"
                                       disabled={!dockerReady || acting}
-                                      title="停止"
+                                      title={t('docker.stop')}
                                       onClick={() => void stopContainer(c)}
                                     >
-                                      停止
+                                      {t('docker.stop')}
                                     </button>
                                     <button
                                       type="button"
                                       className="docker-act-btn"
                                       disabled={!dockerReady || acting}
-                                      title="重启"
+                                      title={t('docker.restart')}
                                       onClick={() => void restartContainer(c)}
                                     >
-                                      重启
+                                      {t('docker.restart')}
                                     </button>
                                     <button
                                       type="button"
                                       className="docker-act-btn"
                                       disabled={!dockerReady || acting}
-                                      title="终端"
+                                      title={t('docker.shell')}
                                       onClick={() => void openContainerShell(c)}
                                     >
-                                      终端
+                                      {t('docker.shell')}
                                     </button>
                                   </>
                                 )}
@@ -801,20 +903,20 @@ export function DockerWorkbench() {
                                     type="button"
                                     className="docker-act-btn accent"
                                     disabled={!dockerReady || acting}
-                                    title="用数据库打开"
+                                    title={t('docker.openDatabase')}
                                     onClick={() => void openDatabaseLink(c)}
                                   >
-                                    数据库
+                                    {t('docker.databaseShort')}
                                   </button>
                                 )}
                                 <button
                                   type="button"
                                   className="docker-act-btn danger"
                                   disabled={!dockerReady || acting}
-                                  title="删除"
+                                  title={t('common.delete')}
                                   onClick={() => void removeContainer(c)}
                                 >
-                                  删除
+                                  {t('common.delete')}
                                 </button>
                               </div>
                             </td>
@@ -828,19 +930,78 @@ export function DockerWorkbench() {
               </div>
               <div className="docker-log-panel">
                 <header className="docker-log-header">
-                  <span>日志 · {selected?.name || selected?.shortId || '—'}</span>
-                  {selected && (
+                  <div className="docker-detail-tabs">
+                    <button
+                      type="button"
+                      className={`docker-detail-tab${detailTab === 'logs' ? ' is-active' : ''}`}
+                      onClick={() => setDetailTab('logs')}
+                    >
+                      {t('docker.tabLogs')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`docker-detail-tab${detailTab === 'env' ? ' is-active' : ''}`}
+                      onClick={() => setDetailTab('env')}
+                    >
+                      {t('docker.tabEnv')}
+                    </button>
+                  </div>
+                  <span className="docker-detail-title">{selected?.name || selected?.shortId || '—'}</span>
+                  {selected && detailTab === 'logs' && (
                     <button
                       type="button"
                       className="wn-btn wn-btn-tool wn-btn-sm"
                       onClick={() => void loadLogs(activeContextId, selected.id)}
                       disabled={acting}
                     >
-                      刷新日志
+                      {t('common.refresh')}
+                    </button>
+                  )}
+                  {selected && detailTab === 'env' && (
+                    <button
+                      type="button"
+                      className="wn-btn wn-btn-tool wn-btn-sm"
+                      onClick={() => void loadContainerEnv(activeContextId, selected.id)}
+                      disabled={acting || envLoading}
+                    >
+                      {t('common.refresh')}
                     </button>
                   )}
                 </header>
-                <pre className="docker-log-body">{logs || (loading ? '加载中…' : '选择容器查看日志')}</pre>
+                {detailTab === 'logs' ? (
+                  <pre className="docker-log-body">{logs || (loading ? t('common.loading') : t('docker.selectLogs'))}</pre>
+                ) : (
+                  <div className="docker-env-body">
+                    {!selected ? (
+                      <p className="docker-env-empty">{t('docker.selectEnv')}</p>
+                    ) : envLoading ? (
+                      <p className="docker-env-empty">{t('common.loading')}</p>
+                    ) : containerEnv.length === 0 ? (
+                      <p className="docker-env-empty">{t('docker.envEmpty')}</p>
+                    ) : (
+                      <table className="docker-env-table">
+                        <thead>
+                          <tr>
+                            <th>{t('docker.envKey')}</th>
+                            <th>{t('docker.envValue')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {containerEnv.map((item) => (
+                            <tr key={item.key} className={item.highlight ? 'is-highlight' : ''}>
+                              <td className="docker-env-key" title={item.key}>
+                                {item.key}
+                              </td>
+                              <td className="docker-env-value" title={item.value}>
+                                {item.value || '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -849,9 +1010,9 @@ export function DockerWorkbench() {
 
       <ConfirmDialog
         open={confirmState != null}
-        title={confirmDialogProps?.title ?? '确认'}
+        title={confirmDialogProps?.title ?? t('docker.confirmTitle')}
         message={confirmDialogProps?.message}
-        confirmLabel="删除"
+        confirmLabel={t('common.delete')}
         danger
         onConfirm={handleConfirmDialog}
         onCancel={() => setConfirmState(null)}
@@ -868,6 +1029,14 @@ export function DockerWorkbench() {
         onSaved={() => void refreshContexts()}
       />
 
+      <DockerRunModal
+        open={runModalImage != null}
+        contextId={activeContextId}
+        image={runModalImage ?? ''}
+        onClose={() => setRunModalImage(null)}
+        onCreated={(container) => void handleRunCreated(container)}
+      />
+
       {contextCtxMenu && (
         <div
           className="wn-context-menu"
@@ -879,7 +1048,7 @@ export function DockerWorkbench() {
             className="wn-context-item danger"
             onClick={() => requestDeleteDockerContext(contextCtxMenu.context)}
           >
-            删除上下文
+            {t('docker.ctxMenuDeleteContext')}
           </button>
         </div>
       )}
@@ -899,7 +1068,7 @@ export function DockerWorkbench() {
                 void openDatabaseLink(ctxMenu.container)
               }}
             >
-              用数据库打开
+              {t('docker.openDatabase')}
             </button>
           )}
           {ctxMenu.container.state === 'running' && (
@@ -911,19 +1080,36 @@ export function DockerWorkbench() {
                 void openContainerShell(ctxMenu.container)
               }}
             >
-              进入终端
+              {t('docker.ctxMenuOpenShell')}
             </button>
           )}
           <button
             type="button"
             className="wn-context-item"
             onClick={() => {
+              setCtxMenu(null)
+              const c = ctxMenu.container
+              const hostId = activeContext?.sshHostId ?? ''
+              openProductLink({
+                action: 'notebook',
+                hostId: hostId || undefined,
+                initialCommand: `# ${c.name}\n# ${c.image}\n# ${c.status}\n\n\`\`\`shell\ndocker logs -f ${c.name}\ndocker exec -it ${c.name} sh\n\`\`\`\n`,
+              })
+              setStatusMessage(t('docker.creatingNote'))
+            }}
+          >
+            {t('docker.ctxMenuNotebook')}
+          </button>
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
               void navigator.clipboard.writeText(ctxMenu.container.image)
-              setStatusMessage('已复制镜像名')
+              setStatusMessage(t('docker.copiedImageName'))
               setCtxMenu(null)
             }}
           >
-            复制镜像名
+            {t('docker.ctxMenuCopyImage')}
           </button>
         </div>
       )}

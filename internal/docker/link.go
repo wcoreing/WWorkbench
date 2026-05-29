@@ -57,6 +57,13 @@ func (m *Manager) ResolveContainerDatabaseLink(ctx context.Context, contextID, c
 		Port:   publicPort,
 		User:   spec.user,
 	}
+	if envUser, envPass, envDB := dbCredentialsFromEnv(envToMap(inspect.Config.Env), spec.dbType); envPass != "" || envUser != "" || envDB != "" {
+		if envUser != "" {
+			link.User = envUser
+		}
+		link.Password = envPass
+		link.Database = envDB
+	}
 	if contextID != LocalContextID {
 		ctxDO, err := m.store.GetDockerContext(contextID)
 		if err != nil {

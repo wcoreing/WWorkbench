@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ColumnMeta, ObjectTreeNode } from '../../api/types'
 import { api } from '../../api/client'
+import { useI18n } from '../../i18n'
 import '../../components/ui.css'
 
 interface ContextMenuState {
@@ -37,6 +38,7 @@ export function ObjectTree({
   onDropTable,
   onExportInsert,
 }: Props) {
+  const { t } = useI18n()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [columnCache, setColumnCache] = useState<Record<string, ObjectTreeNode[]>>({})
   const [loadingId, setLoadingId] = useState<string | null>(null)
@@ -49,6 +51,16 @@ export function ObjectTree({
   }, [])
 
   const filteredNodes = useMemo(() => filterTree(nodes, filter.trim().toLowerCase()), [nodes, filter])
+
+  /** treeHint 节点悬停提示。 */
+  const treeHint = useCallback(
+    (node: ObjectTreeNode) => {
+      if (node.nodeType === 'table') return t('objectTree.tableHint')
+      if (node.nodeType === 'view') return t('objectTree.viewHint')
+      return node.label
+    },
+    [t]
+  )
 
   /** loadColumns 懒加载表/视图列节点。 */
   const loadColumns = useCallback(
@@ -137,7 +149,7 @@ export function ObjectTree({
               type="button"
               className="tree-expand"
               onClick={(e) => void toggleExpand(node, e)}
-              aria-label={isOpen ? '折叠' : '展开'}
+              aria-label={isOpen ? t('objectTree.collapse') : t('objectTree.expand')}
             >
               {loadingId === node.id ? '…' : isOpen ? '▼' : '▶'}
             </button>
@@ -155,11 +167,11 @@ export function ObjectTree({
   }
 
   if (!nodes.length) {
-    return <div className="empty-hint">连接后显示数据库对象</div>
+    return <div className="empty-hint">{t('objectTree.connectFirst')}</div>
   }
 
   if (!filteredNodes.length) {
-    return <div className="empty-hint">无匹配对象</div>
+    return <div className="empty-hint">{t('objectTree.noMatch')}</div>
   }
 
   return (
@@ -176,7 +188,7 @@ export function ObjectTree({
                 setMenu(null)
               }}
             >
-              新建表
+              {t('objectTree.newTable')}
             </button>
           )}
           {(menu.node.nodeType === 'table' || menu.node.nodeType === 'view') && (
@@ -189,7 +201,7 @@ export function ObjectTree({
               setMenu(null)
             }}
           >
-            打开表
+            {t('objectTree.openTable')}
           </button>
           <button
             type="button"
@@ -199,7 +211,7 @@ export function ObjectTree({
               setMenu(null)
             }}
           >
-            查看 DDL
+            {t('objectTree.viewDdl')}
           </button>
           {menu.node.nodeType === 'table' && (
             <button
@@ -210,7 +222,7 @@ export function ObjectTree({
                 setMenu(null)
               }}
             >
-              设计表
+              {t('objectTree.designTable')}
             </button>
           )}
           {menu.node.nodeType === 'table' && (
@@ -222,7 +234,7 @@ export function ObjectTree({
                 setMenu(null)
               }}
             >
-              查看索引
+              {t('objectTree.viewIndexes')}
             </button>
           )}
           {menu.node.nodeType === 'table' && (
@@ -234,7 +246,7 @@ export function ObjectTree({
                 setMenu(null)
               }}
             >
-              导出 INSERT
+              {t('objectTree.exportInsert')}
             </button>
           )}
           {menu.node.nodeType === 'table' && (
@@ -248,7 +260,7 @@ export function ObjectTree({
                   setMenu(null)
                 }}
               >
-                清空表
+                {t('objectTree.truncateTable')}
               </button>
               <button
                 type="button"
@@ -258,13 +270,13 @@ export function ObjectTree({
                   setMenu(null)
                 }}
               >
-                删除表
+                {t('objectTree.dropTable')}
               </button>
             </>
           )}
           <div className="wn-context-sep" />
           <button type="button" className="wn-context-item" onClick={() => copyTableName(menu.node)}>
-            复制表名
+            {t('objectTree.copyTableName')}
           </button>
             </>
           )}
@@ -296,8 +308,3 @@ function treeIcon(type: string) {
   return '○'
 }
 
-function treeHint(node: ObjectTreeNode) {
-  if (node.nodeType === 'table') return '双击打开表 · 右键更多'
-  if (node.nodeType === 'view') return '双击打开视图 · 右键查看 DDL'
-  return node.label
-}

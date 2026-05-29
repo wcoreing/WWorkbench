@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SSHHost } from '../../api/types'
 import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconLaptop, IconPlus, IconServer, IconTerminal } from '../../components/Icons'
 import { useAppStore } from '../../stores/appStore'
+import { openProductLink, useProductLink } from '../../stores/productLink'
 import {
   loadTerminalWorkspace,
   scheduleTerminalWorkspacePersist,
@@ -25,6 +27,12 @@ import {
   type PaneLayout,
 } from '../../features/terminal/terminalLayout'
 
+/** firstSessionId 取分屏布局中第一个会话 ID。 */
+function firstSessionId(layout: PaneLayout): string | null {
+  const ids = collectSessionIds(layout)
+  return ids[0] ?? null
+}
+
 interface TerminalTab {
   id: string
   hostId: string
@@ -38,7 +46,7 @@ const MAX_PANES = 4
 
 /** 终端产品线工作区 */
 export function TerminalWorkbench() {
-  const { setStatusMessage, terminalOpacity, setTerminalOpacity, productLink, setProductLink, setActiveProduct } = useAppStore()
+  const { setStatusMessage, terminalOpacity, setTerminalOpacity, setActiveProduct } = useAppStore()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [hosts, setHosts] = useState<SSHHost[]>([])
   const [tabs, setTabs] = useState<TerminalTab[]>([])
@@ -49,7 +57,10 @@ export function TerminalWorkbench() {
   const [openingLocal, setOpeningLocal] = useState(false)
   const [splitting, setSplitting] = useState(false)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; host: SSHHost } | null>(null)
+  const [deleteHostConfirm, setDeleteHostConfirm] = useState<SSHHost | null>(null)
   const workspaceRestored = useRef(false)
+  const tabsRef = useRef<TerminalTab[]>([])
+  tabsRef.current = tabs
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
   const activePaneCount = activeTab ? countLeaves(activeTab.layout) : 0
@@ -133,12 +144,52 @@ export function TerminalWorkbench() {
     return info.sessionId
   }
 
-  /** writeInitialCommand 连接建立后向终端写入初始命令。 */
+  /** writeInitialCommand 连接建立后向终端写入并执行命令（带重试）。 */
   const writeInitialCommand = async (sessionId: string, command?: string) => {
-    if (!command) return
-    await new Promise((r) => setTimeout(r, 450))
+    if (!command?.trim()) return
     const data = command.endsWith('\r') || command.endsWith('\n') ? command : `${command}\r`
-    await api.writeTerminal(sessionId, data)
+    for (let i = 0; i < 6; i++) {
+      await new Promise((r) => setTimeout(r, 250 + i * 150))
+      try {
+        await api.writeTerminal(sessionId, data)
+        return
+      } catch {
+        /* PTY 可能尚未就绪 */
+      }
+    }
+    setStatusMessage('命令已发送，若未执行请检查终端是否已就绪')
+  }
+
+  /** runTerminalLink 在已有或新建终端中写入命令。 */
+  const runTerminalLink = async (hostId?: string, localShell?: boolean, initialCommand?: string) => {
+    if (initialCommand?.trim()) {
+      const existing = localShell
+        ? tabsRef.current.find((t) => t.kind === 'local')
+        : hostId
+          ? tabsRef.current.find((t) => t.kind === 'ssh' && t.hostId === hostId)
+          : null
+      if (existing) {
+        const sessionId = firstSessionId(existing.layout)
+        if (sessionId) {
+          setActiveTabId(existing.id)
+          setActiveProduct('terminal')
+          await writeInitialCommand(sessionId, initialCommand)
+          setStatusMessage('已在终端执行命令')
+          return
+        }
+      }
+    }
+    if (localShell) {
+      await connectLocal(initialCommand)
+      return
+    }
+    if (!hostId) return
+    let host = hosts.find((h) => h.id === hostId)
+    if (!host) {
+      host = await api.getSSHHost(hostId)
+      setHosts((prev) => (prev.some((h) => h.id === hostId) ? prev : [...prev, host!]))
+    }
+    await connectHost(host, initialCommand)
   }
 
   const connectLocal = async (initialCommand?: string) => {
@@ -181,28 +232,12 @@ export function TerminalWorkbench() {
     }
   }
 
-  useEffect(() => {
-    if (!productLink || productLink.action !== 'terminal') return
-    const { hostId, localShell, initialCommand } = productLink
-    setProductLink(null)
-    void (async () => {
-      try {
-        if (localShell) {
-          await connectLocal(initialCommand)
-          return
-        }
-        if (!hostId) return
-        let host = hosts.find((h) => h.id === hostId)
-        if (!host) {
-          host = await api.getSSHHost(hostId)
-          setHosts((prev) => (prev.some((h) => h.id === hostId) ? prev : [...prev, host!]))
-        }
-        await connectHost(host, initialCommand)
-      } catch (e) {
-        setStatusMessage((e as Error).message)
-      }
-    })()
-  }, [productLink])
+  useProductLink('terminal', (link) => {
+    const { hostId, localShell, initialCommand } = link
+    void runTerminalLink(hostId, localShell, initialCommand).catch((e) => {
+      setStatusMessage((e as Error).message)
+    })
+  })
 
   const closeSessions = async (sessionIds: string[]) => {
     for (const sid of sessionIds) {
@@ -224,9 +259,15 @@ export function TerminalWorkbench() {
     }
   }
 
-  const deleteHost = async (host: SSHHost) => {
+  const deleteHost = (host: SSHHost) => {
     setCtxMenu(null)
-    if (!window.confirm(`确定删除 SSH 主机「${host.name}」？`)) return
+    setDeleteHostConfirm(host)
+  }
+
+  const confirmDeleteHost = async () => {
+    const host = deleteHostConfirm
+    setDeleteHostConfirm(null)
+    if (!host) return
     try {
       const related = tabs.filter((t) => t.hostId === host.id)
       for (const t of related) {
@@ -520,8 +561,17 @@ export function TerminalWorkbench() {
             className="wn-context-item"
             onClick={() => {
               setCtxMenu(null)
-              setActiveProduct('docker')
-              setProductLink({ action: 'docker-context', hostId: ctxMenu.host.id })
+              openProductLink({ action: 'notebook', hostId: ctxMenu.host.id })
+            }}
+          >
+            记入笔记本
+          </button>
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              setCtxMenu(null)
+              openProductLink({ action: 'docker-context', hostId: ctxMenu.host.id })
             }}
           >
             添加 Docker 远程
@@ -531,8 +581,7 @@ export function TerminalWorkbench() {
             className="wn-context-item"
             onClick={() => {
               setCtxMenu(null)
-              setActiveProduct('sftp')
-              setProductLink({ action: 'sftp', hostId: ctxMenu.host.id })
+              openProductLink({ action: 'sftp', hostId: ctxMenu.host.id })
             }}
           >
             打开 SFTP
@@ -557,6 +606,15 @@ export function TerminalWorkbench() {
         </div>
       )}
       {trustDialog}
+      <ConfirmDialog
+        open={deleteHostConfirm != null}
+        title="删除 SSH 主机"
+        message={deleteHostConfirm ? `确定删除「${deleteHostConfirm.name}」？相关终端会话将一并关闭。` : undefined}
+        confirmLabel="删除"
+        danger
+        onConfirm={() => void confirmDeleteHost()}
+        onCancel={() => setDeleteHostConfirm(null)}
+      />
     </div>
   )
 }

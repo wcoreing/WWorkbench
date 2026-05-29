@@ -1,3 +1,36 @@
+# Build output
 build/bin
-node_modules
 frontend/dist
+
+# Dependencies
+node_modules
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Env & secrets（切勿提交）
+.env
+.env.*
+*.pem
+*.key
+id_rsa
+id_ed25519
+
+# Local app data（用户机器上的数据，不属于仓库）
+.wnavicat/
+
+# Logs & temp
+*.log
+tmp/
+temp/
+
+# Test / coverage
+coverage/
+*.test

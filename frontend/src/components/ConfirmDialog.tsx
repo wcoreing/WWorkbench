@@ -1,3 +1,4 @@
+import { useI18n } from '../i18n'
 import './ui.css'
 
 interface ConfirmDialogProps {
@@ -15,11 +16,14 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = '确定',
+  confirmLabel,
   danger = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { t } = useI18n()
+  const okLabel = confirmLabel ?? t('common.confirm')
+
   if (!open) return null
 
   return (
@@ -38,14 +42,14 @@ export function ConfirmDialog({
         </header>
         <footer className="wn-modal-footer">
           <button type="button" className="wn-btn wn-btn-tool" onClick={onCancel}>
-            取消
+            {t('common.cancel')}
           </button>
           <button
             type="button"
             className={`wn-btn wn-btn-sm ${danger ? 'wn-btn-danger' : 'wn-btn-primary'}`}
             onClick={onConfirm}
           >
-            {confirmLabel}
+            {okLabel}
           </button>
         </footer>
       </div>

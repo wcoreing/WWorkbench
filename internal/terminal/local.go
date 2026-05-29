@@ -6,6 +6,7 @@ import (
 	"os/user"
 	"runtime"
 
+	"WNavicat/internal/environment"
 	"WNavicat/internal/errno"
 	"WNavicat/internal/model"
 
@@ -22,9 +23,11 @@ func (m *Manager) OpenLocal(cols, rows int) (*model.TerminalSessionInfoDO, error
 		rows = 24
 	}
 	shell := defaultShell()
-	cmd := exec.Command(shell)
+	var cmd *exec.Cmd
 	if runtime.GOOS != "windows" {
-		cmd.Args = append(cmd.Args, "-l")
+		cmd = exec.Command(shell, "-lc", environment.LocalTerminalInitScript(shell))
+	} else {
+		cmd = exec.Command(shell)
 	}
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
 	if home, err := os.UserHomeDir(); err == nil && home != "" {

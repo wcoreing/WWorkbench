@@ -1,11 +1,13 @@
 import { IconMoon, IconSun } from '../components/Icons'
+import { useI18n, useLocalizedProduct } from '../i18n'
 import { useAppStore } from '../stores/appStore'
-import { getProduct } from './products'
+import { ShellLocaleMenu } from './ShellLocaleMenu'
 
-/** 应用顶栏：品牌、当前产品、主题切换 */
+/** 应用顶栏：品牌、当前产品、主题与语言切换 */
 export function ShellChrome() {
   const { theme, setTheme, activeProduct } = useAppStore()
-  const product = getProduct(activeProduct)
+  const { t } = useI18n()
+  const product = useLocalizedProduct(activeProduct)
 
   return (
     <header className="shell-chrome">
@@ -19,11 +21,12 @@ export function ShellChrome() {
         <span className="chrome-product-desc">{product.description}</span>
       </div>
       <span className="chrome-spacer" />
+      <ShellLocaleMenu />
       <button
         type="button"
         className="wn-btn wn-btn-chrome wn-btn-icon-only"
         onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        title="切换主题"
+        title={t('shell.switchTheme')}
       >
         {theme === 'dark' ? <IconSun size={13} /> : <IconMoon size={13} />}
       </button>

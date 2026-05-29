@@ -1,10 +1,10 @@
+import { useLocalizedProduct } from '../i18n'
 import { useAppStore } from '../stores/appStore'
-import { getProduct } from './products'
 
 /** 底部状态栏 */
 export function StatusBar() {
   const { version, statusMessage, activeProduct, session } = useAppStore()
-  const product = getProduct(activeProduct)
+  const product = useLocalizedProduct(activeProduct)
 
   return (
     <footer className="app-statusbar">
