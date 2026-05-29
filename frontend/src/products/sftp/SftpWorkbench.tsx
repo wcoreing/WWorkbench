@@ -3,6 +3,7 @@ import type { FileEntry, SftpBookmark, SSHHost } from '../../api/types'
 import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import { IconPlus, IconServer } from '../../components/Icons'
+import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { openProductLink, useProductLink } from '../../stores/productLink'
 import { restoreSftpTab } from '../../features/sftp/restoreSftpWorkspace'
@@ -48,6 +49,7 @@ type PaneSide = 'local' | 'remote'
 
 /** SFTP 产品线工作区 */
 export function SftpWorkbench() {
+  const { t } = useI18n()
   const { setStatusMessage } = useAppStore()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [hosts, setHosts] = useState<SSHHost[]>([])
@@ -119,7 +121,7 @@ export function SftpWorkbench() {
         setTabs(restored)
         const idx = Math.min(Math.max(0, snap.activeTabIndex), restored.length - 1)
         setActiveTabId(restored[idx].id)
-        setStatusMessage(`已恢复 ${restored.length} 个 SFTP 会话`)
+        setStatusMessage(t('sftp.restored', { count: restored.length }))
       } catch (e) {
         setHosts([])
         setStatusMessage((e as Error).message)
@@ -191,7 +193,7 @@ export function SftpWorkbench() {
   const connectHost = async (host: SSHHost) => {
     if (connectingId) return
     setConnectingId(host.id)
-    setStatusMessage(`正在连接 ${host.name}…`)
+    setStatusMessage(t('sftp.connecting', { name: host.name }))
     try {
       const info = await withSSHHostTrust(host.host, host.port, () => api.openSFTPSession(host.id), confirmTrust)
       const remoteHome = await api.getSFTPHome(info.sessionId)
@@ -206,7 +208,7 @@ export function SftpWorkbench() {
       }
       setTabs((prev) => [...prev, tab])
       setActiveTabId(tab.id)
-      setStatusMessage(`已连接 ${tab.title}`)
+      setStatusMessage(t('sftp.connected', { title: tab.title }))
     } catch (e) {
       setStatusMessage((e as Error).message)
     } finally {
@@ -271,7 +273,7 @@ export function SftpWorkbench() {
       )
       if (!accepted.length) return
       transferQueue.enqueueUpload(activeTab.sessionId, accepted, activeTab.remotePath)
-      setStatusMessage(`已加入上传队列（${accepted.length} 项）`)
+      setStatusMessage(t('sftp.queuedUpload', { count: accepted.length }))
     },
     [activeTab, conflictResolver.ask, transferQueue.enqueueUpload, setStatusMessage]
   )
@@ -288,7 +290,7 @@ export function SftpWorkbench() {
       )
       if (!accepted.length) return
       transferQueue.enqueueDownload(activeTab.sessionId, accepted, activeTab.localPath)
-      setStatusMessage(`已加入下载队列（${accepted.length} 项）`)
+      setStatusMessage(t('sftp.queuedDownload', { count: accepted.length }))
     },
     [activeTab, conflictResolver.ask, transferQueue.enqueueDownload, setStatusMessage]
   )
@@ -304,7 +306,7 @@ export function SftpWorkbench() {
   const handleUpload = () => {
     const paths = localSel.selectedPaths
     if (!paths.length) {
-      setStatusMessage('请在左侧选择要上传的文件或文件夹')
+      setStatusMessage(t('sftp.pickUpload'))
       return
     }
     uploadPaths(paths)
@@ -313,7 +315,7 @@ export function SftpWorkbench() {
   const handleDownload = () => {
     const paths = remoteSel.selectedPaths
     if (!paths.length) {
-      setStatusMessage('请在右侧选择要下载的文件或文件夹')
+      setStatusMessage(t('sftp.pickDownload'))
       return
     }
     downloadPaths(paths)
@@ -338,7 +340,7 @@ export function SftpWorkbench() {
         createdAt: 0,
       })
       await loadBookmarks()
-      setStatusMessage('已添加书签')
+      setStatusMessage(t('sftp.bookmarkAdded'))
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -357,17 +359,17 @@ export function SftpWorkbench() {
     if (!activeTab) return
     setPrompt({
       mode: 'mkdir',
-      title: side === 'local' ? '新建本地文件夹' : '新建远程文件夹',
+      title: side === 'local' ? t('sftp.newLocalFolder') : t('sftp.newRemoteFolder'),
       onSubmit: (name) => {
         setPrompt(null)
         if (!name.trim()) return
-        runMutating('正在创建…', async () => {
+        runMutating(t('sftp.creating'), async () => {
           if (side === 'local') {
             await api.mkdirLocalPath(joinLocalPath(activeTab.localPath, name.trim()))
           } else {
             await api.mkdirSFTPRemote(activeTab.sessionId, joinRemotePath(activeTab.remotePath, name.trim()))
           }
-          setStatusMessage('已创建文件夹')
+          setStatusMessage(t('sftp.folderCreated'))
         })
       },
     })
@@ -377,18 +379,18 @@ export function SftpWorkbench() {
     if (!activeTab) return
     setPrompt({
       mode: 'rename',
-      title: '重命名',
+      title: t('sftp.rename'),
       defaultValue: entry.name,
       onSubmit: (name) => {
         setPrompt(null)
         if (!name.trim() || name === entry.name) return
-        runMutating('正在重命名…', async () => {
+        runMutating(t('sftp.renaming'), async () => {
           if (side === 'local') {
             await api.renameLocalPath(entry.path, siblingPath(entry.path, name.trim()))
           } else {
             await api.renameSFTPRemote(activeTab.sessionId, entry.path, siblingPath(entry.path, name.trim()))
           }
-          setStatusMessage('已重命名')
+          setStatusMessage(t('sftp.renamed'))
         })
       },
     })
@@ -398,18 +400,18 @@ export function SftpWorkbench() {
     if (!activeTab) return
     setPrompt({
       mode: 'confirm',
-      title: '确认删除',
-      message: `确定删除「${entry.name}」？${entry.isDir ? '（含子目录）' : ''}`,
-      confirmLabel: '删除',
+      title: t('sftp.deleteTitle'),
+      message: t('sftp.deleteMsg', { name: entry.name, dirHint: entry.isDir ? t('sftp.dirHint') : '' }),
+      confirmLabel: t('common.delete'),
       onSubmit: () => {
         setPrompt(null)
-        runMutating('正在删除…', async () => {
+        runMutating(t('sftp.deleting'), async () => {
           if (side === 'local') {
             await api.deleteLocalPath(entry.path)
           } else {
             await api.deleteSFTPPath(activeTab.sessionId, entry.path)
           }
-          setStatusMessage('已删除')
+          setStatusMessage(t('sftp.deleted'))
         })
       },
     })
@@ -448,15 +450,15 @@ export function SftpWorkbench() {
         <nav className="product-actions">
           <button type="button" className="wn-btn wn-btn-chrome" onClick={() => setHostModalOpen(true)}>
             <IconPlus size={13} />
-            <span>SSH 主机</span>
+            <span>{t('sftp.sshHosts')}</span>
           </button>
           <span className="chrome-vrule" />
           <button type="button" className="wn-btn wn-btn-chrome" disabled={!activeTab || mutating} onClick={() => refreshActive().catch(() => {})}>
-            刷新
+            {t('common.refresh')}
           </button>
         </nav>
         <span className="chrome-spacer" />
-        <span className="product-toolbar-status">{activeTab ? activeTab.title : '未连接'}</span>
+        <span className="product-toolbar-status">{activeTab ? activeTab.title : t('common.notConnected')}</span>
       </div>
 
       <SftpTransferPanel
@@ -469,14 +471,14 @@ export function SftpWorkbench() {
         <aside className="app-sidebar terminal-sidebar">
           <section className="sidebar-section">
             <div className="sidebar-header">
-              <span>SSH 主机</span>
+              <span>{t('sftp.sshHosts')}</span>
               <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => setHostModalOpen(true)}>
                 <IconPlus size={14} />
               </button>
             </div>
             <div className="sidebar-body">
               {hosts.length === 0 ? (
-                <div className="empty-hint">添加 SSH 主机后连接 SFTP</div>
+                <div className="empty-hint">{t('sftp.emptyHosts')}</div>
               ) : (
                 <ul className="conn-list">
                   {hosts.map((h) => (
@@ -536,12 +538,12 @@ export function SftpWorkbench() {
 
           {!activeTab ? (
             <div className="pane-empty">
-              <span>选择 SSH 主机连接 SFTP</span>
+              <span>{t('sftp.emptyWorkspace')}</span>
             </div>
           ) : (
             <div className="product-body sftp-panes">
               <FilePane
-                label="本地"
+                label={t('sftp.local')}
                 path={activeTab.localPath}
                 entries={localFiles}
                 selectedPaths={localSel.selectedPaths}
@@ -572,7 +574,7 @@ export function SftpWorkbench() {
                 onDownload={handleDownload}
               />
               <FilePane
-                label="远程"
+                label={t('sftp.remote')}
                 path={activeTab.remotePath}
                 entries={remoteFiles}
                 selectedPaths={remoteSel.selectedPaths}
@@ -611,7 +613,7 @@ export function SftpWorkbench() {
               openProductLink({ action: 'notebook', hostId: ctxMenu.host.id })
             }}
           >
-            记入笔记本
+            {t('sftp.ctxNotebook')}
           </button>
           <button
             type="button"
@@ -621,7 +623,7 @@ export function SftpWorkbench() {
               openProductLink({ action: 'terminal', hostId: ctxMenu.host.id })
             }}
           >
-            打开终端
+            {t('sftp.ctxTerminal')}
           </button>
           <button
             type="button"
@@ -632,7 +634,7 @@ export function SftpWorkbench() {
               setHostModalOpen(true)
             }}
           >
-            编辑
+            {t('common.edit')}
           </button>
         </div>
       )}
@@ -641,12 +643,16 @@ export function SftpWorkbench() {
         <div className="wn-context-menu" style={{ left: paneMenu.x, top: paneMenu.y }} onClick={(e) => e.stopPropagation()}>
           {paneMenu.side === 'local' && localSel.selectedPaths.length > 0 && (
             <button type="button" className="wn-context-item" onClick={uploadFromMenu}>
-              上传到远程{localSel.selectedPaths.length > 1 ? `（${localSel.selectedPaths.length} 项）` : ''}
+              {localSel.selectedPaths.length > 1
+                ? t('sftp.uploadRemoteN', { count: localSel.selectedPaths.length })
+                : t('sftp.uploadRemote')}
             </button>
           )}
           {paneMenu.side === 'remote' && remoteSel.selectedPaths.length > 0 && (
             <button type="button" className="wn-context-item" onClick={downloadFromMenu}>
-              下载到本地{remoteSel.selectedPaths.length > 1 ? `（${remoteSel.selectedPaths.length} 项）` : ''}
+              {remoteSel.selectedPaths.length > 1
+                ? t('sftp.downloadLocalN', { count: remoteSel.selectedPaths.length })
+                : t('sftp.downloadLocal')}
             </button>
           )}
           {(paneMenu.side === 'local' && localSel.selectedPaths.length > 0) ||
@@ -654,7 +660,7 @@ export function SftpWorkbench() {
             <div className="wn-context-sep" />
           ) : null}
           <button type="button" className="wn-context-item" onClick={() => { setPaneMenu(null); openMkdir(paneMenu.side) }}>
-            新建文件夹
+            {t('sftp.newFolder')}
           </button>
           {paneMenu.entry && (
             <>
@@ -666,7 +672,7 @@ export function SftpWorkbench() {
                   openRename(paneMenu.side, paneMenu.entry!)
                 }}
               >
-                重命名
+                {t('sftp.rename')}
               </button>
               <button
                 type="button"
@@ -676,7 +682,7 @@ export function SftpWorkbench() {
                   openDelete(paneMenu.side, paneMenu.entry!)
                 }}
               >
-                删除
+                {t('common.delete')}
               </button>
             </>
           )}

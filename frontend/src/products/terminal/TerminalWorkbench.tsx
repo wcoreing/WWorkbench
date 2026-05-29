@@ -4,6 +4,7 @@ import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconLaptop, IconPlus, IconServer, IconTerminal } from '../../components/Icons'
+import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { openProductLink, useProductLink } from '../../stores/productLink'
 import {
@@ -46,6 +47,7 @@ const MAX_PANES = 4
 
 /** 终端产品线工作区 */
 export function TerminalWorkbench() {
+  const { t } = useI18n()
   const { setStatusMessage, terminalOpacity, setTerminalOpacity, setActiveProduct } = useAppStore()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [hosts, setHosts] = useState<SSHHost[]>([])
@@ -106,13 +108,13 @@ export function TerminalWorkbench() {
         setTabs(restored)
         const idx = Math.min(Math.max(0, snap.activeTabIndex), restored.length - 1)
         setActiveTabId(restored[idx].id)
-        setStatusMessage(`已恢复 ${restored.length} 个终端会话`)
+        setStatusMessage(t('terminal.restored', { count: restored.length }))
       } catch (e) {
         setHosts([])
         setStatusMessage((e as Error).message)
       }
     })()
-  }, [refreshHosts, setStatusMessage, confirmTrust])
+  }, [refreshHosts, setStatusMessage, confirmTrust, t])
 
   useEffect(() => {
     scheduleTerminalWorkspacePersist(toTerminalWorkspaceSnapshot(tabs, activeTabId))
@@ -140,7 +142,7 @@ export function TerminalWorkbench() {
     }
     setTabs((prev) => [...prev, tab])
     setActiveTabId(tabId)
-    setStatusMessage(`已连接 ${tab.title}`)
+    setStatusMessage(t('terminal.connected', { title: tab.title }))
     return info.sessionId
   }
 
@@ -157,7 +159,7 @@ export function TerminalWorkbench() {
         /* PTY 可能尚未就绪 */
       }
     }
-    setStatusMessage('命令已发送，若未执行请检查终端是否已就绪')
+    setStatusMessage(t('terminal.cmdSent'))
   }
 
   /** runTerminalLink 在已有或新建终端中写入命令。 */
@@ -174,7 +176,7 @@ export function TerminalWorkbench() {
           setActiveTabId(existing.id)
           setActiveProduct('terminal')
           await writeInitialCommand(sessionId, initialCommand)
-          setStatusMessage('已在终端执行命令')
+          setStatusMessage(t('terminal.cmdExecuted'))
           return
         }
       }
@@ -195,14 +197,14 @@ export function TerminalWorkbench() {
   const connectLocal = async (initialCommand?: string) => {
     if (openingLocal || connectingId) return
     setOpeningLocal(true)
-    setStatusMessage('正在打开本机终端…')
+    setStatusMessage(t('terminal.openingLocal'))
     try {
       const info = await api.openLocalTerminal(120, 32)
       const sessionId = addTab({
         sessionId: info.sessionId,
         hostId: '',
         kind: 'local',
-        title: info.title || '本机 Shell',
+        title: info.title || t('terminal.localShellTitle'),
       })
       await writeInitialCommand(sessionId, initialCommand)
     } catch (e) {
@@ -215,7 +217,7 @@ export function TerminalWorkbench() {
   const connectHost = async (host: SSHHost, initialCommand?: string) => {
     if (connectingId || openingLocal) return
     setConnectingId(host.id)
-    setStatusMessage(`正在连接 ${host.name}…`)
+    setStatusMessage(t('terminal.connecting', { name: host.name }))
     try {
       const info = await withSSHHostTrust(host.host, host.port, () => api.openTerminal(host.id, 120, 32), confirmTrust)
       const sessionId = addTab({
@@ -280,7 +282,7 @@ export function TerminalWorkbench() {
       }
       await api.deleteSSHHost(host.id)
       await refreshHosts()
-      setStatusMessage(`已删除 ${host.name}`)
+      setStatusMessage(t('terminal.deleted', { name: host.name }))
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -290,11 +292,11 @@ export function TerminalWorkbench() {
   const splitActivePane = async (direction: 'row' | 'col') => {
     if (!activeTab || splitting) return
     if (activePaneCount >= MAX_PANES) {
-      setStatusMessage(`最多 ${MAX_PANES} 个分屏`)
+      setStatusMessage(t('terminal.maxPanes', { max: MAX_PANES }))
       return
     }
     setSplitting(true)
-    setStatusMessage(direction === 'row' ? '正在垂直分屏…' : '正在水平分屏…')
+    setStatusMessage(direction === 'row' ? t('terminal.splittingRow') : t('terminal.splittingCol'))
     try {
       let sessionId: string
       if (activeTab.kind === 'local') {
@@ -302,7 +304,7 @@ export function TerminalWorkbench() {
         sessionId = info.sessionId
       } else {
         const host = hosts.find((h) => h.id === activeTab.hostId)
-        if (!host) throw new Error('SSH 主机不存在')
+        if (!host) throw new Error(t('terminal.errHostNotFound'))
         const info = await withSSHHostTrust(host.host, host.port, () =>
           api.openTerminal(activeTab.hostId, 120, 32),
           confirmTrust
@@ -310,12 +312,12 @@ export function TerminalWorkbench() {
         sessionId = info.sessionId
       }
       const nextLayout = splitPane(activeTab.layout, activeTab.activePaneId, direction, sessionId)
-      if (!nextLayout) throw new Error('分屏失败')
+      if (!nextLayout) throw new Error(t('terminal.splitFailed'))
       updateTab(activeTab.id, {
         layout: nextLayout,
         activePaneId: `pane-${sessionId}`,
       })
-      setStatusMessage('已分屏')
+      setStatusMessage(t('terminal.splitDone'))
     } catch (e) {
       setStatusMessage((e as Error).message)
     } finally {
@@ -340,7 +342,7 @@ export function TerminalWorkbench() {
       layout: nextLayout,
       activePaneId: tab.activePaneId === paneId ? firstLeafId(nextLayout) : tab.activePaneId,
     })
-    setStatusMessage('已关闭分屏')
+    setStatusMessage(t('terminal.paneClosed'))
   }
 
   /** 关闭当前激活分屏窗格 */
@@ -363,12 +365,12 @@ export function TerminalWorkbench() {
             disabled={openingLocal}
           >
             <IconLaptop size={13} />
-            <span>本机终端</span>
+            <span>{t('terminal.localTerminal')}</span>
           </button>
           <span className="chrome-vrule" />
           <button type="button" className="wn-btn wn-btn-chrome" onClick={() => openHostModal()}>
             <IconPlus size={13} />
-            <span>SSH 主机</span>
+            <span>{t('terminal.sshHosts')}</span>
           </button>
           {activeTab && (
             <>
@@ -376,38 +378,38 @@ export function TerminalWorkbench() {
               <button
                 type="button"
                 className="wn-btn wn-btn-chrome"
-                title="垂直分屏（左右）"
+                title={t('terminal.splitRowTitle')}
                 disabled={splitting || activePaneCount >= MAX_PANES}
                 onClick={() => splitActivePane('row')}
               >
                 <span className="terminal-toolbar-glyph">▥</span>
-                <span>垂直分屏</span>
+                <span>{t('terminal.splitRow')}</span>
               </button>
               <button
                 type="button"
                 className="wn-btn wn-btn-chrome"
-                title="水平分屏（上下）"
+                title={t('terminal.splitColTitle')}
                 disabled={splitting || activePaneCount >= MAX_PANES}
                 onClick={() => splitActivePane('col')}
               >
                 <span className="terminal-toolbar-glyph">▤</span>
-                <span>水平分屏</span>
+                <span>{t('terminal.splitCol')}</span>
               </button>
               <button
                 type="button"
                 className="wn-btn wn-btn-chrome"
-                title="关闭当前分屏"
+                title={t('terminal.closeSplitTitle')}
                 disabled={activePaneCount <= 1}
                 onClick={closeActivePane}
               >
-                <span>关闭分屏</span>
+                <span>{t('terminal.closeSplit')}</span>
               </button>
             </>
           )}
         </nav>
         <span className="chrome-spacer" />
-        <label className="terminal-opacity-control" title="终端背景透明度">
-          <span>透明度</span>
+        <label className="terminal-opacity-control" title={t('terminal.opacityTitle')}>
+          <span>{t('terminal.opacity')}</span>
           <input
             type="range"
             min={40}
@@ -418,7 +420,7 @@ export function TerminalWorkbench() {
           <span className="terminal-opacity-value">{Math.round(terminalOpacity * 100)}%</span>
         </label>
         <span className="product-toolbar-status">
-          {tabs.length > 0 ? `${tabs.length} 个会话` : '未连接'}
+          {tabs.length > 0 ? t('terminal.sessionCount', { count: tabs.length }) : t('common.notConnected')}
         </span>
       </div>
 
@@ -426,7 +428,7 @@ export function TerminalWorkbench() {
         <aside className="app-sidebar terminal-sidebar">
           <section className="sidebar-section connections">
             <div className="sidebar-header">
-              <span>本机</span>
+              <span>{t('terminal.localSection')}</span>
             </div>
             <div className="sidebar-body connections-body">
               <ul className="conn-list">
@@ -437,8 +439,8 @@ export function TerminalWorkbench() {
                 >
                   <IconLaptop size={14} className="mock-icon" />
                   <div className="conn-meta">
-                    <span className="conn-name">本地 Shell</span>
-                    <span className="conn-host">zsh / bash · 当前 Mac</span>
+                    <span className="conn-name">{t('terminal.localShell')}</span>
+                    <span className="conn-host">{t('terminal.localMeta')}</span>
                   </div>
                 </li>
               </ul>
@@ -447,14 +449,14 @@ export function TerminalWorkbench() {
 
           <section className="sidebar-section">
             <div className="sidebar-header">
-              <span>SSH 主机</span>
-              <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => openHostModal()} title="新建">
+              <span>{t('terminal.sshHosts')}</span>
+              <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => openHostModal()} title={t('common.new')}>
                 <IconPlus size={14} />
               </button>
             </div>
             <div className="sidebar-body">
               {hosts.length === 0 ? (
-                <div className="empty-hint">添加 SSH 主机连接远程</div>
+                <div className="empty-hint">{t('terminal.emptyHosts')}</div>
               ) : (
                 <ul className="conn-list">
                   {hosts.map((h) => (
@@ -480,7 +482,7 @@ export function TerminalWorkbench() {
                   ))}
                 </ul>
               )}
-              <div className="empty-hint mock-hint">SSH：单击连接 · 右键菜单</div>
+              <div className="empty-hint mock-hint">{t('terminal.sshHint')}</div>
             </div>
           </section>
         </aside>
@@ -519,7 +521,7 @@ export function TerminalWorkbench() {
           >
             {tabs.length === 0 && (
               <div className="pane-empty">
-                <span>打开本机终端，或选择 SSH 主机连接远程</span>
+                <span>{t('terminal.emptyWorkspace')}</span>
               </div>
             )}
             {tabs.map((t) => (
@@ -564,7 +566,7 @@ export function TerminalWorkbench() {
               openProductLink({ action: 'notebook', hostId: ctxMenu.host.id })
             }}
           >
-            记入笔记本
+            {t('terminal.ctxNotebook')}
           </button>
           <button
             type="button"
@@ -574,7 +576,7 @@ export function TerminalWorkbench() {
               openProductLink({ action: 'docker-context', hostId: ctxMenu.host.id })
             }}
           >
-            添加 Docker 远程
+            {t('terminal.ctxDocker')}
           </button>
           <button
             type="button"
@@ -584,7 +586,7 @@ export function TerminalWorkbench() {
               openProductLink({ action: 'sftp', hostId: ctxMenu.host.id })
             }}
           >
-            打开 SFTP
+            {t('terminal.ctxSftp')}
           </button>
           <button
             type="button"
@@ -594,23 +596,23 @@ export function TerminalWorkbench() {
               openHostModal(ctxMenu.host)
             }}
           >
-            编辑
+            {t('common.edit')}
           </button>
           <button
             type="button"
             className="wn-context-item danger"
             onClick={() => deleteHost(ctxMenu.host)}
           >
-            删除
+            {t('common.delete')}
           </button>
         </div>
       )}
       {trustDialog}
       <ConfirmDialog
         open={deleteHostConfirm != null}
-        title="删除 SSH 主机"
-        message={deleteHostConfirm ? `确定删除「${deleteHostConfirm.name}」？相关终端会话将一并关闭。` : undefined}
-        confirmLabel="删除"
+        title={t('terminal.deleteHostTitle')}
+        message={deleteHostConfirm ? t('terminal.deleteHostMsg', { name: deleteHostConfirm.name }) : undefined}
+        confirmLabel={t('common.delete')}
         danger
         onConfirm={() => void confirmDeleteHost()}
         onCancel={() => setDeleteHostConfirm(null)}

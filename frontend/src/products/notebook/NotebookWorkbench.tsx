@@ -14,14 +14,9 @@ import {
   extractRunCommands,
   extractSqlText,
 } from '../../features/notebook/noteTemplates'
+import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { openProductLink, useProductLink } from '../../stores/productLink'
-
-const LANGUAGES: { id: NoteLanguage; label: string }[] = [
-  { id: 'plaintext', label: '纯文本' },
-  { id: 'shell', label: 'Shell' },
-  { id: 'markdown', label: 'Markdown' },
-]
 
 function toNoteDO(note: Note): model.NoteDO {
   return model.NoteDO.createFrom({
@@ -53,7 +48,13 @@ function toSummary(note: Note): NoteSummary {
 
 /** NotebookWorkbench 笔记本产品线工作区。 */
 export function NotebookWorkbench() {
+  const { t } = useI18n()
   const { setStatusMessage, setActiveProduct } = useAppStore()
+  const languages: { id: NoteLanguage; label: string }[] = [
+    { id: 'plaintext', label: t('notebook.langPlain') },
+    { id: 'shell', label: t('notebook.langShell') },
+    { id: 'markdown', label: t('notebook.langMarkdown') },
+  ]
   const [groups, setGroups] = useState<NotebookGroup[]>([])
   const [summaries, setSummaries] = useState<NoteSummary[]>([])
   const [openNotes, setOpenNotes] = useState<Record<string, Note>>({})
@@ -172,19 +173,19 @@ export function NotebookWorkbench() {
         const groupId = groupList[0]?.id ?? ''
         const host = hostId ? hostList.find((h) => h.id === hostId) : undefined
         const conn = connectionId ? connList.find((c) => c.id === connectionId) : undefined
-        let title = '新笔记'
+        let title = t('notebook.newNoteTitle')
         let content = initialCommand ?? ''
         let language: NoteLanguage = 'markdown'
         let sshHostId = hostId ?? ''
         let noteConnectionId = connectionId ?? ''
 
         if (conn) {
-          title = `${conn.name} 笔记`
+          title = t('notebook.noteFromConn', { name: conn.name })
           content = content || buildConnectionTemplate(conn)
           sshHostId = conn.sshHostId || sshHostId
           noteConnectionId = conn.id
         } else if (host) {
-          title = `${host.name} 笔记`
+          title = t('notebook.noteFromHost', { name: host.name })
           content = content || buildSSHHostTemplate(host)
         }
 
@@ -204,7 +205,7 @@ export function NotebookWorkbench() {
         )) as Note
         await refreshSummaries()
         await openNoteById(saved.id)
-        setStatusMessage(`已创建笔记「${saved.title}」`)
+        setStatusMessage(t('notebook.createdNote', { title: saved.title }))
       } catch (e) {
         setStatusMessage((e as Error).message)
       }
@@ -241,7 +242,7 @@ export function NotebookWorkbench() {
         model.NoteDO.createFrom({
           id: '',
           groupId: gid,
-          title: '未命名',
+          title: t('common.unnamed'),
           content: '',
           language: 'plaintext',
           sshHostId: '',
@@ -253,7 +254,7 @@ export function NotebookWorkbench() {
       )) as Note
       setSummaries((prev) => [toSummary(saved), ...prev])
       await openNoteById(saved.id)
-      setStatusMessage('已创建笔记')
+      setStatusMessage(t('notebook.created'))
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -265,14 +266,14 @@ export function NotebookWorkbench() {
         model.NotebookGroupDO.createFrom({ ...groupModal, name })
       )) as NotebookGroup
       setGroups((prev) => prev.map((g) => (g.id === saved.id ? saved : g)))
-      setStatusMessage(`已重命名分组「${saved.name}」`)
+      setStatusMessage(t('notebook.renamedGroup', { name: saved.name }))
       return
     }
     const saved = (await api.saveNotebookGroup(
       model.NotebookGroupDO.createFrom({ id: '', name, parentId: '', sortOrder: groups.length, createdAt: 0, updatedAt: 0 })
     )) as NotebookGroup
     setGroups((prev) => [...prev, saved])
-    setStatusMessage(`已创建分组「${saved.name}」`)
+    setStatusMessage(t('notebook.createdGroup', { name: saved.name }))
   }
 
   const duplicateNote = async () => {
@@ -281,7 +282,7 @@ export function NotebookWorkbench() {
       const saved = (await api.duplicateNote(activeNote.id)) as Note
       setSummaries((prev) => [toSummary(saved), ...prev])
       await openNoteById(saved.id)
-      setStatusMessage('已复制笔记')
+      setStatusMessage(t('notebook.duplicated'))
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -291,7 +292,7 @@ export function NotebookWorkbench() {
     if (!activeNote) return
     try {
       const path = await api.exportNote(activeNote.id)
-      if (path) setStatusMessage(`已导出 ${path}`)
+      if (path) setStatusMessage(t('notebook.exported', { path }))
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -307,7 +308,7 @@ export function NotebookWorkbench() {
     else block = buildServerChecklistTemplate(activeNote.title)
     const content = activeNote.content.trim() ? `${activeNote.content}\n\n${block}` : block
     updateActiveNote({ content, language: 'markdown' })
-    setStatusMessage('已插入模板')
+    setStatusMessage(t('notebook.templateInserted'))
   }
 
   const closeTab = (id: string) => {
@@ -323,7 +324,7 @@ export function NotebookWorkbench() {
     const text = editorRef.current?.getSelectedText() ?? activeNote.content
     const command = extractRunCommands(text)
     if (!command) {
-      setStatusMessage('没有可执行的命令（请在 shell 代码块中编写，或选中命令行）')
+      setStatusMessage(t('notebook.noCommands'))
       return
     }
     if (activeNote.sshHostId) {
@@ -331,7 +332,7 @@ export function NotebookWorkbench() {
     } else {
       openProductLink({ action: 'terminal', localShell: true, initialCommand: command })
     }
-    setStatusMessage('正在终端执行命令…')
+    setStatusMessage(t('notebook.runningCmd'))
   }
 
   /** openDatabase 跳转到数据库并带入 SQL、可选执行。 */
@@ -341,11 +342,11 @@ export function NotebookWorkbench() {
     const text = editorRef.current?.getSelectedText() ?? activeNote.content
     const sql = extractSqlText(text)
     if (!sql) {
-      setStatusMessage(conn ? `正在打开 ${conn.name}…` : '正在打开数据库…')
+      setStatusMessage(conn ? t('notebook.openingConn', { name: conn.name }) : t('notebook.openingDb'))
     } else if (runSql) {
-      setStatusMessage(conn ? `正在打开 ${conn.name} 并执行 SQL…` : '正在打开数据库并执行 SQL…')
+      setStatusMessage(conn ? t('notebook.openingConnSql', { name: conn.name }) : t('notebook.openingDbSql'))
     } else {
-      setStatusMessage(conn ? `正在打开 ${conn.name} 并填入 SQL…` : '正在打开数据库并填入 SQL…')
+      setStatusMessage(conn ? t('notebook.openingConnFill', { name: conn.name }) : t('notebook.openingDbFill'))
     }
     openProductLink({
       action: 'database',
@@ -380,7 +381,7 @@ export function NotebookWorkbench() {
         await api.deleteNotebookGroup(deleteTarget.id)
         await refreshAll()
       }
-      setStatusMessage('已删除')
+      setStatusMessage(t('notebook.deleted'))
     } catch (e) {
       setStatusMessage((e as Error).message)
     } finally {
@@ -407,7 +408,7 @@ export function NotebookWorkbench() {
       <div className="conn-meta">
         <span className="conn-name">{n.title}</span>
         <span className="conn-host">
-          {LANGUAGES.find((l) => l.id === n.language)?.label}
+          {languages.find((l) => l.id === n.language)?.label}
           {n.sshHostId ? ' · SSH' : ''}
           {n.connectionId ? ' · DB' : ''}
         </span>
@@ -418,7 +419,7 @@ export function NotebookWorkbench() {
   if (loading) {
     return (
       <div className="product-workbench notebook-workbench">
-        <div className="pane-empty">正在加载笔记本…</div>
+        <div className="pane-empty">{t('notebook.loading')}</div>
       </div>
     )
   }
@@ -428,28 +429,28 @@ export function NotebookWorkbench() {
       <header className="product-toolbar">
         <div className="product-actions">
           <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" onClick={() => void createNote()}>
-            <IconPlus size={14} /> 新建笔记
+            <IconPlus size={14} /> {t('notebook.newNote')}
           </button>
           <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => setGroupModal(null)}>
-            新建分组
+            {t('notebook.newGroup')}
           </button>
           {activeNote && (
             <>
               <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={insertTemplate}>
-                插入模板
+                {t('notebook.insertTemplate')}
               </button>
               <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void duplicateNote()}>
-                复制
+                {t('notebook.duplicate')}
               </button>
               <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void exportNote()}>
-                导出
+                {t('notebook.export')}
               </button>
               <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={runInTerminal}>
-                <IconPlay size={14} /> 终端执行
+                <IconPlay size={14} /> {t('notebook.runTerminal')}
               </button>
               {activeNote.connectionId && (
                 <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => openDatabase(true)}>
-                  <IconDatabase size={14} /> 打开并执行
+                  <IconDatabase size={14} /> {t('notebook.openAndRun')}
                 </button>
               )}
               {activeNote.language === 'markdown' && (
@@ -458,7 +459,7 @@ export function NotebookWorkbench() {
                   className={`wn-btn wn-btn-sm wn-btn-tool ${showPreview ? 'active' : ''}`}
                   onClick={() => setShowPreview((v) => !v)}
                 >
-                  预览
+                  {t('notebook.preview')}
                 </button>
               )}
               <button
@@ -466,14 +467,14 @@ export function NotebookWorkbench() {
                 className="wn-btn wn-btn-sm wn-btn-tool wn-btn-danger"
                 onClick={() => setDeleteTarget({ kind: 'note', id: activeNote.id, title: activeNote.title })}
               >
-                删除
+                {t('common.delete')}
               </button>
             </>
           )}
         </div>
         <div className="product-toolbar-status">
           <IconNotebook size={14} />
-          <span>{summaries.length} 篇笔记</span>
+          <span>{t('notebook.noteCount', { count: summaries.length })}</span>
         </div>
       </header>
 
@@ -482,7 +483,7 @@ export function NotebookWorkbench() {
           <div className="notebook-search">
             <input
               type="search"
-              placeholder="搜索标题与正文…"
+              placeholder={t('notebook.searchPlaceholder')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -491,11 +492,11 @@ export function NotebookWorkbench() {
           {searching ? (
             <section className="sidebar-section">
               <div className="sidebar-header">
-                <span>搜索结果 ({summaries.length})</span>
+                <span>{t('notebook.searchResults', { count: summaries.length })}</span>
               </div>
               <div className="sidebar-body">
                 {summaries.length === 0 ? (
-                  <div className="empty-hint">无匹配笔记</div>
+                  <div className="empty-hint">{t('notebook.noMatch')}</div>
                 ) : (
                   <ul className="conn-list notebook-note-list">{summaries.map(renderNoteItem)}</ul>
                 )}
@@ -514,7 +515,7 @@ export function NotebookWorkbench() {
                     <button
                       type="button"
                       className="wn-btn wn-btn-icon wn-btn-sm"
-                      title="重命名"
+                      title={t('notebook.renameGroup')}
                       onClick={() => setGroupModal(g)}
                     >
                       ✎
@@ -522,7 +523,7 @@ export function NotebookWorkbench() {
                     <button
                       type="button"
                       className="wn-btn wn-btn-icon wn-btn-sm"
-                      title="在此分组新建"
+                      title={t('notebook.newInGroup')}
                       onClick={() => void createNote(g.id)}
                     >
                       <IconPlus size={14} />
@@ -530,7 +531,7 @@ export function NotebookWorkbench() {
                     <button
                       type="button"
                       className="wn-btn wn-btn-icon wn-btn-sm notebook-group-delete"
-                      title="删除分组"
+                      title={t('notebook.deleteGroup')}
                       onClick={() => setDeleteTarget({ kind: 'group', id: g.id, title: g.name })}
                     >
                       ×
@@ -539,7 +540,7 @@ export function NotebookWorkbench() {
                   {!collapsed && (
                     <div className="sidebar-body">
                       {notes.length === 0 ? (
-                        <div className="empty-hint">暂无笔记</div>
+                        <div className="empty-hint">{t('notebook.noNotes')}</div>
                       ) : (
                         <ul className="conn-list notebook-note-list">{notes.map(renderNoteItem)}</ul>
                       )}
@@ -579,13 +580,13 @@ export function NotebookWorkbench() {
                   className="notebook-title-input"
                   value={activeNote.title}
                   onChange={(e) => updateActiveNote({ title: e.target.value })}
-                  placeholder="笔记标题"
+                  placeholder={t('notebook.titlePlaceholder')}
                 />
                 <select
                   className="notebook-lang-select"
                   value={activeNote.groupId}
                   onChange={(e) => updateActiveNote({ groupId: e.target.value })}
-                  title="所属分组"
+                  title={t('notebook.groupTitle')}
                 >
                   {groups.map((g) => (
                     <option key={g.id} value={g.id}>{g.name}</option>
@@ -596,7 +597,7 @@ export function NotebookWorkbench() {
                   value={activeNote.language}
                   onChange={(e) => updateActiveNote({ language: e.target.value as NoteLanguage })}
                 >
-                  {LANGUAGES.map((l) => (
+                  {languages.map((l) => (
                     <option key={l.id} value={l.id}>{l.label}</option>
                   ))}
                 </select>
@@ -605,7 +606,7 @@ export function NotebookWorkbench() {
                   value={activeNote.sshHostId}
                   onChange={(e) => updateActiveNote({ sshHostId: e.target.value })}
                 >
-                  <option value="">SSH 主机</option>
+                  <option value="">{t('notebook.sshHost')}</option>
                   {hosts.map((h) => (
                     <option key={h.id} value={h.id}>{h.name}</option>
                   ))}
@@ -614,9 +615,9 @@ export function NotebookWorkbench() {
                   className="notebook-host-select"
                   value={activeNote.connectionId}
                   onChange={(e) => onConnectionLinkChange(e.target.value)}
-                  title="关联数据库连接后可一键打开"
+                  title={t('notebook.dbLinkHint')}
                 >
-                  <option value="">数据库连接</option>
+                  <option value="">{t('notebook.dbConnection')}</option>
                   {connections.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
@@ -642,7 +643,7 @@ export function NotebookWorkbench() {
               </div>
             </div>
           ) : (
-            <div className="pane-empty"><span>选择或新建一篇笔记</span></div>
+            <div className="pane-empty"><span>{t('notebook.emptyWorkspace')}</span></div>
           )}
         </main>
       </div>
@@ -656,13 +657,13 @@ export function NotebookWorkbench() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title={deleteTarget?.kind === 'group' ? '删除分组' : '删除笔记'}
+        title={deleteTarget?.kind === 'group' ? t('notebook.deleteGroupTitle') : t('notebook.deleteNoteTitle')}
         message={
           deleteTarget?.kind === 'group'
-            ? `确定删除分组「${deleteTarget.title}」及其下所有笔记？`
-            : `确定删除笔记「${deleteTarget?.title}」？`
+            ? t('notebook.deleteGroupMsg', { title: deleteTarget.title })
+            : t('notebook.deleteNoteMsg', { title: deleteTarget?.title ?? '' })
         }
-        confirmLabel="删除"
+        confirmLabel={t('common.delete')}
         danger
         onConfirm={() => void confirmDelete()}
         onCancel={() => setDeleteTarget(null)}

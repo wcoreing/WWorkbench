@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { SSHHost } from '../../api/types'
 import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
+import { translate, useI18n } from '../../i18n'
+import type { AppLocale } from '../../i18n/types'
 import { useSSHTrustConfirm } from './useSSHTrustConfirm'
 import '../../components/ui.css'
 
@@ -25,19 +27,21 @@ const emptyHost = (): SSHHost => ({
 })
 
 /** validateSSHHostForm 校验 SSH 主机表单。 */
-function validateSSHHostForm(form: SSHHost): string | null {
-  if (!form.name.trim()) return '请填写连接名称'
-  if (!form.host.trim()) return '请填写主机地址'
-  if (!form.user.trim()) return '请填写用户名'
-  if (!form.port || form.port <= 0) return '请填写有效端口'
+function validateSSHHostForm(form: SSHHost, locale: AppLocale): string | null {
+  const t = (key: string) => translate(locale, key)
+  if (!form.name.trim()) return t('sshHost.errName')
+  if (!form.host.trim()) return t('sshHost.errHost')
+  if (!form.user.trim()) return t('sshHost.errUser')
+  if (!form.port || form.port <= 0) return t('sshHost.errPort')
   if (!form.keyPath.trim() && !form.password && !form.id) {
-    return '请填写 SSH 密码或私钥路径'
+    return t('sshHost.errAuth')
   }
   return null
 }
 
 /** SSH 主机配置弹窗 */
 export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
+  const { t, locale } = useI18n()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [form, setForm] = useState<SSHHost>(emptyHost())
   const [error, setError] = useState('')
@@ -77,7 +81,7 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
   }
 
   const handleTest = async () => {
-    const invalid = validateSSHHostForm(form)
+    const invalid = validateSSHHostForm(form, locale)
     if (invalid) {
       setError(invalid)
       return
@@ -87,7 +91,7 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
     setSuccess('')
     try {
       await withSSHHostTrust(form.host, form.port, () => api.testSSHHost(form), confirmTrust)
-      setSuccess('SSH 连接成功')
+      setSuccess(t('sshHost.testOk'))
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -96,7 +100,7 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
   }
 
   const handleSave = async () => {
-    const invalid = validateSSHHostForm(form)
+    const invalid = validateSSHHostForm(form, locale)
     if (invalid) {
       setError(invalid)
       return
@@ -132,25 +136,25 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
         <header className="wn-modal-header">
           <div className="wn-modal-title-row">
             <h2 id="ssh-host-modal-title" className="wn-modal-title">
-              {isEdit ? '编辑 SSH 主机' : '新建 SSH 主机'}
+              {isEdit ? t('sshHost.editTitle') : t('sshHost.newTitle')}
             </h2>
             <span className="wn-modal-tag">SSH</span>
           </div>
-          <p className="wn-modal-desc">连接信息加密保存在本地</p>
+          <p className="wn-modal-desc">{t('sshHost.desc')}</p>
         </header>
 
         <div className="wn-modal-body">
           <div className="wn-form">
             <div className="wn-field">
               <label className="wn-label" htmlFor="ssh-host-name">
-                连接名称
+                {t('sshHost.name')}
               </label>
               <input
                 id="ssh-host-name"
                 className="wn-input"
                 value={form.name}
                 onChange={(e) => update({ name: e.target.value })}
-                placeholder="例如：生产跳板机"
+                placeholder={t('sshHost.namePlaceholder')}
                 autoFocus
               />
             </div>
@@ -158,19 +162,19 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
             <div className="wn-form-row">
               <div className="wn-field">
                 <label className="wn-label" htmlFor="ssh-host-addr">
-                  主机
+                  {t('sshHost.host')}
                 </label>
                 <input
                   id="ssh-host-addr"
                   className="wn-input"
                   value={form.host}
                   onChange={(e) => update({ host: e.target.value })}
-                  placeholder="公网 IP 或域名"
+                  placeholder={t('sshHost.hostPlaceholder')}
                 />
               </div>
               <div className="wn-field wn-field-narrow">
                 <label className="wn-label" htmlFor="ssh-host-port">
-                  端口
+                  {t('sshHost.port')}
                 </label>
                 <input
                   id="ssh-host-port"
@@ -186,7 +190,7 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
 
             <div className="wn-field">
               <label className="wn-label" htmlFor="ssh-host-user">
-                用户名
+                {t('sshHost.user')}
               </label>
               <input
                 id="ssh-host-user"
@@ -200,19 +204,19 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
               <div className="conn-ssh-fields">
                 <div className="wn-field">
                   <label className="wn-label" htmlFor="ssh-host-key">
-                    私钥路径
+                    {t('sshHost.keyPath')}
                   </label>
                   <input
                     id="ssh-host-key"
                     className="wn-input"
                     value={form.keyPath}
                     onChange={(e) => update({ keyPath: e.target.value })}
-                    placeholder="例如 ~/.ssh/id_rsa"
+                    placeholder={t('sshHost.keyPathPlaceholder')}
                   />
                 </div>
                 <div className="wn-field">
                   <label className="wn-label" htmlFor="ssh-host-pass">
-                    SSH 密码 / 私钥口令
+                    {t('sshHost.password')}
                   </label>
                   <input
                     id="ssh-host-pass"
@@ -220,10 +224,10 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
                     type="password"
                     value={form.password}
                     onChange={(e) => update({ password: e.target.value })}
-                    placeholder="无密钥时填 SSH 登录密码；加密私钥填口令"
+                    placeholder={t('sshHost.passwordPlaceholder')}
                   />
                 </div>
-                <p className="conn-ssh-hint">用于终端产品线远程登录，密码或私钥二选一即可</p>
+                <p className="conn-ssh-hint">{t('sshHost.hint')}</p>
               </div>
             </div>
           </div>
@@ -234,13 +238,13 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
 
         <footer className="wn-modal-footer">
           <button type="button" className="wn-btn wn-btn-tool" onClick={onClose} disabled={busy}>
-            取消
+            {t('common.cancel')}
           </button>
           <button type="button" className="wn-btn wn-btn-tool" onClick={handleTest} disabled={busy}>
-            {testing ? '测试中…' : '测试连接'}
+            {testing ? t('common.testing') : t('common.testConnection')}
           </button>
           <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" onClick={handleSave} disabled={busy}>
-            {saving ? '保存中…' : '保存'}
+            {saving ? t('common.saving') : t('common.save')}
           </button>
         </footer>
       </div>

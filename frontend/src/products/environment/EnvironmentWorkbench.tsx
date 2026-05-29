@@ -5,6 +5,7 @@ import { IconLayers, IconPlus } from '../../components/Icons'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { EnvPresetModal } from '../../features/environment/EnvPresetModal'
 import { EnvVersionModal } from '../../features/environment/EnvVersionModal'
+import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 
 const RUNTIME_META: Record<RuntimeLang, { label: string; color: string }> = {
@@ -18,6 +19,7 @@ const LANGS: RuntimeLang[] = ['node', 'go', 'php', 'java']
 
 /** EnvironmentWorkbench 本机开发环境管理。 */
 export function EnvironmentWorkbench() {
+  const { t } = useI18n()
   const { setStatusMessage } = useAppStore()
   const [runtimes, setRuntimes] = useState<RuntimeInfo[]>([])
   const [presets, setPresets] = useState<EnvPreset[]>([])
@@ -119,9 +121,9 @@ export function EnvironmentWorkbench() {
       const result = await api.applyEnvPreset(preset.id)
       await refreshAll()
       if (result.warnings?.length) {
-        setStatusMessage(`预设已应用，部分项未成功：${result.warnings.join('；')}`)
+        setStatusMessage(t('environment.presetPartial', { warnings: result.warnings.join('；') }))
       } else {
-        setStatusMessage(`已应用预设「${preset.name}」`)
+        setStatusMessage(t('environment.presetApplied', { name: preset.name }))
       }
     } catch (e) {
       setStatusMessage((e as Error).message)
@@ -136,7 +138,7 @@ export function EnvironmentWorkbench() {
       if (!path) return
       setScanPath(path)
       setProjects(await api.scanEnvProjects(path))
-      setStatusMessage(`已扫描 ${path}`)
+      setStatusMessage(t('environment.scanned', { path }))
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -154,7 +156,9 @@ export function EnvironmentWorkbench() {
         }
       }
       await refreshRuntimes()
-      setStatusMessage(warnings.length ? `部分对齐失败：${warnings.join('；')}` : `已对齐 ${proj.path}`)
+      setStatusMessage(
+        warnings.length ? t('environment.alignPartial', { warnings: warnings.join('；') }) : t('environment.alignDone', { path: proj.path }),
+      )
     } catch (e) {
       setStatusMessage((e as Error).message)
     } finally {
@@ -175,10 +179,10 @@ export function EnvironmentWorkbench() {
         <nav className="product-actions">
           <button type="button" className="wn-btn wn-btn-chrome" onClick={() => setPresetModal(null)}>
             <IconPlus size={13} />
-            <span>新建预设</span>
+            <span>{t('environment.newPreset')}</span>
           </button>
           <button type="button" className="wn-btn wn-btn-chrome" onClick={() => void pickScanDir()} disabled={loading}>
-            选择扫描目录
+            {t('environment.pickScanDir')}
           </button>
           <button
             type="button"
@@ -186,30 +190,32 @@ export function EnvironmentWorkbench() {
             onClick={() => scanPath && void api.scanEnvProjects(scanPath).then(setProjects)}
             disabled={loading || !scanPath}
           >
-            重新扫描
+            {t('environment.rescan')}
           </button>
         </nav>
         <span className="chrome-spacer" />
-        <span className="product-toolbar-status">{loading ? '加载中…' : scanPath || '未选择扫描目录'}</span>
+        <span className="product-toolbar-status">
+          {loading ? t('common.loading') : scanPath || t('environment.noScanDir')}
+        </span>
       </div>
 
       <div className="product-body">
         <aside className="app-sidebar toolchain-sidebar">
           <section className="sidebar-section">
             <div className="sidebar-header">
-              <span>版本预设</span>
+              <span>{t('environment.presets')}</span>
               <button
                 type="button"
                 className="wn-btn wn-btn-icon wn-btn-sm"
                 onClick={() => setPresetModal(null)}
-                title="新建"
+                title={t('common.new')}
               >
                 <IconPlus size={14} />
               </button>
             </div>
             <div className="sidebar-body">
               {presets.length === 0 ? (
-                <div className="empty-hint">创建预设以一键切换多语言版本</div>
+                <div className="empty-hint">{t('environment.emptyPresets')}</div>
               ) : (
                 <ul className="toolchain-preset-list">
                   {presets.map((p) => (
@@ -227,7 +233,7 @@ export function EnvironmentWorkbench() {
                         {Object.entries(p.runtimes)
                           .filter(([, v]) => v)
                           .map(([k, v]) => `${k} ${v}`)
-                          .join(' · ') || '未配置版本'}
+                          .join(' · ') || t('environment.noVersionConfigured')}
                       </span>
                     </li>
                   ))}
@@ -242,8 +248,8 @@ export function EnvironmentWorkbench() {
             <header className="toolchain-section-header">
               <IconLayers size={16} />
               <div>
-                <h2>当前生效</h2>
-                <p>通过 nvm / goenv / brew / sdkman 检测与切换本机版本</p>
+                <h2>{t('environment.activeSection')}</h2>
+                <p>{t('environment.activeDesc')}</p>
               </div>
             </header>
             <div className="toolchain-runtime-grid">
@@ -262,14 +268,14 @@ export function EnvironmentWorkbench() {
                         className="wn-btn wn-btn-sm wn-btn-ghost"
                         onClick={() => openSwitch(lang)}
                       >
-                        管理
+                        {t('environment.manage')}
                       </button>
                     </div>
-                    <div className="toolchain-runtime-version">{r?.available ? r.version : '未检测到'}</div>
+                    <div className="toolchain-runtime-version">{r?.available ? r.version : t('environment.notDetected')}</div>
                     <div className="toolchain-runtime-meta">
                       <span>via {r?.managerLabel || r?.manager || '—'}</span>
                       {r?.needsManager && r?.canInstallManager && !r?.canInstall && (
-                        <span className="toolchain-runtime-warn">需安装 {r.managerLabel}</span>
+                        <span className="toolchain-runtime-warn">{t('environment.needManager', { manager: r.managerLabel })}</span>
                       )}
                     </div>
                     <div className="toolchain-runtime-path" title={r?.binary}>
@@ -284,26 +290,26 @@ export function EnvironmentWorkbench() {
           {activePreset && (
             <section className="toolchain-section">
               <header className="toolchain-section-header compact">
-                <h3>预设「{activePreset.name}」</h3>
+                <h3>{t('environment.presetTitle', { name: activePreset.name })}</h3>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => setPresetModal(activePreset)}>
-                    编辑
+                    {t('common.edit')}
                   </button>
                   <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => setDeletePreset(activePreset)}>
-                    删除
+                    {t('common.delete')}
                   </button>
                   <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" onClick={() => void applyPreset(activePreset)}>
-                    一键应用
+                    {t('environment.applyPreset')}
                   </button>
                 </div>
               </header>
               <table className="toolchain-table">
                 <thead>
                   <tr>
-                    <th>语言</th>
-                    <th>预设版本</th>
-                    <th>当前版本</th>
-                    <th>状态</th>
+                    <th>{t('environment.langCol')}</th>
+                    <th>{t('environment.presetVerCol')}</th>
+                    <th>{t('environment.currentVerCol')}</th>
+                    <th>{t('environment.statusCol')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -321,11 +327,11 @@ export function EnvironmentWorkbench() {
                         <td className="toolchain-mono">{current ?? '—'}</td>
                         <td>
                           {!presetVer ? (
-                            <span className="toolchain-status toolchain-status-skip">未配置</span>
+                            <span className="toolchain-status toolchain-status-skip">{t('environment.notConfigured')}</span>
                           ) : matched ? (
-                            <span className="toolchain-status toolchain-status-ok">已对齐</span>
+                            <span className="toolchain-status toolchain-status-ok">{t('environment.aligned')}</span>
                           ) : (
-                            <span className="toolchain-status toolchain-status-warn">需切换</span>
+                            <span className="toolchain-status toolchain-status-warn">{t('environment.needSwitch')}</span>
                           )}
                         </td>
                       </tr>
@@ -338,11 +344,11 @@ export function EnvironmentWorkbench() {
 
           <section className="toolchain-section">
             <header className="toolchain-section-header compact">
-              <h3>项目检测</h3>
-              <span className="toolchain-hint">读取 .nvmrc、go.mod、.php-version、.java-version</span>
+              <h3>{t('environment.projectScan')}</h3>
+              <span className="toolchain-hint">{t('environment.projectHint')}</span>
             </header>
             {projects.length === 0 ? (
-              <div className="pane-empty">选择目录后扫描子项目</div>
+              <div className="pane-empty">{t('environment.emptyProjects')}</div>
             ) : (
               <div className="toolchain-project-list">
                 {projects.map((proj) => (
@@ -356,13 +362,13 @@ export function EnvironmentWorkbench() {
                       ))}
                     </div>
                     <div className="toolchain-project-suggest">
-                      建议：
+                      {t('environment.suggest')}
                       {Object.entries(proj.suggested)
                         .map(([k, v]) => `${k} ${v}`)
                         .join(' · ') || '—'}
                     </div>
                     <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" onClick={() => void alignProject(proj)}>
-                      对齐版本
+                      {t('environment.alignProject')}
                     </button>
                   </article>
                 ))}
@@ -393,9 +399,9 @@ export function EnvironmentWorkbench() {
 
       <ConfirmDialog
         open={deletePreset != null}
-        title="删除环境预设"
-        message={deletePreset ? `确定删除「${deletePreset.name}」？` : undefined}
-        confirmLabel="删除"
+        title={t('environment.deletePresetTitle')}
+        message={deletePreset ? t('environment.deletePresetMsg', { name: deletePreset.name }) : undefined}
+        confirmLabel={t('common.delete')}
         danger
         onConfirm={() => {
           const p = deletePreset

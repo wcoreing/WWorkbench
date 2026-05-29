@@ -6,6 +6,8 @@ import { en } from './locales/en'
 import { zh } from './locales/zh'
 import type { AppLocale, MessageTree } from './types'
 
+export type { AppLocale } from './types'
+
 const catalogs: Record<AppLocale, MessageTree> = { zh, en }
 
 /** READY_MESSAGES 就绪状态文案（切换语言时同步状态栏）。 */

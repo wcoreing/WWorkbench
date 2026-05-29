@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> 当前版本：**v0.22.2**（界面右下角可查看）
+> 当前版本：**v0.22.3**（界面右下角可查看）
 
 ---
 
