@@ -1,107 +1,109 @@
 # WWorkbench
 
-**WWorkbench** — 面向开发者的本地一体化工作台：数据库、终端、文件、容器、运行时环境与笔记本，集成在一个桌面应用中。
+**WWorkbench** — an all-in-one local developer workbench: database, terminal, files, containers, runtime environments, and notebooks in a single desktop app.
+
+**English** | [简体中文](README.zh-CN.md)
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![Wails](https://img.shields.io/badge/Wails-v2-DF4C32)](https://wails.io/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> 当前版本：**v0.22.1**（界面右下角可查看）
+> Current version: **v0.22.2** (shown in the bottom-right corner of the app)
 
 ---
 
-## 功能概览
+## Features
 
-| 模块 | 说明 |
-|------|------|
-| **数据库** | MySQL 连接管理、SQL 编辑与执行、对象树、表数据编辑、DDL / 表设计 |
-| **终端** | 本机 Shell、SSH 交互终端、主机信任与分屏 |
-| **文件 (SFTP)** | 远程目录浏览、上传下载、书签、冲突处理与传输队列 |
-| **容器 (Docker)** | 本地 / SSH 远程 Docker、镜像与容器管理、日志与环境变量、从镜像运行、数据库一键连接 |
-| **环境 (Env)** | Node / Go / PHP / Java 本机版本安装、切换与项目预设 |
-| **笔记本** | 运维速记、Markdown 编辑与预览 |
+| Module | Description |
+|--------|-------------|
+| **Database** | MySQL connection management, SQL editor & execution, object tree, table data editing, DDL / table design |
+| **Terminal** | Local shell, interactive SSH terminal, host trust, split panes |
+| **Files (SFTP)** | Remote directory browsing, upload/download, bookmarks, conflict handling, transfer queue |
+| **Containers (Docker)** | Local / remote SSH Docker, image & container management, logs & env vars, run from image, one-click DB connect |
+| **Environment (Env)** | Install, switch, and preset local Node / Go / PHP / Java versions |
+| **Notebook** | Ops notes, Markdown editing & preview |
 
-其他特性：
+Additional capabilities:
 
-- 深色 / 浅色主题，偏好持久化到本地 SQLite
-- 界面语言：**简体中文 / English**（顶栏地球图标切换）
-- 多产品线工作区状态自动恢复
-
----
-
-## 技术栈
-
-| 层级 | 技术 |
-|------|------|
-| 桌面壳 | [Wails v2](https://wails.io/) |
-| 后端 | Go 1.25+ |
-| 前端 | React 18、TypeScript、Vite、Zustand |
-| 编辑器 | Monaco Editor、xterm.js |
-| 存储 | SQLite（`modernc.org/sqlite`） |
-| 集成 | Docker Engine API、SSH/SFTP、MySQL |
+- Dark / light theme with preferences persisted to local SQLite
+- UI language: **English / 简体中文** (switch via the globe icon in the top bar)
+- Multi-product workspace state auto-restore
 
 ---
 
-## 环境要求
+## Tech Stack
 
-开发或自行编译前，请准备：
+| Layer | Technology |
+|-------|------------|
+| Desktop shell | [Wails v2](https://wails.io/) |
+| Backend | Go 1.25+ |
+| Frontend | React 18, TypeScript, Vite, Zustand |
+| Editors | Monaco Editor, xterm.js |
+| Storage | SQLite (`modernc.org/sqlite`) |
+| Integrations | Docker Engine API, SSH/SFTP, MySQL |
 
-| 依赖 | 说明 |
-|------|------|
+---
+
+## Prerequisites
+
+Before developing or building from source:
+
+| Dependency | Notes |
+|------------|-------|
 | **Go** | ≥ 1.25 |
-| **Node.js** | ≥ 18（推荐 LTS） |
-| **Wails CLI** | v2.12+，安装见 [Wails 文档](https://wails.io/docs/gettingstarted/installation) |
-| **平台工具链** | macOS：Xcode CLT；Windows：WebView2 + 构建工具 |
+| **Node.js** | ≥ 18 (LTS recommended) |
+| **Wails CLI** | v2.12+, see [Wails docs](https://wails.io/docs/gettingstarted/installation) |
+| **Platform toolchain** | macOS: Xcode CLT; Windows: WebView2 + build tools |
 
-可选（按功能使用）：
+Optional (feature-dependent):
 
-- **Docker Desktop** 或本机 `docker.sock` — 容器模块
-- **Homebrew / nvm / goenv 等** — 环境模块版本管理
+- **Docker Desktop** or local `docker.sock` — container module
+- **Homebrew / nvm / goenv, etc.** — environment module version management
 
 ---
 
-## 快速开始
+## Quick Start
 
-### 1. 克隆仓库
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/wcoreing/WWorkbench.git
 cd WWorkbench
 ```
 
-### 2. 安装依赖
+### 2. Install dependencies
 
 ```bash
-# 前端依赖
+# Frontend dependencies
 cd frontend && npm install && cd ..
 
-# Go 依赖（在项目根目录）
+# Go dependencies (from project root)
 go mod download
 ```
 
-### 3. 开发模式（热更新）
+### 3. Development mode (hot reload)
 
 ```bash
 wails dev
 ```
 
-浏览器调试（可选）：开发时另开 `http://localhost:34115`。
+Optional browser debugging: open `http://localhost:34115` while dev server is running.
 
-### 4. 生产构建
+### 4. Production build
 
 ```bash
 wails build
 ```
 
-产物默认在 `build/bin/`：
+Artifacts are written to `build/bin/`:
 
-- macOS：`WNavicat.app` 或 `WNavicat`
-- Windows：`WNavicat.exe`
+- macOS: `WNavicat.app` or `WNavicat`
+- Windows: `WNavicat.exe`
 
-### 5. 生成 Wails 前端绑定
+### 5. Regenerate Wails frontend bindings
 
-修改 Go 侧 `app` 导出方法后执行：
+After changing exported methods in the Go `app` layer:
 
 ```bash
 wails generate module
@@ -109,127 +111,127 @@ wails generate module
 
 ---
 
-## 项目结构
+## Project Structure
 
 ```
-WNavicat/
-├── main.go                 # 应用入口
-├── version.go              # 版本号（发布前递增）
+WWorkbench/
+├── main.go                 # Application entry
+├── version.go              # Version number (bump before release)
 ├── internal/
-│   ├── app/                # Wails API 层
-│   ├── adapter/            # 数据库驱动适配（MySQL）
-│   ├── conn/               # 连接与会话
-│   ├── docker/             # Docker 管理
-│   ├── environment/        # 本机运行时版本
-│   ├── notebook/           # 笔记本
+│   ├── app/                # Wails API layer
+│   ├── adapter/            # Database driver adapters (MySQL)
+│   ├── conn/               # Connections & sessions
+│   ├── docker/             # Docker management
+│   ├── environment/        # Local runtime versions
+│   ├── notebook/           # Notebook
 │   ├── sftp/               # SFTP
-│   ├── store/              # SQLite 与配置
-│   └── terminal/           # 终端与 SSH
+│   ├── store/              # SQLite & configuration
+│   └── terminal/           # Terminal & SSH
 ├── frontend/
 │   ├── src/
-│   │   ├── products/       # 各产品线工作区
-│   │   ├── features/       # 功能组件
-│   │   ├── i18n/           # 中英文文案
-│   │   └── shell/          # 应用壳与导航
-│   └── wailsjs/            # Wails 自动生成绑定
-└── build/                  # 平台打包资源
+│   │   ├── products/       # Product workbenches
+│   │   ├── features/       # Feature components
+│   │   ├── i18n/           # zh / en strings
+│   │   └── shell/          # App shell & navigation
+│   └── wailsjs/            # Wails auto-generated bindings
+└── build/                  # Platform packaging assets
 ```
 
 ---
 
-## 数据与配置
+## Data & Configuration
 
-应用数据保存在用户目录，**不会**写入仓库：
+Application data is stored under the user home directory and is **never** committed to the repo:
 
-| 路径 | 内容 |
-|------|------|
-| `~/.wnavicat/` | SQLite 数据库、SSH known_hosts、工作区快照等 |
+| Path | Contents |
+|------|----------|
+| `~/.wnavicat/` | SQLite database, SSH known_hosts, workspace snapshots, etc. |
 
-连接密码等敏感信息仅存于本地数据库，请勿将 `~/.wnavicat` 打包进仓库或 Issue。
-
----
-
-## 国际化 (i18n)
-
-- 文案目录：`frontend/src/i18n/locales/zh.ts`、`en.ts`
-- 组件内使用：`const { t } = useI18n()` → `t('common.save')`
-- 语言偏好键：`locale`（`zh` | `en`），存入 SQLite `app_settings`
-
-尚未接入 i18n 的模块会暂时显示中文，可按 Docker 模块方式逐步迁移。
+Passwords and other secrets are stored only in the local database. Do not attach `~/.wnavicat` to issues or commits.
 
 ---
 
-## 发布到 GitHub（开源清单）
+## Internationalization (i18n)
 
-### 首次推送
+- String files: `frontend/src/i18n/locales/zh.ts`, `en.ts`
+- In components: `const { t } = useI18n()` → `t('common.save')`
+- Preference key: `locale` (`zh` | `en`), stored in SQLite `app_settings`
+
+Modules not yet migrated to i18n may still show Chinese; follow the Docker module as a reference when adding translations.
+
+---
+
+## Publishing to GitHub
+
+### First push
 
 ```bash
-cd WNavicat
+cd WWorkbench
 
-# 初始化 Git（若尚未初始化）
+# Initialize Git (if not already done)
 git init
 
-# 确认 .gitignore 已生效（勿提交 node_modules、build/bin、本地数据库等）
+# Ensure .gitignore is effective (no node_modules, build/bin, local DB, etc.)
 git status
 
 git add .
 git commit -m "chore: initial open source release"
 
-# 在 GitHub 创建空仓库后（不要勾选 README，避免冲突）
+# After creating an empty repo on GitHub (do not add a README to avoid conflicts)
 git branch -M main
 git remote add origin https://github.com/wcoreing/WWorkbench.git
 git push -u origin main
 ```
 
-### 版本发布建议
+### Release checklist
 
-1. 在 `version.go` 中更新 `AppVersion`
-2. 提交并打标签：
+1. Update `AppVersion` in `version.go`
+2. Commit and tag:
 
 ```bash
-git commit -am "chore: release v0.22.1"
-git tag v0.22.1
+git commit -am "chore: release v0.22.2"
+git tag v0.22.2
 git push origin main --tags
 ```
 
-3. 在 GitHub **Releases** 页基于 tag 创建 Release，上传 `wails build` 产物（`.app` / `.exe`）
+3. Create a GitHub **Release** from the tag and upload `wails build` artifacts (`.app` / `.exe`)
 
-### 推送前自检
+### Pre-push checklist
 
-- [ ] 仓库内无 `.env`、API Key、密码、私钥
-- [ ] 无 `frontend/node_modules`、`build/bin` 等大目录
-- [ ] 已添加 `LICENSE`（本项目为 MIT）
-- [ ] `README.md` 中仓库地址已替换为你的 GitHub 用户名
-- [ ] 可选：添加项目截图到 `docs/images/` 并在 README 引用
+- [ ] No `.env`, API keys, passwords, or private keys in the repo
+- [ ] No `frontend/node_modules`, `build/bin`, or other large directories
+- [ ] `LICENSE` is present (MIT for this project)
+- [ ] Repository URL in `README.md` points to your GitHub org/user
+- [ ] Optional: add screenshots under `docs/images/` and link them in the README
 
-### 协作分支（可选）
+### Branching (optional)
 
 ```bash
-git checkout -b feature/xxx    # 功能开发
-git checkout -b fix/xxx        # 缺陷修复
-# 完成后提 Pull Request 到 main
+git checkout -b feature/xxx    # feature work
+git checkout -b fix/xxx        # bug fixes
+# Open a Pull Request to main when done
 ```
 
 ---
 
-## 参与贡献
+## Contributing
 
-欢迎 Issue 与 Pull Request。提交前请：
+Issues and Pull Requests are welcome. Before submitting:
 
-1. 确保 `go build .` 与 `cd frontend && npm run build` 通过
-2. 遵循现有目录与命名习惯（Go 模型 `*DO` 后缀等）
-3. 用户可见文案请同步更新 `zh.ts` / `en.ts`
-4. 功能变更请递增 `version.go` 中的版本号
-
----
-
-## 许可证
-
-本项目采用 [MIT License](LICENSE) 开源。
+1. Ensure `go build .` and `cd frontend && npm run build` pass
+2. Follow existing directory and naming conventions (Go models use `*DO` suffix, etc.)
+3. Update both `zh.ts` and `en.ts` for user-visible strings
+4. Bump the version in `version.go` for feature changes
 
 ---
 
-## 致谢
+## License
 
-- [Wails](https://wails.io/) — Go + Web 桌面应用框架
-- [Navicat](https://www.navicat.com/) — 产品交互灵感来源（本项目为独立开源实现，与 Navicat 官方无关）
+This project is open source under the [MIT License](LICENSE).
+
+---
+
+## Acknowledgements
+
+- [Wails](https://wails.io/) — Go + web desktop app framework
+- [Navicat](https://www.navicat.com/) — UI/UX inspiration (this is an independent open-source project, not affiliated with Navicat)
