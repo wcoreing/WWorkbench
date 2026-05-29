@@ -1,4 +1,17 @@
-import type { ApiResult, Connection, SSHHost, TableDataPage, TableDataQuery, TableRow, TerminalSessionInfo } from './types'
+import type {
+  ApiResult,
+  Connection,
+  FileEntry,
+  LocalDirResult,
+  SSHHost,
+  SftpBookmark,
+  TransferConflict,
+  SFTPSessionInfo,
+  TableDataPage,
+  TableDataQuery,
+  TableRow,
+  TerminalSessionInfo,
+} from './types'
 import { ApiCallError } from './errors'
 import { model } from '../../wailsjs/go/models'
 
@@ -33,6 +46,27 @@ import {
   CloseTerminal,
   WriteTerminal,
   ResizeTerminal,
+  OpenSFTPSession,
+  CloseSFTPSession,
+  GetSFTPHome,
+  ListSFTPDir,
+  ListLocalDir,
+  DownloadSFTPFile,
+  UploadSFTPFile,
+  DeleteSFTPPath,
+  TransferSFTPUpload,
+  TransferSFTPDownload,
+  MkdirSFTPRemote,
+  RenameSFTPRemote,
+  MkdirLocalPath,
+  RenameLocalPath,
+  DeleteLocalPath,
+  ListSFTPBookmarks,
+  SaveSFTPBookmark,
+  DeleteSFTPBookmark,
+  CheckSFTPUploadConflict,
+  CheckSFTPDownloadConflict,
+  CancelSFTPTask,
 } from '../../wailsjs/go/app/Service'
 
 /** 兼容 Wails 返回的 plain object / 类实例字段名差异 */
@@ -146,6 +180,18 @@ function normalizeTableDataPage(raw: TableDataPage | null | undefined): TableDat
   }
 }
 
+function asFileEntries(data: FileEntry[] | null | undefined): FileEntry[] {
+  return Array.isArray(data) ? data : []
+}
+
+/** normalizeLocalDir 规范化本地目录列表。 */
+function normalizeLocalDir(raw: LocalDirResult | null | undefined): LocalDirResult {
+  return {
+    path: raw?.path ?? '',
+    entries: asFileEntries(raw?.entries),
+  }
+}
+
 export const api = {
   getVersion: async () => (await unwrap(GetVersion())).version,
   listConnections: async () => asArray(await unwrap(ListConnections())),
@@ -226,4 +272,47 @@ export const api = {
   writeTerminal: (sessionId: string, data: string) => unwrap(WriteTerminal(sessionId, data)),
   resizeTerminal: (sessionId: string, cols: number, rows: number) =>
     unwrap(ResizeTerminal(sessionId, cols, rows)),
+  openSFTPSession: (hostId: string) => unwrap(OpenSFTPSession(hostId)) as Promise<SFTPSessionInfo>,
+  closeSFTPSession: (sessionId: string) => unwrap(CloseSFTPSession(sessionId)),
+  getSFTPHome: (sessionId: string) => unwrap(GetSFTPHome(sessionId)),
+  listSFTPDir: async (sessionId: string, path: string) =>
+    asFileEntries(await unwrap(ListSFTPDir(sessionId, path))),
+  listLocalDir: async (path: string) => normalizeLocalDir(await unwrap(ListLocalDir(path))),
+  downloadSFTPFile: (sessionId: string, remotePath: string) =>
+    unwrap(DownloadSFTPFile(sessionId, remotePath)),
+  uploadSFTPFile: (sessionId: string, remoteDir: string) =>
+    unwrap(UploadSFTPFile(sessionId, remoteDir)),
+  deleteSFTPPath: (sessionId: string, remotePath: string) =>
+    unwrap(DeleteSFTPPath(sessionId, remotePath)),
+  transferSFTPUpload: (sessionId: string, taskId: string, localPath: string, remoteDir: string) =>
+    unwrap(TransferSFTPUpload(sessionId, taskId, localPath, remoteDir)),
+  transferSFTPDownload: (sessionId: string, taskId: string, remotePath: string, localDir: string) =>
+    unwrap(TransferSFTPDownload(sessionId, taskId, remotePath, localDir)),
+  mkdirSFTPRemote: (sessionId: string, dir: string) => unwrap(MkdirSFTPRemote(sessionId, dir)),
+  renameSFTPRemote: (sessionId: string, oldPath: string, newPath: string) =>
+    unwrap(RenameSFTPRemote(sessionId, oldPath, newPath)),
+  mkdirLocalPath: (dir: string) => unwrap(MkdirLocalPath(dir)),
+  renameLocalPath: (oldPath: string, newPath: string) => unwrap(RenameLocalPath(oldPath, newPath)),
+  deleteLocalPath: (target: string) => unwrap(DeleteLocalPath(target)),
+  listSFTPBookmarks: async (side: string, hostId: string) =>
+    asArray(await unwrap(ListSFTPBookmarks(side, hostId))) as SftpBookmark[],
+  saveSFTPBookmark: (b: SftpBookmark) =>
+    unwrap(
+      SaveSFTPBookmark(
+        model.SftpBookmarkDO.createFrom({
+          id: b.id,
+          side: b.side,
+          hostId: b.hostId,
+          name: b.name,
+          path: b.path,
+          createdAt: b.createdAt,
+        })
+      )
+    ) as Promise<SftpBookmark>,
+  deleteSFTPBookmark: (id: string) => unwrap(DeleteSFTPBookmark(id)),
+  checkSFTPUploadConflict: (sessionId: string, localPath: string, remoteDir: string) =>
+    unwrap(CheckSFTPUploadConflict(sessionId, localPath, remoteDir)) as Promise<TransferConflict>,
+  checkSFTPDownloadConflict: (sessionId: string, remotePath: string, localDir: string) =>
+    unwrap(CheckSFTPDownloadConflict(sessionId, remotePath, localDir)) as Promise<TransferConflict>,
+  cancelSFTPTask: (taskId: string) => unwrap(CancelSFTPTask(taskId)),
 }

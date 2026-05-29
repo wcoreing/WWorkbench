@@ -220,3 +220,65 @@ type TerminalSessionInfoDO struct {
 	Title     string `json:"title"`
 	Kind      string `json:"kind"` // local | ssh
 }
+
+// SFTPSessionInfoDO SFTP 会话信息。
+type SFTPSessionInfoDO struct {
+	SessionID string `json:"sessionId"`
+	HostID    string `json:"hostId"`
+	Title     string `json:"title"`
+}
+
+// FileEntryDO 文件项（本地/远程通用）。
+type FileEntryDO struct {
+	Name    string `json:"name"`
+	Path    string `json:"path"`
+	IsDir   bool   `json:"isDir"`
+	Size    int64  `json:"size"`
+	ModTime int64  `json:"modTime"`
+}
+
+// TransferResultDO 文件传输结果。
+type TransferResultDO struct {
+	Path string `json:"path"`
+}
+
+// LocalDirResultDO 本地目录列表结果。
+type LocalDirResultDO struct {
+	Path    string        `json:"path"`
+	Entries []FileEntryDO `json:"entries"`
+}
+
+// SftpProgressDO SFTP 传输进度。
+type SftpProgressDO struct {
+	TaskID    string `json:"taskId"`
+	SessionID string `json:"sessionId"`
+	Kind      string `json:"kind"`
+	Name      string `json:"name"`
+	Done      int64  `json:"done"`
+	Total     int64  `json:"total"`
+	State     string `json:"state"`
+}
+
+// SftpBookmarkDO SFTP 路径书签。
+type SftpBookmarkDO struct {
+	ID        string `json:"id"`
+	Side      string `json:"side"`   // local | remote
+	HostID    string `json:"hostId"` // 远程书签关联 SSH 主机，本地为空
+	Name      string `json:"name"`
+	Path      string `json:"path"`
+	CreatedAt int64  `json:"createdAt"`
+}
+
+// TransferConflictDO 传输目标冲突信息。
+type TransferConflictDO struct {
+	HasConflict   bool   `json:"hasConflict"`
+	Name          string `json:"name"`
+	SourcePath    string `json:"sourcePath"`
+	SourceSize    int64  `json:"sourceSize"`
+	SourceModTime int64  `json:"sourceModTime"`
+	SourceIsDir   bool   `json:"sourceIsDir"`
+	TargetPath    string `json:"targetPath"`
+	TargetSize    int64  `json:"targetSize"`
+	TargetModTime int64  `json:"targetModTime"`
+	TargetIsDir   bool   `json:"targetIsDir"`
+}

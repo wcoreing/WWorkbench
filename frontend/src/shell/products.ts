@@ -30,7 +30,7 @@ export const PRODUCTS: ProductDef[] = [
     label: '文件',
     shortLabel: 'SFTP',
     description: 'SFTP 文件浏览、上传与下载',
-    available: false,
+    available: true,
   },
   {
     id: 'docker',

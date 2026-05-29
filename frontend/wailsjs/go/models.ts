@@ -102,6 +102,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WNavicat_internal_model_LocalDirResultDO_ {
+	    ok: boolean;
+	    data: model.LocalDirResultDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_LocalDirResultDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.LocalDirResultDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WNavicat_internal_model_QueryPageDO_ {
 	    ok: boolean;
 	    data: model.QueryPageDO;
@@ -115,6 +149,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.QueryPageDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WNavicat_internal_model_SFTPSessionInfoDO_ {
+	    ok: boolean;
+	    data: model.SFTPSessionInfoDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_SFTPSessionInfoDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.SFTPSessionInfoDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -204,6 +272,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WNavicat_internal_model_SftpBookmarkDO_ {
+	    ok: boolean;
+	    data: model.SftpBookmarkDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_SftpBookmarkDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.SftpBookmarkDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WNavicat_internal_model_TableDataPageDO_ {
 	    ok: boolean;
 	    data: model.TableDataPageDO;
@@ -251,6 +353,74 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.TerminalSessionInfoDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WNavicat_internal_model_TransferConflictDO_ {
+	    ok: boolean;
+	    data: model.TransferConflictDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_TransferConflictDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.TransferConflictDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WNavicat_internal_model_TransferResultDO_ {
+	    ok: boolean;
+	    data: model.TransferResultDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_TransferResultDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.TransferResultDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -374,6 +544,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult___WNavicat_internal_model_FileEntryDO_ {
+	    ok: boolean;
+	    data: model.FileEntryDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_FileEntryDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.FileEntryDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult___WNavicat_internal_model_ObjectTreeNodeDO_ {
 	    ok: boolean;
 	    data: model.ObjectTreeNodeDO[];
@@ -476,6 +680,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult___WNavicat_internal_model_SftpBookmarkDO_ {
+	    ok: boolean;
+	    data: model.SftpBookmarkDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_SftpBookmarkDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.SftpBookmarkDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_bool_ {
 	    ok: boolean;
 	    data: boolean;
@@ -517,6 +755,40 @@ export namespace app {
 	
 	    static createFrom(source: any = {}) {
 	        return new ApiResult_interface____(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = source["data"];
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_string_ {
+	    ok: boolean;
+	    data: string;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_string_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -711,6 +983,58 @@ export namespace model {
 	        this.value = source["value"];
 	        this.isNull = source["isNull"];
 	    }
+	}
+	export class FileEntryDO {
+	    name: string;
+	    path: string;
+	    isDir: boolean;
+	    size: number;
+	    modTime: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FileEntryDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.isDir = source["isDir"];
+	        this.size = source["size"];
+	        this.modTime = source["modTime"];
+	    }
+	}
+	export class LocalDirResultDO {
+	    path: string;
+	    entries: FileEntryDO[];
+	
+	    static createFrom(source: any = {}) {
+	        return new LocalDirResultDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.entries = this.convertValues(source["entries"], FileEntryDO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class ObjectTreeNodeDO {
 	    id: string;
@@ -918,6 +1242,22 @@ export namespace model {
 		}
 	}
 	
+	export class SFTPSessionInfoDO {
+	    sessionId: string;
+	    hostId: string;
+	    title: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SFTPSessionInfoDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sessionId = source["sessionId"];
+	        this.hostId = source["hostId"];
+	        this.title = source["title"];
+	    }
+	}
 	export class SSHHostDO {
 	    id: string;
 	    name: string;
@@ -960,6 +1300,28 @@ export namespace model {
 	        this.sessionId = source["sessionId"];
 	        this.connectionId = source["connectionId"];
 	        this.database = source["database"];
+	    }
+	}
+	export class SftpBookmarkDO {
+	    id: string;
+	    side: string;
+	    hostId: string;
+	    name: string;
+	    path: string;
+	    createdAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SftpBookmarkDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.side = source["side"];
+	        this.hostId = source["hostId"];
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.createdAt = source["createdAt"];
 	    }
 	}
 	export class TableRowDO {
@@ -1125,6 +1487,48 @@ export namespace model {
 	        this.hostId = source["hostId"];
 	        this.title = source["title"];
 	        this.kind = source["kind"];
+	    }
+	}
+	export class TransferConflictDO {
+	    hasConflict: boolean;
+	    name: string;
+	    sourcePath: string;
+	    sourceSize: number;
+	    sourceModTime: number;
+	    sourceIsDir: boolean;
+	    targetPath: string;
+	    targetSize: number;
+	    targetModTime: number;
+	    targetIsDir: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new TransferConflictDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hasConflict = source["hasConflict"];
+	        this.name = source["name"];
+	        this.sourcePath = source["sourcePath"];
+	        this.sourceSize = source["sourceSize"];
+	        this.sourceModTime = source["sourceModTime"];
+	        this.sourceIsDir = source["sourceIsDir"];
+	        this.targetPath = source["targetPath"];
+	        this.targetSize = source["targetSize"];
+	        this.targetModTime = source["targetModTime"];
+	        this.targetIsDir = source["targetIsDir"];
+	    }
+	}
+	export class TransferResultDO {
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TransferResultDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
 	    }
 	}
 	export class VersionDO {

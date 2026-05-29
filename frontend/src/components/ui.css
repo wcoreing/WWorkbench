@@ -405,6 +405,12 @@
   background: var(--color-danger-muted);
 }
 
+.wn-context-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--color-border-subtle);
+}
+
 /* 标签页 */
 .wn-tabs {
   display: flex;

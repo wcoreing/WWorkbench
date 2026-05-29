@@ -6,6 +6,22 @@ export function ApplyTableMutations(arg1, arg2, arg3, arg4) {
   return window['go']['app']['Service']['ApplyTableMutations'](arg1, arg2, arg3, arg4);
 }
 
+export function CancelSFTPTask(arg1) {
+  return window['go']['app']['Service']['CancelSFTPTask'](arg1);
+}
+
+export function CheckSFTPDownloadConflict(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['CheckSFTPDownloadConflict'](arg1, arg2, arg3);
+}
+
+export function CheckSFTPUploadConflict(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['CheckSFTPUploadConflict'](arg1, arg2, arg3);
+}
+
+export function CloseSFTPSession(arg1) {
+  return window['go']['app']['Service']['CloseSFTPSession'](arg1);
+}
+
 export function CloseSession(arg1) {
   return window['go']['app']['Service']['CloseSession'](arg1);
 }
@@ -18,8 +34,24 @@ export function DeleteConnection(arg1) {
   return window['go']['app']['Service']['DeleteConnection'](arg1);
 }
 
+export function DeleteLocalPath(arg1) {
+  return window['go']['app']['Service']['DeleteLocalPath'](arg1);
+}
+
+export function DeleteSFTPBookmark(arg1) {
+  return window['go']['app']['Service']['DeleteSFTPBookmark'](arg1);
+}
+
+export function DeleteSFTPPath(arg1, arg2) {
+  return window['go']['app']['Service']['DeleteSFTPPath'](arg1, arg2);
+}
+
 export function DeleteSSHHost(arg1) {
   return window['go']['app']['Service']['DeleteSSHHost'](arg1);
+}
+
+export function DownloadSFTPFile(arg1, arg2) {
+  return window['go']['app']['Service']['DownloadSFTPFile'](arg1, arg2);
 }
 
 export function ExecuteSQL(arg1, arg2, arg3) {
@@ -36,6 +68,10 @@ export function GetConnection(arg1) {
 
 export function GetObjectTree(arg1) {
   return window['go']['app']['Service']['GetObjectTree'](arg1);
+}
+
+export function GetSFTPHome(arg1) {
+  return window['go']['app']['Service']['GetSFTPHome'](arg1);
 }
 
 export function GetSSHHost(arg1) {
@@ -62,16 +98,40 @@ export function ListConnections() {
   return window['go']['app']['Service']['ListConnections']();
 }
 
+export function ListLocalDir(arg1) {
+  return window['go']['app']['Service']['ListLocalDir'](arg1);
+}
+
 export function ListQueryHistory(arg1, arg2) {
   return window['go']['app']['Service']['ListQueryHistory'](arg1, arg2);
+}
+
+export function ListSFTPBookmarks(arg1, arg2) {
+  return window['go']['app']['Service']['ListSFTPBookmarks'](arg1, arg2);
+}
+
+export function ListSFTPDir(arg1, arg2) {
+  return window['go']['app']['Service']['ListSFTPDir'](arg1, arg2);
 }
 
 export function ListSSHHosts() {
   return window['go']['app']['Service']['ListSSHHosts']();
 }
 
+export function MkdirLocalPath(arg1) {
+  return window['go']['app']['Service']['MkdirLocalPath'](arg1);
+}
+
+export function MkdirSFTPRemote(arg1, arg2) {
+  return window['go']['app']['Service']['MkdirSFTPRemote'](arg1, arg2);
+}
+
 export function OpenLocalTerminal(arg1, arg2) {
   return window['go']['app']['Service']['OpenLocalTerminal'](arg1, arg2);
+}
+
+export function OpenSFTPSession(arg1) {
+  return window['go']['app']['Service']['OpenSFTPSession'](arg1);
 }
 
 export function OpenSession(arg1, arg2) {
@@ -86,12 +146,24 @@ export function QuerySQLPage(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['app']['Service']['QuerySQLPage'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function RenameLocalPath(arg1, arg2) {
+  return window['go']['app']['Service']['RenameLocalPath'](arg1, arg2);
+}
+
+export function RenameSFTPRemote(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['RenameSFTPRemote'](arg1, arg2, arg3);
+}
+
 export function ResizeTerminal(arg1, arg2, arg3) {
   return window['go']['app']['Service']['ResizeTerminal'](arg1, arg2, arg3);
 }
 
 export function SaveConnection(arg1) {
   return window['go']['app']['Service']['SaveConnection'](arg1);
+}
+
+export function SaveSFTPBookmark(arg1) {
+  return window['go']['app']['Service']['SaveSFTPBookmark'](arg1);
 }
 
 export function SaveSSHHost(arg1) {
@@ -110,8 +182,20 @@ export function TestSSHHost(arg1) {
   return window['go']['app']['Service']['TestSSHHost'](arg1);
 }
 
+export function TransferSFTPDownload(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['Service']['TransferSFTPDownload'](arg1, arg2, arg3, arg4);
+}
+
+export function TransferSFTPUpload(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['Service']['TransferSFTPUpload'](arg1, arg2, arg3, arg4);
+}
+
 export function TrustSSHHost(arg1, arg2) {
   return window['go']['app']['Service']['TrustSSHHost'](arg1, arg2);
+}
+
+export function UploadSFTPFile(arg1, arg2) {
+  return window['go']['app']['Service']['UploadSFTPFile'](arg1, arg2);
 }
 
 export function WriteTerminal(arg1, arg2) {

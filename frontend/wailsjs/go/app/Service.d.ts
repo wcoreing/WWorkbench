@@ -5,13 +5,29 @@ import {app} from '../models';
 
 export function ApplyTableMutations(arg1:string,arg2:string,arg3:string,arg4:model.RowMutationBatchDO):Promise<app.ApiResult_bool_>;
 
+export function CancelSFTPTask(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function CheckSFTPDownloadConflict(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_WNavicat_internal_model_TransferConflictDO_>;
+
+export function CheckSFTPUploadConflict(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_WNavicat_internal_model_TransferConflictDO_>;
+
+export function CloseSFTPSession(arg1:string):Promise<app.ApiResult_bool_>;
+
 export function CloseSession(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function CloseTerminal(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteConnection(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function DeleteLocalPath(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function DeleteSFTPBookmark(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function DeleteSFTPPath(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
 export function DeleteSSHHost(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function DownloadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_TransferResultDO_>;
 
 export function ExecuteSQL(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_interface____>;
 
@@ -20,6 +36,8 @@ export function ExportCSV(arg1:app.ExportCSVRequest):Promise<app.ApiResult_WNavi
 export function GetConnection(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_ConnectionDO_>;
 
 export function GetObjectTree(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_ObjectTreeNodeDO_>;
+
+export function GetSFTPHome(arg1:string):Promise<app.ApiResult_string_>;
 
 export function GetSSHHost(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_SSHHostDO_>;
 
@@ -33,11 +51,23 @@ export function ListColumns(arg1:string,arg2:string,arg3:string):Promise<app.Api
 
 export function ListConnections():Promise<app.ApiResult___WNavicat_internal_model_ConnectionDO_>;
 
+export function ListLocalDir(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_LocalDirResultDO_>;
+
 export function ListQueryHistory(arg1:string,arg2:number):Promise<app.ApiResult___WNavicat_internal_model_QueryHistoryDO_>;
+
+export function ListSFTPBookmarks(arg1:string,arg2:string):Promise<app.ApiResult___WNavicat_internal_model_SftpBookmarkDO_>;
+
+export function ListSFTPDir(arg1:string,arg2:string):Promise<app.ApiResult___WNavicat_internal_model_FileEntryDO_>;
 
 export function ListSSHHosts():Promise<app.ApiResult___WNavicat_internal_model_SSHHostDO_>;
 
+export function MkdirLocalPath(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function MkdirSFTPRemote(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
 export function OpenLocalTerminal(arg1:number,arg2:number):Promise<app.ApiResult_WNavicat_internal_model_TerminalSessionInfoDO_>;
+
+export function OpenSFTPSession(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_SFTPSessionInfoDO_>;
 
 export function OpenSession(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_SessionInfoDO_>;
 
@@ -45,9 +75,15 @@ export function OpenTerminal(arg1:string,arg2:number,arg3:number):Promise<app.Ap
 
 export function QuerySQLPage(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<app.ApiResult_WNavicat_internal_model_QueryPageDO_>;
 
+export function RenameLocalPath(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
+export function RenameSFTPRemote(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
+
 export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<app.ApiResult_bool_>;
 
 export function SaveConnection(arg1:model.ConnectionDO):Promise<app.ApiResult_WNavicat_internal_model_ConnectionDO_>;
+
+export function SaveSFTPBookmark(arg1:model.SftpBookmarkDO):Promise<app.ApiResult_WNavicat_internal_model_SftpBookmarkDO_>;
 
 export function SaveSSHHost(arg1:model.SSHHostDO):Promise<app.ApiResult_WNavicat_internal_model_SSHHostDO_>;
 
@@ -57,6 +93,12 @@ export function TestConnection(arg1:model.ConnectionDO):Promise<app.ApiResult_bo
 
 export function TestSSHHost(arg1:model.SSHHostDO):Promise<app.ApiResult_bool_>;
 
+export function TransferSFTPDownload(arg1:string,arg2:string,arg3:string,arg4:string):Promise<app.ApiResult_WNavicat_internal_model_TransferResultDO_>;
+
+export function TransferSFTPUpload(arg1:string,arg2:string,arg3:string,arg4:string):Promise<app.ApiResult_WNavicat_internal_model_TransferResultDO_>;
+
 export function TrustSSHHost(arg1:string,arg2:number):Promise<app.ApiResult_bool_>;
+
+export function UploadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_TransferResultDO_>;
 
 export function WriteTerminal(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;

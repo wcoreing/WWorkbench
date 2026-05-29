@@ -164,3 +164,44 @@ export interface TerminalSessionInfo {
   title: string
   kind: 'local' | 'ssh'
 }
+
+export interface SFTPSessionInfo {
+  sessionId: string
+  hostId: string
+  title: string
+}
+
+export interface FileEntry {
+  name: string
+  path: string
+  isDir: boolean
+  size: number
+  modTime: number
+}
+
+export interface LocalDirResult {
+  path: string
+  entries: FileEntry[]
+}
+
+export interface SftpBookmark {
+  id: string
+  side: 'local' | 'remote'
+  hostId: string
+  name: string
+  path: string
+  createdAt: number
+}
+
+export interface TransferConflict {
+  hasConflict: boolean
+  name: string
+  sourcePath: string
+  sourceSize: number
+  sourceModTime: number
+  sourceIsDir: boolean
+  targetPath: string
+  targetSize: number
+  targetModTime: number
+  targetIsDir: boolean
+}

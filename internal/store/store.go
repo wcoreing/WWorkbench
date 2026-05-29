@@ -85,6 +85,14 @@ CREATE TABLE IF NOT EXISTS ssh_hosts (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS sftp_bookmarks (
+  id TEXT PRIMARY KEY,
+  side TEXT NOT NULL,
+  host_id TEXT,
+  name TEXT NOT NULL,
+  path TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
 `)
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移数据库失败", err)

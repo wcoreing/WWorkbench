@@ -13,6 +13,8 @@ import (
 	"WNavicat/internal/model"
 	"WNavicat/internal/query"
 	"WNavicat/internal/session"
+	sftpsvc "WNavicat/internal/sftp"
+	"WNavicat/internal/store"
 	"WNavicat/internal/terminal"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -22,9 +24,11 @@ import (
 type Service struct {
 	ctx       context.Context
 	version   string
+	store     *store.Store
 	conns     *conn.Service
 	sshHosts  *terminal.HostService
 	terminals *terminal.Manager
+	sftp      *sftpsvc.Manager
 	sessions  *session.Manager
 	meta      *meta.Service
 	queries   *query.Service
@@ -34,9 +38,11 @@ type Service struct {
 // NewService 创建应用服务。
 func NewService(
 	version string,
+	st *store.Store,
 	conns *conn.Service,
 	sshHosts *terminal.HostService,
 	terminals *terminal.Manager,
+	sftpMgr *sftpsvc.Manager,
 	sessions *session.Manager,
 	meta *meta.Service,
 	queries *query.Service,
@@ -44,9 +50,11 @@ func NewService(
 ) *Service {
 	return &Service{
 		version:   version,
+		store:     st,
 		conns:     conns,
 		sshHosts:  sshHosts,
 		terminals: terminals,
+		sftp:      sftpMgr,
 		sessions:  sessions,
 		meta:      meta,
 		queries:   queries,
@@ -58,11 +66,13 @@ func NewService(
 func (s *Service) Startup(ctx context.Context) {
 	s.ctx = ctx
 	s.wireTerminalEvents()
+	s.wireSftpEvents()
 }
 
 // Shutdown Wails 退出回调，释放终端等资源。
 func (s *Service) Shutdown(ctx context.Context) {
 	s.terminals.CloseAll()
+	s.sftp.CloseAll()
 }
 
 // GetVersion 返回应用版本。
