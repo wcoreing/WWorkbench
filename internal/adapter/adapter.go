@@ -20,6 +20,10 @@ type DatabaseAdapter interface {
 	ListDatabases(ctx context.Context, db *sql.DB) ([]string, error)
 	// ListTables 列出表。
 	ListTables(ctx context.Context, db *sql.DB, database string) ([]model.TableMetaDO, error)
+	// ListViews 列出视图。
+	ListViews(ctx context.Context, db *sql.DB, database string) ([]model.TableMetaDO, error)
+	// ListIndexes 列出表索引。
+	ListIndexes(ctx context.Context, db *sql.DB, database, table string) ([]model.IndexMetaDO, error)
 	// ListColumns 列出列。
 	ListColumns(ctx context.Context, db *sql.DB, database, table string) ([]model.ColumnMetaDO, error)
 	// GetTableDDL 获取建表语句。
@@ -32,4 +36,6 @@ type DatabaseAdapter interface {
 	QueryTablePage(ctx context.Context, db *sql.DB, database, table string, q model.TableDataQueryDO) (*model.TableDataPageDO, error)
 	// ApplyMutations 应用行变更。
 	ApplyMutations(ctx context.Context, db *sql.DB, database, table string, batch model.RowMutationBatchDO) error
+	// ExportTableInsertSQL 导出表 INSERT 语句。
+	ExportTableInsertSQL(ctx context.Context, db *sql.DB, database, table string, maxRows int) (string, error)
 }

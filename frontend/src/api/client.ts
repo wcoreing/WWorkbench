@@ -28,6 +28,7 @@ import {
   GetObjectTree,
   ListColumns,
   GetTableDDL,
+  ListIndexes,
   ExecuteSQL,
   QuerySQLPage,
   GetTableDataPage,
@@ -67,6 +68,28 @@ import {
   CheckSFTPUploadConflict,
   CheckSFTPDownloadConflict,
   CancelSFTPTask,
+  ExportConnectionsToFile,
+  ImportConnectionsFromFile,
+  ExecuteSQLFile,
+  ExportTableInsertSQL,
+  EnsureSSHHostFromConnection,
+  ListDockerContexts,
+  SaveDockerContext,
+  DeleteDockerContext,
+  TestDockerContext,
+  ListContainers,
+  ListImages,
+  StartContainer,
+  StopContainer,
+  RestartContainer,
+  RemoveContainer,
+  GetContainerLogs,
+  GetContainerShell,
+  ResolveContainerDatabaseLink,
+  ListAppSettings,
+  SetAppSetting,
+  LoadWorkspace,
+  SaveWorkspace,
 } from '../../wailsjs/go/app/Service'
 
 /** 兼容 Wails 返回的 plain object / 类实例字段名差异 */
@@ -140,6 +163,7 @@ export function toConnectionDO(c: Connection): model.ConnectionDO {
   return model.ConnectionDO.createFrom({
     id: c.id,
     name: c.name,
+    group: c.group || '',
     dbType: c.dbType || 'mysql',
     host: c.host,
     port: c.port,
@@ -148,6 +172,7 @@ export function toConnectionDO(c: Connection): model.ConnectionDO {
     database: c.database,
     charset: c.charset || 'utf8mb4',
     sshEnabled: c.sshEnabled,
+    sshHostId: c.sshHostId || '',
     sshHost: c.sshHost,
     sshPort: c.sshPort,
     sshUser: c.sshUser,
@@ -205,6 +230,8 @@ export const api = {
   getObjectTree: async (sessionId: string) => asArray(await unwrap(GetObjectTree(sessionId))),
   listColumns: (sessionId: string, database: string, table: string) =>
     unwrap(ListColumns(sessionId, database, table)),
+  listIndexes: async (sessionId: string, database: string, table: string) =>
+    asArray(await unwrap(ListIndexes(sessionId, database, table))),
   getTableDDL: async (sessionId: string, database: string, table: string) =>
     (await unwrap(GetTableDDL(sessionId, database, table))).content,
   executeSQL: (sessionId: string, database: string, sql: string) =>
@@ -315,4 +342,32 @@ export const api = {
   checkSFTPDownloadConflict: (sessionId: string, remotePath: string, localDir: string) =>
     unwrap(CheckSFTPDownloadConflict(sessionId, remotePath, localDir)) as Promise<TransferConflict>,
   cancelSFTPTask: (taskId: string) => unwrap(CancelSFTPTask(taskId)),
+  exportConnectionsToFile: async (includeSecrets: boolean) =>
+    (await unwrap(ExportConnectionsToFile(includeSecrets))).path,
+  importConnectionsFromFile: () => unwrap(ImportConnectionsFromFile()),
+  executeSQLFile: (sessionId: string, database: string) =>
+    unwrap(ExecuteSQLFile(sessionId, database)),
+  exportTableInsertSQL: async (sessionId: string, database: string, table: string, maxRows: number) =>
+    (await unwrap(ExportTableInsertSQL(sessionId, database, table, maxRows))).path,
+  ensureSSHHostFromConnection: async (connectionId: string) => unwrap(EnsureSSHHostFromConnection(connectionId)),
+  listDockerContexts: async () => asArray(await unwrap(ListDockerContexts())),
+  saveDockerContext: (ctx: model.DockerContextDO) => unwrap(SaveDockerContext(ctx)),
+  deleteDockerContext: (id: string) => unwrap(DeleteDockerContext(id)),
+  testDockerContext: (contextId: string) => unwrap(TestDockerContext(contextId)),
+  listContainers: async (contextId: string) => asArray(await unwrap(ListContainers(contextId))),
+  listImages: async (contextId: string) => asArray(await unwrap(ListImages(contextId))),
+  startContainer: (contextId: string, containerId: string) => unwrap(StartContainer(contextId, containerId)),
+  stopContainer: (contextId: string, containerId: string) => unwrap(StopContainer(contextId, containerId)),
+  restartContainer: (contextId: string, containerId: string) => unwrap(RestartContainer(contextId, containerId)),
+  removeContainer: (contextId: string, containerId: string) => unwrap(RemoveContainer(contextId, containerId)),
+  getContainerLogs: async (contextId: string, containerId: string, tail: number) =>
+    (await unwrap(GetContainerLogs(contextId, containerId, tail))).content,
+  getContainerShell: async (contextId: string, containerId: string) =>
+    unwrap(GetContainerShell(contextId, containerId)),
+  resolveContainerDatabaseLink: async (contextId: string, containerId: string) =>
+    unwrap(ResolveContainerDatabaseLink(contextId, containerId)),
+  listAppSettings: async () => (await unwrap(ListAppSettings())) ?? {},
+  setAppSetting: (key: string, value: string) => unwrap(SetAppSetting(key, value)),
+  loadWorkspace: async (product: string) => (await unwrap(LoadWorkspace(product))) ?? '',
+  saveWorkspace: (product: string, content: string) => unwrap(SaveWorkspace(product, content)),
 }

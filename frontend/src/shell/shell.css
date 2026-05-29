@@ -1194,6 +1194,149 @@
   min-width: 0;
 }
 
+.docker-table-containers {
+  table-layout: fixed;
+}
+
+.docker-table-containers .docker-col-name {
+  width: 14%;
+}
+
+.docker-table-containers .docker-col-image {
+  width: 22%;
+}
+
+.docker-table-containers .docker-col-state {
+  width: 72px;
+}
+
+.docker-table-containers .docker-col-ports {
+  width: auto;
+}
+
+.docker-table-containers .docker-col-uptime {
+  width: 56px;
+}
+
+.docker-table-containers .docker-col-actions {
+  width: 188px;
+}
+
+.docker-th-actions {
+  text-align: right;
+}
+
+.docker-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.docker-image-cell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.docker-image-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.docker-copy-btn {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  opacity: 0;
+}
+
+.docker-row:hover .docker-copy-btn,
+.docker-copy-btn:focus-visible {
+  opacity: 1;
+}
+
+.docker-copy-btn:hover {
+  color: var(--accent);
+  background: var(--accent-muted);
+}
+
+.docker-col-actions {
+  width: 188px;
+  min-width: 188px;
+  max-width: 188px;
+  white-space: nowrap;
+  text-align: right;
+  padding-left: 4px;
+  padding-right: 8px;
+}
+
+.docker-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  flex-wrap: nowrap;
+}
+
+.docker-act-btn {
+  padding: 2px 5px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 11px;
+  line-height: 1.4;
+  cursor: default;
+}
+
+.docker-act-btn:hover:not(:disabled) {
+  background: var(--accent-muted);
+}
+
+.docker-act-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.docker-act-btn.danger {
+  color: var(--color-danger, #e5534b);
+}
+
+.docker-act-btn.danger:hover:not(:disabled) {
+  background: rgba(229, 83, 75, 0.12);
+}
+
+.docker-act-btn.accent {
+  color: var(--color-success, #3fb950);
+}
+
+.docker-act-btn.accent:hover:not(:disabled) {
+  background: var(--color-success-muted);
+}
+
+.docker-chrome-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  border-left: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+}
+
 .wn-tab-docker .tab-dot {
   background: #2496ed;
 }
@@ -1204,6 +1347,28 @@
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+}
+
+.docker-list-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.docker-list-panel-containers {
+  flex: 1;
+  min-height: 120px;
+}
+
+.docker-list-bar {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.docker-list-bar .pane-toolbar-start {
+  gap: 8px;
 }
 
 .docker-table-wrap {
@@ -1287,6 +1452,10 @@
 }
 
 .docker-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 6px 12px;
   font-size: 10px;
   font-weight: 500;
@@ -1305,4 +1474,46 @@
   line-height: 1.5;
   color: #a8a8b0;
   white-space: pre-wrap;
+}
+
+.docker-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.docker-empty-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  max-width: 420px;
+  line-height: 1.5;
+}
+
+.docker-table-full {
+  flex: 1;
+  min-height: 0;
+}
+
+.docker-context-del {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.docker-context-item {
+  position: relative;
+}
+
+.docker-context-item .docker-context-item-del {
+  flex-shrink: 0;
+  opacity: 0;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+
+.docker-context-item:hover .docker-context-item-del,
+.docker-context-item.active .docker-context-item-del {
+  opacity: 1;
 }

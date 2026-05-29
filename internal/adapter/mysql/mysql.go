@@ -80,11 +80,21 @@ func (a *Adapter) ListDatabases(ctx context.Context, db *sql.DB) ([]string, erro
 
 // ListTables 列出表。
 func (a *Adapter) ListTables(ctx context.Context, db *sql.DB, database string) ([]model.TableMetaDO, error) {
+	return listSchemaObjects(ctx, db, database, "BASE TABLE")
+}
+
+// ListViews 列出视图。
+func (a *Adapter) ListViews(ctx context.Context, db *sql.DB, database string) ([]model.TableMetaDO, error) {
+	return listSchemaObjects(ctx, db, database, "VIEW")
+}
+
+// listSchemaObjects 按类型列出库内对象。
+func listSchemaObjects(ctx context.Context, db *sql.DB, database, tableType string) ([]model.TableMetaDO, error) {
 	q := `SELECT TABLE_NAME, IFNULL(TABLE_COMMENT,''), IFNULL(ENGINE,''), IFNULL(TABLE_ROWS,0)
-		FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME`
-	rows, err := db.QueryContext(ctx, q, database)
+		FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_TYPE = ? ORDER BY TABLE_NAME`
+	rows, err := db.QueryContext(ctx, q, database, tableType)
 	if err != nil {
-		return nil, errno.Wrap(errno.CodeSQLFailed, "列出表失败", err)
+		return nil, errno.Wrap(errno.CodeSQLFailed, "列出对象失败", err)
 	}
 	defer rows.Close()
 	var list []model.TableMetaDO
@@ -94,6 +104,30 @@ func (a *Adapter) ListTables(ctx context.Context, db *sql.DB, database string) (
 			return nil, err
 		}
 		list = append(list, t)
+	}
+	return list, nil
+}
+
+// ListIndexes 列出表索引。
+func (a *Adapter) ListIndexes(ctx context.Context, db *sql.DB, database, table string) ([]model.IndexMetaDO, error) {
+	q := `SELECT INDEX_NAME, COLUMN_NAME, NON_UNIQUE, SEQ_IN_INDEX, INDEX_TYPE
+		FROM information_schema.STATISTICS
+		WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+		ORDER BY INDEX_NAME, SEQ_IN_INDEX`
+	rows, err := db.QueryContext(ctx, q, database, table)
+	if err != nil {
+		return nil, errno.Wrap(errno.CodeSQLFailed, "列出索引失败", err)
+	}
+	defer rows.Close()
+	var list []model.IndexMetaDO
+	for rows.Next() {
+		var idx model.IndexMetaDO
+		var nonUnique int
+		if err := rows.Scan(&idx.Name, &idx.Column, &nonUnique, &idx.SeqInIndex, &idx.IndexType); err != nil {
+			return nil, err
+		}
+		idx.NonUnique = nonUnique != 0
+		list = append(list, idx)
 	}
 	return list, nil
 }
@@ -148,6 +182,7 @@ func (a *Adapter) QueryPage(ctx context.Context, db *sql.DB, database, sqlText s
 	if pageSize < 1 || pageSize > 500 {
 		pageSize = 200
 	}
+	sqlText = trimSQLSemicolon(sqlText)
 	start := time.Now()
 	conn, err := db.Conn(ctx)
 	if err != nil {
@@ -159,24 +194,50 @@ func (a *Adapter) QueryPage(ctx context.Context, db *sql.DB, database, sqlText s
 			return nil, errno.Wrap(errno.CodeSQLFailed, "切换数据库失败", err)
 		}
 	}
+	if canWrapAsSubquery(sqlText) {
+		return queryPageWrapped(ctx, conn, sqlText, page, pageSize, start)
+	}
+	return queryPageFullScan(ctx, conn, sqlText, page, pageSize, start)
+}
+
+// queryPageWrapped 子查询包装实现服务端分页。
+func queryPageWrapped(ctx context.Context, conn *sql.Conn, sqlText string, page, pageSize int, start time.Time) (*model.QueryPageDO, error) {
+	var total int64
+	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM (%s) AS _wn_cnt", sqlText)
+	if err := conn.QueryRowContext(ctx, countSQL).Scan(&total); err != nil {
+		return nil, errno.Wrap(errno.CodeSQLFailed, "统计行数失败", err)
+	}
+	offset := (page - 1) * pageSize
+	pageSQL := fmt.Sprintf("SELECT * FROM (%s) AS _wn_q LIMIT %d OFFSET %d", sqlText, pageSize, offset)
+	rows, err := conn.QueryContext(ctx, pageSQL)
+	if err != nil {
+		return nil, errno.Wrap(errno.CodeSQLFailed, "查询失败", err)
+	}
+	defer rows.Close()
+	pageRows, colMeta, err := readQueryRows(rows)
+	if err != nil {
+		return nil, err
+	}
+	return &model.QueryPageDO{
+		Columns:   colMeta,
+		Rows:      pageRows,
+		Page:      page,
+		PageSize:  pageSize,
+		Total:     total,
+		ElapsedMs: time.Since(start).Milliseconds(),
+	}, nil
+}
+
+// queryPageFullScan 无法子查询包装时全量读取再分页（适用于 SHOW/DESC 等小结果集）。
+func queryPageFullScan(ctx context.Context, conn *sql.Conn, sqlText string, page, pageSize int, start time.Time) (*model.QueryPageDO, error) {
 	rows, err := conn.QueryContext(ctx, sqlText)
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeSQLFailed, "查询失败", err)
 	}
 	defer rows.Close()
-	cols, err := rows.Columns()
+	all, colMeta, err := readQueryRows(rows)
 	if err != nil {
 		return nil, err
-	}
-	colTypes, _ := rows.ColumnTypes()
-	colMeta := buildColumnMeta(cols, colTypes)
-	var all []model.QueryRowDO
-	for rows.Next() {
-		row, err := scanRow(rows, len(cols))
-		if err != nil {
-			return nil, err
-		}
-		all = append(all, model.QueryRowDO{Cells: row})
 	}
 	total := int64(len(all))
 	offset := (page - 1) * pageSize
@@ -199,6 +260,44 @@ func (a *Adapter) QueryPage(ctx context.Context, db *sql.DB, database, sqlText s
 		Total:     total,
 		ElapsedMs: time.Since(start).Milliseconds(),
 	}, nil
+}
+
+// readQueryRows 读取查询结果行与列元数据。
+func readQueryRows(rows *sql.Rows) ([]model.QueryRowDO, []model.ColumnMetaDO, error) {
+	cols, err := rows.Columns()
+	if err != nil {
+		return nil, nil, err
+	}
+	colTypes, _ := rows.ColumnTypes()
+	colMeta := buildColumnMeta(cols, colTypes)
+	var all []model.QueryRowDO
+	for rows.Next() {
+		row, err := scanRow(rows, len(cols))
+		if err != nil {
+			return nil, nil, err
+		}
+		all = append(all, model.QueryRowDO{Cells: row})
+	}
+	if all == nil {
+		all = []model.QueryRowDO{}
+	}
+	return all, colMeta, nil
+}
+
+// trimSQLSemicolon 去掉末尾分号。
+func trimSQLSemicolon(sql string) string {
+	return strings.TrimSuffix(strings.TrimSpace(sql), ";")
+}
+
+// canWrapAsSubquery 判断 SQL 是否可包装为子查询分页。
+func canWrapAsSubquery(sql string) bool {
+	upper := strings.ToUpper(strings.TrimSpace(sql))
+	for _, p := range []string{"SHOW ", "DESC ", "DESCRIBE ", "EXPLAIN "} {
+		if strings.HasPrefix(upper, p) {
+			return false
+		}
+	}
+	return true
 }
 
 // QueryTablePage 分页查表（支持筛选与排序）。
@@ -318,7 +417,7 @@ func (a *Adapter) ApplyMutations(ctx context.Context, db *sql.DB, database, tabl
 
 func fetchColumns(ctx context.Context, db *sql.DB, database, table string) ([]model.ColumnMetaDO, error) {
 	q := `SELECT COLUMN_NAME, DATA_TYPE, COLUMN_TYPE, IS_NULLABLE, COLUMN_KEY,
-		COLUMN_DEFAULT, IFNULL(COLUMN_COMMENT,'')
+		IFNULL(EXTRA,''), COLUMN_DEFAULT, IFNULL(COLUMN_COMMENT,'')
 		FROM information_schema.COLUMNS
 		WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION`
 	rows, err := db.QueryContext(ctx, q, database, table)
@@ -331,7 +430,7 @@ func fetchColumns(ctx context.Context, db *sql.DB, database, table string) ([]mo
 		var c model.ColumnMetaDO
 		var nullable, colKey string
 		var def sql.NullString
-		if err := rows.Scan(&c.Name, &c.DataType, &c.ColumnType, &nullable, &colKey, &def, &c.Comment); err != nil {
+		if err := rows.Scan(&c.Name, &c.DataType, &c.ColumnType, &nullable, &colKey, &c.Extra, &def, &c.Comment); err != nil {
 			return nil, err
 		}
 		c.Nullable = nullable == "YES"
@@ -548,6 +647,49 @@ func splitAddr(addr string, defaultPort int) (string, int) {
 		return host, port
 	}
 	return addr, defaultPort
+}
+
+// ExportTableInsertSQL 导出表数据为 INSERT 语句。
+func (a *Adapter) ExportTableInsertSQL(ctx context.Context, db *sql.DB, database, table string, maxRows int) (string, error) {
+	page, err := a.QueryTablePage(ctx, db, database, table, model.TableDataQueryDO{
+		Page: 1, PageSize: maxRows,
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(page.Rows) == 0 {
+		return fmt.Sprintf("-- %s.%s 无数据\n", database, table), nil
+	}
+	colNames := make([]string, len(page.Columns))
+	for i, c := range page.Columns {
+		colNames[i] = c.Name
+	}
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("-- %s.%s INSERT (%d rows)\n", database, table, len(page.Rows)))
+	tbl := fmt.Sprintf("`%s`.`%s`", escapeIdent(database), escapeIdent(table))
+	for _, row := range page.Rows {
+		var vals []string
+		for _, col := range colNames {
+			cell := row.Values[col]
+			if cell.IsNull || cell.Value == nil {
+				vals = append(vals, "NULL")
+			} else {
+				vals = append(vals, quoteSQLString(*cell.Value))
+			}
+		}
+		cols := make([]string, len(colNames))
+		for i, n := range colNames {
+			cols[i] = "`" + escapeIdent(n) + "`"
+		}
+		b.WriteString(fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s);\n",
+			tbl, strings.Join(cols, ","), strings.Join(vals, ",")))
+	}
+	return b.String(), nil
+}
+
+// quoteSQLString 转义 SQL 字符串字面量。
+func quoteSQLString(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }
 
 // Register 注册到全局（由 main 调用）。

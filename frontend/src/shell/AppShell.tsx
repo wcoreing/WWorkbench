@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { useAppStore } from '../stores/appStore'
+import { bootstrapAppState } from '../stores/bootstrapApp'
 import { DockerWorkbench } from '../products/docker/DockerWorkbench'
 import { DatabaseWorkbench } from '../products/database/DatabaseWorkbench'
 import { EnvironmentWorkbench } from '../products/environment/EnvironmentWorkbench'
@@ -21,13 +22,31 @@ const PRODUCT_VIEWS = {
 
 /** 多产品线工作台壳 */
 export function AppShell() {
-  const { activeProduct, theme, setVersion } = useAppStore()
+  const { activeProduct, preferencesReady } = useAppStore()
+  const [booting, setBooting] = useState(!preferencesReady)
   const ProductView = PRODUCT_VIEWS[activeProduct]
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme)
-    api.getVersion().then(setVersion).catch(console.error)
-  }, [theme, setVersion])
+    if (preferencesReady) {
+      setBooting(false)
+      return
+    }
+    void bootstrapAppState()
+      .catch(console.error)
+      .finally(() => setBooting(false))
+  }, [preferencesReady])
+
+  useEffect(() => {
+    api.getVersion().then(useAppStore.getState().setVersion).catch(console.error)
+  }, [])
+
+  if (booting) {
+    return (
+      <div className="workbench-shell">
+        <div className="pane-empty">正在恢复工作区…</div>
+      </div>
+    )
+  }
 
   return (
     <div className="workbench-shell">

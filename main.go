@@ -9,6 +9,7 @@ import (
 	"WNavicat/internal/app"
 	"WNavicat/internal/conn"
 	"WNavicat/internal/data"
+	dockersvc "WNavicat/internal/docker"
 	"WNavicat/internal/meta"
 	"WNavicat/internal/query"
 	"WNavicat/internal/session"
@@ -52,8 +53,9 @@ func main() {
 	metaSvc := meta.NewService(sessMgr)
 	querySvc := query.NewService(sessMgr, st)
 	dataSvc := data.NewService(sessMgr)
+	dockerMgr := dockersvc.NewManager(st)
 
-	api := app.NewService(AppVersion, st, connSvc, sshHostSvc, termMgr, sftpMgr, sessMgr, metaSvc, querySvc, dataSvc)
+	api := app.NewService(AppVersion, st, connSvc, sshHostSvc, termMgr, sftpMgr, dockerMgr, sessMgr, metaSvc, querySvc, dataSvc)
 
 	err = wails.Run(&options.App{
 		Title:     "WNavicat",

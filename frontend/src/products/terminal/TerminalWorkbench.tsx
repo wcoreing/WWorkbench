@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SSHHost } from '../../api/types'
 import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import { IconLaptop, IconPlus, IconServer, IconTerminal } from '../../components/Icons'
 import { useAppStore } from '../../stores/appStore'
+import {
+  loadTerminalWorkspace,
+  scheduleTerminalWorkspacePersist,
+  toTerminalWorkspaceSnapshot,
+} from '../../stores/terminalWorkspacePersist'
+import { restoreTerminalTab } from '../../features/terminal/restoreTerminalWorkspace'
 import { SSHHostModal } from '../../features/terminal/SSHHostModal'
 import { useSSHTrustConfirm } from '../../features/terminal/useSSHTrustConfirm'
 import { TerminalSplitView } from '../../features/terminal/TerminalSplitView'
@@ -32,7 +38,7 @@ const MAX_PANES = 4
 
 /** 终端产品线工作区 */
 export function TerminalWorkbench() {
-  const { setStatusMessage, terminalOpacity, setTerminalOpacity } = useAppStore()
+  const { setStatusMessage, terminalOpacity, setTerminalOpacity, productLink, setProductLink, setActiveProduct } = useAppStore()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [hosts, setHosts] = useState<SSHHost[]>([])
   const [tabs, setTabs] = useState<TerminalTab[]>([])
@@ -43,6 +49,7 @@ export function TerminalWorkbench() {
   const [openingLocal, setOpeningLocal] = useState(false)
   const [splitting, setSplitting] = useState(false)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; host: SSHHost } | null>(null)
+  const workspaceRestored = useRef(false)
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
   const activePaneCount = activeTab ? countLeaves(activeTab.layout) : 0
@@ -64,8 +71,41 @@ export function TerminalWorkbench() {
   }, [setStatusMessage])
 
   useEffect(() => {
-    refreshHosts()
-  }, [refreshHosts])
+    if (workspaceRestored.current) {
+      refreshHosts()
+      return
+    }
+    workspaceRestored.current = true
+    void (async () => {
+      try {
+        const hostList = await api.listSSHHosts()
+        setHosts(hostList)
+        const snap = await loadTerminalWorkspace()
+        if (!snap?.tabs.length) return
+        const restored: TerminalTab[] = []
+        for (const tabSnap of snap.tabs) {
+          try {
+            const tab = await restoreTerminalTab(tabSnap, hostList, confirmTrust)
+            if (tab) restored.push(tab)
+          } catch {
+            /* 跳过无法恢复的会话 */
+          }
+        }
+        if (!restored.length) return
+        setTabs(restored)
+        const idx = Math.min(Math.max(0, snap.activeTabIndex), restored.length - 1)
+        setActiveTabId(restored[idx].id)
+        setStatusMessage(`已恢复 ${restored.length} 个终端会话`)
+      } catch (e) {
+        setHosts([])
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  }, [refreshHosts, setStatusMessage, confirmTrust])
+
+  useEffect(() => {
+    scheduleTerminalWorkspacePersist(toTerminalWorkspaceSnapshot(tabs, activeTabId))
+  }, [tabs, activeTabId])
 
   const updateTab = (tabId: string, patch: Partial<TerminalTab>) => {
     setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, ...patch } : t)))
@@ -90,20 +130,30 @@ export function TerminalWorkbench() {
     setTabs((prev) => [...prev, tab])
     setActiveTabId(tabId)
     setStatusMessage(`已连接 ${tab.title}`)
+    return info.sessionId
   }
 
-  const connectLocal = async () => {
+  /** writeInitialCommand 连接建立后向终端写入初始命令。 */
+  const writeInitialCommand = async (sessionId: string, command?: string) => {
+    if (!command) return
+    await new Promise((r) => setTimeout(r, 450))
+    const data = command.endsWith('\r') || command.endsWith('\n') ? command : `${command}\r`
+    await api.writeTerminal(sessionId, data)
+  }
+
+  const connectLocal = async (initialCommand?: string) => {
     if (openingLocal || connectingId) return
     setOpeningLocal(true)
     setStatusMessage('正在打开本机终端…')
     try {
       const info = await api.openLocalTerminal(120, 32)
-      addTab({
+      const sessionId = addTab({
         sessionId: info.sessionId,
         hostId: '',
         kind: 'local',
         title: info.title || '本机 Shell',
       })
+      await writeInitialCommand(sessionId, initialCommand)
     } catch (e) {
       setStatusMessage((e as Error).message)
     } finally {
@@ -111,24 +161,48 @@ export function TerminalWorkbench() {
     }
   }
 
-  const connectHost = async (host: SSHHost) => {
+  const connectHost = async (host: SSHHost, initialCommand?: string) => {
     if (connectingId || openingLocal) return
     setConnectingId(host.id)
     setStatusMessage(`正在连接 ${host.name}…`)
     try {
       const info = await withSSHHostTrust(host.host, host.port, () => api.openTerminal(host.id, 120, 32), confirmTrust)
-      addTab({
+      const sessionId = addTab({
         sessionId: info.sessionId,
         hostId: host.id,
         kind: 'ssh',
         title: info.title || `${host.user}@${host.host}`,
       })
+      await writeInitialCommand(sessionId, initialCommand)
     } catch (e) {
       setStatusMessage((e as Error).message)
     } finally {
       setConnectingId(null)
     }
   }
+
+  useEffect(() => {
+    if (!productLink || productLink.action !== 'terminal') return
+    const { hostId, localShell, initialCommand } = productLink
+    setProductLink(null)
+    void (async () => {
+      try {
+        if (localShell) {
+          await connectLocal(initialCommand)
+          return
+        }
+        if (!hostId) return
+        let host = hosts.find((h) => h.id === hostId)
+        if (!host) {
+          host = await api.getSSHHost(hostId)
+          setHosts((prev) => (prev.some((h) => h.id === hostId) ? prev : [...prev, host!]))
+        }
+        await connectHost(host, initialCommand)
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  }, [productLink])
 
   const closeSessions = async (sessionIds: string[]) => {
     for (const sid of sessionIds) {
@@ -244,7 +318,7 @@ export function TerminalWorkbench() {
           <button
             type="button"
             className="wn-btn wn-btn-chrome wn-btn-run"
-            onClick={connectLocal}
+            onClick={() => void connectLocal()}
             disabled={openingLocal}
           >
             <IconLaptop size={13} />
@@ -317,8 +391,8 @@ export function TerminalWorkbench() {
               <ul className="conn-list">
                 <li
                   className={`conn-item ${openingLocal ? 'active' : ''} ${localTabCount > 0 ? 'connected' : ''}`}
-                  onClick={connectLocal}
-                  onDoubleClick={connectLocal}
+                  onClick={() => void connectLocal()}
+                  onDoubleClick={() => void connectLocal()}
                 >
                   <IconLaptop size={14} className="mock-icon" />
                   <div className="conn-meta">
@@ -441,6 +515,28 @@ export function TerminalWorkbench() {
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              setCtxMenu(null)
+              setActiveProduct('docker')
+              setProductLink({ action: 'docker-context', hostId: ctxMenu.host.id })
+            }}
+          >
+            添加 Docker 远程
+          </button>
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              setCtxMenu(null)
+              setActiveProduct('sftp')
+              setProductLink({ action: 'sftp', hostId: ctxMenu.host.id })
+            }}
+          >
+            打开 SFTP
+          </button>
           <button
             type="button"
             className="wn-context-item"

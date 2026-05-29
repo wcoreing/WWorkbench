@@ -1,7 +1,6 @@
 package tunnel
 
 import (
-	"WNavicat/internal/errno"
 	"WNavicat/internal/model"
 )
 
@@ -21,21 +20,4 @@ func SpecFromConnection(c model.ConnectionDO) model.TunnelSpecDO {
 		TargetHost: c.Host,
 		TargetPort: c.Port,
 	}
-}
-
-// ValidateConnectionSSH 启用 SSH 时校验隧道字段。
-func ValidateConnectionSSH(c model.ConnectionDO) error {
-	if !c.SSHEnabled {
-		return nil
-	}
-	if c.SSHHost == "" {
-		return errno.New(errno.CodeInvalidArg, "请填写 SSH 主机", "")
-	}
-	if c.SSHUser == "" {
-		return errno.New(errno.CodeInvalidArg, "请填写 SSH 用户名", "")
-	}
-	if c.SSHKeyPath == "" && c.SSHPassword == "" {
-		return errno.New(errno.CodeInvalidArg, "请填写 SSH 密码或私钥路径", "")
-	}
-	return nil
 }

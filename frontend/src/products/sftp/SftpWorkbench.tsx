@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { FileEntry, SftpBookmark, SSHHost } from '../../api/types'
 import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import { IconPlus, IconServer } from '../../components/Icons'
 import { useAppStore } from '../../stores/appStore'
+import { restoreSftpTab } from '../../features/sftp/restoreSftpWorkspace'
+import {
+  loadSftpWorkspace,
+  scheduleSftpWorkspacePersist,
+  toSftpWorkspaceSnapshot,
+} from '../../stores/sftpWorkspacePersist'
 import { SSHHostModal } from '../../features/terminal/SSHHostModal'
 import { useSSHTrustConfirm } from '../../features/terminal/useSSHTrustConfirm'
 import { FilePane } from '../../features/sftp/FilePane'
@@ -41,7 +47,7 @@ type PaneSide = 'local' | 'remote'
 
 /** SFTP 产品线工作区 */
 export function SftpWorkbench() {
-  const { setStatusMessage } = useAppStore()
+  const { setStatusMessage, productLink, setProductLink, setActiveProduct } = useAppStore()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [hosts, setHosts] = useState<SSHHost[]>([])
   const [tabs, setTabs] = useState<SftpTab[]>([])
@@ -59,6 +65,7 @@ export function SftpWorkbench() {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; host: SSHHost } | null>(null)
   const [paneMenu, setPaneMenu] = useState<{ x: number; y: number; side: PaneSide; entry: FileEntry | null } | null>(null)
   const [prompt, setPrompt] = useState<PromptState | null>(null)
+  const workspaceRestored = useRef(false)
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
 
@@ -86,9 +93,42 @@ export function SftpWorkbench() {
   }, [activeTab?.hostId, setStatusMessage])
 
   useEffect(() => {
-    refreshHosts()
-    loadBookmarks()
-  }, [refreshHosts, loadBookmarks])
+    if (workspaceRestored.current) {
+      refreshHosts()
+      loadBookmarks()
+      return
+    }
+    workspaceRestored.current = true
+    void (async () => {
+      try {
+        const hostList = await api.listSSHHosts()
+        setHosts(hostList)
+        const snap = await loadSftpWorkspace()
+        if (!snap?.tabs.length) return
+        const restored: SftpTab[] = []
+        for (const tabSnap of snap.tabs) {
+          try {
+            const tab = await restoreSftpTab(tabSnap, hostList, confirmTrust)
+            if (tab) restored.push(tab)
+          } catch {
+            /* 跳过无法恢复的会话 */
+          }
+        }
+        if (!restored.length) return
+        setTabs(restored)
+        const idx = Math.min(Math.max(0, snap.activeTabIndex), restored.length - 1)
+        setActiveTabId(restored[idx].id)
+        setStatusMessage(`已恢复 ${restored.length} 个 SFTP 会话`)
+      } catch (e) {
+        setHosts([])
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  }, [refreshHosts, loadBookmarks, setStatusMessage, confirmTrust])
+
+  useEffect(() => {
+    scheduleSftpWorkspacePersist(toSftpWorkspaceSnapshot(tabs, activeTabId))
+  }, [tabs, activeTabId])
 
   useEffect(() => {
     if (!ctxMenu && !paneMenu) return
@@ -172,6 +212,25 @@ export function SftpWorkbench() {
       setConnectingId(null)
     }
   }
+
+  useEffect(() => {
+    if (!productLink || productLink.action !== 'sftp') return
+    const { hostId } = productLink
+    if (!hostId) return
+    setProductLink(null)
+    void (async () => {
+      try {
+        let host = hosts.find((h) => h.id === hostId)
+        if (!host) {
+          host = await api.getSSHHost(hostId)
+          setHosts((prev) => (prev.some((h) => h.id === hostId) ? prev : [...prev, host!]))
+        }
+        await connectHost(host)
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  }, [productLink])
 
   const closeTab = async (tabId: string) => {
     const tab = tabs.find((t) => t.id === tabId)
@@ -545,6 +604,17 @@ export function SftpWorkbench() {
 
       {ctxMenu && (
         <div className="wn-context-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              setCtxMenu(null)
+              setActiveProduct('terminal')
+              setProductLink({ action: 'terminal', hostId: ctxMenu.host.id })
+            }}
+          >
+            打开终端
+          </button>
           <button
             type="button"
             className="wn-context-item"

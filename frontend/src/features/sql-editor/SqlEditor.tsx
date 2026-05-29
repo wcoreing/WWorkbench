@@ -1,7 +1,13 @@
-import Editor from '@monaco-editor/react'
-import { useRef } from 'react'
+import { forwardRef, useImperativeHandle, useRef } from 'react'
+import Editor, { type OnMount } from '@monaco-editor/react'
+import type { editor } from 'monaco-editor'
 import { useContainerHeight } from '../../hooks/useContainerHeight'
 import { useAppStore } from '../../stores/appStore'
+
+export interface SqlEditorHandle {
+  /** getRunSQL 获取待执行的 SQL（有选区则返回选区，否则全文）。 */
+  getRunSQL: () => string
+}
 
 interface Props {
   tabId: string
@@ -11,10 +17,37 @@ interface Props {
 }
 
 /** SqlEditor Monaco SQL 编辑区（运行快捷键 ⌘+Enter，工具栏在顶栏）。 */
-export function SqlEditor({ tabId, sql, onChange, onExecute }: Props) {
+export const SqlEditor = forwardRef<SqlEditorHandle, Props>(function SqlEditor(
+  { tabId, sql, onChange, onExecute },
+  ref
+) {
   const theme = useAppStore((s) => s.theme)
   const editorHostRef = useRef<HTMLDivElement>(null)
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const editorHeight = useContainerHeight(editorHostRef, 120)
+
+  useImperativeHandle(ref, () => ({
+    getRunSQL: () => {
+      const ed = editorRef.current
+      if (!ed) return sql
+      const selection = ed.getSelection()
+      const model = ed.getModel()
+      if (!selection || !model || selection.isEmpty()) {
+        return ed.getValue()
+      }
+      return model.getValueInRange(selection).trim() || ed.getValue()
+    },
+  }))
+
+  const onMount: OnMount = (editorInstance, monaco) => {
+    editorRef.current = editorInstance
+    editorInstance.addAction({
+      id: 'execute-sql',
+      label: 'Execute SQL',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
+      run: onExecute,
+    })
+  }
 
   return (
     <div className="sql-editor-wrap">
@@ -41,16 +74,9 @@ export function SqlEditor({ tabId, sql, onChange, onExecute }: Props) {
             hideCursorInOverviewRuler: true,
             scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
           }}
-          onMount={(editor, monaco) => {
-            editor.addAction({
-              id: 'execute-sql',
-              label: 'Execute SQL',
-              keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
-              run: onExecute,
-            })
-          }}
+          onMount={onMount}
         />
       </div>
     </div>
   )
-}
+})

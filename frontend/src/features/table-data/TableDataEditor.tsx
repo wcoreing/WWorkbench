@@ -269,6 +269,17 @@ export function TableDataEditor({ sessionId, database, table }: Props) {
             <button type="button" className="wn-btn wn-btn-tool" onClick={load} disabled={loading}>
               刷新
             </button>
+            <button
+              type="button"
+              className="wn-btn wn-btn-tool"
+              disabled={loading}
+              onClick={async () => {
+                const path = await api.exportTableInsertSQL(sessionId, database, table, 1000)
+                if (path) setSuccess(`已导出 ${path}`)
+              }}
+            >
+              导出 SQL
+            </button>
           </div>
         </div>
 

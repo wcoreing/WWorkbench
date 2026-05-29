@@ -55,6 +55,20 @@ func (s *Service) GetObjectTree(ctx context.Context, sessionID string) ([]model.
 				Lazy:     true,
 			})
 		}
+		views, err := ad.ListViews(ctx, sess.DB, db)
+		if err != nil {
+			return nil, err
+		}
+		for _, v := range views {
+			dbNode.Children = append(dbNode.Children, model.ObjectTreeNodeDO{
+				ID:       sessionID + ":view:" + db + "." + v.Name,
+				Label:    v.Name,
+				NodeType: "view",
+				Database: db,
+				Table:    v.Name,
+				Lazy:     true,
+			})
+		}
 		dbNode.Lazy = false
 		nodes = append(nodes, dbNode)
 	}
@@ -72,6 +86,22 @@ func (s *Service) ListColumns(ctx context.Context, sessionID, database, table st
 		return nil, err
 	}
 	return ad.ListColumns(ctx, sess.DB, database, table)
+}
+
+// ListIndexes 列出表索引。
+func (s *Service) ListIndexes(ctx context.Context, sessionID, database, table string) ([]model.IndexMetaDO, error) {
+	if database == "" || table == "" {
+		return nil, errno.New(errno.CodeInvalidArg, "数据库和表名不能为空", "")
+	}
+	sess, err := s.sessions.Get(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	ad, err := s.sessions.Adapter(sess)
+	if err != nil {
+		return nil, err
+	}
+	return ad.ListIndexes(ctx, sess.DB, database, table)
 }
 
 // GetTableDDL 获取表 DDL。

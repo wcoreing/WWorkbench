@@ -9,6 +9,7 @@ import (
 
 	"WNavicat/internal/conn"
 	"WNavicat/internal/data"
+	dockersvc "WNavicat/internal/docker"
 	"WNavicat/internal/meta"
 	"WNavicat/internal/model"
 	"WNavicat/internal/query"
@@ -29,6 +30,7 @@ type Service struct {
 	sshHosts  *terminal.HostService
 	terminals *terminal.Manager
 	sftp      *sftpsvc.Manager
+	docker    *dockersvc.Manager
 	sessions  *session.Manager
 	meta      *meta.Service
 	queries   *query.Service
@@ -43,6 +45,7 @@ func NewService(
 	sshHosts *terminal.HostService,
 	terminals *terminal.Manager,
 	sftpMgr *sftpsvc.Manager,
+	dockerMgr *dockersvc.Manager,
 	sessions *session.Manager,
 	meta *meta.Service,
 	queries *query.Service,
@@ -55,6 +58,7 @@ func NewService(
 		sshHosts:  sshHosts,
 		terminals: terminals,
 		sftp:      sftpMgr,
+		docker:    dockerMgr,
 		sessions:  sessions,
 		meta:      meta,
 		queries:   queries,
@@ -171,6 +175,20 @@ func (s *Service) ListColumns(sessionID, database, table string) ApiResult[[]mod
 		return ErrResult[[]model.ColumnMetaDO](err)
 	}
 	return OkResult(cols)
+}
+
+// ListIndexes 列出表索引。
+func (s *Service) ListIndexes(sessionID, database, table string) ApiResult[[]model.IndexMetaDO] {
+	ctx, cancel := session.WithTimeout(s.ctx, 30)
+	defer cancel()
+	list, err := s.meta.ListIndexes(ctx, sessionID, database, table)
+	if err != nil {
+		return ErrResult[[]model.IndexMetaDO](err)
+	}
+	if list == nil {
+		list = []model.IndexMetaDO{}
+	}
+	return OkResult(list)
 }
 
 // GetTableDDL 获取 DDL。

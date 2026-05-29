@@ -4,6 +4,7 @@ package model
 type ConnectionDO struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
+	Group       string `json:"group"`
 	DbType      string `json:"dbType"`
 	Host        string `json:"host"`
 	Port        int    `json:"port"`
@@ -12,6 +13,7 @@ type ConnectionDO struct {
 	Database    string `json:"database"`
 	Charset     string `json:"charset"`
 	SSHEnabled  bool   `json:"sshEnabled"`
+	SSHHostID   string `json:"sshHostId"`
 	SSHHost     string `json:"sshHost"`
 	SSHPort     int    `json:"sshPort"`
 	SSHUser     string `json:"sshUser"`
@@ -55,14 +57,15 @@ type TableMetaDO struct {
 
 // ColumnMetaDO 列元数据。
 type ColumnMetaDO struct {
-	Name         string `json:"name"`
-	DataType     string `json:"dataType"`
-	ColumnType   string `json:"columnType"`
-	Nullable     bool   `json:"nullable"`
-	IsPrimaryKey bool   `json:"isPrimaryKey"`
+	Name         string  `json:"name"`
+	DataType     string  `json:"dataType"`
+	ColumnType   string  `json:"columnType"`
+	Nullable     bool    `json:"nullable"`
+	IsPrimaryKey bool    `json:"isPrimaryKey"`
+	Extra        string  `json:"extra"`
 	DefaultValue *string `json:"defaultValue,omitempty"`
-	Comment      string `json:"comment"`
-	Editable     bool   `json:"editable"`
+	Comment      string  `json:"comment"`
+	Editable     bool    `json:"editable"`
 }
 
 // ExecuteResultDO SQL 执行结果（非查询）。
@@ -76,6 +79,28 @@ type ExecuteResultDO struct {
 // QueryRowDO 查询结果行。
 type QueryRowDO struct {
 	Cells []CellValueDO `json:"cells"`
+}
+
+// SQLBatchItemDO 批量 SQL 单条执行结果。
+type SQLBatchItemDO struct {
+	SQL     string           `json:"sql"`
+	Query   *QueryPageDO     `json:"query,omitempty"`
+	Execute *ExecuteResultDO `json:"execute,omitempty"`
+	Error   string           `json:"error,omitempty"`
+}
+
+// SQLBatchResultDO 多语句 SQL 执行结果。
+type SQLBatchResultDO struct {
+	Items []SQLBatchItemDO `json:"items"`
+}
+
+// IndexMetaDO 索引元数据。
+type IndexMetaDO struct {
+	Name       string `json:"name"`
+	Column     string `json:"column"`
+	NonUnique  bool   `json:"nonUnique"`
+	SeqInIndex int    `json:"seqInIndex"`
+	IndexType  string `json:"indexType"`
 }
 
 // QueryPageDO 分页查询结果。
@@ -183,6 +208,12 @@ type VersionDO struct {
 	Version string `json:"version"`
 }
 
+// ConnectionsExportDO 连接配置导出包。
+type ConnectionsExportDO struct {
+	Version     string         `json:"version"`
+	Connections []ConnectionDO `json:"connections"`
+}
+
 // ExportResultDO 导出结果。
 type ExportResultDO struct {
 	Path string `json:"path"`
@@ -281,4 +312,58 @@ type TransferConflictDO struct {
 	TargetSize    int64  `json:"targetSize"`
 	TargetModTime int64  `json:"targetModTime"`
 	TargetIsDir   bool   `json:"targetIsDir"`
+}
+
+// DockerContextDO Docker 引擎上下文。
+type DockerContextDO struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Kind      string `json:"kind"`
+	Endpoint  string `json:"endpoint"`
+	SSHHostID string `json:"sshHostId"`
+	Connected bool   `json:"connected"`
+}
+
+// DockerImageDO 镜像摘要。
+type DockerImageDO struct {
+	ID        string `json:"id"`
+	ShortID   string `json:"shortId"`
+	Tags      string `json:"tags"`
+	Size      int64  `json:"size"`
+	CreatedAt int64  `json:"createdAt"`
+}
+
+// ContainerShellDO 容器 Shell 启动信息。
+type ContainerShellDO struct {
+	Mode    string `json:"mode"`
+	HostID  string `json:"hostId"`
+	Command string `json:"command"`
+}
+
+// ContainerDatabaseLinkDO 容器数据库连接建议。
+type ContainerDatabaseLinkDO struct {
+	DbType     string `json:"dbType"`
+	Name       string `json:"name"`
+	Host       string `json:"host"`
+	Port       int    `json:"port"`
+	User       string `json:"user"`
+	SSHEnabled bool   `json:"sshEnabled"`
+	SSHHostID  string `json:"sshHostId"`
+}
+
+// ContainerDO 容器摘要。
+type ContainerDO struct {
+	ID        string `json:"id"`
+	ShortID   string `json:"shortId"`
+	Name      string `json:"name"`
+	Image     string `json:"image"`
+	State     string `json:"state"`
+	Status    string `json:"status"`
+	Ports     string `json:"ports"`
+	CreatedAt int64  `json:"createdAt"`
+}
+
+// ContainerLogsDO 容器日志。
+type ContainerLogsDO struct {
+	Content string `json:"content"`
 }

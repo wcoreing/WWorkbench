@@ -19,6 +19,7 @@ import (
 type Store struct {
 	db        *sql.DB
 	encryptor *crypto.Encryptor
+	dataDir   string
 }
 
 // New 创建 Store。
@@ -35,7 +36,7 @@ func New(dataDir string) (*Store, error) {
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeStoreFailed, "打开本地数据库失败", err)
 	}
-	s := &Store{db: db, encryptor: enc}
+	s := &Store{db: db, encryptor: enc, dataDir: dataDir}
 	if err := s.migrate(); err != nil {
 		_ = db.Close()
 		return nil, err
@@ -97,10 +98,38 @@ CREATE TABLE IF NOT EXISTS sftp_bookmarks (
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移数据库失败", err)
 	}
-	return s.ensureColumn("connections", "ssh_password_enc", "TEXT NOT NULL DEFAULT ''")
+	if err := s.ensureColumn("connections", "ssh_password_enc", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := s.ensureColumn("connections", "conn_group", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := s.ensureColumn("connections", "ssh_host_id", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`
+CREATE TABLE IF NOT EXISTS docker_contexts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'ssh',
+  ssh_host_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);`)
+	if err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移 Docker 上下文表失败", err)
+	}
+	_, err = s.db.Exec(`
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);`)
+	if err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移应用设置表失败", err)
+	}
+	return nil
 }
 
-// ensureColumn 为旧库补列（已存在则忽略）。
 func (s *Store) ensureColumn(table, column, colType string) error {
 	_, err := s.db.Exec(fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s %s", table, column, colType))
 	if err != nil && strings.Contains(strings.ToLower(err.Error()), "duplicate column") {
@@ -114,18 +143,18 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
-const connectionSelectSQL = `SELECT id, name, db_type, host, port, user_name, password_enc, database_name, charset,
-	ssh_enabled, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_password_enc, created_at, updated_at FROM connections`
+const connectionSelectSQL = `SELECT id, name, conn_group, db_type, host, port, user_name, password_enc, database_name, charset,
+	ssh_enabled, ssh_host_id, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_password_enc, created_at, updated_at FROM connections`
 
 // scanConnection 扫描一行连接并解密敏感字段。
 func (s *Store) scanConnection(
-	id, name, dbType, host string, port int, user, pwdEnc, database, charset string,
-	sshEnabled int, sshHost string, sshPort int, sshUser, sshKeyPath, sshPwdEnc string,
+	id, name, group, dbType, host string, port int, user, pwdEnc, database, charset string,
+	sshEnabled int, sshHostID, sshHost string, sshPort int, sshUser, sshKeyPath, sshPwdEnc string,
 	createdAt, updatedAt int64,
 ) (model.ConnectionDO, error) {
 	c := model.ConnectionDO{
-		ID: id, Name: name, DbType: dbType, Host: host, Port: port, User: user,
-		Database: database, Charset: charset, SSHHost: sshHost, SSHPort: sshPort,
+		ID: id, Name: name, Group: group, DbType: dbType, Host: host, Port: port, User: user,
+		Database: database, Charset: charset, SSHHostID: sshHostID, SSHHost: sshHost, SSHPort: sshPort,
 		SSHUser: sshUser, SSHKeyPath: sshKeyPath, CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}
 	c.SSHEnabled = sshEnabled == 1
@@ -153,16 +182,16 @@ func (s *Store) ListConnections() ([]model.ConnectionDO, error) {
 	defer rows.Close()
 	var list []model.ConnectionDO
 	for rows.Next() {
-		var id, name, dbType, host, user, pwdEnc, database, charset string
-		var sshHost, sshUser, sshKeyPath, sshPwdEnc string
+		var id, name, group, dbType, host, user, pwdEnc, database, charset string
+		var sshHostID, sshHost, sshUser, sshKeyPath, sshPwdEnc string
 		var port, sshEnabled, sshPort int
 		var createdAt, updatedAt int64
-		if err := rows.Scan(&id, &name, &dbType, &host, &port, &user, &pwdEnc, &database, &charset,
-			&sshEnabled, &sshHost, &sshPort, &sshUser, &sshKeyPath, &sshPwdEnc, &createdAt, &updatedAt); err != nil {
+		if err := rows.Scan(&id, &name, &group, &dbType, &host, &port, &user, &pwdEnc, &database, &charset,
+			&sshEnabled, &sshHostID, &sshHost, &sshPort, &sshUser, &sshKeyPath, &sshPwdEnc, &createdAt, &updatedAt); err != nil {
 			return nil, errno.Wrap(errno.CodeStoreFailed, "读取连接失败", err)
 		}
-		c, err := s.scanConnection(id, name, dbType, host, port, user, pwdEnc, database, charset,
-			sshEnabled, sshHost, sshPort, sshUser, sshKeyPath, sshPwdEnc, createdAt, updatedAt)
+		c, err := s.scanConnection(id, name, group, dbType, host, port, user, pwdEnc, database, charset,
+			sshEnabled, sshHostID, sshHost, sshPort, sshUser, sshKeyPath, sshPwdEnc, createdAt, updatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -177,19 +206,19 @@ func (s *Store) ListConnections() ([]model.ConnectionDO, error) {
 // GetConnection 按 ID 获取连接。
 func (s *Store) GetConnection(id string) (*model.ConnectionDO, error) {
 	row := s.db.QueryRow(connectionSelectSQL+` WHERE id = ?`, id)
-	var cid, name, dbType, host, user, pwdEnc, database, charset string
-	var sshHost, sshUser, sshKeyPath, sshPwdEnc string
+	var cid, name, group, dbType, host, user, pwdEnc, database, charset string
+	var sshHostID, sshHost, sshUser, sshKeyPath, sshPwdEnc string
 	var port, sshEnabled, sshPort int
 	var createdAt, updatedAt int64
-	if err := row.Scan(&cid, &name, &dbType, &host, &port, &user, &pwdEnc, &database, &charset,
-		&sshEnabled, &sshHost, &sshPort, &sshUser, &sshKeyPath, &sshPwdEnc, &createdAt, &updatedAt); err != nil {
+	if err := row.Scan(&cid, &name, &group, &dbType, &host, &port, &user, &pwdEnc, &database, &charset,
+		&sshEnabled, &sshHostID, &sshHost, &sshPort, &sshUser, &sshKeyPath, &sshPwdEnc, &createdAt, &updatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errno.New(errno.CodeNotFound, "连接不存在", id)
 		}
 		return nil, errno.Wrap(errno.CodeStoreFailed, "读取连接失败", err)
 	}
-	c, err := s.scanConnection(cid, name, dbType, host, port, user, pwdEnc, database, charset,
-		sshEnabled, sshHost, sshPort, sshUser, sshKeyPath, sshPwdEnc, createdAt, updatedAt)
+	c, err := s.scanConnection(cid, name, group, dbType, host, port, user, pwdEnc, database, charset,
+		sshEnabled, sshHostID, sshHost, sshPort, sshUser, sshKeyPath, sshPwdEnc, createdAt, updatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -230,17 +259,17 @@ func (s *Store) SaveConnection(c model.ConnectionDO) error {
 		c.CreatedAt = now
 	}
 	c.UpdatedAt = now
-	_, err = s.db.Exec(`INSERT INTO connections (id, name, db_type, host, port, user_name, password_enc, database_name, charset,
-		ssh_enabled, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_password_enc, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	_, err = s.db.Exec(`INSERT INTO connections (id, name, conn_group, db_type, host, port, user_name, password_enc, database_name, charset,
+		ssh_enabled, ssh_host_id, ssh_host, ssh_port, ssh_user, ssh_key_path, ssh_password_enc, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
-		name=excluded.name, db_type=excluded.db_type, host=excluded.host, port=excluded.port,
+		name=excluded.name, conn_group=excluded.conn_group, db_type=excluded.db_type, host=excluded.host, port=excluded.port,
 		user_name=excluded.user_name, password_enc=excluded.password_enc, database_name=excluded.database_name,
-		charset=excluded.charset, ssh_enabled=excluded.ssh_enabled, ssh_host=excluded.ssh_host,
-		ssh_port=excluded.ssh_port, ssh_user=excluded.ssh_user, ssh_key_path=excluded.ssh_key_path,
-		ssh_password_enc=excluded.ssh_password_enc, updated_at=excluded.updated_at`,
-		c.ID, c.Name, c.DbType, c.Host, c.Port, c.User, pwdEnc, c.Database, c.Charset,
-		ssh, c.SSHHost, c.SSHPort, c.SSHUser, c.SSHKeyPath, sshPwdEnc, c.CreatedAt, c.UpdatedAt)
+		charset=excluded.charset, ssh_enabled=excluded.ssh_enabled, ssh_host_id=excluded.ssh_host_id,
+		ssh_host=excluded.ssh_host, ssh_port=excluded.ssh_port, ssh_user=excluded.ssh_user,
+		ssh_key_path=excluded.ssh_key_path, ssh_password_enc=excluded.ssh_password_enc, updated_at=excluded.updated_at`,
+		c.ID, c.Name, c.Group, c.DbType, c.Host, c.Port, c.User, pwdEnc, c.Database, c.Charset,
+		ssh, c.SSHHostID, c.SSHHost, c.SSHPort, c.SSHUser, c.SSHKeyPath, sshPwdEnc, c.CreatedAt, c.UpdatedAt)
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "保存连接失败", err)
 	}

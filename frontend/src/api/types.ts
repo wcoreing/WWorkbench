@@ -13,6 +13,7 @@ export interface ApiResult<T> {
 export interface Connection {
   id: string
   name: string
+  group: string
   dbType: string
   host: string
   port: number
@@ -21,6 +22,7 @@ export interface Connection {
   database: string
   charset: string
   sshEnabled: boolean
+  sshHostId: string
   sshHost: string
   sshPort: number
   sshUser: string
@@ -52,6 +54,7 @@ export interface ColumnMeta {
   columnType: string
   nullable: boolean
   isPrimaryKey: boolean
+  extra?: string
   defaultValue?: string
   comment: string
   editable: boolean
@@ -81,6 +84,25 @@ export interface ExecuteResult {
   lastInsertId: number
   message: string
   elapsedMs: number
+}
+
+export interface SQLBatchItem {
+  sql: string
+  query?: QueryPage
+  execute?: ExecuteResult
+  error?: string
+}
+
+export interface SQLBatchResult {
+  items: SQLBatchItem[]
+}
+
+export interface IndexMeta {
+  name: string
+  column: string
+  nonUnique: boolean
+  seqInIndex: number
+  indexType: string
 }
 
 export interface TableRow {
@@ -204,4 +226,48 @@ export interface TransferConflict {
   targetSize: number
   targetModTime: number
   targetIsDir: boolean
+}
+
+export interface DockerContext {
+  id: string
+  name: string
+  kind: string
+  endpoint: string
+  sshHostId?: string
+  connected: boolean
+}
+
+export interface DockerImage {
+  id: string
+  shortId: string
+  tags: string
+  size: number
+  createdAt: number
+}
+
+export interface ContainerShell {
+  mode: string
+  hostId?: string
+  command: string
+}
+
+export interface ContainerDatabaseLink {
+  dbType: string
+  name: string
+  host: string
+  port: number
+  user: string
+  sshEnabled: boolean
+  sshHostId: string
+}
+
+export interface DockerContainer {
+  id: string
+  shortId: string
+  name: string
+  image: string
+  state: string
+  status: string
+  ports: string
+  createdAt: number
 }

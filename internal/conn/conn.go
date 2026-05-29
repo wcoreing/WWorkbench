@@ -46,6 +46,10 @@ func (s *Service) Save(c model.ConnectionDO) (*model.ConnectionDO, error) {
 	if err := tunnel.ValidateConnectionSSH(c); err != nil {
 		return nil, err
 	}
+	cCopy := c
+	if err := tunnel.ResolveConnection(s.store, &cCopy); err != nil {
+		return nil, err
+	}
 	if err := s.store.SaveConnection(c); err != nil {
 		return nil, err
 	}
@@ -68,24 +72,28 @@ func (s *Service) Test(ctx context.Context, c model.ConnectionDO) error {
 	if err := tunnel.ValidateConnectionSSH(c); err != nil {
 		return err
 	}
+	cCopy := c
+	if err := tunnel.ResolveConnection(s.store, &cCopy); err != nil {
+		return err
+	}
 	ad, err := s.registry.Get(c.DbType)
 	if err != nil {
 		return err
 	}
-	spec := tunnel.SpecFromConnection(c)
-	tun, err := s.tunnel.Dial(ctx, spec, c.Host, c.Port)
+	spec := tunnel.SpecFromConnection(cCopy)
+	tun, err := s.tunnel.Dial(ctx, spec, cCopy.Host, cCopy.Port)
 	if err != nil {
 		return err
 	}
 	defer tun.Close()
 	cfg := model.ConnectionConfigDO{
-		DbType:   c.DbType,
-		Host:     c.Host,
-		Port:     c.Port,
-		User:     c.User,
-		Password: c.Password,
-		Database: c.Database,
-		Charset:  c.Charset,
+		DbType:   cCopy.DbType,
+		Host:     cCopy.Host,
+		Port:     cCopy.Port,
+		User:     cCopy.User,
+		Password: cCopy.Password,
+		Database: cCopy.Database,
+		Charset:  cCopy.Charset,
 		Tunnel:   spec,
 	}
 	db, err := ad.Open(ctx, cfg, tun)

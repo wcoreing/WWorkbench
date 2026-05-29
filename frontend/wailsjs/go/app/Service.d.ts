@@ -19,6 +19,8 @@ export function CloseTerminal(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteConnection(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function DeleteDockerContext(arg1:string):Promise<app.ApiResult_bool_>;
+
 export function DeleteLocalPath(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteSFTPBookmark(arg1:string):Promise<app.ApiResult_bool_>;
@@ -29,11 +31,23 @@ export function DeleteSSHHost(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DownloadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_TransferResultDO_>;
 
+export function EnsureSSHHostFromConnection(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_SSHHostDO_>;
+
 export function ExecuteSQL(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_interface____>;
+
+export function ExecuteSQLFile(arg1:string,arg2:string):Promise<app.ApiResult_interface____>;
 
 export function ExportCSV(arg1:app.ExportCSVRequest):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
 
+export function ExportConnectionsToFile(arg1:boolean):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
+
+export function ExportTableInsertSQL(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
+
 export function GetConnection(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_ConnectionDO_>;
+
+export function GetContainerLogs(arg1:string,arg2:string,arg3:number):Promise<app.ApiResult_WNavicat_internal_model_ContainerLogsDO_>;
+
+export function GetContainerShell(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_ContainerShellDO_>;
 
 export function GetObjectTree(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_ObjectTreeNodeDO_>;
 
@@ -47,9 +61,21 @@ export function GetTableDataPage(arg1:string,arg2:string,arg3:string,arg4:model.
 
 export function GetVersion():Promise<app.ApiResult_WNavicat_internal_model_VersionDO_>;
 
+export function ImportConnectionsFromFile():Promise<app.ApiResult_int_>;
+
+export function ListAppSettings():Promise<app.ApiResult_map_string_string_>;
+
 export function ListColumns(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult___WNavicat_internal_model_ColumnMetaDO_>;
 
 export function ListConnections():Promise<app.ApiResult___WNavicat_internal_model_ConnectionDO_>;
+
+export function ListContainers(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_ContainerDO_>;
+
+export function ListDockerContexts():Promise<app.ApiResult___WNavicat_internal_model_DockerContextDO_>;
+
+export function ListImages(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_DockerImageDO_>;
+
+export function ListIndexes(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult___WNavicat_internal_model_IndexMetaDO_>;
 
 export function ListLocalDir(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_LocalDirResultDO_>;
 
@@ -60,6 +86,8 @@ export function ListSFTPBookmarks(arg1:string,arg2:string):Promise<app.ApiResult
 export function ListSFTPDir(arg1:string,arg2:string):Promise<app.ApiResult___WNavicat_internal_model_FileEntryDO_>;
 
 export function ListSSHHosts():Promise<app.ApiResult___WNavicat_internal_model_SSHHostDO_>;
+
+export function LoadWorkspace(arg1:string):Promise<app.ApiResult_string_>;
 
 export function MkdirLocalPath(arg1:string):Promise<app.ApiResult_bool_>;
 
@@ -75,21 +103,39 @@ export function OpenTerminal(arg1:string,arg2:number,arg3:number):Promise<app.Ap
 
 export function QuerySQLPage(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<app.ApiResult_WNavicat_internal_model_QueryPageDO_>;
 
+export function RemoveContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
 export function RenameLocalPath(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
 export function RenameSFTPRemote(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
 
 export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<app.ApiResult_bool_>;
 
+export function ResolveContainerDatabaseLink(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_ContainerDatabaseLinkDO_>;
+
+export function RestartContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
 export function SaveConnection(arg1:model.ConnectionDO):Promise<app.ApiResult_WNavicat_internal_model_ConnectionDO_>;
+
+export function SaveDockerContext(arg1:model.DockerContextDO):Promise<app.ApiResult_WNavicat_internal_model_DockerContextDO_>;
 
 export function SaveSFTPBookmark(arg1:model.SftpBookmarkDO):Promise<app.ApiResult_WNavicat_internal_model_SftpBookmarkDO_>;
 
 export function SaveSSHHost(arg1:model.SSHHostDO):Promise<app.ApiResult_WNavicat_internal_model_SSHHostDO_>;
 
+export function SaveWorkspace(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
+export function SetAppSetting(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
 export function SetDatabase(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_SessionInfoDO_>;
 
+export function StartContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
+export function StopContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
 export function TestConnection(arg1:model.ConnectionDO):Promise<app.ApiResult_bool_>;
+
+export function TestDockerContext(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function TestSSHHost(arg1:model.SSHHostDO):Promise<app.ApiResult_bool_>;
 

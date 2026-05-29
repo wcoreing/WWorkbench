@@ -228,6 +228,16 @@
   border-radius: var(--radius-sm);
 }
 
+.conn-ssh-source {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+}
+
+.conn-ssh-source .wn-check {
+  font-size: 11px;
+}
+
 .conn-ssh-hint {
   margin: 0;
   font-size: 10px;
@@ -262,6 +272,357 @@
 
 .wn-modal-compact {
   width: 380px;
+}
+
+.wn-modal-wide {
+  max-width: 720px;
+  width: min(720px, 92vw);
+}
+
+.wn-modal-xl {
+  max-width: 920px;
+  width: min(920px, 96vw);
+}
+
+.table-design-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.table-design-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+  flex-shrink: 0;
+}
+
+.table-design-subtitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.table-design-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-design-meta {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+}
+
+.table-design-meta-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto minmax(120px, 1.5fr);
+  gap: 8px 10px;
+  align-items: center;
+  font-size: 11px;
+}
+
+.table-design-meta-row label {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.table-design-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  flex-shrink: 0;
+}
+
+.table-design-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.table-design-tab:hover {
+  color: var(--color-text);
+}
+
+.table-design-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.table-design-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--color-border-subtle);
+  color: var(--color-text-secondary);
+}
+
+.table-design-tab.active .table-design-tab-count {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.table-design-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.table-design-pane {
+  flex: 1;
+  overflow: auto;
+  padding: 10px 14px 12px;
+  min-height: 0;
+}
+
+.table-design-sql-pane {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-design-sql-preview {
+  margin: 0;
+  padding: 12px 14px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  background: var(--color-surface-raised);
+  white-space: pre-wrap;
+  color: var(--color-text-secondary);
+}
+
+.table-design-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.table-design-loading {
+  padding: 48px 14px;
+}
+
+.table-design-error {
+  margin: 0 14px 10px;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+
+.create-table-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.create-table-cols-head,
+.create-table-col-row {
+  display: grid;
+  grid-template-columns: minmax(72px, 0.9fr) minmax(140px, 1.6fr) 28px 28px 28px minmax(100px, 1.1fr) minmax(72px, 0.9fr) 24px;
+  gap: 4px;
+  align-items: center;
+  font-size: 11px;
+}
+
+.col-default-cell {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.wn-select-xs,
+.wn-input-xs {
+  height: 26px;
+  font-size: 10px;
+  padding: 0 4px;
+  min-width: 0;
+}
+
+.wn-select-xs {
+  flex: 0 0 72px;
+  max-width: 72px;
+}
+
+.wn-input-xs {
+  flex: 1;
+  min-width: 40px;
+}
+
+.index-editor-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.index-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.index-empty {
+  padding: 24px 0;
+  font-size: 11px;
+  text-align: center;
+}
+
+.index-cols-head,
+.index-col-row {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(180px, 2.5fr) 36px 24px;
+  gap: 6px;
+  align-items: center;
+  font-size: 11px;
+}
+
+.index-cols-head {
+  color: var(--color-text-muted);
+  padding: 0 2px;
+}
+
+.index-col-row input[type='checkbox'] {
+  justify-self: center;
+  width: 14px;
+  height: 14px;
+}
+
+.column-type-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.column-type-select {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  font-size: 11px;
+  padding: 0 6px;
+}
+
+.column-type-param {
+  width: 52px;
+  min-width: 52px;
+  height: 28px;
+  padding: 0 6px;
+  font-size: 11px;
+  text-align: center;
+}
+
+.create-table-col-row input[type='checkbox'] {
+  justify-self: center;
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+.create-table-col-row input[type='checkbox']:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.create-table-cols-head {
+  color: var(--color-text-muted);
+  padding: 0 2px;
+}
+
+.create-table-preview pre {
+  margin: 4px 0 0;
+  padding: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.ddl-editor-wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.ddl-editor-toolbar {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.ddl-editor-host {
+  flex: 1;
+  min-height: 0;
+}
+
+.conn-group {
+  margin-bottom: 8px;
+}
+
+.conn-group-title {
+  padding: 4px 10px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sidebar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.create-table-col-row.col-is-new .wn-input:first-child {
+  border-color: var(--accent);
+}
+
+.create-table-col-row.col-is-new {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-radius: var(--radius-sm);
 }
 
 .wn-modal-header {
@@ -476,6 +837,10 @@
   background: var(--color-warning);
 }
 
+.wn-tab-design .tab-dot {
+  background: #8b5cf6;
+}
+
 .wn-tab .tab-title {
   max-width: 140px;
   overflow: hidden;
@@ -642,6 +1007,82 @@
 
 .wn-tree-item.table .tree-icon {
   color: var(--accent);
+}
+
+.wn-tree-item.view .tree-icon {
+  color: #8b5cf6;
+}
+
+.wn-tree-item.column .tree-icon {
+  color: var(--color-text-muted);
+  font-size: 9px;
+}
+
+.tree-expand {
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 14px;
+  text-align: center;
+}
+
+.tree-expand-placeholder {
+  display: inline-block;
+  cursor: default;
+}
+
+.sidebar-filter {
+  padding: 4px 8px 0;
+}
+
+.sidebar-filter .wn-input-sm {
+  width: 100%;
+  height: 24px;
+  font-size: 11px;
+}
+
+.result-batch {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.result-batch-item {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.result-batch-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.result-batch-sql {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-secondary);
+}
+
+.result-batch-error {
+  color: var(--color-danger);
+  padding: 8px 12px;
+  font-size: 11px;
 }
 
 .wn-tree-item .tree-label {

@@ -34,6 +34,10 @@ export function DeleteConnection(arg1) {
   return window['go']['app']['Service']['DeleteConnection'](arg1);
 }
 
+export function DeleteDockerContext(arg1) {
+  return window['go']['app']['Service']['DeleteDockerContext'](arg1);
+}
+
 export function DeleteLocalPath(arg1) {
   return window['go']['app']['Service']['DeleteLocalPath'](arg1);
 }
@@ -54,16 +58,40 @@ export function DownloadSFTPFile(arg1, arg2) {
   return window['go']['app']['Service']['DownloadSFTPFile'](arg1, arg2);
 }
 
+export function EnsureSSHHostFromConnection(arg1) {
+  return window['go']['app']['Service']['EnsureSSHHostFromConnection'](arg1);
+}
+
 export function ExecuteSQL(arg1, arg2, arg3) {
   return window['go']['app']['Service']['ExecuteSQL'](arg1, arg2, arg3);
+}
+
+export function ExecuteSQLFile(arg1, arg2) {
+  return window['go']['app']['Service']['ExecuteSQLFile'](arg1, arg2);
 }
 
 export function ExportCSV(arg1) {
   return window['go']['app']['Service']['ExportCSV'](arg1);
 }
 
+export function ExportConnectionsToFile(arg1) {
+  return window['go']['app']['Service']['ExportConnectionsToFile'](arg1);
+}
+
+export function ExportTableInsertSQL(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['Service']['ExportTableInsertSQL'](arg1, arg2, arg3, arg4);
+}
+
 export function GetConnection(arg1) {
   return window['go']['app']['Service']['GetConnection'](arg1);
+}
+
+export function GetContainerLogs(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['GetContainerLogs'](arg1, arg2, arg3);
+}
+
+export function GetContainerShell(arg1, arg2) {
+  return window['go']['app']['Service']['GetContainerShell'](arg1, arg2);
 }
 
 export function GetObjectTree(arg1) {
@@ -90,12 +118,36 @@ export function GetVersion() {
   return window['go']['app']['Service']['GetVersion']();
 }
 
+export function ImportConnectionsFromFile() {
+  return window['go']['app']['Service']['ImportConnectionsFromFile']();
+}
+
+export function ListAppSettings() {
+  return window['go']['app']['Service']['ListAppSettings']();
+}
+
 export function ListColumns(arg1, arg2, arg3) {
   return window['go']['app']['Service']['ListColumns'](arg1, arg2, arg3);
 }
 
 export function ListConnections() {
   return window['go']['app']['Service']['ListConnections']();
+}
+
+export function ListContainers(arg1) {
+  return window['go']['app']['Service']['ListContainers'](arg1);
+}
+
+export function ListDockerContexts() {
+  return window['go']['app']['Service']['ListDockerContexts']();
+}
+
+export function ListImages(arg1) {
+  return window['go']['app']['Service']['ListImages'](arg1);
+}
+
+export function ListIndexes(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['ListIndexes'](arg1, arg2, arg3);
 }
 
 export function ListLocalDir(arg1) {
@@ -116,6 +168,10 @@ export function ListSFTPDir(arg1, arg2) {
 
 export function ListSSHHosts() {
   return window['go']['app']['Service']['ListSSHHosts']();
+}
+
+export function LoadWorkspace(arg1) {
+  return window['go']['app']['Service']['LoadWorkspace'](arg1);
 }
 
 export function MkdirLocalPath(arg1) {
@@ -146,6 +202,10 @@ export function QuerySQLPage(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['app']['Service']['QuerySQLPage'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function RemoveContainer(arg1, arg2) {
+  return window['go']['app']['Service']['RemoveContainer'](arg1, arg2);
+}
+
 export function RenameLocalPath(arg1, arg2) {
   return window['go']['app']['Service']['RenameLocalPath'](arg1, arg2);
 }
@@ -158,8 +218,20 @@ export function ResizeTerminal(arg1, arg2, arg3) {
   return window['go']['app']['Service']['ResizeTerminal'](arg1, arg2, arg3);
 }
 
+export function ResolveContainerDatabaseLink(arg1, arg2) {
+  return window['go']['app']['Service']['ResolveContainerDatabaseLink'](arg1, arg2);
+}
+
+export function RestartContainer(arg1, arg2) {
+  return window['go']['app']['Service']['RestartContainer'](arg1, arg2);
+}
+
 export function SaveConnection(arg1) {
   return window['go']['app']['Service']['SaveConnection'](arg1);
+}
+
+export function SaveDockerContext(arg1) {
+  return window['go']['app']['Service']['SaveDockerContext'](arg1);
 }
 
 export function SaveSFTPBookmark(arg1) {
@@ -170,12 +242,32 @@ export function SaveSSHHost(arg1) {
   return window['go']['app']['Service']['SaveSSHHost'](arg1);
 }
 
+export function SaveWorkspace(arg1, arg2) {
+  return window['go']['app']['Service']['SaveWorkspace'](arg1, arg2);
+}
+
+export function SetAppSetting(arg1, arg2) {
+  return window['go']['app']['Service']['SetAppSetting'](arg1, arg2);
+}
+
 export function SetDatabase(arg1, arg2) {
   return window['go']['app']['Service']['SetDatabase'](arg1, arg2);
 }
 
+export function StartContainer(arg1, arg2) {
+  return window['go']['app']['Service']['StartContainer'](arg1, arg2);
+}
+
+export function StopContainer(arg1, arg2) {
+  return window['go']['app']['Service']['StopContainer'](arg1, arg2);
+}
+
 export function TestConnection(arg1) {
   return window['go']['app']['Service']['TestConnection'](arg1);
+}
+
+export function TestDockerContext(arg1) {
+  return window['go']['app']['Service']['TestDockerContext'](arg1);
 }
 
 export function TestSSHHost(arg1) {

@@ -34,6 +34,108 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WNavicat_internal_model_ContainerDatabaseLinkDO_ {
+	    ok: boolean;
+	    data: model.ContainerDatabaseLinkDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_ContainerDatabaseLinkDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.ContainerDatabaseLinkDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WNavicat_internal_model_ContainerLogsDO_ {
+	    ok: boolean;
+	    data: model.ContainerLogsDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_ContainerLogsDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.ContainerLogsDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WNavicat_internal_model_ContainerShellDO_ {
+	    ok: boolean;
+	    data: model.ContainerShellDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_ContainerShellDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.ContainerShellDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WNavicat_internal_model_DDLResultDO_ {
 	    ok: boolean;
 	    data: model.DDLResultDO;
@@ -47,6 +149,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.DDLResultDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WNavicat_internal_model_DockerContextDO_ {
+	    ok: boolean;
+	    data: model.DockerContextDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_DockerContextDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.DockerContextDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -544,6 +680,108 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult___WNavicat_internal_model_ContainerDO_ {
+	    ok: boolean;
+	    data: model.ContainerDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_ContainerDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.ContainerDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WNavicat_internal_model_DockerContextDO_ {
+	    ok: boolean;
+	    data: model.DockerContextDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_DockerContextDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.DockerContextDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WNavicat_internal_model_DockerImageDO_ {
+	    ok: boolean;
+	    data: model.DockerImageDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_DockerImageDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.DockerImageDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult___WNavicat_internal_model_FileEntryDO_ {
 	    ok: boolean;
 	    data: model.FileEntryDO[];
@@ -557,6 +795,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.FileEntryDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WNavicat_internal_model_IndexMetaDO_ {
+	    ok: boolean;
+	    data: model.IndexMetaDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_IndexMetaDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.IndexMetaDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -748,6 +1020,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_int_ {
+	    ok: boolean;
+	    data: number;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_int_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = source["data"];
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_interface____ {
 	    ok: boolean;
 	    data: any;
@@ -755,6 +1061,40 @@ export namespace app {
 	
 	    static createFrom(source: any = {}) {
 	        return new ApiResult_interface____(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = source["data"];
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_map_string_string_ {
+	    ok: boolean;
+	    data: Record<string, string>;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_map_string_string_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -880,6 +1220,7 @@ export namespace model {
 	    columnType: string;
 	    nullable: boolean;
 	    isPrimaryKey: boolean;
+	    extra: string;
 	    defaultValue?: string;
 	    comment: string;
 	    editable: boolean;
@@ -895,6 +1236,7 @@ export namespace model {
 	        this.columnType = source["columnType"];
 	        this.nullable = source["nullable"];
 	        this.isPrimaryKey = source["isPrimaryKey"];
+	        this.extra = source["extra"];
 	        this.defaultValue = source["defaultValue"];
 	        this.comment = source["comment"];
 	        this.editable = source["editable"];
@@ -903,6 +1245,7 @@ export namespace model {
 	export class ConnectionDO {
 	    id: string;
 	    name: string;
+	    group: string;
 	    dbType: string;
 	    host: string;
 	    port: number;
@@ -911,6 +1254,7 @@ export namespace model {
 	    database: string;
 	    charset: string;
 	    sshEnabled: boolean;
+	    sshHostId: string;
 	    sshHost: string;
 	    sshPort: number;
 	    sshUser: string;
@@ -927,6 +1271,7 @@ export namespace model {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
+	        this.group = source["group"];
 	        this.dbType = source["dbType"];
 	        this.host = source["host"];
 	        this.port = source["port"];
@@ -935,6 +1280,7 @@ export namespace model {
 	        this.database = source["database"];
 	        this.charset = source["charset"];
 	        this.sshEnabled = source["sshEnabled"];
+	        this.sshHostId = source["sshHostId"];
 	        this.sshHost = source["sshHost"];
 	        this.sshPort = source["sshPort"];
 	        this.sshUser = source["sshUser"];
@@ -942,6 +1288,84 @@ export namespace model {
 	        this.sshPassword = source["sshPassword"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	export class ContainerDO {
+	    id: string;
+	    shortId: string;
+	    name: string;
+	    image: string;
+	    state: string;
+	    status: string;
+	    ports: string;
+	    createdAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContainerDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.shortId = source["shortId"];
+	        this.name = source["name"];
+	        this.image = source["image"];
+	        this.state = source["state"];
+	        this.status = source["status"];
+	        this.ports = source["ports"];
+	        this.createdAt = source["createdAt"];
+	    }
+	}
+	export class ContainerDatabaseLinkDO {
+	    dbType: string;
+	    name: string;
+	    host: string;
+	    port: number;
+	    user: string;
+	    sshEnabled: boolean;
+	    sshHostId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContainerDatabaseLinkDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dbType = source["dbType"];
+	        this.name = source["name"];
+	        this.host = source["host"];
+	        this.port = source["port"];
+	        this.user = source["user"];
+	        this.sshEnabled = source["sshEnabled"];
+	        this.sshHostId = source["sshHostId"];
+	    }
+	}
+	export class ContainerLogsDO {
+	    content: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContainerLogsDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.content = source["content"];
+	    }
+	}
+	export class ContainerShellDO {
+	    mode: string;
+	    hostId: string;
+	    command: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContainerShellDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mode = source["mode"];
+	        this.hostId = source["hostId"];
+	        this.command = source["command"];
 	    }
 	}
 	export class DDLResultDO {
@@ -954,6 +1378,48 @@ export namespace model {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.content = source["content"];
+	    }
+	}
+	export class DockerContextDO {
+	    id: string;
+	    name: string;
+	    kind: string;
+	    endpoint: string;
+	    sshHostId: string;
+	    connected: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new DockerContextDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.kind = source["kind"];
+	        this.endpoint = source["endpoint"];
+	        this.sshHostId = source["sshHostId"];
+	        this.connected = source["connected"];
+	    }
+	}
+	export class DockerImageDO {
+	    id: string;
+	    shortId: string;
+	    tags: string;
+	    size: number;
+	    createdAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DockerImageDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.shortId = source["shortId"];
+	        this.tags = source["tags"];
+	        this.size = source["size"];
+	        this.createdAt = source["createdAt"];
 	    }
 	}
 	export class ExportResultDO {
@@ -1002,6 +1468,26 @@ export namespace model {
 	        this.isDir = source["isDir"];
 	        this.size = source["size"];
 	        this.modTime = source["modTime"];
+	    }
+	}
+	export class IndexMetaDO {
+	    name: string;
+	    column: string;
+	    nonUnique: boolean;
+	    seqInIndex: number;
+	    indexType: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new IndexMetaDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.column = source["column"];
+	        this.nonUnique = source["nonUnique"];
+	        this.seqInIndex = source["seqInIndex"];
+	        this.indexType = source["indexType"];
 	    }
 	}
 	export class LocalDirResultDO {

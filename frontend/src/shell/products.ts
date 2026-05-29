@@ -37,7 +37,7 @@ export const PRODUCTS: ProductDef[] = [
     label: '容器',
     shortLabel: 'Docker',
     description: 'Docker 容器、镜像与 Compose 管理',
-    available: false,
+    available: true,
   },
   {
     id: 'environment',

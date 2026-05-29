@@ -54,6 +54,9 @@ func (m *Manager) Open(ctx context.Context, connectionID, database string) (*mod
 	if err := tunnel.ValidateConnectionSSH(*conn); err != nil {
 		return nil, err
 	}
+	if err := tunnel.ResolveConnection(m.store, conn); err != nil {
+		return nil, err
+	}
 	ad, err := m.registry.Get(conn.DbType)
 	if err != nil {
 		return nil, err
