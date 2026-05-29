@@ -1,0 +1,923 @@
+/* 多产品线工作台壳 */
+
+.workbench-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.workbench-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.workbench-content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 顶栏 */
+.shell-chrome {
+  display: flex;
+  align-items: center;
+  height: var(--chrome-height);
+  padding: 0 10px 0 12px;
+  background: var(--color-chrome);
+  border-bottom: 1px solid var(--color-border);
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.shell-chrome .chrome-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+.shell-chrome .logo-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 7px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.04em;
+}
+
+.shell-chrome .logo-text {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.chrome-product {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chrome-product-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.chrome-product-desc {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 产品线轨 */
+.product-rail {
+  width: var(--product-rail-width, 52px);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-chrome);
+  border-right: 1px solid var(--color-border);
+  padding: 6px 0;
+}
+
+.product-rail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 6px;
+}
+
+.product-rail-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 40px;
+  height: 44px;
+  margin: 0 auto;
+  padding: 4px 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.product-rail-btn:hover {
+  background: var(--color-tree-hover);
+  color: var(--color-text-secondary);
+}
+
+.product-rail-btn.active {
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+
+.product-rail-btn.active::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+}
+
+.product-rail-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.product-rail-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+/* 产品工作区通用 */
+.product-workbench {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.product-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px;
+  background: var(--color-toolbar);
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+}
+
+.product-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.product-toolbar-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-toolbar-status .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.product-toolbar-status .status-dot.online {
+  background: var(--color-success);
+  opacity: 1;
+}
+
+.product-coming-tag {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--color-warning-muted);
+  color: var(--color-warning);
+}
+
+.product-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-statusbar .status-right {
+  flex-shrink: 0;
+}
+
+/* 终端原型 */
+.terminal-mock {
+  background: #0c0c0e;
+  padding: 0;
+}
+
+.terminal-workspace {
+  flex: 1;
+  min-height: 0;
+  background: transparent;
+  position: relative;
+}
+
+.terminal-opacity-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted, #8a8a96);
+  margin-right: 12px;
+}
+
+.terminal-opacity-control input[type='range'] {
+  width: 88px;
+  accent-color: var(--accent, #5b8def);
+}
+
+.terminal-opacity-value {
+  min-width: 36px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.terminal-toolbar-glyph {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.tab-split-badge {
+  font-size: 10px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(91, 141, 239, 0.2);
+  color: #8ab4ff;
+  margin-left: 2px;
+}
+
+.terminal-split-node {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  width: 100%;
+}
+
+.terminal-split-node.row {
+  flex-direction: row;
+}
+
+.terminal-split-node.col {
+  flex-direction: column;
+}
+
+.terminal-split-pane {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-split-divider {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.06);
+  transition: background 0.15s;
+}
+
+.terminal-split-divider:hover {
+  background: rgba(91, 141, 239, 0.45);
+}
+
+.terminal-split-divider.h {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.terminal-split-divider.v {
+  height: 4px;
+  cursor: row-resize;
+}
+
+.terminal-split-leaf {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid transparent;
+  border-radius: 2px;
+}
+
+.terminal-split-leaf.focused {
+  border-color: rgba(91, 141, 239, 0.35);
+}
+
+.terminal-split-leaf-bar {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  height: 22px;
+  padding: 0 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.terminal-split-leaf-close {
+  width: 22px;
+  height: 20px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: #8a8a96;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.terminal-split-leaf-close:hover {
+  background: rgba(220, 38, 38, 0.15);
+  color: #f87171;
+}
+
+.terminal-pane-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-xterm-host {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  padding: 4px 6px;
+  box-sizing: border-box;
+}
+
+.terminal-xterm-host .xterm {
+  height: 100%;
+  background: transparent !important;
+}
+
+.terminal-xterm-host .xterm-viewport {
+  overflow-y: auto !important;
+  background-color: transparent !important;
+}
+
+.terminal-xterm-host .xterm-screen {
+  background-color: transparent !important;
+}
+
+.terminal-screen {
+  margin: 0;
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.55;
+  color: #c8c8d0;
+  white-space: pre-wrap;
+  height: 100%;
+  overflow: auto;
+}
+
+.mock-list .mock-item {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.mock-list .mock-icon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.mock-hint {
+  padding-top: 4px;
+  font-size: 10px;
+  text-align: center;
+}
+
+.wn-tab-terminal .tab-dot {
+  background: var(--color-success);
+}
+
+.wn-tab.wn-tab-local svg {
+  color: var(--accent);
+}
+
+/* SFTP 原型 */
+.sftp-panes {
+  display: flex;
+  flex-direction: row;
+}
+
+.sftp-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--color-surface);
+}
+
+.sftp-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-2);
+}
+
+.sftp-path {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-secondary);
+}
+
+.sftp-pane-body {
+  flex: 1;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.sftp-divider {
+  width: 1px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.sftp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.sftp-table th {
+  text-align: left;
+  padding: 6px 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.sftp-table td {
+  padding: 5px 12px;
+  color: var(--color-text-secondary);
+}
+
+.sftp-row:hover td {
+  background: var(--color-tree-hover);
+}
+
+.sftp-icon-dir {
+  vertical-align: -2px;
+  margin-right: 4px;
+  color: var(--accent);
+}
+
+/* 工具链 / 环境原型 */
+.toolchain-main {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px 20px;
+  background: var(--color-surface);
+}
+
+.toolchain-section {
+  margin-bottom: 20px;
+}
+
+.toolchain-section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: var(--color-text-muted);
+}
+
+.toolchain-section-header.compact {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toolchain-section-header h2 {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.toolchain-section-header h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.toolchain-section-header p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.toolchain-hint {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.toolchain-preset-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toolchain-preset-item {
+  padding: 8px 8px;
+  border-radius: var(--radius-sm);
+  cursor: default;
+  margin-bottom: 2px;
+}
+
+.toolchain-preset-item:hover {
+  background: var(--color-tree-hover);
+}
+
+.toolchain-preset-item.active {
+  background: var(--accent-muted);
+}
+
+.toolchain-preset-name {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.toolchain-preset-meta {
+  display: block;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolchain-runtime-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.toolchain-runtime-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.toolchain-runtime-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolchain-runtime-head .wn-btn {
+  margin-left: auto;
+}
+
+.toolchain-lang-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.toolchain-runtime-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.toolchain-runtime-version {
+  font-size: 18px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+}
+
+.toolchain-runtime-meta {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.toolchain-runtime-path {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolchain-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.toolchain-table th {
+  text-align: left;
+  padding: 7px 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.toolchain-table td {
+  padding: 6px 12px;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.toolchain-table tr:last-child td {
+  border-bottom: none;
+}
+
+.toolchain-lang-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.toolchain-mono {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.toolchain-status {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.toolchain-status-ok {
+  background: var(--color-success-muted);
+  color: var(--color-success);
+}
+
+.toolchain-status-warn {
+  background: var(--color-warning-muted);
+  color: var(--color-warning);
+}
+
+.toolchain-status-skip {
+  background: var(--color-surface-3);
+  color: var(--color-text-muted);
+}
+
+.toolchain-project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toolchain-project-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto auto;
+  gap: 4px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
+}
+
+.toolchain-project-path {
+  grid-column: 1;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.toolchain-project-card > .wn-btn {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+}
+
+.toolchain-project-hints {
+  grid-column: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.toolchain-hint-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--color-surface-3);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+}
+
+.toolchain-project-suggest {
+  grid-column: 1;
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+/* Docker 原型 */
+.docker-sidebar .docker-views {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 4px 6px;
+}
+
+.docker-view-btn {
+  text-align: left;
+  padding: 5px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  cursor: default;
+}
+
+.docker-view-btn.active {
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.docker-view-btn:disabled {
+  opacity: 0.5;
+}
+
+.docker-main {
+  min-width: 0;
+}
+
+.wn-tab-docker .tab-dot {
+  background: #2496ed;
+}
+
+.docker-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.docker-table-wrap {
+  flex: 1;
+  min-height: 120px;
+  overflow: auto;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.docker-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.docker-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  padding: 7px 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.docker-table td {
+  padding: 6px 12px;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.docker-row {
+  cursor: default;
+}
+
+.docker-row:hover td {
+  background: var(--color-tree-hover);
+}
+
+.docker-row.selected td {
+  background: var(--accent-muted);
+}
+
+.docker-name {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.docker-mono {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.docker-status {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+.docker-status-running {
+  background: var(--color-success-muted);
+  color: var(--color-success);
+}
+
+.docker-status-exited {
+  background: var(--color-danger-muted);
+  color: var(--color-danger);
+}
+
+.docker-log-panel {
+  height: 140px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0c0c0e;
+}
+
+.docker-log-header {
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.docker-log-body {
+  flex: 1;
+  margin: 0;
+  padding: 8px 12px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: #a8a8b0;
+  white-space: pre-wrap;
+}

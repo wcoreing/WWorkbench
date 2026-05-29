@@ -1,0 +1,80 @@
+/* WNavicat 设计令牌 — 精致工具型界面 */
+:root,
+[data-theme='light'] {
+  --accent: #3b6fd9;
+  --accent-hover: #2f5fc4;
+  --accent-muted: rgba(59, 111, 217, 0.1);
+  --accent-ring: rgba(59, 111, 217, 0.28);
+
+  --color-bg: #eceef2;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-2: #f6f7f9;
+  --color-surface-3: #eef0f4;
+  --color-editor: #ffffff;
+  --color-sidebar: #f4f5f7;
+  --color-toolbar: #f4f5f7;
+  --color-chrome: #f4f5f7;
+  --color-border: rgba(15, 23, 42, 0.1);
+  --color-border-subtle: rgba(15, 23, 42, 0.06);
+  --color-text: #1a1d24;
+  --color-text-secondary: #4b5568;
+  --color-text-muted: #8b93a1;
+  --color-primary: var(--accent);
+  --color-primary-hover: var(--accent-hover);
+  --color-danger: #dc2626;
+  --color-danger-muted: rgba(220, 38, 38, 0.08);
+  --color-success: #059669;
+  --color-success-muted: rgba(5, 150, 105, 0.08);
+  --color-warning: #d97706;
+  --color-warning-muted: rgba(217, 119, 6, 0.1);
+  --color-tree-hover: rgba(15, 23, 42, 0.04);
+  --color-tab-bar: #eef0f4;
+  --color-tab-active: #ffffff;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --radius-sm: 4px;
+  --radius: 5px;
+  --radius-lg: 7px;
+  --shadow-sm: none;
+  --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.12);
+  --sidebar-width: 220px;
+  --product-rail-width: 52px;
+  --chrome-height: 36px;
+  --tab-height: 28px;
+  --statusbar-height: 22px;
+  --control-height: 26px;
+}
+
+[data-theme='dark'] {
+  --accent: #6b9fff;
+  --accent-hover: #8ab4ff;
+  --accent-muted: rgba(107, 159, 255, 0.12);
+  --accent-ring: rgba(107, 159, 255, 0.22);
+
+  --color-bg: #09090b;
+  --color-surface: #111113;
+  --color-surface-raised: #18181b;
+  --color-surface-2: #141416;
+  --color-surface-3: #1c1c1f;
+  --color-editor: #0e0e10;
+  --color-sidebar: #0e0e10;
+  --color-toolbar: #0e0e10;
+  --color-chrome: #0e0e10;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-subtle: rgba(255, 255, 255, 0.04);
+  --color-text: #ececef;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #63636e;
+  --color-danger-muted: rgba(248, 113, 113, 0.1);
+  --color-success-muted: rgba(52, 211, 153, 0.08);
+  --color-warning-muted: rgba(251, 191, 36, 0.08);
+  --color-tree-hover: rgba(255, 255, 255, 0.04);
+  --color-tab-bar: #0e0e10;
+  --color-tab-active: #161618;
+  --shadow-sm: none;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+}

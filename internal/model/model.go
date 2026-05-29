@@ -1,0 +1,222 @@
+package model
+
+// ConnectionDO 数据库连接配置。
+type ConnectionDO struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	DbType      string `json:"dbType"`
+	Host        string `json:"host"`
+	Port        int    `json:"port"`
+	User        string `json:"user"`
+	Password    string `json:"password"`
+	Database    string `json:"database"`
+	Charset     string `json:"charset"`
+	SSHEnabled  bool   `json:"sshEnabled"`
+	SSHHost     string `json:"sshHost"`
+	SSHPort     int    `json:"sshPort"`
+	SSHUser     string `json:"sshUser"`
+	SSHKeyPath  string `json:"sshKeyPath"`
+	SSHPassword string `json:"sshPassword"`
+	CreatedAt   int64  `json:"createdAt"`
+	UpdatedAt   int64  `json:"updatedAt"`
+}
+
+// TunnelSpecDO SSH 隧道规格。
+type TunnelSpecDO struct {
+	Enabled    bool   `json:"enabled"`
+	Host       string `json:"host"`
+	Port       int    `json:"port"`
+	User       string `json:"user"`
+	KeyPath    string `json:"keyPath"`
+	Password   string `json:"password"`
+	TargetHost string `json:"targetHost"`
+	TargetPort int    `json:"targetPort"`
+}
+
+// ConnectionConfigDO 运行时连接配置（含明文密码，仅内存使用）。
+type ConnectionConfigDO struct {
+	DbType   string `json:"dbType"`
+	Host     string `json:"host"`
+	Port     int    `json:"port"`
+	User     string `json:"user"`
+	Password string `json:"password"`
+	Database string `json:"database"`
+	Charset  string `json:"charset"`
+	Tunnel   TunnelSpecDO `json:"tunnel"`
+}
+
+// TableMetaDO 表元数据。
+type TableMetaDO struct {
+	Name    string `json:"name"`
+	Comment string `json:"comment"`
+	Engine  string `json:"engine"`
+	Rows    int64  `json:"rows"`
+}
+
+// ColumnMetaDO 列元数据。
+type ColumnMetaDO struct {
+	Name         string `json:"name"`
+	DataType     string `json:"dataType"`
+	ColumnType   string `json:"columnType"`
+	Nullable     bool   `json:"nullable"`
+	IsPrimaryKey bool   `json:"isPrimaryKey"`
+	DefaultValue *string `json:"defaultValue,omitempty"`
+	Comment      string `json:"comment"`
+	Editable     bool   `json:"editable"`
+}
+
+// ExecuteResultDO SQL 执行结果（非查询）。
+type ExecuteResultDO struct {
+	RowsAffected int64  `json:"rowsAffected"`
+	LastInsertID int64  `json:"lastInsertId"`
+	Message      string `json:"message"`
+	ElapsedMs    int64  `json:"elapsedMs"`
+}
+
+// QueryRowDO 查询结果行。
+type QueryRowDO struct {
+	Cells []CellValueDO `json:"cells"`
+}
+
+// QueryPageDO 分页查询结果。
+type QueryPageDO struct {
+	Columns   []ColumnMetaDO `json:"columns"`
+	Rows      []QueryRowDO   `json:"rows"`
+	Page      int              `json:"page"`
+	PageSize  int              `json:"pageSize"`
+	Total     int64            `json:"total"`
+	ElapsedMs int64            `json:"elapsedMs"`
+}
+
+// CellValueDO 单元格值。
+type CellValueDO struct {
+	Value   *string `json:"value"`
+	IsNull  bool    `json:"isNull"`
+	Display string  `json:"display"`
+}
+
+// TableFilterDO 表数据筛选条件。
+type TableFilterDO struct {
+	Enabled  bool   `json:"enabled"`
+	Column   string `json:"column"`
+	Operator string `json:"operator"`
+	Value    string `json:"value"`
+}
+
+// TableSortDO 表数据排序条件。
+type TableSortDO struct {
+	Column    string `json:"column"`
+	Ascending bool   `json:"ascending"`
+}
+
+// TableDataQueryDO 表数据查询参数。
+type TableDataQueryDO struct {
+	Page     int            `json:"page"`
+	PageSize int            `json:"pageSize"`
+	Filters  []TableFilterDO `json:"filters"`
+	Sorts    []TableSortDO   `json:"sorts"`
+}
+
+// TableDataPageDO 表数据分页。
+type TableDataPageDO struct {
+	Columns      []ColumnMetaDO  `json:"columns"`
+	Rows         []TableRowDO    `json:"rows"`
+	Page         int             `json:"page"`
+	PageSize     int             `json:"pageSize"`
+	Total        int64           `json:"total"`
+	HasPrimaryKey bool           `json:"hasPrimaryKey"`
+	ReadOnly     bool            `json:"readOnly"`
+	ElapsedMs    int64           `json:"elapsedMs"`
+}
+
+// TableRowDO 表数据行。
+type TableRowDO struct {
+	RowID   string                 `json:"rowId"`
+	Values  map[string]CellValueDO `json:"values"`
+}
+
+// RowMutationBatchDO 行变更批次。
+type RowMutationBatchDO struct {
+	Inserts []RowMutationDO `json:"inserts"`
+	Updates []RowMutationDO `json:"updates"`
+	Deletes []RowMutationDO `json:"deletes"`
+}
+
+// FieldValueDO 字段值（可空）。
+type FieldValueDO struct {
+	Name   string  `json:"name"`
+	Value  *string `json:"value"`
+	IsNull bool    `json:"isNull"`
+}
+
+// RowMutationDO 单行变更。
+type RowMutationDO struct {
+	RowID  string         `json:"rowId"`
+	Fields []FieldValueDO `json:"fields"`
+	OldPK  []FieldValueDO `json:"oldPk,omitempty"`
+}
+
+// ObjectTreeNodeDO 对象树节点。
+type ObjectTreeNodeDO struct {
+	ID       string             `json:"id"`
+	Label    string             `json:"label"`
+	NodeType string             `json:"nodeType"`
+	Database string             `json:"database,omitempty"`
+	Table    string             `json:"table,omitempty"`
+	Children []ObjectTreeNodeDO `json:"children,omitempty"`
+	Lazy     bool               `json:"lazy"`
+}
+
+// QueryHistoryDO 查询历史。
+type QueryHistoryDO struct {
+	ID           string `json:"id"`
+	ConnectionID string `json:"connectionId"`
+	Database     string `json:"database"`
+	SQL          string `json:"sql"`
+	ExecutedAt   int64  `json:"executedAt"`
+	ElapsedMs    int64  `json:"elapsedMs"`
+	Success      bool   `json:"success"`
+}
+
+// VersionDO 版本信息。
+type VersionDO struct {
+	Version string `json:"version"`
+}
+
+// ExportResultDO 导出结果。
+type ExportResultDO struct {
+	Path string `json:"path"`
+}
+
+// DDLResultDO DDL 文本。
+type DDLResultDO struct {
+	Content string `json:"content"`
+}
+
+// SessionInfoDO 会话信息。
+type SessionInfoDO struct {
+	SessionID    string `json:"sessionId"`
+	ConnectionID string `json:"connectionId"`
+	Database     string `json:"database"`
+}
+
+// SSHHostDO SSH 终端主机配置。
+type SSHHostDO struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	Host      string `json:"host"`
+	Port      int    `json:"port"`
+	User      string `json:"user"`
+	Password  string `json:"password"`
+	KeyPath   string `json:"keyPath"`
+	CreatedAt int64  `json:"createdAt"`
+	UpdatedAt int64  `json:"updatedAt"`
+}
+
+// TerminalSessionInfoDO 终端会话信息。
+type TerminalSessionInfoDO struct {
+	SessionID string `json:"sessionId"`
+	HostID    string `json:"hostId"`
+	Title     string `json:"title"`
+	Kind      string `json:"kind"` // local | ssh
+}
