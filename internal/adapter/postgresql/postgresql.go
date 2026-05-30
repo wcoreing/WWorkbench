@@ -90,18 +90,23 @@ func (a *Adapter) ListViews(ctx context.Context, db *sql.DB, _ string) ([]model.
 }
 
 func listSchemaObjects(ctx context.Context, db *sql.DB, tableType string) ([]model.TableMetaDO, error) {
-	q := `SELECT table_name FROM information_schema.tables
-		WHERE table_schema = $1 AND table_type = $2 ORDER BY table_name`
-	rows, err := db.QueryContext(ctx, q, schemaPublic, tableType)
+	q := `SELECT table_schema, table_name FROM information_schema.tables
+		WHERE table_schema NOT IN ('pg_catalog', 'information_schema') AND table_type = $1
+		ORDER BY table_schema, table_name`
+	rows, err := db.QueryContext(ctx, q, tableType)
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeSQLFailed, "列出对象失败", err)
 	}
 	defer rows.Close()
 	var list []model.TableMetaDO
 	for rows.Next() {
-		var t model.TableMetaDO
-		if err := rows.Scan(&t.Name); err != nil {
+		var schema, name string
+		if err := rows.Scan(&schema, &name); err != nil {
 			return nil, err
+		}
+		t := model.TableMetaDO{Name: name}
+		if schema != schemaPublic {
+			t.Name = schema + "." + name
 		}
 		list = append(list, t)
 	}
@@ -110,8 +115,9 @@ func listSchemaObjects(ctx context.Context, db *sql.DB, tableType string) ([]mod
 
 // ListIndexes 列出索引。
 func (a *Adapter) ListIndexes(ctx context.Context, db *sql.DB, _, table string) ([]model.IndexMetaDO, error) {
+	schema, name := parseTableRef(table)
 	q := `SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = $1 AND tablename = $2 ORDER BY indexname`
-	rows, err := db.QueryContext(ctx, q, schemaPublic, table)
+	rows, err := db.QueryContext(ctx, q, schema, name)
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeSQLFailed, "列出索引失败", err)
 	}
@@ -368,16 +374,17 @@ func (a *Adapter) ApplyMutations(ctx context.Context, db *sql.DB, _, table strin
 }
 
 func fetchColumns(ctx context.Context, db *sql.DB, table string) ([]model.ColumnMetaDO, error) {
+	schema, name := parseTableRef(table)
 	q := `SELECT column_name, data_type, udt_name, is_nullable, column_default,
 		COALESCE(col_description((table_schema||'.'||table_name)::regclass::oid, ordinal_position), '')
 		FROM information_schema.columns
 		WHERE table_schema = $1 AND table_name = $2 ORDER BY ordinal_position`
-	rows, err := db.QueryContext(ctx, q, schemaPublic, table)
+	rows, err := db.QueryContext(ctx, q, schema, name)
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeSQLFailed, "列出列失败", err)
 	}
 	defer rows.Close()
-	pkCols, _ := fetchPrimaryKeys(ctx, db, table)
+	pkCols, _ := fetchPrimaryKeys(ctx, db, schema, name)
 	pkSet := make(map[string]bool)
 	for _, p := range pkCols {
 		pkSet[p] = true
@@ -402,14 +409,14 @@ func fetchColumns(ctx context.Context, db *sql.DB, table string) ([]model.Column
 	return list, nil
 }
 
-func fetchPrimaryKeys(ctx context.Context, db *sql.DB, table string) ([]string, error) {
+func fetchPrimaryKeys(ctx context.Context, db *sql.DB, schema, table string) ([]string, error) {
 	q := `SELECT kcu.column_name
 		FROM information_schema.table_constraints tc
 		JOIN information_schema.key_column_usage kcu
 		  ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
 		WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_schema = $1 AND tc.table_name = $2
 		ORDER BY kcu.ordinal_position`
-	rows, err := db.QueryContext(ctx, q, schemaPublic, table)
+	rows, err := db.QueryContext(ctx, q, schema, table)
 	if err != nil {
 		return nil, err
 	}

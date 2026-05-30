@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconPlus, IconRefresh } from '../../components/Icons'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { subscribeLogsChunks } from '../../api/logsEvents'
 import { loadLogsWorkspace, scheduleLogsWorkspacePersist } from '../../stores/logsWorkspacePersist'
 import { model } from '../../../wailsjs/go/models'
 
@@ -57,7 +58,8 @@ export function LogCenterWorkbench() {
   const [tailLines, setTailLines] = useState(200)
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
-  const [autoRefresh, setAutoRefresh] = useState(false)
+  const [followLive, setFollowLive] = useState(false)
+  const followStreamId = useRef('')
   const [deleteTarget, setDeleteTarget] = useState<LogSource | null>(null)
   const [sshHosts, setSSHHosts] = useState<SSHHost[]>([])
   const [dockerContexts, setDockerContexts] = useState<DockerContext[]>([])
@@ -194,10 +196,47 @@ export function LogCenterWorkbench() {
   }, [fetchReady, buildSourceConfig, tailLines, setStatusMessage, t])
 
   useEffect(() => {
-    if (!autoRefresh || !fetchReady) return
-    const timer = window.setInterval(() => void refreshLogs(), 5000)
-    return () => window.clearInterval(timer)
-  }, [autoRefresh, fetchReady, refreshLogs])
+    return subscribeLogsChunks((evt) => {
+      if (!followStreamId.current || evt.streamId !== followStreamId.current) return
+      if (evt.reset) {
+        setContent(evt.chunk)
+      } else if (evt.chunk) {
+        setContent((prev) => prev + evt.chunk)
+      }
+    })
+  }, [])
+
+  useEffect(() => {
+    if (!followLive || !fetchReady) {
+      if (followStreamId.current) {
+        void api.stopLogFollow(followStreamId.current)
+        followStreamId.current = ''
+      }
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const id = await api.startLogFollow(buildSourceConfig(), tailLines)
+        if (cancelled) {
+          void api.stopLogFollow(id)
+          return
+        }
+        followStreamId.current = id
+        setStatusMessage(t('logs.followOn'))
+      } catch (e) {
+        setFollowLive(false)
+        setStatusMessage((e as Error).message)
+      }
+    })()
+    return () => {
+      cancelled = true
+      if (followStreamId.current) {
+        void api.stopLogFollow(followStreamId.current)
+        followStreamId.current = ''
+      }
+    }
+  }, [followLive, fetchReady, buildSourceConfig, tailLines, setStatusMessage, t])
 
   const save = async () => {
     if (!name.trim()) {
@@ -226,6 +265,15 @@ export function LogCenterWorkbench() {
     setStatusMessage(t('logs.saved'))
   }
 
+  const pickLogFile = async () => {
+    try {
+      const p = await api.pickLogFilePath()
+      if (p) setPath(p)
+    } catch (e) {
+      setStatusMessage((e as Error).message)
+    }
+  }
+
   const pickComposeDir = async () => {
     if (!dockerContextId) return
     try {
@@ -252,8 +300,13 @@ export function LogCenterWorkbench() {
             {t('logs.save')}
           </button>
           <label className="logs-auto-label">
-            <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} disabled={!fetchReady} />
-            {t('logs.autoRefresh')}
+            <input
+              type="checkbox"
+              checked={followLive}
+              onChange={(e) => setFollowLive(e.target.checked)}
+              disabled={!fetchReady || loading}
+            />
+            {t('logs.followLive')}
           </label>
         </div>
       </header>
@@ -325,9 +378,12 @@ export function LogCenterWorkbench() {
             </div>
 
             {sourceType === 'local_file' && (
-              <div className="logs-row">
+              <div className="logs-row logs-row-compose-dir">
                 <label className="wn-label">{t('logs.path')}</label>
                 <input className="wn-input" value={path} onChange={(e) => setPath(e.target.value)} placeholder={t('logs.pathPlaceholder')} />
+                <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void pickLogFile()}>
+                  {t('logs.pickFile')}
+                </button>
               </div>
             )}
 

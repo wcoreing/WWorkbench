@@ -16,9 +16,19 @@ func quoteIdent(s string) string {
 	return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
 }
 
+// parseTableRef 解析 schema.table 或单表名（默认 public）。
+func parseTableRef(table string) (schema, name string) {
+	table = strings.TrimSpace(table)
+	if i := strings.Index(table, "."); i >= 0 {
+		return table[:i], table[i+1:]
+	}
+	return schemaPublic, table
+}
+
 // qualTable 返回 schema 限定的表名。
 func qualTable(table string) string {
-	return quoteIdent(schemaPublic) + "." + quoteIdent(table)
+	schema, name := parseTableRef(table)
+	return quoteIdent(schema) + "." + quoteIdent(name)
 }
 
 func splitAddr(addr string, defaultPort int) (string, int) {

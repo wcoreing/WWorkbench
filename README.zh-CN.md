@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> 当前版本：**v0.27.0**（界面右下角可查看）
+> 当前版本：**v0.28.0**（界面右下角可查看）
 
 ---
 
@@ -24,7 +24,7 @@
 | **环境 (Env)** | Node / Go / PHP / Java 本机版本安装、切换与项目预设 |
 | **笔记本** | 运维速记、Markdown 编辑与预览 |
 | **API** | HTTP 请求调试与响应查看 |
-| **日志** | 本机、SSH、Docker 与 Compose 日志查看 |
+| **日志** | 本机、SSH、Docker 与 Compose 日志查看，支持实时跟随 |
 
 其他特性：
 
@@ -43,7 +43,7 @@
 | 前端 | React 18、TypeScript、Vite、Zustand |
 | 编辑器 | Monaco Editor、xterm.js |
 | 存储 | SQLite（`modernc.org/sqlite`） |
-| 集成 | Docker Engine API、SSH/SFTP、MySQL |
+| 集成 | Docker Engine API、SSH/SFTP、MySQL / PostgreSQL / Redis |
 
 ---
 

@@ -8,6 +8,8 @@ import (
 	"WNavicat/internal/errno"
 	"WNavicat/internal/logs"
 	"WNavicat/internal/model"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // ListLogSources 列出已保存日志源。
@@ -113,4 +115,15 @@ func validateLogSourceConfig(src model.LogSourceDO) error {
 		return errno.New(errno.CodeInvalidArg, "未知日志源类型", src.SourceType)
 	}
 	return nil
+}
+
+// PickLogFilePath 选择本机日志文件路径。
+func (s *Service) PickLogFilePath() ApiResult[string] {
+	path, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择日志文件",
+	})
+	if err != nil {
+		return ErrResult[string](err)
+	}
+	return OkResult(path)
 }

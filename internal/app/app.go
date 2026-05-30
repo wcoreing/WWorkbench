@@ -41,6 +41,7 @@ type Service struct {
 	meta      *meta.Service
 	queries   *query.Service
 	table     *data.Service
+	logFollow *logFollowManager
 }
 
 // NewService 创建应用服务。
@@ -60,7 +61,7 @@ func NewService(
 	queries *query.Service,
 	table *data.Service,
 ) *Service {
-	return &Service{
+	svc := &Service{
 		version:   version,
 		store:     st,
 		conns:     conns,
@@ -76,6 +77,8 @@ func NewService(
 		queries:   queries,
 		table:     table,
 	}
+	svc.logFollow = newLogFollowManager(svc)
+	return svc
 }
 
 // Startup Wails 启动回调。
@@ -88,6 +91,9 @@ func (s *Service) Startup(ctx context.Context) {
 
 // Shutdown Wails 退出回调，释放终端等资源。
 func (s *Service) Shutdown(ctx context.Context) {
+	if s.logFollow != nil {
+		s.logFollow.CloseAll()
+	}
 	s.terminals.CloseAll()
 	s.forwards.CloseAll()
 	s.sftp.CloseAll()

@@ -177,6 +177,8 @@ export function PickDockerComposeDirectory(arg1:string):Promise<app.ApiResult_st
 
 export function PickEnvScanDirectory():Promise<app.ApiResult_string_>;
 
+export function PickLogFilePath():Promise<app.ApiResult_string_>;
+
 export function QuerySQLPage(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<app.ApiResult_WNavicat_internal_model_QueryPageDO_>;
 
 export function RemoveContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
@@ -227,9 +229,13 @@ export function SetDatabase(arg1:string,arg2:string):Promise<app.ApiResult_WNavi
 
 export function StartContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
+export function StartLogFollow(arg1:model.LogSourceDO,arg2:number):Promise<app.ApiResult_string_>;
+
 export function StartSSHForward(arg1:model.SSHForwardStartDO):Promise<app.ApiResult_WNavicat_internal_model_SSHForwardActiveDO_>;
 
 export function StopContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
+export function StopLogFollow(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function StopSSHForward(arg1:string):Promise<app.ApiResult_bool_>;
 

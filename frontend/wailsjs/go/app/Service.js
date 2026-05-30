@@ -350,6 +350,10 @@ export function PickEnvScanDirectory() {
   return window['go']['app']['Service']['PickEnvScanDirectory']();
 }
 
+export function PickLogFilePath() {
+  return window['go']['app']['Service']['PickLogFilePath']();
+}
+
 export function QuerySQLPage(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['app']['Service']['QuerySQLPage'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -450,12 +454,20 @@ export function StartContainer(arg1, arg2) {
   return window['go']['app']['Service']['StartContainer'](arg1, arg2);
 }
 
+export function StartLogFollow(arg1, arg2) {
+  return window['go']['app']['Service']['StartLogFollow'](arg1, arg2);
+}
+
 export function StartSSHForward(arg1) {
   return window['go']['app']['Service']['StartSSHForward'](arg1);
 }
 
 export function StopContainer(arg1, arg2) {
   return window['go']['app']['Service']['StopContainer'](arg1, arg2);
+}
+
+export function StopLogFollow(arg1) {
+  return window['go']['app']['Service']['StopLogFollow'](arg1);
 }
 
 export function StopSSHForward(arg1) {
