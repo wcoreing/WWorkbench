@@ -307,6 +307,33 @@ export interface ContainerEnv {
   vars: ContainerEnvVar[]
 }
 
+export interface HTTPHeaderKV {
+  key: string
+  value: string
+}
+
+export interface HTTPSavedRequest {
+  id: string
+  name: string
+  method: string
+  url: string
+  headersJson: string
+  body: string
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface HTTPResponse {
+  statusCode: number
+  status: string
+  headers: HTTPHeaderKV[]
+  body: string
+  elapsedMs: number
+  truncated: boolean
+  error: string
+}
+
 export interface ComposeService {
   name: string
   service: string

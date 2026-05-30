@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> Current version: **v0.24.0** (shown in the bottom-right corner of the app)
+> Current version: **v0.25.0** (shown in the bottom-right corner of the app)
 
 ---
 
@@ -23,6 +23,7 @@
 | **Containers (Docker)** | Local / remote SSH Docker, image & container management, logs & env vars, run from image, one-click DB connect |
 | **Environment (Env)** | Install, switch, and preset local Node / Go / PHP / Java versions |
 | **Notebook** | Ops notes, Markdown editing & preview |
+| **API** | HTTP request debugging and response viewer |
 
 Additional capabilities:
 

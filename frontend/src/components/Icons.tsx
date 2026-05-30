@@ -152,6 +152,19 @@ export function IconLaptop({ size = 16, className }: IconProps) {
   )
 }
 
+/** HTTP API 图标 */
+export function IconHttp({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20" />
+      <path d="M12 2v20" />
+      <path d="m7 7 3 3" />
+      <path d="m14 17 3-3" />
+    </svg>
+  )
+}
+
 /** 笔记本图标 */
 export function IconNotebook({ size = 16, className }: IconProps) {
   return (

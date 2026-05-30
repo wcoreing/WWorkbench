@@ -1710,6 +1710,111 @@
   margin-top: 4px;
 }
 
+.httpapi-workbench .product-body {
+  min-height: 0;
+}
+
+.httpapi-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.httpapi-request {
+  flex: 0 0 auto;
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.httpapi-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.httpapi-method-url {
+  flex-direction: row;
+  gap: 8px;
+}
+
+.httpapi-method {
+  width: 100px;
+  flex-shrink: 0;
+}
+
+.httpapi-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-height: 140px;
+}
+
+.httpapi-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
+.httpapi-textarea {
+  flex: 1;
+  min-height: 120px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  resize: vertical;
+}
+
+.httpapi-response {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.httpapi-response-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+}
+
+.httpapi-status {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.httpapi-response-body {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.httpapi-pre {
+  margin: 0;
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.httpapi-headers-pre {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text-muted);
+  max-height: 120px;
+  overflow: auto;
+}
+
 .docker-list-bar {
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-border-subtle);

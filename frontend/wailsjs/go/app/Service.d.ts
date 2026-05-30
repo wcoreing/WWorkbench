@@ -33,6 +33,8 @@ export function DeleteDockerContext(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteEnvPreset(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function DeleteHTTPRequest(arg1:string):Promise<app.ApiResult_bool_>;
+
 export function DeleteLocalPath(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteNote(arg1:string):Promise<app.ApiResult_bool_>;
@@ -54,6 +56,8 @@ export function DuplicateNote(arg1:string):Promise<app.ApiResult_WNavicat_intern
 export function EnsureEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
 export function EnsureSSHHostFromConnection(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_SSHHostDO_>;
+
+export function ExecuteHTTPRequest(arg1:model.HTTPExecuteRequestDO):Promise<app.ApiResult_WNavicat_internal_model_HTTPResponseDO_>;
 
 export function ExecuteSQL(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_interface____>;
 
@@ -125,6 +129,8 @@ export function ListEnvRuntimes():Promise<app.ApiResult___WNavicat_internal_mode
 
 export function ListEnvVersions(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_RuntimeVersionDO_>;
 
+export function ListHTTPRequests():Promise<app.ApiResult___WNavicat_internal_model_HTTPSavedRequestDO_>;
+
 export function ListImages(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_DockerImageDO_>;
 
 export function ListIndexes(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult___WNavicat_internal_model_IndexMetaDO_>;
@@ -184,6 +190,8 @@ export function SaveConnection(arg1:model.ConnectionDO):Promise<app.ApiResult_WN
 export function SaveDockerContext(arg1:model.DockerContextDO):Promise<app.ApiResult_WNavicat_internal_model_DockerContextDO_>;
 
 export function SaveEnvPreset(arg1:model.EnvPresetDO):Promise<app.ApiResult_WNavicat_internal_model_EnvPresetDO_>;
+
+export function SaveHTTPRequest(arg1:model.HTTPSavedRequestDO):Promise<app.ApiResult_WNavicat_internal_model_HTTPSavedRequestDO_>;
 
 export function SaveNote(arg1:model.NoteDO):Promise<app.ApiResult_WNavicat_internal_model_NoteDO_>;
 

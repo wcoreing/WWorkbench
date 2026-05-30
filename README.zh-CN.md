@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> 当前版本：**v0.24.0**（界面右下角可查看）
+> 当前版本：**v0.25.0**（界面右下角可查看）
 
 ---
 
@@ -23,6 +23,7 @@
 | **容器 (Docker)** | 本地 / SSH 远程 Docker、镜像与容器管理、日志与环境变量、从镜像运行、数据库一键连接 |
 | **环境 (Env)** | Node / Go / PHP / Java 本机版本安装、切换与项目预设 |
 | **笔记本** | 运维速记、Markdown 编辑与预览 |
+| **API** | HTTP 请求调试与响应查看 |
 
 其他特性：
 

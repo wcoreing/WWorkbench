@@ -21,7 +21,7 @@ const (
 // 产品线扩展执行顺序（实现时按 phase 递增，勿跳号）：
 // Phase 1 — Docker Compose（本阶段）
 // Phase 2 — SSH 端口转发 / 隧道（已完成：终端侧栏）
-// Phase 3 — HTTP API 调试
+// Phase 3 — HTTP API 调试（已完成：httpapi 产品线）
 // Phase 4 — 日志中心（本机 + SSH + Compose）
 // Phase 5 — PostgreSQL / Redis 适配器
 

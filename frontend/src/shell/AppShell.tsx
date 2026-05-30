@@ -8,6 +8,7 @@ import { DatabaseWorkbench } from '../products/database/DatabaseWorkbench'
 import { EnvironmentWorkbench } from '../products/environment/EnvironmentWorkbench'
 import { NotebookWorkbench } from '../products/notebook/NotebookWorkbench'
 import { SftpWorkbench } from '../products/sftp/SftpWorkbench'
+import { HttpApiWorkbench } from '../products/httpapi/HttpApiWorkbench'
 import { TerminalWorkbench } from '../products/terminal/TerminalWorkbench'
 import { ProductRail } from './ProductRail'
 import { ShellChrome } from './ShellChrome'
@@ -22,6 +23,7 @@ const PRODUCT_VIEWS = {
   docker: DockerWorkbench,
   environment: EnvironmentWorkbench,
   notebook: NotebookWorkbench,
+  httpapi: HttpApiWorkbench,
 } as const
 
 type ProductKey = keyof typeof PRODUCT_VIEWS

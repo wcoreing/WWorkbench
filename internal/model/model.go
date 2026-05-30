@@ -414,6 +414,45 @@ type SSHForwardActiveDO struct {
 	StartedAt   int64  `json:"startedAt"`
 }
 
+// HTTPHeaderKVDO HTTP 请求头键值。
+type HTTPHeaderKVDO struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+// HTTPExecuteRequestDO 执行 HTTP 请求参数。
+type HTTPExecuteRequestDO struct {
+	Method    string           `json:"method"`
+	URL       string           `json:"url"`
+	Headers   []HTTPHeaderKVDO `json:"headers"`
+	Body      string           `json:"body"`
+	TimeoutMs int              `json:"timeoutMs"`
+}
+
+// HTTPResponseDO HTTP 响应结果。
+type HTTPResponseDO struct {
+	StatusCode int              `json:"statusCode"`
+	Status     string           `json:"status"`
+	Headers    []HTTPHeaderKVDO `json:"headers"`
+	Body       string           `json:"body"`
+	ElapsedMs  int64            `json:"elapsedMs"`
+	Truncated  bool             `json:"truncated"`
+	Error      string           `json:"error"`
+}
+
+// HTTPSavedRequestDO 已保存的 HTTP 请求模板。
+type HTTPSavedRequestDO struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Method       string `json:"method"`
+	URL          string `json:"url"`
+	HeadersJSON  string `json:"headersJson"`
+	Body         string `json:"body"`
+	SortOrder    int    `json:"sortOrder"`
+	CreatedAt    int64  `json:"createdAt"`
+	UpdatedAt    int64  `json:"updatedAt"`
+}
+
 // ComposeServiceDO Compose 服务/容器状态。
 type ComposeServiceDO struct {
 	Name      string `json:"name"`

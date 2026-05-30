@@ -1,6 +1,6 @@
 /** 产品线定义 — UI 壳按此注册各产品工作区 */
 
-export type ProductId = 'database' | 'terminal' | 'sftp' | 'docker' | 'environment' | 'notebook'
+export type ProductId = 'database' | 'terminal' | 'sftp' | 'docker' | 'environment' | 'notebook' | 'httpapi'
 
 export interface ProductDef {
   id: ProductId
@@ -14,6 +14,7 @@ export const PRODUCTS: ProductDef[] = [
   { id: 'docker', available: true },
   { id: 'environment', available: true },
   { id: 'notebook', available: true },
+  { id: 'httpapi', available: true },
 ]
 
 /** getProduct 按 id 查找产品线元数据。 */

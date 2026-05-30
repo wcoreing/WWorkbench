@@ -62,6 +62,10 @@ export function DeleteEnvPreset(arg1) {
   return window['go']['app']['Service']['DeleteEnvPreset'](arg1);
 }
 
+export function DeleteHTTPRequest(arg1) {
+  return window['go']['app']['Service']['DeleteHTTPRequest'](arg1);
+}
+
 export function DeleteLocalPath(arg1) {
   return window['go']['app']['Service']['DeleteLocalPath'](arg1);
 }
@@ -104,6 +108,10 @@ export function EnsureEnvVersion(arg1, arg2) {
 
 export function EnsureSSHHostFromConnection(arg1) {
   return window['go']['app']['Service']['EnsureSSHHostFromConnection'](arg1);
+}
+
+export function ExecuteHTTPRequest(arg1) {
+  return window['go']['app']['Service']['ExecuteHTTPRequest'](arg1);
 }
 
 export function ExecuteSQL(arg1, arg2, arg3) {
@@ -246,6 +254,10 @@ export function ListEnvVersions(arg1) {
   return window['go']['app']['Service']['ListEnvVersions'](arg1);
 }
 
+export function ListHTTPRequests() {
+  return window['go']['app']['Service']['ListHTTPRequests']();
+}
+
 export function ListImages(arg1) {
   return window['go']['app']['Service']['ListImages'](arg1);
 }
@@ -364,6 +376,10 @@ export function SaveDockerContext(arg1) {
 
 export function SaveEnvPreset(arg1) {
   return window['go']['app']['Service']['SaveEnvPreset'](arg1);
+}
+
+export function SaveHTTPRequest(arg1) {
+  return window['go']['app']['Service']['SaveHTTPRequest'](arg1);
 }
 
 export function SaveNote(arg1) {

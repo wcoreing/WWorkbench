@@ -13,6 +13,7 @@ var allowedWorkspaces = map[string]bool{
 	"terminal": true,
 	"sftp":     true,
 	"docker":   true,
+	"httpapi":  true,
 }
 
 // LoadWorkspaceJSON 读取产品线工作区 JSON 快照。
