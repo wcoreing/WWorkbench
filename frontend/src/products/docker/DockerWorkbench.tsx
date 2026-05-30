@@ -4,6 +4,7 @@ import type { ContainerEnvVar, DockerContainer, DockerContext, DockerImage, SSHH
 import { IconDocker, IconPlus } from '../../components/Icons'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { DockerContextModal } from '../../features/docker/DockerContextModal'
+import { DockerComposePanel } from '../../features/docker/DockerComposePanel'
 import { DockerRunModal } from '../../features/docker/DockerRunModal'
 import { READY_MESSAGES, useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
@@ -230,6 +231,7 @@ export function DockerWorkbench() {
   >(null)
   const [containerPage, setContainerPage] = useState(1)
   const [imagePage, setImagePage] = useState(1)
+  const [composeProjectDir, setComposeProjectDir] = useState('')
   const workspaceLoaded = useRef(false)
 
   const activeContext = contexts.find((c) => c.id === activeContextId)
@@ -287,6 +289,10 @@ export function DockerWorkbench() {
       setContexts((prev) =>
         prev.map((c) => (c.id === activeContextId ? { ...c, connected: true } : c))
       )
+      if (view === 'compose') {
+        setStatusMessage(t('common.ready'))
+        return
+      }
       if (view === 'images') {
         const list = await api.listImages(activeContextId)
         setImages(list)
@@ -336,13 +342,14 @@ export function DockerWorkbench() {
       const snap = await loadDockerWorkspace()
       if (snap?.activeContextId) setActiveContextId(snap.activeContextId)
       if (snap?.view) setView(snap.view)
+      if (snap?.composeProjectDir) setComposeProjectDir(snap.composeProjectDir)
     })()
   }, [])
 
   useEffect(() => {
-    scheduleDockerWorkspacePersist(toDockerWorkspaceSnapshot(activeContextId, view))
+    scheduleDockerWorkspacePersist(toDockerWorkspaceSnapshot(activeContextId, view, composeProjectDir))
     void saveAppSetting(APP_SETTING_KEYS.lastDockerContextId, activeContextId)
-  }, [activeContextId, view])
+  }, [activeContextId, view, composeProjectDir])
 
   useEffect(() => {
     void refreshContexts()
@@ -685,7 +692,11 @@ export function DockerWorkbench() {
               >
                 {t('docker.viewImages')}
               </button>
-              <button type="button" className="docker-view-btn" disabled title={t('docker.composeSoon')}>
+              <button
+                type="button"
+                className={`docker-view-btn ${view === 'compose' ? 'active' : ''}`}
+                onClick={() => setView('compose')}
+              >
                 {t('docker.compose')}
               </button>
               <button type="button" className="docker-view-btn" disabled title={t('docker.swarmSoon')}>
@@ -700,7 +711,13 @@ export function DockerWorkbench() {
             <div className="wn-tabs">
               <button type="button" className="wn-tab wn-tab-docker active">
                 <span className="tab-dot" />
-                <span className="tab-title">{view === 'images' ? t('docker.viewImages') : t('docker.viewContainers')}</span>
+                <span className="tab-title">
+                  {view === 'images'
+                    ? t('docker.viewImages')
+                    : view === 'compose'
+                      ? t('docker.compose')
+                      : t('docker.viewContainers')}
+                </span>
               </button>
             </div>
             <span className="chrome-spacer" />
@@ -729,6 +746,14 @@ export function DockerWorkbench() {
                 {t('common.retry')}
               </button>
             </div>
+          ) : view === 'compose' ? (
+            <DockerComposePanel
+              contextId={activeContextId}
+              dockerReady={dockerReady}
+              projectDir={composeProjectDir}
+              onProjectDirChange={setComposeProjectDir}
+              onStatus={setStatusMessage}
+            />
           ) : view === 'images' ? (
             <div className="docker-list-panel">
               <DockerListBar

@@ -273,6 +273,16 @@ export interface ContainerEnv {
   vars: ContainerEnvVar[]
 }
 
+export interface ComposeService {
+  name: string
+  service: string
+  image: string
+  state: string
+  status: string
+  ports: string
+  containerId: string
+}
+
 export interface DockerContainer {
   id: string
   shortId: string

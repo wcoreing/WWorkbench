@@ -89,6 +89,14 @@ import {
   GetContainerShell,
   ResolveContainerDatabaseLink,
   RunContainer,
+  PickDockerComposeDirectory,
+  GetDockerComposeDirectory,
+  ListComposeServices,
+  ComposeUp,
+  ComposeDown,
+  ComposePull,
+  GetComposeLogs,
+  ComposeRestart,
   ListAppSettings,
   SetAppSetting,
   LoadWorkspace,
@@ -400,6 +408,19 @@ export const api = {
     unwrap(GetContainerShell(contextId, containerId)),
   resolveContainerDatabaseLink: async (contextId: string, containerId: string) =>
     unwrap(ResolveContainerDatabaseLink(contextId, containerId)),
+  pickDockerComposeDirectory: async (contextId: string) =>
+    (await unwrap(PickDockerComposeDirectory(contextId))) ?? '',
+  getDockerComposeDirectory: async (contextId: string) =>
+    (await unwrap(GetDockerComposeDirectory(contextId))) ?? '',
+  listComposeServices: async (contextId: string, projectDir: string) =>
+    asArray(await unwrap(ListComposeServices(contextId, projectDir))),
+  composeUp: async (contextId: string, projectDir: string) => unwrap(ComposeUp(contextId, projectDir)),
+  composeDown: async (contextId: string, projectDir: string) => unwrap(ComposeDown(contextId, projectDir)),
+  composePull: async (contextId: string, projectDir: string) => unwrap(ComposePull(contextId, projectDir)),
+  getComposeLogs: async (contextId: string, projectDir: string, service: string, tail: number) =>
+    (await unwrap(GetComposeLogs(contextId, projectDir, service, tail))).content,
+  composeRestart: async (contextId: string, projectDir: string, service: string) =>
+    unwrap(ComposeRestart(contextId, projectDir, service)),
   listAppSettings: async () => (await unwrap(ListAppSettings())) ?? {},
   setAppSetting: (key: string, value: string) => unwrap(SetAppSetting(key, value)),
   loadWorkspace: async (product: string) => (await unwrap(LoadWorkspace(product))) ?? '',

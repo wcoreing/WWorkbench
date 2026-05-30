@@ -1,9 +1,14 @@
 package app
 
 import (
+	"fmt"
+
 	"WNavicat/internal/docker"
 	"WNavicat/internal/model"
 	"WNavicat/internal/session"
+	"WNavicat/internal/store"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // ListDockerContexts 列出 Docker 上下文。
@@ -174,4 +179,104 @@ func (s *Service) RunContainer(contextID string, spec model.ContainerRunDO) ApiR
 		return ErrResult[model.ContainerDO](err)
 	}
 	return OkResult(*out)
+}
+
+// composeDirKey 按上下文存储 Compose 项目目录。
+func composeDirKey(contextID string) string {
+	return fmt.Sprintf("%s:%s", store.SettingDockerComposeDir, contextID)
+}
+
+// PickDockerComposeDirectory 选择 Compose 项目目录。
+func (s *Service) PickDockerComposeDirectory(contextID string) ApiResult[string] {
+	path, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择 Compose 项目目录",
+	})
+	if err != nil {
+		return ErrResult[string](err)
+	}
+	if path != "" {
+		if err := s.docker.TestComposeProject(path); err != nil {
+			return ErrResult[string](err)
+		}
+		_ = s.store.SetAppSetting(composeDirKey(contextID), path)
+	}
+	return OkResult(path)
+}
+
+// GetDockerComposeDirectory 获取已保存的 Compose 项目目录。
+func (s *Service) GetDockerComposeDirectory(contextID string) ApiResult[string] {
+	path, err := s.store.GetAppSetting(composeDirKey(contextID))
+	if err != nil {
+		return ErrResult[string](err)
+	}
+	return OkResult(path)
+}
+
+// ListComposeServices 列出 Compose 项目服务。
+func (s *Service) ListComposeServices(contextID, projectDir string) ApiResult[[]model.ComposeServiceDO] {
+	ctx, cancel := session.WithTimeout(s.ctx, 60)
+	defer cancel()
+	list, err := s.docker.ListComposeServices(ctx, contextID, projectDir)
+	if err != nil {
+		return ErrResult[[]model.ComposeServiceDO](err)
+	}
+	if list == nil {
+		list = []model.ComposeServiceDO{}
+	}
+	return OkResult(list)
+}
+
+// ComposeUp 启动 Compose 项目。
+func (s *Service) ComposeUp(contextID, projectDir string) ApiResult[string] {
+	ctx, cancel := session.WithTimeout(s.ctx, 300)
+	defer cancel()
+	out, err := s.docker.ComposeUp(ctx, contextID, projectDir)
+	if err != nil {
+		return ErrResult[string](err)
+	}
+	return OkResult(out)
+}
+
+// ComposeDown 停止 Compose 项目。
+func (s *Service) ComposeDown(contextID, projectDir string) ApiResult[string] {
+	ctx, cancel := session.WithTimeout(s.ctx, 120)
+	defer cancel()
+	out, err := s.docker.ComposeDown(ctx, contextID, projectDir)
+	if err != nil {
+		return ErrResult[string](err)
+	}
+	return OkResult(out)
+}
+
+// ComposePull 拉取 Compose 镜像。
+func (s *Service) ComposePull(contextID, projectDir string) ApiResult[string] {
+	ctx, cancel := session.WithTimeout(s.ctx, 600)
+	defer cancel()
+	out, err := s.docker.ComposePull(ctx, contextID, projectDir)
+	if err != nil {
+		return ErrResult[string](err)
+	}
+	return OkResult(out)
+}
+
+// GetComposeLogs 获取 Compose 日志。
+func (s *Service) GetComposeLogs(contextID, projectDir, service string, tail int) ApiResult[model.ComposeLogsDO] {
+	ctx, cancel := session.WithTimeout(s.ctx, 60)
+	defer cancel()
+	content, err := s.docker.GetComposeLogs(ctx, contextID, projectDir, service, tail)
+	if err != nil {
+		return ErrResult[model.ComposeLogsDO](err)
+	}
+	return OkResult(model.ComposeLogsDO{Content: content})
+}
+
+// ComposeRestart 重启 Compose 服务。
+func (s *Service) ComposeRestart(contextID, projectDir, service string) ApiResult[string] {
+	ctx, cancel := session.WithTimeout(s.ctx, 120)
+	defer cancel()
+	out, err := s.docker.ComposeRestart(ctx, contextID, projectDir, service)
+	if err != nil {
+		return ErrResult[string](err)
+	}
+	return OkResult(out)
 }

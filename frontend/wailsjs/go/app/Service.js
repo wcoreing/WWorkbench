@@ -34,6 +34,22 @@ export function CloseTerminal(arg1) {
   return window['go']['app']['Service']['CloseTerminal'](arg1);
 }
 
+export function ComposeDown(arg1, arg2) {
+  return window['go']['app']['Service']['ComposeDown'](arg1, arg2);
+}
+
+export function ComposePull(arg1, arg2) {
+  return window['go']['app']['Service']['ComposePull'](arg1, arg2);
+}
+
+export function ComposeRestart(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['ComposeRestart'](arg1, arg2, arg3);
+}
+
+export function ComposeUp(arg1, arg2) {
+  return window['go']['app']['Service']['ComposeUp'](arg1, arg2);
+}
+
 export function DeleteConnection(arg1) {
   return window['go']['app']['Service']['DeleteConnection'](arg1);
 }
@@ -110,6 +126,10 @@ export function ExportTableInsertSQL(arg1, arg2, arg3, arg4) {
   return window['go']['app']['Service']['ExportTableInsertSQL'](arg1, arg2, arg3, arg4);
 }
 
+export function GetComposeLogs(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['Service']['GetComposeLogs'](arg1, arg2, arg3, arg4);
+}
+
 export function GetConnection(arg1) {
   return window['go']['app']['Service']['GetConnection'](arg1);
 }
@@ -128,6 +148,10 @@ export function GetContainerRunPreset(arg1) {
 
 export function GetContainerShell(arg1, arg2) {
   return window['go']['app']['Service']['GetContainerShell'](arg1, arg2);
+}
+
+export function GetDockerComposeDirectory(arg1) {
+  return window['go']['app']['Service']['GetDockerComposeDirectory'](arg1);
 }
 
 export function GetEnvScanPath() {
@@ -184,6 +208,10 @@ export function ListAppSettings() {
 
 export function ListColumns(arg1, arg2, arg3) {
   return window['go']['app']['Service']['ListColumns'](arg1, arg2, arg3);
+}
+
+export function ListComposeServices(arg1, arg2) {
+  return window['go']['app']['Service']['ListComposeServices'](arg1, arg2);
 }
 
 export function ListConnections() {
@@ -272,6 +300,10 @@ export function OpenSession(arg1, arg2) {
 
 export function OpenTerminal(arg1, arg2, arg3) {
   return window['go']['app']['Service']['OpenTerminal'](arg1, arg2, arg3);
+}
+
+export function PickDockerComposeDirectory(arg1) {
+  return window['go']['app']['Service']['PickDockerComposeDirectory'](arg1);
 }
 
 export function PickEnvScanDirectory() {

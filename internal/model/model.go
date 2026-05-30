@@ -377,6 +377,22 @@ type ContainerDO struct {
 	CreatedAt int64  `json:"createdAt"`
 }
 
+// ComposeServiceDO Compose 服务/容器状态。
+type ComposeServiceDO struct {
+	Name      string `json:"name"`
+	Service   string `json:"service"`
+	Image     string `json:"image"`
+	State     string `json:"state"`
+	Status    string `json:"status"`
+	Ports     string `json:"ports"`
+	Container string `json:"containerId"`
+}
+
+// ComposeLogsDO Compose 项目日志。
+type ComposeLogsDO struct {
+	Content string `json:"content"`
+}
+
 // ContainerLogsDO 容器日志。
 type ContainerLogsDO struct {
 	Content string `json:"content"`

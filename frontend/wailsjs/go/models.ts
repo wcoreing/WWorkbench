@@ -1,5 +1,39 @@
 export namespace app {
 	
+	export class ApiResult_WNavicat_internal_model_ComposeLogsDO_ {
+	    ok: boolean;
+	    data: model.ComposeLogsDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_ComposeLogsDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.ComposeLogsDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WNavicat_internal_model_ConnectionDO_ {
 	    ok: boolean;
 	    data: model.ConnectionDO;
@@ -918,6 +952,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult___WNavicat_internal_model_ComposeServiceDO_ {
+	    ok: boolean;
+	    data: model.ComposeServiceDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_ComposeServiceDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.ComposeServiceDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult___WNavicat_internal_model_ConnectionDO_ {
 	    ok: boolean;
 	    data: model.ConnectionDO[];
@@ -1716,6 +1784,42 @@ export namespace model {
 	        this.defaultValue = source["defaultValue"];
 	        this.comment = source["comment"];
 	        this.editable = source["editable"];
+	    }
+	}
+	export class ComposeLogsDO {
+	    content: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ComposeLogsDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.content = source["content"];
+	    }
+	}
+	export class ComposeServiceDO {
+	    name: string;
+	    service: string;
+	    image: string;
+	    state: string;
+	    status: string;
+	    ports: string;
+	    containerId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ComposeServiceDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.service = source["service"];
+	        this.image = source["image"];
+	        this.state = source["state"];
+	        this.status = source["status"];
+	        this.ports = source["ports"];
+	        this.containerId = source["containerId"];
 	    }
 	}
 	export class ConnectionDO {

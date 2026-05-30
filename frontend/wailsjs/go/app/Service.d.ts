@@ -19,6 +19,14 @@ export function CloseSession(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function CloseTerminal(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function ComposeDown(arg1:string,arg2:string):Promise<app.ApiResult_string_>;
+
+export function ComposePull(arg1:string,arg2:string):Promise<app.ApiResult_string_>;
+
+export function ComposeRestart(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_string_>;
+
+export function ComposeUp(arg1:string,arg2:string):Promise<app.ApiResult_string_>;
+
 export function DeleteConnection(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteDockerContext(arg1:string):Promise<app.ApiResult_bool_>;
@@ -57,6 +65,8 @@ export function ExportNote(arg1:string):Promise<app.ApiResult_WNavicat_internal_
 
 export function ExportTableInsertSQL(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
 
+export function GetComposeLogs(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WNavicat_internal_model_ComposeLogsDO_>;
+
 export function GetConnection(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_ConnectionDO_>;
 
 export function GetContainerEnv(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_ContainerEnvDO_>;
@@ -66,6 +76,8 @@ export function GetContainerLogs(arg1:string,arg2:string,arg3:number):Promise<ap
 export function GetContainerRunPreset(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_ContainerRunPresetDO_>;
 
 export function GetContainerShell(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_ContainerShellDO_>;
+
+export function GetDockerComposeDirectory(arg1:string):Promise<app.ApiResult_string_>;
 
 export function GetEnvScanPath():Promise<app.ApiResult_string_>;
 
@@ -94,6 +106,8 @@ export function InstallEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult
 export function ListAppSettings():Promise<app.ApiResult_map_string_string_>;
 
 export function ListColumns(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult___WNavicat_internal_model_ColumnMetaDO_>;
+
+export function ListComposeServices(arg1:string,arg2:string):Promise<app.ApiResult___WNavicat_internal_model_ComposeServiceDO_>;
 
 export function ListConnections():Promise<app.ApiResult___WNavicat_internal_model_ConnectionDO_>;
 
@@ -138,6 +152,8 @@ export function OpenSFTPSession(arg1:string):Promise<app.ApiResult_WNavicat_inte
 export function OpenSession(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_SessionInfoDO_>;
 
 export function OpenTerminal(arg1:string,arg2:number,arg3:number):Promise<app.ApiResult_WNavicat_internal_model_TerminalSessionInfoDO_>;
+
+export function PickDockerComposeDirectory(arg1:string):Promise<app.ApiResult_string_>;
 
 export function PickEnvScanDirectory():Promise<app.ApiResult_string_>;
 
