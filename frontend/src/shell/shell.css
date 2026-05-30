@@ -1736,6 +1736,45 @@
   gap: 4px;
 }
 
+.httpapi-env-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.httpapi-env-active {
+  flex: 0 0 auto;
+  min-width: 140px;
+}
+
+.httpapi-env-active select {
+  min-width: 160px;
+}
+
+.httpapi-env-editor {
+  flex: 1 1 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 200px;
+}
+
+.httpapi-env-vars {
+  min-height: 56px;
+  max-height: 100px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.httpapi-env-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .httpapi-method-url {
   flex-direction: row;
   gap: 8px;

@@ -141,6 +141,13 @@ CREATE TABLE IF NOT EXISTS ssh_forward_presets (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS http_environments (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  vars_json TEXT NOT NULL DEFAULT '{}',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS log_sources (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

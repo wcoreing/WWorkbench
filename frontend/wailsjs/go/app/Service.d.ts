@@ -33,6 +33,8 @@ export function DeleteDockerContext(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteEnvPreset(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function DeleteHTTPEnvironment(arg1:string):Promise<app.ApiResult_bool_>;
+
 export function DeleteHTTPRequest(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteLocalPath(arg1:string):Promise<app.ApiResult_bool_>;
@@ -135,6 +137,8 @@ export function ListEnvRuntimes():Promise<app.ApiResult___WNavicat_internal_mode
 
 export function ListEnvVersions(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_RuntimeVersionDO_>;
 
+export function ListHTTPEnvironments():Promise<app.ApiResult___WNavicat_internal_model_HTTPEnvironmentDO_>;
+
 export function ListHTTPRequests():Promise<app.ApiResult___WNavicat_internal_model_HTTPSavedRequestDO_>;
 
 export function ListImages(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_DockerImageDO_>;
@@ -200,6 +204,8 @@ export function SaveConnection(arg1:model.ConnectionDO):Promise<app.ApiResult_WN
 export function SaveDockerContext(arg1:model.DockerContextDO):Promise<app.ApiResult_WNavicat_internal_model_DockerContextDO_>;
 
 export function SaveEnvPreset(arg1:model.EnvPresetDO):Promise<app.ApiResult_WNavicat_internal_model_EnvPresetDO_>;
+
+export function SaveHTTPEnvironment(arg1:model.HTTPEnvironmentDO):Promise<app.ApiResult_WNavicat_internal_model_HTTPEnvironmentDO_>;
 
 export function SaveHTTPRequest(arg1:model.HTTPSavedRequestDO):Promise<app.ApiResult_WNavicat_internal_model_HTTPSavedRequestDO_>;
 

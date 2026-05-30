@@ -442,6 +442,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WNavicat_internal_model_HTTPEnvironmentDO_ {
+	    ok: boolean;
+	    data: model.HTTPEnvironmentDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_HTTPEnvironmentDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.HTTPEnvironmentDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WNavicat_internal_model_HTTPResponseDO_ {
 	    ok: boolean;
 	    data: model.HTTPResponseDO;
@@ -1373,6 +1407,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.FileEntryDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WNavicat_internal_model_HTTPEnvironmentDO_ {
+	    ok: boolean;
+	    data: model.HTTPEnvironmentDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_HTTPEnvironmentDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.HTTPEnvironmentDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -2599,6 +2667,26 @@ export namespace model {
 	        this.modTime = source["modTime"];
 	    }
 	}
+	export class HTTPEnvironmentDO {
+	    id: string;
+	    name: string;
+	    varsJson: string;
+	    createdAt: number;
+	    updatedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new HTTPEnvironmentDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.varsJson = source["varsJson"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
 	export class HTTPHeaderKVDO {
 	    key: string;
 	    value: string;
@@ -2619,6 +2707,7 @@ export namespace model {
 	    headers: HTTPHeaderKVDO[];
 	    body: string;
 	    timeoutMs: number;
+	    envId: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new HTTPExecuteRequestDO(source);
@@ -2631,6 +2720,7 @@ export namespace model {
 	        this.headers = this.convertValues(source["headers"], HTTPHeaderKVDO);
 	        this.body = source["body"];
 	        this.timeoutMs = source["timeoutMs"];
+	        this.envId = source["envId"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

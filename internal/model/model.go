@@ -427,6 +427,16 @@ type HTTPExecuteRequestDO struct {
 	Headers   []HTTPHeaderKVDO `json:"headers"`
 	Body      string           `json:"body"`
 	TimeoutMs int              `json:"timeoutMs"`
+	EnvID     string           `json:"envId"`
+}
+
+// HTTPEnvironmentDO HTTP 环境变量预设。
+type HTTPEnvironmentDO struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	VarsJSON  string `json:"varsJson"`
+	CreatedAt int64  `json:"createdAt"`
+	UpdatedAt int64  `json:"updatedAt"`
 }
 
 // HTTPResponseDO HTTP 响应结果。

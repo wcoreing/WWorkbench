@@ -85,7 +85,7 @@ func redisObjectTree(ctx context.Context, sess *session.Session) ([]model.Object
 	if sess.Database == "" {
 		dbLabel = "DB 0"
 	}
-	keys, err := redisadapter.ScanKeys(ctx, sess.Redis, "*", 500)
+	keys, err := redisadapter.ScanKeys(ctx, sess.Redis, "*", 2000)
 	if err != nil {
 		return nil, err
 	}

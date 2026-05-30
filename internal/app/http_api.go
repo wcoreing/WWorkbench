@@ -54,6 +54,7 @@ func (s *Service) DeleteHTTPRequest(id string) ApiResult[bool] {
 
 // ExecuteHTTPRequest 发送 HTTP 请求。
 func (s *Service) ExecuteHTTPRequest(req model.HTTPExecuteRequestDO) ApiResult[model.HTTPResponseDO] {
+	req = s.applyEnvToHTTPRequest(req)
 	if strings.TrimSpace(req.URL) == "" {
 		return ErrResult[model.HTTPResponseDO](errno.New(errno.CodeInvalidArg, "请填写请求 URL", ""))
 	}

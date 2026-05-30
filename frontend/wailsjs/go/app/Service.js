@@ -62,6 +62,10 @@ export function DeleteEnvPreset(arg1) {
   return window['go']['app']['Service']['DeleteEnvPreset'](arg1);
 }
 
+export function DeleteHTTPEnvironment(arg1) {
+  return window['go']['app']['Service']['DeleteHTTPEnvironment'](arg1);
+}
+
 export function DeleteHTTPRequest(arg1) {
   return window['go']['app']['Service']['DeleteHTTPRequest'](arg1);
 }
@@ -266,6 +270,10 @@ export function ListEnvVersions(arg1) {
   return window['go']['app']['Service']['ListEnvVersions'](arg1);
 }
 
+export function ListHTTPEnvironments() {
+  return window['go']['app']['Service']['ListHTTPEnvironments']();
+}
+
 export function ListHTTPRequests() {
   return window['go']['app']['Service']['ListHTTPRequests']();
 }
@@ -396,6 +404,10 @@ export function SaveDockerContext(arg1) {
 
 export function SaveEnvPreset(arg1) {
   return window['go']['app']['Service']['SaveEnvPreset'](arg1);
+}
+
+export function SaveHTTPEnvironment(arg1) {
+  return window['go']['app']['Service']['SaveHTTPEnvironment'](arg1);
 }
 
 export function SaveHTTPRequest(arg1) {

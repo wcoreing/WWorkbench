@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../api/client'
-import type { HTTPHeaderKV, HTTPResponse, HTTPSavedRequest } from '../../api/types'
+import type { HTTPEnvironment, HTTPHeaderKV, HTTPResponse, HTTPSavedRequest } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconPlay, IconPlus } from '../../components/Icons'
 import { useI18n } from '../../i18n'
@@ -42,6 +42,33 @@ function parseHeadersJson(json: string): HTTPHeaderKV[] {
   }
 }
 
+/** parseEnvText 解析 key=value 环境变量文本。 */
+function parseEnvText(text: string): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const line of text.split('\n')) {
+    const t = line.trim()
+    if (!t || t.startsWith('#')) continue
+    const i = t.indexOf('=')
+    if (i < 0) continue
+    const key = t.slice(0, i).trim()
+    if (key) out[key] = t.slice(i + 1).trim()
+  }
+  return out
+}
+
+/** formatEnvText 将环境变量 JSON 格式化为 key=value 多行。 */
+function formatEnvText(json: string): string {
+  try {
+    const m = JSON.parse(json || '{}') as Record<string, string>
+    if (!m || typeof m !== 'object') return ''
+    return Object.entries(m)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n')
+  } catch {
+    return ''
+  }
+}
+
 /** HttpApiWorkbench HTTP API 调试工作区。 */
 export function HttpApiWorkbench() {
   const { t } = useI18n()
@@ -56,6 +83,14 @@ export function HttpApiWorkbench() {
   const [response, setResponse] = useState<HTTPResponse | null>(null)
   const [sending, setSending] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<HTTPSavedRequest | null>(null)
+
+  const [envs, setEnvs] = useState<HTTPEnvironment[]>([])
+  const [activeEnvId, setActiveEnvId] = useState('')
+  const [selectedEnvId, setSelectedEnvId] = useState('')
+  const [envName, setEnvName] = useState('')
+  const [envVarText, setEnvVarText] = useState('')
+  const [deleteEnvTarget, setDeleteEnvTarget] = useState<HTTPEnvironment | null>(null)
+
   const workspaceLoaded = useRef(false)
 
   const loadEditor = useCallback((item: HTTPSavedRequest | null) => {
@@ -74,30 +109,55 @@ export function HttpApiWorkbench() {
     setBody(item.body)
   }, [])
 
+  const loadEnvEditor = useCallback((item: HTTPEnvironment | null) => {
+    if (!item) {
+      setSelectedEnvId('')
+      setEnvName('')
+      setEnvVarText('')
+      return
+    }
+    setSelectedEnvId(item.id)
+    setEnvName(item.name)
+    setEnvVarText(formatEnvText(item.varsJson))
+  }, [])
+
   const refreshList = useCallback(async () => {
     const list = (await api.listHTTPRequests()) as HTTPSavedRequest[]
     setItems(list)
     return list
   }, [])
 
+  const refreshEnvs = useCallback(async () => {
+    const list = (await api.listHTTPEnvironments()) as HTTPEnvironment[]
+    setEnvs(list)
+    return list
+  }, [])
+
   useEffect(() => {
     if (workspaceLoaded.current) {
       void refreshList()
+      void refreshEnvs()
       return
     }
     workspaceLoaded.current = true
     void (async () => {
-      const list = await refreshList()
+      const [list, envList] = await Promise.all([refreshList(), refreshEnvs()])
       const snap = await loadHttpApiWorkspace()
       const id = snap?.activeId && list.some((x) => x.id === snap.activeId) ? snap.activeId : list[0]?.id ?? ''
       setActiveId(id)
       loadEditor(list.find((x) => x.id === id) ?? null)
+
+      const envId =
+        snap?.activeEnvId && envList.some((x) => x.id === snap.activeEnvId) ? snap.activeEnvId : ''
+      setActiveEnvId(envId)
+      const env = envList.find((x) => x.id === envId)
+      if (env) loadEnvEditor(env)
     })()
-  }, [refreshList, loadEditor])
+  }, [refreshList, refreshEnvs, loadEditor, loadEnvEditor])
 
   useEffect(() => {
-    scheduleHttpApiWorkspacePersist({ version: 1, activeId })
-  }, [activeId])
+    scheduleHttpApiWorkspacePersist({ version: 2, activeId, activeEnvId })
+  }, [activeId, activeEnvId])
 
   const selectItem = (item: HTTPSavedRequest) => {
     setActiveId(item.id)
@@ -111,6 +171,14 @@ export function HttpApiWorkbench() {
     setResponse(null)
   }
 
+  const selectEnv = (item: HTTPEnvironment) => {
+    loadEnvEditor(item)
+  }
+
+  const createNewEnv = () => {
+    loadEnvEditor(null)
+  }
+
   const buildExecuteReq = () =>
     model.HTTPExecuteRequestDO.createFrom({
       method,
@@ -118,6 +186,7 @@ export function HttpApiWorkbench() {
       headers: parseHeaderText(headerText),
       body,
       timeoutMs: 30000,
+      envId: activeEnvId,
     })
 
   const send = async () => {
@@ -170,6 +239,25 @@ export function HttpApiWorkbench() {
     setStatusMessage(t('httpapi.saved'))
   }
 
+  const saveEnv = async () => {
+    if (!envName.trim()) {
+      setStatusMessage(t('httpapi.errEnvName'))
+      return
+    }
+    const saved = (await api.saveHTTPEnvironment(
+      model.HTTPEnvironmentDO.createFrom({
+        id: selectedEnvId,
+        name: envName.trim(),
+        varsJson: JSON.stringify(parseEnvText(envVarText)),
+        createdAt: 0,
+        updatedAt: 0,
+      }),
+    )) as HTTPEnvironment
+    setSelectedEnvId(saved.id)
+    await refreshEnvs()
+    setStatusMessage(t('httpapi.envSaved'))
+  }
+
   return (
     <div className="product-workbench httpapi-workbench">
       <header className="product-toolbar">
@@ -219,10 +307,81 @@ export function HttpApiWorkbench() {
               )}
             </div>
           </section>
+
+          <section className="sidebar-section">
+            <div className="sidebar-header">
+              <span>{t('httpapi.envSection')}</span>
+              <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" title={t('httpapi.newEnv')} onClick={createNewEnv}>
+                <IconPlus size={14} />
+              </button>
+            </div>
+            <div className="sidebar-body">
+              {envs.length === 0 ? (
+                <div className="empty-hint">{t('httpapi.emptyEnvList')}</div>
+              ) : (
+                <ul className="conn-list">
+                  {envs.map((item) => (
+                    <li
+                      key={item.id}
+                      className={`conn-item ${item.id === selectedEnvId ? 'active' : ''}`}
+                      onClick={() => selectEnv(item)}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        setDeleteEnvTarget(item)
+                      }}
+                    >
+                      <div className="conn-meta">
+                        <span className="conn-name">{item.name}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
         </aside>
 
         <main className="app-main httpapi-main">
           <div className="httpapi-request">
+            <div className="httpapi-env-bar">
+              <label className="wn-label httpapi-env-active">
+                {t('httpapi.activeEnv')}
+                <select
+                  className="wn-input"
+                  value={activeEnvId}
+                  onChange={(e) => setActiveEnvId(e.target.value)}
+                >
+                  <option value="">{t('httpapi.noEnv')}</option>
+                  {envs.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="httpapi-env-editor">
+                <div className="httpapi-row" style={{ gap: 8 }}>
+                  <input
+                    className="wn-input"
+                    value={envName}
+                    onChange={(e) => setEnvName(e.target.value)}
+                    placeholder={t('httpapi.envNamePlaceholder')}
+                  />
+                  <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void saveEnv()}>
+                    {t('httpapi.saveEnv')}
+                  </button>
+                </div>
+                <textarea
+                  className="wn-input httpapi-textarea httpapi-env-vars"
+                  value={envVarText}
+                  onChange={(e) => setEnvVarText(e.target.value)}
+                  placeholder={t('httpapi.envVarsPlaceholder')}
+                  spellCheck={false}
+                />
+                <span className="httpapi-env-hint">{t('httpapi.envVarsHint')}</span>
+              </div>
+            </div>
+
             <div className="httpapi-row">
               <label className="wn-label">{t('httpapi.name')}</label>
               <input className="wn-input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('httpapi.namePlaceholder')} />
@@ -314,6 +473,26 @@ export function HttpApiWorkbench() {
           })
         }}
         onCancel={() => setDeleteTarget(null)}
+      />
+
+      <ConfirmDialog
+        open={deleteEnvTarget != null}
+        title={t('httpapi.deleteEnvTitle')}
+        message={deleteEnvTarget ? t('httpapi.deleteEnvMsg', { name: deleteEnvTarget.name }) : undefined}
+        confirmLabel={t('common.delete')}
+        danger
+        onConfirm={() => {
+          const item = deleteEnvTarget
+          setDeleteEnvTarget(null)
+          if (!item) return
+          void api.deleteHTTPEnvironment(item.id).then(async () => {
+            if (activeEnvId === item.id) setActiveEnvId('')
+            if (selectedEnvId === item.id) loadEnvEditor(null)
+            await refreshEnvs()
+            setStatusMessage(t('httpapi.envDeleted'))
+          })
+        }}
+        onCancel={() => setDeleteEnvTarget(null)}
       />
     </div>
   )

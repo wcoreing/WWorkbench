@@ -346,6 +346,14 @@ export interface HTTPSavedRequest {
   updatedAt: number
 }
 
+export interface HTTPEnvironment {
+  id: string
+  name: string
+  varsJson: string
+  createdAt: number
+  updatedAt: number
+}
+
 export interface HTTPResponse {
   statusCode: number
   status: string

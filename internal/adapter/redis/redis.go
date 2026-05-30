@@ -56,24 +56,34 @@ func ListDBIndexes() []string {
 	return out
 }
 
-// ScanKeys 扫描键名（限制数量）。
-func ScanKeys(ctx context.Context, client *goredis.Client, pattern string, limit int) ([]string, error) {
-	if limit <= 0 || limit > 2000 {
-		limit = 500
+// ScanKeys 使用 SCAN 游标分批扫描键名（上限 maxKeys）。
+func ScanKeys(ctx context.Context, client *goredis.Client, pattern string, maxKeys int) ([]string, error) {
+	if maxKeys <= 0 {
+		maxKeys = 500
+	}
+	if maxKeys > 5000 {
+		maxKeys = 5000
 	}
 	if pattern == "" {
 		pattern = "*"
 	}
 	var keys []string
-	iter := client.Scan(ctx, 0, pattern, int64(limit)).Iterator()
-	for iter.Next(ctx) {
-		keys = append(keys, iter.Val())
-		if len(keys) >= limit {
+	cursor := uint64(0)
+	const batch = int64(200)
+	for len(keys) < maxKeys {
+		n := batch
+		if remain := maxKeys - len(keys); int64(remain) < n {
+			n = int64(remain)
+		}
+		batchKeys, next, err := client.Scan(ctx, cursor, pattern, n).Result()
+		if err != nil {
+			return nil, errno.Wrap(errno.CodeSQLFailed, "扫描键失败", err)
+		}
+		keys = append(keys, batchKeys...)
+		cursor = next
+		if next == 0 {
 			break
 		}
-	}
-	if err := iter.Err(); err != nil {
-		return nil, errno.Wrap(errno.CodeSQLFailed, "扫描键失败", err)
 	}
 	return keys, nil
 }
