@@ -82,6 +82,10 @@ export function DeleteSFTPPath(arg1, arg2) {
   return window['go']['app']['Service']['DeleteSFTPPath'](arg1, arg2);
 }
 
+export function DeleteSSHForwardPreset(arg1) {
+  return window['go']['app']['Service']['DeleteSSHForwardPreset'](arg1);
+}
+
 export function DeleteSSHHost(arg1) {
   return window['go']['app']['Service']['DeleteSSHHost'](arg1);
 }
@@ -202,6 +206,10 @@ export function InstallEnvVersion(arg1, arg2) {
   return window['go']['app']['Service']['InstallEnvVersion'](arg1, arg2);
 }
 
+export function ListActiveSSHForwards() {
+  return window['go']['app']['Service']['ListActiveSSHForwards']();
+}
+
 export function ListAppSettings() {
   return window['go']['app']['Service']['ListAppSettings']();
 }
@@ -268,6 +276,10 @@ export function ListSFTPBookmarks(arg1, arg2) {
 
 export function ListSFTPDir(arg1, arg2) {
   return window['go']['app']['Service']['ListSFTPDir'](arg1, arg2);
+}
+
+export function ListSSHForwardPresets() {
+  return window['go']['app']['Service']['ListSSHForwardPresets']();
 }
 
 export function ListSSHHosts() {
@@ -370,6 +382,10 @@ export function SaveSFTPBookmark(arg1) {
   return window['go']['app']['Service']['SaveSFTPBookmark'](arg1);
 }
 
+export function SaveSSHForwardPreset(arg1) {
+  return window['go']['app']['Service']['SaveSSHForwardPreset'](arg1);
+}
+
 export function SaveSSHHost(arg1) {
   return window['go']['app']['Service']['SaveSSHHost'](arg1);
 }
@@ -398,8 +414,16 @@ export function StartContainer(arg1, arg2) {
   return window['go']['app']['Service']['StartContainer'](arg1, arg2);
 }
 
+export function StartSSHForward(arg1) {
+  return window['go']['app']['Service']['StartSSHForward'](arg1);
+}
+
 export function StopContainer(arg1, arg2) {
   return window['go']['app']['Service']['StopContainer'](arg1, arg2);
+}
+
+export function StopSSHForward(arg1) {
+  return window['go']['app']['Service']['StopSSHForward'](arg1);
 }
 
 export function TestConnection(arg1) {

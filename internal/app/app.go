@@ -14,6 +14,7 @@ import (
 	"WNavicat/internal/meta"
 	"WNavicat/internal/model"
 	"WNavicat/internal/notebook"
+	"WNavicat/internal/portforward"
 	"WNavicat/internal/query"
 	"WNavicat/internal/session"
 	sftpsvc "WNavicat/internal/sftp"
@@ -31,6 +32,7 @@ type Service struct {
 	conns     *conn.Service
 	sshHosts  *terminal.HostService
 	terminals *terminal.Manager
+	forwards  *portforward.Manager
 	sftp      *sftpsvc.Manager
 	docker    *dockersvc.Manager
 	env       *environment.Manager
@@ -48,6 +50,7 @@ func NewService(
 	conns *conn.Service,
 	sshHosts *terminal.HostService,
 	terminals *terminal.Manager,
+	forwardMgr *portforward.Manager,
 	sftpMgr *sftpsvc.Manager,
 	dockerMgr *dockersvc.Manager,
 	envMgr *environment.Manager,
@@ -63,6 +66,7 @@ func NewService(
 		conns:     conns,
 		sshHosts:  sshHosts,
 		terminals: terminals,
+		forwards:  forwardMgr,
 		sftp:      sftpMgr,
 		docker:    dockerMgr,
 		env:       envMgr,
@@ -85,6 +89,7 @@ func (s *Service) Startup(ctx context.Context) {
 // Shutdown Wails 退出回调，释放终端等资源。
 func (s *Service) Shutdown(ctx context.Context) {
 	s.terminals.CloseAll()
+	s.forwards.CloseAll()
 	s.sftp.CloseAll()
 }
 

@@ -13,6 +13,7 @@ import (
 	"WNavicat/internal/environment"
 	"WNavicat/internal/meta"
 	"WNavicat/internal/notebook"
+	"WNavicat/internal/portforward"
 	"WNavicat/internal/query"
 	"WNavicat/internal/session"
 	sftpsvc "WNavicat/internal/sftp"
@@ -50,6 +51,7 @@ func main() {
 	connSvc := conn.NewService(st, registry, tp)
 	sshHostSvc := terminal.NewHostService(st)
 	termMgr := terminal.NewManager(sshHostSvc)
+	forwardMgr := portforward.NewManager(st, sshHostSvc)
 	sftpMgr := sftpsvc.NewManager(sshHostSvc)
 	sessMgr := session.NewManager(registry, st, tp)
 	metaSvc := meta.NewService(sessMgr)
@@ -59,7 +61,7 @@ func main() {
 	envMgr := environment.NewManager()
 	notebookSvc := notebook.NewService(st)
 
-	api := app.NewService(AppVersion, st, connSvc, sshHostSvc, termMgr, sftpMgr, dockerMgr, envMgr, notebookSvc, sessMgr, metaSvc, querySvc, dataSvc)
+	api := app.NewService(AppVersion, st, connSvc, sshHostSvc, termMgr, forwardMgr, sftpMgr, dockerMgr, envMgr, notebookSvc, sessMgr, metaSvc, querySvc, dataSvc)
 
 	err = wails.Run(&options.App{
 		Title:     "WNavicat",

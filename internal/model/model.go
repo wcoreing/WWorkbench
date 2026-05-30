@@ -377,6 +377,43 @@ type ContainerDO struct {
 	CreatedAt int64  `json:"createdAt"`
 }
 
+// SSHForwardPresetDO SSH 端口转发预设（本地 → 远端）。
+type SSHForwardPresetDO struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	SSHHostID  string `json:"sshHostId"`
+	LocalPort  int    `json:"localPort"`
+	RemoteHost string `json:"remoteHost"`
+	RemotePort int    `json:"remotePort"`
+	CreatedAt  int64  `json:"createdAt"`
+	UpdatedAt  int64  `json:"updatedAt"`
+}
+
+// SSHForwardStartDO 启动端口转发请求。
+type SSHForwardStartDO struct {
+	PresetID   string `json:"presetId"`
+	Name       string `json:"name"`
+	SSHHostID  string `json:"sshHostId"`
+	LocalPort  int    `json:"localPort"`
+	RemoteHost string `json:"remoteHost"`
+	RemotePort int    `json:"remotePort"`
+}
+
+// SSHForwardActiveDO 运行中的端口转发。
+type SSHForwardActiveDO struct {
+	ID          string `json:"id"`
+	PresetID    string `json:"presetId"`
+	Name        string `json:"name"`
+	SSHHostID   string `json:"sshHostId"`
+	SSHHostName string `json:"sshHostName"`
+	LocalHost   string `json:"localHost"`
+	LocalPort   int    `json:"localPort"`
+	LocalAddr   string `json:"localAddr"`
+	RemoteHost  string `json:"remoteHost"`
+	RemotePort  int    `json:"remotePort"`
+	StartedAt   int64  `json:"startedAt"`
+}
+
 // ComposeServiceDO Compose 服务/容器状态。
 type ComposeServiceDO struct {
 	Name      string `json:"name"`

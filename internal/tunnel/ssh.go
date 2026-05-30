@@ -60,25 +60,36 @@ func (t *sshTunnel) Close() error {
 	return err
 }
 
-// dialSSH 建立 SSH 隧道并在本地监听，转发至目标 MySQL 地址。
+// dialSSH 建立 SSH 隧道并在本地监听，转发至目标地址（localPort=0 时自动分配端口）。
 func dialSSH(ctx context.Context, spec model.TunnelSpecDO, targetHost string, targetPort int) (Tunnel, error) {
+	return DialPortForward(ctx, spec, 0, targetHost, targetPort)
+}
+
+// DialPortForward 经 SSH 在本地监听并转发到远端 TCP 地址。
+func DialPortForward(ctx context.Context, spec model.TunnelSpecDO, localPort int, targetHost string, targetPort int) (Tunnel, error) {
+	if targetHost == "" {
+		return nil, errno.New(errno.CodeInvalidArg, "请填写远端主机", "")
+	}
+	if targetPort <= 0 || targetPort > 65535 {
+		return nil, errno.New(errno.CodeInvalidArg, "请填写有效远端端口", strconv.Itoa(targetPort))
+	}
 	client, err := DialSSH(ctx, spec)
 	if err != nil {
 		return nil, err
 	}
 	target := fmt.Sprintf("%s:%d", targetHost, targetPort)
 
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := listenLocalTCP(localPort)
 	if err != nil {
 		_ = client.Close()
 		return nil, errno.Wrap(errno.CodeConnFailed, "创建本地转发端口失败", err)
 	}
 	host, portStr, _ := net.SplitHostPort(ln.Addr().String())
-	localPort, _ := strconv.Atoi(portStr)
+	parsedPort, _ := strconv.Atoi(portStr)
 	tun := &sshTunnel{
 		listener: ln,
 		client:   client,
-		addr:     fmt.Sprintf("%s:%d", host, localPort),
+		addr:     fmt.Sprintf("%s:%d", host, parsedPort),
 		closed:   make(chan struct{}),
 	}
 
@@ -89,6 +100,15 @@ func dialSSH(ctx context.Context, spec model.TunnelSpecDO, targetHost string, ta
 	}()
 
 	return tun, nil
+}
+
+// listenLocalTCP 在 127.0.0.1 监听；localPort=0 时由系统分配端口。
+func listenLocalTCP(localPort int) (net.Listener, error) {
+	addr := "127.0.0.1:0"
+	if localPort > 0 {
+		addr = fmt.Sprintf("127.0.0.1:%d", localPort)
+	}
+	return net.Listen("tcp", addr)
 }
 
 // DialSSH 建立 SSH 客户端连接（供终端等产品复用）。

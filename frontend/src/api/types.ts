@@ -180,6 +180,40 @@ export interface SSHHost {
   updatedAt: number
 }
 
+export interface SSHForwardPreset {
+  id: string
+  name: string
+  sshHostId: string
+  localPort: number
+  remoteHost: string
+  remotePort: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface SSHForwardStart {
+  presetId?: string
+  name?: string
+  sshHostId?: string
+  localPort?: number
+  remoteHost?: string
+  remotePort?: number
+}
+
+export interface SSHForwardActive {
+  id: string
+  presetId: string
+  name: string
+  sshHostId: string
+  sshHostName: string
+  localHost: string
+  localPort: number
+  localAddr: string
+  remoteHost: string
+  remotePort: number
+  startedAt: number
+}
+
 export interface TerminalSessionInfo {
   sessionId: string
   hostId: string

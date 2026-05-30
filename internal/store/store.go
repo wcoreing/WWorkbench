@@ -120,6 +120,16 @@ CREATE TABLE IF NOT EXISTS docker_contexts (
 		return errno.Wrap(errno.CodeStoreFailed, "迁移 Docker 上下文表失败", err)
 	}
 	_, err = s.db.Exec(`
+CREATE TABLE IF NOT EXISTS ssh_forward_presets (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  ssh_host_id TEXT NOT NULL,
+  local_port INTEGER NOT NULL DEFAULT 0,
+  remote_host TEXT NOT NULL,
+  remote_port INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

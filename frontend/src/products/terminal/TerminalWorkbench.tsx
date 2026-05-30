@@ -15,6 +15,7 @@ import {
 import { restoreTerminalTab } from '../../features/terminal/restoreTerminalWorkspace'
 import { SSHHostModal } from '../../features/terminal/SSHHostModal'
 import { useSSHTrustConfirm } from '../../features/terminal/useSSHTrustConfirm'
+import { SSHForwardPanel } from '../../features/terminal/SSHForwardPanel'
 import { TerminalSplitView } from '../../features/terminal/TerminalSplitView'
 import { terminalBackground } from '../../features/terminal/TerminalPane'
 import {
@@ -485,6 +486,8 @@ export function TerminalWorkbench() {
               <div className="empty-hint mock-hint">{t('terminal.sshHint')}</div>
             </div>
           </section>
+
+          <SSHForwardPanel hosts={hosts} onStatus={setStatusMessage} />
         </aside>
 
         <main className="app-main">

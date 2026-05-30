@@ -1678,6 +1678,38 @@
   background: var(--color-bg-hover);
 }
 
+.ssh-forward-section .sidebar-body {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.ssh-forward-subhead {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  padding: 8px 12px 4px;
+}
+
+.ssh-forward-item {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.ssh-forward-actions {
+  display: flex;
+  gap: 6px;
+  padding: 0 8px 8px;
+}
+
+.wn-field-hint {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
 .docker-list-bar {
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-border-subtle);

@@ -43,6 +43,8 @@ export function DeleteSFTPBookmark(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteSFTPPath(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
+export function DeleteSSHForwardPreset(arg1:string):Promise<app.ApiResult_bool_>;
+
 export function DeleteSSHHost(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DownloadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_TransferResultDO_>;
@@ -103,6 +105,8 @@ export function InstallEnvManager(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function InstallEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
+export function ListActiveSSHForwards():Promise<app.ApiResult___WNavicat_internal_model_SSHForwardActiveDO_>;
+
 export function ListAppSettings():Promise<app.ApiResult_map_string_string_>;
 
 export function ListColumns(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult___WNavicat_internal_model_ColumnMetaDO_>;
@@ -136,6 +140,8 @@ export function ListQueryHistory(arg1:string,arg2:number):Promise<app.ApiResult_
 export function ListSFTPBookmarks(arg1:string,arg2:string):Promise<app.ApiResult___WNavicat_internal_model_SftpBookmarkDO_>;
 
 export function ListSFTPDir(arg1:string,arg2:string):Promise<app.ApiResult___WNavicat_internal_model_FileEntryDO_>;
+
+export function ListSSHForwardPresets():Promise<app.ApiResult___WNavicat_internal_model_SSHForwardPresetDO_>;
 
 export function ListSSHHosts():Promise<app.ApiResult___WNavicat_internal_model_SSHHostDO_>;
 
@@ -187,6 +193,8 @@ export function SaveNotebookUI(arg1:model.NotebookUIDO):Promise<app.ApiResult_bo
 
 export function SaveSFTPBookmark(arg1:model.SftpBookmarkDO):Promise<app.ApiResult_WNavicat_internal_model_SftpBookmarkDO_>;
 
+export function SaveSSHForwardPreset(arg1:model.SSHForwardPresetDO):Promise<app.ApiResult_WNavicat_internal_model_SSHForwardPresetDO_>;
+
 export function SaveSSHHost(arg1:model.SSHHostDO):Promise<app.ApiResult_WNavicat_internal_model_SSHHostDO_>;
 
 export function SaveWorkspace(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
@@ -201,7 +209,11 @@ export function SetDatabase(arg1:string,arg2:string):Promise<app.ApiResult_WNavi
 
 export function StartContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
+export function StartSSHForward(arg1:model.SSHForwardStartDO):Promise<app.ApiResult_WNavicat_internal_model_SSHForwardActiveDO_>;
+
 export function StopContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
+export function StopSSHForward(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function TestConnection(arg1:model.ConnectionDO):Promise<app.ApiResult_bool_>;
 
