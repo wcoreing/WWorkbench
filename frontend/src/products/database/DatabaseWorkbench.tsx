@@ -98,6 +98,12 @@ export function DatabaseWorkbench() {
 
   const connectionList = connections ?? []
   const treeNodes = objectTree ?? []
+  const activeConn = useMemo(
+    () => connectionList.find((c) => c.id === (session?.connectionId ?? activeConnectionId)),
+    [connectionList, session?.connectionId, activeConnectionId],
+  )
+  const isRedis = activeConn?.dbType === 'redis'
+  const tableDesign = activeConn?.dbType === 'mysql'
   const groupedConnections = useMemo(() => {
     const map = new Map<string, Connection[]>()
     for (const c of connectionList) {
@@ -106,8 +112,7 @@ export function DatabaseWorkbench() {
       map.get(g)!.push(c)
     }
     return [...map.entries()]
-  }, [connectionList])
-  const activeConn = connectionList.find((c) => c.id === activeConnectionId)
+  }, [connectionList, t])
   const activeTab = tabs.find((t) => t.id === activeTabId)
 
   /** applySqlResult 处理 SQL 执行返回值。 */
@@ -725,7 +730,7 @@ export function DatabaseWorkbench() {
         <aside className="app-sidebar">
           <section className="sidebar-section connections">
             <div className="sidebar-header">
-              <span>{t('database.mysqlConnections')}</span>
+              <span>{t('database.connections')}</span>
               <div className="sidebar-header-actions">
                 <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => void importConnections()} title={t('database.import')}>
                   ↓
@@ -740,7 +745,7 @@ export function DatabaseWorkbench() {
             </div>
             <div className="sidebar-body connections-body">
               {connectionList.length === 0 ? (
-                <div className="empty-hint">{t('database.emptyConnections')}</div>
+                <div className="empty-hint">{t('database.emptyConnectionsGeneric')}</div>
               ) : (
                 groupedConnections.map(([group, list]) => (
                   <div key={group} className="conn-group">
@@ -760,6 +765,7 @@ export function DatabaseWorkbench() {
                               {c.sshEnabled && <span className="conn-ssh-tag">SSH</span>}
                             </span>
                             <span className="conn-host">
+                              <span className="conn-db-type">{c.dbType}</span>
                               {c.sshEnabled && c.sshHost ? `${c.sshHost} → ` : ''}
                               {c.host}:{c.port}
                             </span>
@@ -802,6 +808,8 @@ export function DatabaseWorkbench() {
                   sessionId={session.sessionId}
                   nodes={treeNodes}
                   filter={treeFilter}
+                  tableDesign={tableDesign}
+                  isRedis={isRedis}
                   onTableDoubleClick={openTableTab}
                   onShowDDL={showDDL}
                   onShowIndexes={showIndexes}

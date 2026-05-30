@@ -3,6 +3,7 @@ package meta
 import (
 	"context"
 
+	redisadapter "WNavicat/internal/adapter/redis"
 	"WNavicat/internal/errno"
 	"WNavicat/internal/model"
 	"WNavicat/internal/session"
@@ -23,6 +24,9 @@ func (s *Service) GetObjectTree(ctx context.Context, sessionID string) ([]model.
 	sess, err := s.sessions.Get(sessionID)
 	if err != nil {
 		return nil, err
+	}
+	if sess.DbType == "redis" {
+		return redisObjectTree(ctx, sess)
 	}
 	ad, err := s.sessions.Adapter(sess)
 	if err != nil {
@@ -75,11 +79,38 @@ func (s *Service) GetObjectTree(ctx context.Context, sessionID string) ([]model.
 	return nodes, nil
 }
 
+// redisObjectTree 构建 Redis 键对象树。
+func redisObjectTree(ctx context.Context, sess *session.Session) ([]model.ObjectTreeNodeDO, error) {
+	dbLabel := "DB " + sess.Database
+	if sess.Database == "" {
+		dbLabel = "DB 0"
+	}
+	keys, err := redisadapter.ScanKeys(ctx, sess.Redis, "*", 500)
+	if err != nil {
+		return nil, err
+	}
+	dbNode := model.ObjectTreeNodeDO{
+		ID: sess.ID + ":db:" + sess.Database, Label: dbLabel, NodeType: "database", Database: sess.Database,
+	}
+	for _, key := range keys {
+		dbNode.Children = append(dbNode.Children, model.ObjectTreeNodeDO{
+			ID: sess.ID + ":key:" + key, Label: key, NodeType: "table", Database: sess.Database, Table: key,
+		})
+	}
+	return []model.ObjectTreeNodeDO{dbNode}, nil
+}
+
 // ListColumns 列出表列。
 func (s *Service) ListColumns(ctx context.Context, sessionID, database, table string) ([]model.ColumnMetaDO, error) {
 	sess, err := s.sessions.Get(sessionID)
 	if err != nil {
 		return nil, err
+	}
+	if sess.DbType == "redis" {
+		return []model.ColumnMetaDO{
+			{Name: "field", DataType: "text", ColumnType: "text", Editable: false},
+			{Name: "value", DataType: "text", ColumnType: "text", Editable: false},
+		}, nil
 	}
 	ad, err := s.sessions.Adapter(sess)
 	if err != nil {

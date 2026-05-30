@@ -2,10 +2,12 @@ package session
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
 	"WNavicat/internal/adapter"
+	redisadapter "WNavicat/internal/adapter/redis"
 	"WNavicat/internal/errno"
 	"WNavicat/internal/model"
 	"WNavicat/internal/store"
@@ -13,6 +15,7 @@ import (
 
 	"database/sql"
 
+	goredis "github.com/redis/go-redis/v9"
 	"github.com/google/uuid"
 )
 
@@ -22,6 +25,7 @@ type Session struct {
 	ConnectionID string
 	Database     string
 	DB           *sql.DB
+	Redis        *goredis.Client
 	DbType       string
 	Tunnel       tunnel.Tunnel
 }
@@ -57,9 +61,9 @@ func (m *Manager) Open(ctx context.Context, connectionID, database string) (*mod
 	if err := tunnel.ResolveConnection(m.store, conn); err != nil {
 		return nil, err
 	}
-	ad, err := m.registry.Get(conn.DbType)
-	if err != nil {
-		return nil, err
+	conn.DbType = strings.ToLower(strings.TrimSpace(conn.DbType))
+	if conn.DbType == "postgres" {
+		conn.DbType = "postgresql"
 	}
 	spec := tunnel.SpecFromConnection(*conn)
 	tun, err := m.tunnel.Dial(ctx, spec, conn.Host, conn.Port)
@@ -79,19 +83,33 @@ func (m *Manager) Open(ctx context.Context, connectionID, database string) (*mod
 	if cfg.Database == "" {
 		cfg.Database = conn.Database
 	}
-	db, err := ad.Open(ctx, cfg, tun)
-	if err != nil {
-		_ = tun.Close()
-		return nil, err
-	}
 	sid := uuid.NewString()
 	s := &Session{
 		ID:           sid,
 		ConnectionID: connectionID,
 		Database:     cfg.Database,
-		DB:           db,
 		DbType:       conn.DbType,
 		Tunnel:       tun,
+	}
+	if conn.DbType == "redis" {
+		client, err := redisadapter.OpenClient(ctx, cfg, tun)
+		if err != nil {
+			_ = tun.Close()
+			return nil, err
+		}
+		s.Redis = client
+	} else {
+		ad, err := m.registry.Get(conn.DbType)
+		if err != nil {
+			_ = tun.Close()
+			return nil, err
+		}
+		db, err := ad.Open(ctx, cfg, tun)
+		if err != nil {
+			_ = tun.Close()
+			return nil, err
+		}
+		s.DB = db
 	}
 	m.mu.Lock()
 	m.sessions[sid] = s
@@ -112,7 +130,15 @@ func (m *Manager) Close(sessionID string) error {
 		return errno.New(errno.CodeNotFound, "会话不存在", sessionID)
 	}
 	delete(m.sessions, sessionID)
-	err := s.DB.Close()
+	var err error
+	if s.Redis != nil {
+		err = s.Redis.Close()
+	}
+	if s.DB != nil {
+		if e := s.DB.Close(); e != nil && err == nil {
+			err = e
+		}
+	}
 	if s.Tunnel != nil {
 		if e := s.Tunnel.Close(); e != nil && err == nil {
 			err = e

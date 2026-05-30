@@ -967,6 +967,15 @@
   white-space: nowrap;
 }
 
+.conn-item .conn-db-type {
+  display: inline-block;
+  margin-right: 6px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
 /* 对象树 */
 .wn-tree {
   list-style: none;

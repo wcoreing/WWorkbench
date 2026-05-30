@@ -23,7 +23,7 @@ const (
 // Phase 2 — SSH 端口转发 / 隧道（已完成：终端侧栏）
 // Phase 3 — HTTP API 调试（已完成：httpapi 产品线）
 // Phase 4 — 日志中心（已完成：logs 产品线，本机 + SSH + Docker + Compose）
-// Phase 5 — PostgreSQL / Redis 适配器
+// Phase 5 — PostgreSQL / Redis 适配器（已完成）
 
 // GetAppSetting 读取单项应用设置。
 func (s *Store) GetAppSetting(key string) (string, error) {

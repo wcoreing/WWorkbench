@@ -27,6 +27,9 @@ func (s *Service) GetTableDataPage(ctx context.Context, sessionID, database, tab
 	if err != nil {
 		return nil, err
 	}
+	if sess.DbType == "redis" {
+		return redisKeyDataPage(ctx, sess, table)
+	}
 	ad, err := s.sessions.Adapter(sess)
 	if err != nil {
 		return nil, err
@@ -42,6 +45,9 @@ func (s *Service) ApplyTableMutations(ctx context.Context, sessionID, database, 
 	sess, err := s.sessions.Get(sessionID)
 	if err != nil {
 		return err
+	}
+	if sess.DbType == "redis" {
+		return errno.New(errno.CodeReadOnlyTable, "Redis 键为只读预览", table)
 	}
 	ad, err := s.sessions.Adapter(sess)
 	if err != nil {

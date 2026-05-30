@@ -2,7 +2,9 @@ package conn
 
 import (
 	"context"
+	"strings"
 
+	redisadapter "WNavicat/internal/adapter/redis"
 	"WNavicat/internal/adapter"
 	"WNavicat/internal/errno"
 	"WNavicat/internal/model"
@@ -40,6 +42,8 @@ func (s *Service) Save(c model.ConnectionDO) (*model.ConnectionDO, error) {
 	if c.ID == "" {
 		c.ID = uuid.NewString()
 	}
+	c.DbType = normalizeDbType(c.DbType)
+	c.DbType = normalizeDbType(c.DbType)
 	if c.DbType == "" {
 		c.DbType = "mysql"
 	}
@@ -63,21 +67,16 @@ func (s *Service) Delete(id string) error {
 
 // Test 测试连接。
 func (s *Service) Test(ctx context.Context, c model.ConnectionDO) error {
+	c.DbType = normalizeDbType(c.DbType)
 	if c.DbType == "" {
 		c.DbType = "mysql"
 	}
-	if c.Port <= 0 {
-		c.Port = 3306
-	}
+	c.Port = defaultPortForType(c.DbType, c.Port)
 	if err := tunnel.ValidateConnectionSSH(c); err != nil {
 		return err
 	}
 	cCopy := c
 	if err := tunnel.ResolveConnection(s.store, &cCopy); err != nil {
-		return err
-	}
-	ad, err := s.registry.Get(c.DbType)
-	if err != nil {
 		return err
 	}
 	spec := tunnel.SpecFromConnection(cCopy)
@@ -96,12 +95,49 @@ func (s *Service) Test(ctx context.Context, c model.ConnectionDO) error {
 		Charset:  cCopy.Charset,
 		Tunnel:   spec,
 	}
+	if c.DbType == "redis" {
+		client, err := redisadapter.OpenClient(ctx, cfg, tun)
+		if err != nil {
+			return err
+		}
+		defer client.Close()
+		return redisadapter.Ping(ctx, client)
+	}
+	ad, err := s.registry.Get(c.DbType)
+	if err != nil {
+		return err
+	}
 	db, err := ad.Open(ctx, cfg, tun)
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 	return ad.Ping(ctx, db)
+}
+
+// normalizeDbType 规范化数据库类型标识。
+func normalizeDbType(dbType string) string {
+	switch strings.ToLower(strings.TrimSpace(dbType)) {
+	case "postgres":
+		return "postgresql"
+	default:
+		return strings.ToLower(strings.TrimSpace(dbType))
+	}
+}
+
+// defaultPortForType 按类型返回默认端口。
+func defaultPortForType(dbType string, port int) int {
+	if port > 0 {
+		return port
+	}
+	switch dbType {
+	case "postgresql":
+		return 5432
+	case "redis":
+		return 6379
+	default:
+		return 3306
+	}
 }
 
 // StripSecrets 清除连接中的敏感字段（用于 API 列表响应）。

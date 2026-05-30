@@ -22,6 +22,8 @@ interface Props {
   onTruncateTable: (database: string, table: string) => void
   onDropTable: (database: string, table: string) => void
   onExportInsert: (database: string, table: string) => void
+  tableDesign?: boolean
+  isRedis?: boolean
 }
 
 /** ObjectTree 数据库对象树（支持懒加载列、右键菜单、筛选）。 */
@@ -37,6 +39,8 @@ export function ObjectTree({
   onTruncateTable,
   onDropTable,
   onExportInsert,
+  tableDesign = true,
+  isRedis = false,
 }: Props) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -179,7 +183,7 @@ export function ObjectTree({
       <ul className="wn-tree">{filteredNodes.map((n) => renderNode(n))}</ul>
       {menu && (
         <div className="wn-context-menu" style={{ left: menu.x, top: menu.y }} onClick={(e) => e.stopPropagation()}>
-          {menu.node.nodeType === 'database' && menu.node.database && (
+          {tableDesign && menu.node.nodeType === 'database' && menu.node.database && (
             <button
               type="button"
               className="wn-context-item"
@@ -201,8 +205,9 @@ export function ObjectTree({
               setMenu(null)
             }}
           >
-            {t('objectTree.openTable')}
+            {isRedis ? t('objectTree.openKey') : t('objectTree.openTable')}
           </button>
+          {!isRedis && (
           <button
             type="button"
             className="wn-context-item"
@@ -213,7 +218,8 @@ export function ObjectTree({
           >
             {t('objectTree.viewDdl')}
           </button>
-          {menu.node.nodeType === 'table' && (
+          )}
+          {tableDesign && menu.node.nodeType === 'table' && (
             <button
               type="button"
               className="wn-context-item"
@@ -225,7 +231,7 @@ export function ObjectTree({
               {t('objectTree.designTable')}
             </button>
           )}
-          {menu.node.nodeType === 'table' && (
+          {!isRedis && menu.node.nodeType === 'table' && (
             <button
               type="button"
               className="wn-context-item"
@@ -237,7 +243,7 @@ export function ObjectTree({
               {t('objectTree.viewIndexes')}
             </button>
           )}
-          {menu.node.nodeType === 'table' && (
+          {!isRedis && menu.node.nodeType === 'table' && (
             <button
               type="button"
               className="wn-context-item"
@@ -249,7 +255,7 @@ export function ObjectTree({
               {t('objectTree.exportInsert')}
             </button>
           )}
-          {menu.node.nodeType === 'table' && (
+          {!isRedis && menu.node.nodeType === 'table' && (
             <>
               <div className="wn-context-sep" />
               <button

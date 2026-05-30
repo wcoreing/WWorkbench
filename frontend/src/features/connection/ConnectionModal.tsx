@@ -13,6 +13,16 @@ interface Props {
 
 type SSHSource = 'host' | 'manual'
 
+type DbType = 'mysql' | 'postgresql' | 'redis'
+
+const DB_PRESETS: Record<DbType, { port: number; database: string; charset: string }> = {
+  mysql: { port: 3306, database: '', charset: 'utf8mb4' },
+  postgresql: { port: 5432, database: 'postgres', charset: '' },
+  redis: { port: 6379, database: '0', charset: '' },
+}
+
+const DB_TYPE_OPTIONS: DbType[] = ['mysql', 'postgresql', 'redis']
+
 const emptyConn = (): Connection => ({
   id: '',
   name: '',
@@ -41,7 +51,7 @@ type TFn = (key: string, params?: Record<string, string | number>) => string
 function validateConnectionForm(form: Connection, sshSource: SSHSource, t: TFn): string | null {
   if (!form.name.trim()) return t('connection.errName')
   if (!form.host.trim()) return t('connection.errHost')
-  if (!form.user.trim()) return t('connection.errUser')
+  if (form.dbType !== 'redis' && !form.user.trim()) return t('connection.errUser')
   if (!form.port || form.port <= 0) return t('connection.errPort')
   if (form.sshEnabled) {
     if (sshSource === 'host') {
@@ -102,6 +112,19 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
     setError('')
     setForm((f) => ({ ...f, ...patch }))
   }
+
+  /** applyDbType 切换数据库类型并套用默认端口等。 */
+  const applyDbType = (dbType: DbType) => {
+    const preset = DB_PRESETS[dbType]
+    update({
+      dbType,
+      port: preset.port,
+      database: preset.database,
+      charset: preset.charset,
+    })
+  }
+
+  const dbTypeLabel = t(`connection.dbType_${form.dbType}`)
 
   /** switchSSHSource 切换 SSH 配置来源。 */
   const switchSSHSource = (source: SSHSource) => {
@@ -176,7 +199,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
             <h2 id="conn-modal-title" className="wn-modal-title">
               {isEdit ? t('connection.editTitle') : t('connection.newTitle')}
             </h2>
-            <span className="wn-modal-tag">MySQL</span>
+            <span className="wn-modal-tag">{dbTypeLabel}</span>
           </div>
           <p className="wn-modal-desc">{t('connection.desc')}</p>
         </header>
@@ -208,6 +231,24 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
                 onChange={(e) => update({ group: e.target.value })}
                 placeholder={t('connection.groupPlaceholder')}
               />
+            </div>
+
+            <div className="wn-field">
+              <label className="wn-label" htmlFor="conn-dbtype">
+                {t('connection.dbType')}
+              </label>
+              <select
+                id="conn-dbtype"
+                className="wn-input"
+                value={form.dbType || 'mysql'}
+                onChange={(e) => applyDbType(e.target.value as DbType)}
+              >
+                {DB_TYPE_OPTIONS.map((ty) => (
+                  <option key={ty} value={ty}>
+                    {t(`connection.dbType_${ty}`)}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="wn-form-row">
@@ -268,14 +309,14 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
 
             <div className="wn-field">
               <label className="wn-label" htmlFor="conn-db">
-                {t('connection.defaultDb')}
+                {form.dbType === 'redis' ? t('connection.redisDb') : t('connection.defaultDb')}
               </label>
               <input
                 id="conn-db"
                 className="wn-input"
                 value={form.database}
                 onChange={(e) => update({ database: e.target.value })}
-                placeholder={t('connection.optional')}
+                placeholder={form.dbType === 'redis' ? t('connection.redisDbPlaceholder') : t('connection.optional')}
               />
             </div>
 

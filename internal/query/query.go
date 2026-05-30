@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	redisadapter "WNavicat/internal/adapter/redis"
 	"WNavicat/internal/adapter"
 	"WNavicat/internal/errno"
 	"WNavicat/internal/model"
@@ -36,6 +37,12 @@ func (s *Service) ExecuteSQL(ctx context.Context, sessionID, database, sqlText s
 	sess, err := s.sessions.Get(sessionID)
 	if err != nil {
 		return nil, err
+	}
+	if sess.DbType == "redis" {
+		start := time.Now()
+		res, err := redisadapter.ExecuteCommand(ctx, sess.Redis, sqlText)
+		s.recordHistory(sess.ConnectionID, database, sqlText, time.Since(start).Milliseconds(), err == nil)
+		return res, err
 	}
 	ad, err := s.sessions.Adapter(sess)
 	if err != nil {
@@ -90,6 +97,16 @@ func (s *Service) QuerySQLPage(ctx context.Context, sessionID, database, sqlText
 	sess, err := s.sessions.Get(sessionID)
 	if err != nil {
 		return nil, err
+	}
+	if sess.DbType == "redis" {
+		res, err := redisadapter.ExecuteCommand(ctx, sess.Redis, sqlText)
+		if err != nil {
+			return nil, err
+		}
+		if page, ok := res.(*model.QueryPageDO); ok {
+			return page, nil
+		}
+		return nil, errno.New(errno.CodeInvalidArg, "该命令无分页结果", sqlText)
 	}
 	ad, err := s.sessions.Adapter(sess)
 	if err != nil {

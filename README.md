@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> Current version: **v0.26.0** (shown in the bottom-right corner of the app)
+> Current version: **v0.27.0** (shown in the bottom-right corner of the app)
 
 ---
 
@@ -17,7 +17,7 @@
 
 | Module | Description |
 |--------|-------------|
-| **Database** | MySQL connection management, SQL editor & execution, object tree, table data editing, DDL / table design |
+| **Database** | MySQL / PostgreSQL / Redis — SQL or command console, table/key browser, DDL / design (MySQL) |
 | **Terminal** | Local shell, interactive SSH terminal, host trust, split panes |
 | **Files (SFTP)** | Remote directory browsing, upload/download, bookmarks, conflict handling, transfer queue |
 | **Containers (Docker)** | Local / remote SSH Docker, image & container management, logs & env vars, run from image, one-click DB connect |

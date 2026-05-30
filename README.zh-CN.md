@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> 当前版本：**v0.26.0**（界面右下角可查看）
+> 当前版本：**v0.27.0**（界面右下角可查看）
 
 ---
 
@@ -17,7 +17,7 @@
 
 | 模块 | 说明 |
 |------|------|
-| **数据库** | MySQL 连接管理、SQL 编辑与执行、对象树、表数据编辑、DDL / 表设计 |
+| **数据库** | MySQL / PostgreSQL / Redis 连接、SQL 或命令控制台、对象树、表/键数据、DDL / 表设计（MySQL） |
 | **终端** | 本机 Shell、SSH 交互终端、主机信任与分屏 |
 | **文件 (SFTP)** | 远程目录浏览、上传下载、书签、冲突处理与传输队列 |
 | **容器 (Docker)** | 本地 / SSH 远程 Docker、镜像与容器管理、日志与环境变量、从镜像运行、数据库一键连接 |

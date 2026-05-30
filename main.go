@@ -6,6 +6,7 @@ import (
 
 	"WNavicat/internal/adapter"
 	mysqladapter "WNavicat/internal/adapter/mysql"
+	pgadapter "WNavicat/internal/adapter/postgresql"
 	"WNavicat/internal/app"
 	"WNavicat/internal/conn"
 	"WNavicat/internal/data"
@@ -46,6 +47,7 @@ func main() {
 
 	registry := adapter.NewRegistry()
 	mysqladapter.Register(registry)
+	pgadapter.Register(registry)
 
 	tp := tunnel.NewProvider()
 	connSvc := conn.NewService(st, registry, tp)
