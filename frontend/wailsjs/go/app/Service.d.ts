@@ -75,6 +75,8 @@ export function ExportTableInsertSQL(arg1:string,arg2:string,arg3:string,arg4:nu
 
 export function FetchLogSource(arg1:string,arg2:number):Promise<app.ApiResult_WNavicat_internal_model_LogFetchResultDO_>;
 
+export function FetchLogSourceConfig(arg1:model.LogSourceDO,arg2:number):Promise<app.ApiResult_WNavicat_internal_model_LogFetchResultDO_>;
+
 export function GetComposeLogs(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WNavicat_internal_model_ComposeLogsDO_>;
 
 export function GetConnection(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_ConnectionDO_>;

@@ -110,6 +110,7 @@ export const zh: MessageTree = {
     logOutput: '日志',
     noOutput: '点击刷新加载日志',
     errName: '请填写名称',
+    errConfig: '请先填写完整的日志源配置',
     deleteTitle: '删除日志源',
     deleteMsg: '确定删除「{name}」？',
     pickComposeDir: '选择目录',

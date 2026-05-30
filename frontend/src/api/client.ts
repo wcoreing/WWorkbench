@@ -111,6 +111,7 @@ import {
   SaveLogSource,
   DeleteLogSource,
   FetchLogSource,
+  FetchLogSourceConfig,
   ListAppSettings,
   SetAppSetting,
   LoadWorkspace,
@@ -450,6 +451,8 @@ export const api = {
   deleteLogSource: (id: string) => unwrap(DeleteLogSource(id)),
   fetchLogSource: async (id: string, tail: number) =>
     (await unwrap(FetchLogSource(id, tail))) as { content: string },
+  fetchLogSourceConfig: async (src: model.LogSourceDO, tail: number) =>
+    (await unwrap(FetchLogSourceConfig(src, tail))) as { content: string },
   listAppSettings: async () => (await unwrap(ListAppSettings())) ?? {},
   setAppSetting: (key: string, value: string) => unwrap(SetAppSetting(key, value)),
   loadWorkspace: async (product: string) => (await unwrap(LoadWorkspace(product))) ?? '',

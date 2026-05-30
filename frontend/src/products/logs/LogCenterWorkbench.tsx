@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { DockerContainer, DockerContext, LogSource, LogSourceType, SSHHost } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -15,6 +15,29 @@ const TYPE_LABEL_KEYS: Record<LogSourceType, string> = {
   ssh_file: 'logs.typeSSH',
   docker: 'logs.typeDocker',
   compose: 'logs.typeCompose',
+}
+
+/** canFetchLogConfig 判断当前表单是否满足拉取日志条件。 */
+function canFetchLogConfig(
+  sourceType: LogSourceType,
+  path: string,
+  sshHostId: string,
+  dockerContextId: string,
+  containerId: string,
+  composeDir: string,
+): boolean {
+  switch (sourceType) {
+    case 'local_file':
+      return path.trim() !== ''
+    case 'ssh_file':
+      return sshHostId !== '' && path.trim() !== ''
+    case 'docker':
+      return dockerContextId !== '' && containerId !== ''
+    case 'compose':
+      return dockerContextId !== '' && composeDir.trim() !== ''
+    default:
+      return false
+  }
 }
 
 /** LogCenterWorkbench 日志中心工作区。 */
@@ -115,15 +138,51 @@ export function LogCenterWorkbench() {
     setContent('')
   }
 
+  const buildSourceConfig = useCallback(
+    () =>
+      model.LogSourceDO.createFrom({
+        id: activeId,
+        name: name.trim(),
+        sourceType,
+        path: path.trim(),
+        sshHostId,
+        dockerContextId,
+        containerId,
+        composeDir: composeDir.trim(),
+        composeService: composeService.trim(),
+        tailLines,
+        sortOrder: 0,
+        createdAt: 0,
+        updatedAt: 0,
+      }),
+    [
+      activeId,
+      name,
+      sourceType,
+      path,
+      sshHostId,
+      dockerContextId,
+      containerId,
+      composeDir,
+      composeService,
+      tailLines,
+    ],
+  )
+
+  const fetchReady = useMemo(
+    () => canFetchLogConfig(sourceType, path, sshHostId, dockerContextId, containerId, composeDir),
+    [sourceType, path, sshHostId, dockerContextId, containerId, composeDir],
+  )
+
   const refreshLogs = useCallback(async () => {
-    if (!activeId) {
-      setStatusMessage(t('logs.noOutput'))
+    if (!fetchReady) {
+      setStatusMessage(t('logs.errConfig'))
       return
     }
     setLoading(true)
     setStatusMessage(t('logs.refreshing'))
     try {
-      const res = await api.fetchLogSource(activeId, tailLines)
+      const res = await api.fetchLogSourceConfig(buildSourceConfig(), tailLines)
       setContent(res.content || '')
       setStatusMessage(t('logs.refresh'))
     } catch (e) {
@@ -132,13 +191,13 @@ export function LogCenterWorkbench() {
     } finally {
       setLoading(false)
     }
-  }, [activeId, tailLines, setStatusMessage, t])
+  }, [fetchReady, buildSourceConfig, tailLines, setStatusMessage, t])
 
   useEffect(() => {
-    if (!autoRefresh || !activeId) return
+    if (!autoRefresh || !fetchReady) return
     const timer = window.setInterval(() => void refreshLogs(), 5000)
     return () => window.clearInterval(timer)
-  }, [autoRefresh, activeId, refreshLogs])
+  }, [autoRefresh, fetchReady, refreshLogs])
 
   const save = async () => {
     if (!name.trim()) {
@@ -184,7 +243,7 @@ export function LogCenterWorkbench() {
           <button
             type="button"
             className="wn-btn wn-btn-sm wn-btn-primary"
-            disabled={loading || !activeId}
+            disabled={loading || !fetchReady}
             onClick={() => void refreshLogs()}
           >
             <IconRefresh size={14} /> {t('logs.refresh')}
@@ -193,7 +252,7 @@ export function LogCenterWorkbench() {
             {t('logs.save')}
           </button>
           <label className="logs-auto-label">
-            <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} disabled={!activeId} />
+            <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} disabled={!fetchReady} />
             {t('logs.autoRefresh')}
           </label>
         </div>

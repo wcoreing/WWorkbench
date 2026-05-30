@@ -51,20 +51,38 @@ func (s *Service) FetchLogSource(id string, tail int) ApiResult[model.LogFetchRe
 	if err != nil {
 		return ErrResult[model.LogFetchResultDO](err)
 	}
+	return s.fetchLogContent(*src, tail)
+}
+
+// FetchLogSourceConfig 按当前配置拉取日志（无需已保存 ID，用于预览）。
+func (s *Service) FetchLogSourceConfig(src model.LogSourceDO, tail int) ApiResult[model.LogFetchResultDO] {
+	if err := validateLogSourceConfig(src); err != nil {
+		return ErrResult[model.LogFetchResultDO](err)
+	}
+	return s.fetchLogContent(src, tail)
+}
+
+// fetchLogContent 执行日志拉取。
+func (s *Service) fetchLogContent(src model.LogSourceDO, tail int) ApiResult[model.LogFetchResultDO] {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
-	content, err := logs.Fetch(ctx, *src, s.sshHosts, s.docker, tail)
+	content, err := logs.Fetch(ctx, src, s.sshHosts, s.docker, tail)
 	if err != nil {
 		return ErrResult[model.LogFetchResultDO](err)
 	}
 	return OkResult(model.LogFetchResultDO{Content: content})
 }
 
-// validateLogSource 校验日志源配置。
+// validateLogSource 校验日志源配置（含名称，用于保存）。
 func validateLogSource(src model.LogSourceDO) error {
 	if strings.TrimSpace(src.Name) == "" {
 		return errno.New(errno.CodeInvalidArg, "请填写日志源名称", "")
 	}
+	return validateLogSourceConfig(src)
+}
+
+// validateLogSourceConfig 校验拉取日志所需字段。
+func validateLogSourceConfig(src model.LogSourceDO) error {
 	switch src.SourceType {
 	case model.LogSourceLocalFile:
 		if strings.TrimSpace(src.Path) == "" {

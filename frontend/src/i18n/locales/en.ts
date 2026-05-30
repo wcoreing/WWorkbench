@@ -110,6 +110,7 @@ export const en: MessageTree = {
     logOutput: 'Log',
     noOutput: 'Click Refresh to load logs',
     errName: 'Please enter a name',
+    errConfig: 'Complete the log source configuration first',
     deleteTitle: 'Delete log source',
     deleteMsg: 'Delete "{name}"?',
     pickComposeDir: 'Pick directory',
