@@ -141,6 +141,21 @@ CREATE TABLE IF NOT EXISTS ssh_forward_presets (
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS log_sources (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  source_type TEXT NOT NULL,
+  path TEXT NOT NULL DEFAULT '',
+  ssh_host_id TEXT NOT NULL DEFAULT '',
+  docker_context_id TEXT NOT NULL DEFAULT '',
+  container_id TEXT NOT NULL DEFAULT '',
+  compose_dir TEXT NOT NULL DEFAULT '',
+  compose_service TEXT NOT NULL DEFAULT '',
+  tail_lines INTEGER NOT NULL DEFAULT 200,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL

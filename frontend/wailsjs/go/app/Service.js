@@ -70,6 +70,10 @@ export function DeleteLocalPath(arg1) {
   return window['go']['app']['Service']['DeleteLocalPath'](arg1);
 }
 
+export function DeleteLogSource(arg1) {
+  return window['go']['app']['Service']['DeleteLogSource'](arg1);
+}
+
 export function DeleteNote(arg1) {
   return window['go']['app']['Service']['DeleteNote'](arg1);
 }
@@ -136,6 +140,10 @@ export function ExportNote(arg1) {
 
 export function ExportTableInsertSQL(arg1, arg2, arg3, arg4) {
   return window['go']['app']['Service']['ExportTableInsertSQL'](arg1, arg2, arg3, arg4);
+}
+
+export function FetchLogSource(arg1, arg2) {
+  return window['go']['app']['Service']['FetchLogSource'](arg1, arg2);
 }
 
 export function GetComposeLogs(arg1, arg2, arg3, arg4) {
@@ -270,6 +278,10 @@ export function ListLocalDir(arg1) {
   return window['go']['app']['Service']['ListLocalDir'](arg1);
 }
 
+export function ListLogSources() {
+  return window['go']['app']['Service']['ListLogSources']();
+}
+
 export function ListNotebookGroups() {
   return window['go']['app']['Service']['ListNotebookGroups']();
 }
@@ -380,6 +392,10 @@ export function SaveEnvPreset(arg1) {
 
 export function SaveHTTPRequest(arg1) {
   return window['go']['app']['Service']['SaveHTTPRequest'](arg1);
+}
+
+export function SaveLogSource(arg1) {
+  return window['go']['app']['Service']['SaveLogSource'](arg1);
 }
 
 export function SaveNote(arg1) {

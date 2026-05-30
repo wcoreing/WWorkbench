@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> Current version: **v0.25.0** (shown in the bottom-right corner of the app)
+> Current version: **v0.26.0** (shown in the bottom-right corner of the app)
 
 ---
 
@@ -24,6 +24,7 @@
 | **Environment (Env)** | Install, switch, and preset local Node / Go / PHP / Java versions |
 | **Notebook** | Ops notes, Markdown editing & preview |
 | **API** | HTTP request debugging and response viewer |
+| **Logs** | Local, SSH, Docker and Compose log viewer |
 
 Additional capabilities:
 

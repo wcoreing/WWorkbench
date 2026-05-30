@@ -312,6 +312,28 @@ export interface HTTPHeaderKV {
   value: string
 }
 
+export type LogSourceType = 'local_file' | 'ssh_file' | 'docker' | 'compose'
+
+export interface LogSource {
+  id: string
+  name: string
+  sourceType: LogSourceType
+  path: string
+  sshHostId: string
+  dockerContextId: string
+  containerId: string
+  composeDir: string
+  composeService: string
+  tailLines: number
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+}
+
+export interface LogFetchResult {
+  content: string
+}
+
 export interface HTTPSavedRequest {
   id: string
   name: string

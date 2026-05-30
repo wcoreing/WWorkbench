@@ -21,6 +21,16 @@ export function IconEdit({ size = 16, className }: IconProps) {
   )
 }
 
+/** 刷新图标 */
+export function IconRefresh({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 3v6h-6" />
+    </svg>
+  )
+}
+
 export function IconPlay({ size = 16, className }: IconProps) {
   return (
     <svg {...base(size)} className={className}>
@@ -148,6 +158,19 @@ export function IconLaptop({ size = 16, className }: IconProps) {
     <svg {...base(size)} className={className}>
       <rect x="3" y="4" width="18" height="12" rx="2" ry="2" />
       <path d="M2 20h20" />
+    </svg>
+  )
+}
+
+/** 日志中心图标 */
+export function IconLogs({ size = 16, className }: IconProps) {
+  return (
+    <svg {...base(size)} className={className}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="8" y1="13" x2="16" y2="13" />
+      <line x1="8" y1="17" x2="16" y2="17" />
+      <line x1="8" y1="9" x2="10" y2="9" />
     </svg>
   )
 }

@@ -544,6 +544,74 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WNavicat_internal_model_LogFetchResultDO_ {
+	    ok: boolean;
+	    data: model.LogFetchResultDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_LogFetchResultDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.LogFetchResultDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WNavicat_internal_model_LogSourceDO_ {
+	    ok: boolean;
+	    data: model.LogSourceDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_LogSourceDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.LogSourceDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WNavicat_internal_model_NoteDO_ {
 	    ok: boolean;
 	    data: model.NoteDO;
@@ -1373,6 +1441,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.IndexMetaDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WNavicat_internal_model_LogSourceDO_ {
+	    ok: boolean;
+	    data: model.LogSourceDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_LogSourceDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.LogSourceDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -2671,6 +2773,54 @@ export namespace model {
 		    }
 		    return a;
 		}
+	}
+	export class LogFetchResultDO {
+	    content: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LogFetchResultDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.content = source["content"];
+	    }
+	}
+	export class LogSourceDO {
+	    id: string;
+	    name: string;
+	    sourceType: string;
+	    path: string;
+	    sshHostId: string;
+	    dockerContextId: string;
+	    containerId: string;
+	    composeDir: string;
+	    composeService: string;
+	    tailLines: number;
+	    sortOrder: number;
+	    createdAt: number;
+	    updatedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new LogSourceDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.sourceType = source["sourceType"];
+	        this.path = source["path"];
+	        this.sshHostId = source["sshHostId"];
+	        this.dockerContextId = source["dockerContextId"];
+	        this.containerId = source["containerId"];
+	        this.composeDir = source["composeDir"];
+	        this.composeService = source["composeService"];
+	        this.tailLines = source["tailLines"];
+	        this.sortOrder = source["sortOrder"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
 	}
 	export class NoteDO {
 	    id: string;

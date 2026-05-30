@@ -440,6 +440,36 @@ type HTTPResponseDO struct {
 	Error      string           `json:"error"`
 }
 
+// 日志源类型。
+const (
+	LogSourceLocalFile = "local_file"
+	LogSourceSSHFile   = "ssh_file"
+	LogSourceDocker    = "docker"
+	LogSourceCompose   = "compose"
+)
+
+// LogSourceDO 已保存的日志源。
+type LogSourceDO struct {
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	SourceType       string `json:"sourceType"`
+	Path             string `json:"path"`
+	SSHHostID        string `json:"sshHostId"`
+	DockerContextID  string `json:"dockerContextId"`
+	ContainerID      string `json:"containerId"`
+	ComposeDir       string `json:"composeDir"`
+	ComposeService   string `json:"composeService"`
+	TailLines        int    `json:"tailLines"`
+	SortOrder        int    `json:"sortOrder"`
+	CreatedAt        int64  `json:"createdAt"`
+	UpdatedAt        int64  `json:"updatedAt"`
+}
+
+// LogFetchResultDO 拉取日志结果。
+type LogFetchResultDO struct {
+	Content string `json:"content"`
+}
+
 // HTTPSavedRequestDO 已保存的 HTTP 请求模板。
 type HTTPSavedRequestDO struct {
 	ID           string `json:"id"`

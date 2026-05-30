@@ -37,6 +37,8 @@ export function DeleteHTTPRequest(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteLocalPath(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function DeleteLogSource(arg1:string):Promise<app.ApiResult_bool_>;
+
 export function DeleteNote(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteNotebookGroup(arg1:string):Promise<app.ApiResult_bool_>;
@@ -70,6 +72,8 @@ export function ExportConnectionsToFile(arg1:boolean):Promise<app.ApiResult_WNav
 export function ExportNote(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
 
 export function ExportTableInsertSQL(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
+
+export function FetchLogSource(arg1:string,arg2:number):Promise<app.ApiResult_WNavicat_internal_model_LogFetchResultDO_>;
 
 export function GetComposeLogs(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WNavicat_internal_model_ComposeLogsDO_>;
 
@@ -137,6 +141,8 @@ export function ListIndexes(arg1:string,arg2:string,arg3:string):Promise<app.Api
 
 export function ListLocalDir(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_LocalDirResultDO_>;
 
+export function ListLogSources():Promise<app.ApiResult___WNavicat_internal_model_LogSourceDO_>;
+
 export function ListNotebookGroups():Promise<app.ApiResult___WNavicat_internal_model_NotebookGroupDO_>;
 
 export function ListNotes():Promise<app.ApiResult___WNavicat_internal_model_NoteSummaryDO_>;
@@ -192,6 +198,8 @@ export function SaveDockerContext(arg1:model.DockerContextDO):Promise<app.ApiRes
 export function SaveEnvPreset(arg1:model.EnvPresetDO):Promise<app.ApiResult_WNavicat_internal_model_EnvPresetDO_>;
 
 export function SaveHTTPRequest(arg1:model.HTTPSavedRequestDO):Promise<app.ApiResult_WNavicat_internal_model_HTTPSavedRequestDO_>;
+
+export function SaveLogSource(arg1:model.LogSourceDO):Promise<app.ApiResult_WNavicat_internal_model_LogSourceDO_>;
 
 export function SaveNote(arg1:model.NoteDO):Promise<app.ApiResult_WNavicat_internal_model_NoteDO_>;
 

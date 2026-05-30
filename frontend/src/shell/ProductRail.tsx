@@ -1,5 +1,5 @@
 import type { ProductId } from './products'
-import { IconDatabase, IconDocker, IconFolder, IconHttp, IconLayers, IconNotebook, IconTerminal } from '../components/Icons'
+import { IconDatabase, IconDocker, IconFolder, IconHttp, IconLayers, IconLogs, IconNotebook, IconTerminal } from '../components/Icons'
 import { useI18n, useLocalizedProducts } from '../i18n'
 import { useAppStore } from '../stores/appStore'
 import './shell.css'
@@ -12,6 +12,7 @@ const PRODUCT_ICONS: Record<ProductId, typeof IconDatabase> = {
   environment: IconLayers,
   notebook: IconNotebook,
   httpapi: IconHttp,
+  logs: IconLogs,
 }
 
 /** 左侧产品线切换轨 */

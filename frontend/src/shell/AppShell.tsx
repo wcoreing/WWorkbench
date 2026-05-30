@@ -9,6 +9,7 @@ import { EnvironmentWorkbench } from '../products/environment/EnvironmentWorkben
 import { NotebookWorkbench } from '../products/notebook/NotebookWorkbench'
 import { SftpWorkbench } from '../products/sftp/SftpWorkbench'
 import { HttpApiWorkbench } from '../products/httpapi/HttpApiWorkbench'
+import { LogCenterWorkbench } from '../products/logs/LogCenterWorkbench'
 import { TerminalWorkbench } from '../products/terminal/TerminalWorkbench'
 import { ProductRail } from './ProductRail'
 import { ShellChrome } from './ShellChrome'
@@ -24,6 +25,7 @@ const PRODUCT_VIEWS = {
   environment: EnvironmentWorkbench,
   notebook: NotebookWorkbench,
   httpapi: HttpApiWorkbench,
+  logs: LogCenterWorkbench,
 } as const
 
 type ProductKey = keyof typeof PRODUCT_VIEWS
