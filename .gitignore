@@ -1,6 +1,9 @@
 # Build output
 build/bin
 frontend/dist
+/WNavicat
+/WNavicat.app
+WNavicat.exe
 
 # Dependencies
 node_modules
