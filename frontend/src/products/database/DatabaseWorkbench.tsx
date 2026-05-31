@@ -11,8 +11,10 @@ import { SqlEditor, type SqlEditorHandle } from '../../features/sql-editor/SqlEd
 import { TableDesignEditor } from '../../features/table-design/TableDesignEditor'
 import { TableDataEditor } from '../../features/table-data/TableDataEditor'
 import { useAppStore } from '../../stores/appStore'
-import type { ProductLinkRequest } from '../../stores/appStore'
-import { openProductLink, useProductLink } from '../../stores/productLink'
+import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
+import { Capability } from '../../workbench/capabilities'
+import { payloadBool, payloadStr } from '../../workbench/commandPayload'
+import type { ConnectionDraft } from '../../stores/appStore'
 import { APP_SETTING_KEYS, saveAppSetting } from '../../stores/appPreferences'
 import { useI18n } from '../../i18n'
 import { defaultUntitledSql, localizeWorkTabTitle } from '../../i18n/databaseTabTitle'
@@ -233,11 +235,13 @@ export function DatabaseWorkbench() {
     [setConnections, setSession, setActiveConnectionId, setObjectTree, setHistory, setStatusMessage, fulfillPendingSql]
   )
 
-  /** onDatabaseLink 处理跨产品跳转到数据库（连接 + 填入/执行 SQL）。 */
-  const onDatabaseLink = useCallback(
-    (link: ProductLinkRequest) => {
-      const { connectionId, connectionDraft, initialSql, runSql } = link
-      setActiveProduct('database')
+  /** onDatabaseCommand 处理 database.open 命令。 */
+  const onDatabaseCommand = useCallback(
+    (cmd: { payload: Record<string, unknown> }) => {
+      const connectionId = payloadStr(cmd.payload, 'connectionId')
+      const initialSql = payloadStr(cmd.payload, 'initialSql')
+      const runSql = payloadBool(cmd.payload, 'runSql')
+      const connectionDraft = cmd.payload.connectionDraft as ConnectionDraft | undefined
       if (connectionId) {
         const conn = useAppStore.getState().connections.find((c) => c.id === connectionId)
         const sql = initialSql?.trim() ?? ''
@@ -282,10 +286,10 @@ export function DatabaseWorkbench() {
           : t('database.dockerConnDraft'),
       )
     },
-    [setActiveProduct, connect, setStatusMessage, t]
+    [connect, setStatusMessage, t]
   )
 
-  useProductLink('database', onDatabaseLink)
+  useWorkbenchCommand(Capability.DatabaseOpen, onDatabaseCommand)
 
   const disconnect = async () => {
     if (session) await api.closeSession(session.sessionId)

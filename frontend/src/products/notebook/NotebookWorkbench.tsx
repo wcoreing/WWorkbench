@@ -16,7 +16,9 @@ import {
 } from '../../features/notebook/noteTemplates'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
-import { openProductLink, useProductLink } from '../../stores/productLink'
+import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
+import { Capability } from '../../workbench/capabilities'
+import { payloadStr } from '../../workbench/commandPayload'
 
 function toNoteDO(note: Note): model.NoteDO {
   return model.NoteDO.createFrom({
@@ -164,9 +166,10 @@ export function NotebookWorkbench() {
     persistUI(openTabIds, activeTabId)
   }, [openTabIds, activeTabId, loading, persistUI])
 
-  useProductLink('notebook', (link) => {
-    const { hostId, connectionId, initialCommand } = link
-    setActiveProduct('notebook')
+  useWorkbenchCommand(Capability.NotebookOpen, (cmd) => {
+    const hostId = payloadStr(cmd.payload, 'hostId')
+    const connectionId = payloadStr(cmd.payload, 'connectionId')
+    const initialCommand = payloadStr(cmd.payload, 'initialCommand')
     void (async () => {
       try {
         const { groupList, hostList, connList } = await refreshAll()

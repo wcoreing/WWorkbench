@@ -37,13 +37,13 @@ type TunnelSpecDO struct {
 
 // ConnectionConfigDO 运行时连接配置（含明文密码，仅内存使用）。
 type ConnectionConfigDO struct {
-	DbType   string `json:"dbType"`
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	User     string `json:"user"`
-	Password string `json:"password"`
-	Database string `json:"database"`
-	Charset  string `json:"charset"`
+	DbType   string       `json:"dbType"`
+	Host     string       `json:"host"`
+	Port     int          `json:"port"`
+	User     string       `json:"user"`
+	Password string       `json:"password"`
+	Database string       `json:"database"`
+	Charset  string       `json:"charset"`
 	Tunnel   TunnelSpecDO `json:"tunnel"`
 }
 
@@ -107,10 +107,10 @@ type IndexMetaDO struct {
 type QueryPageDO struct {
 	Columns   []ColumnMetaDO `json:"columns"`
 	Rows      []QueryRowDO   `json:"rows"`
-	Page      int              `json:"page"`
-	PageSize  int              `json:"pageSize"`
-	Total     int64            `json:"total"`
-	ElapsedMs int64            `json:"elapsedMs"`
+	Page      int            `json:"page"`
+	PageSize  int            `json:"pageSize"`
+	Total     int64          `json:"total"`
+	ElapsedMs int64          `json:"elapsedMs"`
 }
 
 // CellValueDO 单元格值。
@@ -136,28 +136,28 @@ type TableSortDO struct {
 
 // TableDataQueryDO 表数据查询参数。
 type TableDataQueryDO struct {
-	Page     int            `json:"page"`
-	PageSize int            `json:"pageSize"`
+	Page     int             `json:"page"`
+	PageSize int             `json:"pageSize"`
 	Filters  []TableFilterDO `json:"filters"`
 	Sorts    []TableSortDO   `json:"sorts"`
 }
 
 // TableDataPageDO 表数据分页。
 type TableDataPageDO struct {
-	Columns      []ColumnMetaDO  `json:"columns"`
-	Rows         []TableRowDO    `json:"rows"`
-	Page         int             `json:"page"`
-	PageSize     int             `json:"pageSize"`
-	Total        int64           `json:"total"`
+	Columns       []ColumnMetaDO `json:"columns"`
+	Rows          []TableRowDO   `json:"rows"`
+	Page          int            `json:"page"`
+	PageSize      int            `json:"pageSize"`
+	Total         int64          `json:"total"`
 	HasPrimaryKey bool           `json:"hasPrimaryKey"`
-	ReadOnly     bool            `json:"readOnly"`
-	ElapsedMs    int64           `json:"elapsedMs"`
+	ReadOnly      bool           `json:"readOnly"`
+	ElapsedMs     int64          `json:"elapsedMs"`
 }
 
 // TableRowDO 表数据行。
 type TableRowDO struct {
-	RowID   string                 `json:"rowId"`
-	Values  map[string]CellValueDO `json:"values"`
+	RowID  string                 `json:"rowId"`
+	Values map[string]CellValueDO `json:"values"`
 }
 
 // RowMutationBatchDO 行变更批次。
@@ -460,19 +460,19 @@ const (
 
 // LogSourceDO 已保存的日志源。
 type LogSourceDO struct {
-	ID               string `json:"id"`
-	Name             string `json:"name"`
-	SourceType       string `json:"sourceType"`
-	Path             string `json:"path"`
-	SSHHostID        string `json:"sshHostId"`
-	DockerContextID  string `json:"dockerContextId"`
-	ContainerID      string `json:"containerId"`
-	ComposeDir       string `json:"composeDir"`
-	ComposeService   string `json:"composeService"`
-	TailLines        int    `json:"tailLines"`
-	SortOrder        int    `json:"sortOrder"`
-	CreatedAt        int64  `json:"createdAt"`
-	UpdatedAt        int64  `json:"updatedAt"`
+	ID              string `json:"id"`
+	Name            string `json:"name"`
+	SourceType      string `json:"sourceType"`
+	Path            string `json:"path"`
+	SSHHostID       string `json:"sshHostId"`
+	DockerContextID string `json:"dockerContextId"`
+	ContainerID     string `json:"containerId"`
+	ComposeDir      string `json:"composeDir"`
+	ComposeService  string `json:"composeService"`
+	TailLines       int    `json:"tailLines"`
+	SortOrder       int    `json:"sortOrder"`
+	CreatedAt       int64  `json:"createdAt"`
+	UpdatedAt       int64  `json:"updatedAt"`
 }
 
 // LogFetchResultDO 拉取日志结果。
@@ -482,15 +482,15 @@ type LogFetchResultDO struct {
 
 // HTTPSavedRequestDO 已保存的 HTTP 请求模板。
 type HTTPSavedRequestDO struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Method       string `json:"method"`
-	URL          string `json:"url"`
-	HeadersJSON  string `json:"headersJson"`
-	Body         string `json:"body"`
-	SortOrder    int    `json:"sortOrder"`
-	CreatedAt    int64  `json:"createdAt"`
-	UpdatedAt    int64  `json:"updatedAt"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Method      string `json:"method"`
+	URL         string `json:"url"`
+	HeadersJSON string `json:"headersJson"`
+	Body        string `json:"body"`
+	SortOrder   int    `json:"sortOrder"`
+	CreatedAt   int64  `json:"createdAt"`
+	UpdatedAt   int64  `json:"updatedAt"`
 }
 
 // ComposeServiceDO Compose 服务/容器状态。
@@ -638,4 +638,101 @@ type NoteSummaryDO struct {
 type NotebookUIDO struct {
 	OpenTabIDs  []string `json:"openTabIds"`
 	ActiveTabID string   `json:"activeTabId"`
+}
+
+// AgentCapabilityDO 单项 AI 能力（含开关状态）。
+type AgentCapabilityDO struct {
+	Name         string `json:"name"`
+	Label        string `json:"label"`
+	Risk         string `json:"risk"`
+	Description  string `json:"description"`
+	Enabled      bool   `json:"enabled"`
+	NeedsConfirm bool   `json:"needsConfirm"`
+}
+
+// AgentSettingsDO Agent 配置（对外展示）。
+type AgentSettingsDO struct {
+	APIBase         string              `json:"apiBase"`
+	APIKeyMask      string              `json:"apiKeyMask"`
+	HasAPIKey       bool                `json:"hasApiKey"`
+	Model           string              `json:"model"`
+	Provider        string              `json:"provider"`
+	AllowWrite      bool                `json:"allowWrite"`
+	Capabilities    []AgentCapabilityDO `json:"capabilities"`
+	UnavailableNote string              `json:"unavailableNote"`
+}
+
+// AgentAPIConfigSaveDO 保存 Agent API 连接配置。
+type AgentAPIConfigSaveDO struct {
+	APIBase  string `json:"apiBase"`
+	APIKey   string `json:"apiKey"`
+	Model    string `json:"model"`
+	Provider string `json:"provider"`
+}
+
+// AgentPermissionsSaveDO 保存 Agent 能力权限。
+type AgentPermissionsSaveDO struct {
+	AllowWrite          bool   `json:"allowWrite"`
+	ToolPermissionsJSON string `json:"toolPermissionsJson"`
+}
+
+// AgentSettingsSaveDO 保存 Agent 全部配置（兼容旧调用）。
+type AgentSettingsSaveDO struct {
+	APIBase             string `json:"apiBase"`
+	APIKey              string `json:"apiKey"`
+	Model               string `json:"model"`
+	Provider            string `json:"provider"`
+	AllowWrite          bool   `json:"allowWrite"`
+	ToolPermissionsJSON string `json:"toolPermissionsJson"`
+}
+
+// AgentMentionDO 用户通过 @ 选中的资源（SSH 主机或数据库连接）。
+type AgentMentionDO struct {
+	Kind  string `json:"kind"`
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+// AgentContextDO 前端传入的工作台上下文。
+type AgentContextDO struct {
+	ActiveProduct string           `json:"activeProduct"`
+	SessionID     string           `json:"sessionId"`
+	ConnectionID  string           `json:"connectionId"`
+	Database      string           `json:"database"`
+	Mentions      []AgentMentionDO `json:"mentions"`
+}
+
+// AgentChatRequestDO 发起对话请求。
+type AgentChatRequestDO struct {
+	ThreadID string         `json:"threadId"`
+	Message  string         `json:"message"`
+	Context  AgentContextDO `json:"context"`
+}
+
+// AgentChatResultDO 对话提交结果。
+type AgentChatResultDO struct {
+	ThreadID string `json:"threadId"`
+}
+
+// AgentPendingDO 待用户确认的工具调用。
+type AgentPendingDO struct {
+	ID        string `json:"id"`
+	ThreadID  string `json:"threadId"`
+	ToolName  string `json:"toolName"`
+	ArgsJSON  string `json:"argsJson"`
+	Summary   string `json:"summary"`
+	CreatedAt int64  `json:"createdAt"`
+}
+
+// AgentMessageDO 对话消息。
+type AgentMessageDO struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// AgentThreadDO 对话线程摘要。
+type AgentThreadDO struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	UpdatedAt int64  `json:"updatedAt"`
 }

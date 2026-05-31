@@ -26,6 +26,7 @@ const (
 // Phase 5 — PostgreSQL / Redis 适配器（已完成）
 // Phase 6 — 体验打磨：日志实时跟随、PG 多 schema、文档（已完成 v0.28）
 // Phase 7 — HTTP 环境变量 {{var}}、Redis SCAN 扩容（v0.29）
+// Phase 8 — 系统内 AI Agent（workbenchtools + Copilot，v0.30）
 
 // GetAppSetting 读取单项应用设置。
 func (s *Store) GetAppSetting(key string) (string, error) {

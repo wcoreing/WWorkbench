@@ -166,7 +166,31 @@ CREATE TABLE IF NOT EXISTS log_sources (
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
-);`)
+);
+CREATE TABLE IF NOT EXISTS agent_pending (
+  id TEXT PRIMARY KEY,
+  thread_id TEXT NOT NULL,
+  tool_name TEXT NOT NULL,
+  args_json TEXT NOT NULL,
+  summary TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS agent_threads (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  context_json TEXT NOT NULL DEFAULT '{}',
+  updated_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS agent_messages (
+  id TEXT PRIMARY KEY,
+  thread_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL DEFAULT '',
+  payload_json TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_agent_messages_thread ON agent_messages(thread_id, created_at);`)
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移应用设置表失败", err)
 	}

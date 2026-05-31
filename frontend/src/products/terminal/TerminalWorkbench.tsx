@@ -6,7 +6,9 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconLaptop, IconPlus, IconServer, IconTerminal } from '../../components/Icons'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
-import { openProductLink, useProductLink } from '../../stores/productLink'
+import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
+import { Capability } from '../../workbench/capabilities'
+import { payloadBool, payloadStr } from '../../workbench/commandPayload'
 import {
   loadTerminalWorkspace,
   scheduleTerminalWorkspacePersist,
@@ -49,7 +51,8 @@ const MAX_PANES = 4
 /** 终端产品线工作区 */
 export function TerminalWorkbench() {
   const { t } = useI18n()
-  const { setStatusMessage, terminalOpacity, setTerminalOpacity, setActiveProduct } = useAppStore()
+  const { setStatusMessage, terminalOpacity, setTerminalOpacity, setActiveProduct, setAgentFocusSSH } =
+    useAppStore()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [hosts, setHosts] = useState<SSHHost[]>([])
   const [tabs, setTabs] = useState<TerminalTab[]>([])
@@ -67,6 +70,15 @@ export function TerminalWorkbench() {
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
   const activePaneCount = activeTab ? countLeaves(activeTab.layout) : 0
+
+  useEffect(() => {
+    if (activeTab?.kind === 'ssh' && activeTab.hostId) {
+      const host = hosts.find((h) => h.id === activeTab.hostId)
+      setAgentFocusSSH(activeTab.hostId, host?.name?.trim() || host?.host || activeTab.title)
+      return
+    }
+    setAgentFocusSSH(null)
+  }, [activeTab, hosts, setAgentFocusSSH])
 
   useEffect(() => {
     if (!ctxMenu) return
@@ -235,8 +247,10 @@ export function TerminalWorkbench() {
     }
   }
 
-  useProductLink('terminal', (link) => {
-    const { hostId, localShell, initialCommand } = link
+  useWorkbenchCommand(Capability.TerminalOpen, (cmd) => {
+    const hostId = payloadStr(cmd.payload, 'hostId')
+    const localShell = payloadBool(cmd.payload, 'localShell')
+    const initialCommand = payloadStr(cmd.payload, 'initialCommand')
     void runTerminalLink(hostId, localShell, initialCommand).catch((e) => {
       setStatusMessage((e as Error).message)
     })

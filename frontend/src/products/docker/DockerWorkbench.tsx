@@ -8,7 +8,9 @@ import { DockerComposePanel } from '../../features/docker/DockerComposePanel'
 import { DockerRunModal } from '../../features/docker/DockerRunModal'
 import { READY_MESSAGES, useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
-import { openProductLink, useProductLink } from '../../stores/productLink'
+import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
+import { Capability } from '../../workbench/capabilities'
+import { payloadStr } from '../../workbench/commandPayload'
 import { APP_SETTING_KEYS, saveAppSetting } from '../../stores/appPreferences'
 import {
   loadDockerWorkspace,
@@ -366,9 +368,8 @@ export function DockerWorkbench() {
     setImagePage(1)
   }, [activeContextId, view])
 
-  useProductLink('docker-context', (link) => {
-    const { hostId } = link
-    setActiveProduct('docker')
+  useWorkbenchCommand(Capability.DockerContextOpen, (cmd) => {
+    const hostId = payloadStr(cmd.payload, 'hostId')
     setContextModalHostId(hostId)
     setContextModalOpen(true)
     if (hostId) setStatusMessage(t('docker.addFromSsh'))

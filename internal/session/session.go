@@ -147,6 +147,21 @@ func (m *Manager) Close(sessionID string) error {
 	return err
 }
 
+// ListOpen 列出已打开会话摘要。
+func (m *Manager) ListOpen() []model.SessionInfoDO {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	out := make([]model.SessionInfoDO, 0, len(m.sessions))
+	for _, s := range m.sessions {
+		out = append(out, model.SessionInfoDO{
+			SessionID:    s.ID,
+			ConnectionID: s.ConnectionID,
+			Database:     s.Database,
+		})
+	}
+	return out
+}
+
 // Get 获取会话。
 func (m *Manager) Get(sessionID string) (*Session, error) {
 	m.mu.RLock()

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { useAppStore } from '../stores/appStore'
 import { bootstrapAppState } from '../stores/bootstrapApp'
-import { productLinkToProduct } from '../stores/productLink'
 import { DockerWorkbench } from '../products/docker/DockerWorkbench'
 import { DatabaseWorkbench } from '../products/database/DatabaseWorkbench'
 import { EnvironmentWorkbench } from '../products/environment/EnvironmentWorkbench'
@@ -14,6 +13,9 @@ import { TerminalWorkbench } from '../products/terminal/TerminalWorkbench'
 import { ProductRail } from './ProductRail'
 import { ShellChrome } from './ShellChrome'
 import { StatusBar } from './StatusBar'
+import { AgentPanel } from '../features/agent/AgentPanel'
+import { subscribeAgentUiActions } from '../features/agent/agentUiActions'
+import { useAgentStore } from '../stores/agentStore'
 import { useI18n } from '../i18n'
 import './shell.css'
 
@@ -32,9 +34,11 @@ type ProductKey = keyof typeof PRODUCT_VIEWS
 
 /** 多产品线工作台壳 */
 export function AppShell() {
-  const { activeProduct, preferencesReady, productLink } = useAppStore()
+  const { activeProduct, preferencesReady } = useAppStore()
   const { t } = useI18n()
   const [booting, setBooting] = useState(!preferencesReady)
+  const agentOpen = useAgentStore((s) => s.panelOpen)
+  const toggleAgent = useAgentStore((s) => s.togglePanel)
   const [mountedProducts, setMountedProducts] = useState<Set<ProductKey>>(
     () => new Set([activeProduct as ProductKey]),
   )
@@ -53,6 +57,8 @@ export function AppShell() {
     api.getVersion().then(useAppStore.getState().setVersion).catch(console.error)
   }, [])
 
+  useEffect(() => subscribeAgentUiActions(), [])
+
   useEffect(() => {
     setMountedProducts((prev) => {
       const key = activeProduct as ProductKey
@@ -62,18 +68,6 @@ export function AppShell() {
       return next
     })
   }, [activeProduct])
-
-  useEffect(() => {
-    if (!productLink) return
-    const target = productLinkToProduct(productLink.action)
-    if (!target) return
-    setMountedProducts((prev) => {
-      if (prev.has(target)) return prev
-      const next = new Set(prev)
-      next.add(target)
-      return next
-    })
-  }, [productLink])
 
   if (booting) {
     return (
@@ -85,8 +79,8 @@ export function AppShell() {
 
   return (
     <div className="workbench-shell">
-      <ShellChrome />
-      <div className="workbench-body">
+      <ShellChrome agentOpen={agentOpen} onToggleAgent={toggleAgent} />
+      <div className={`workbench-body${agentOpen ? ' agent-open' : ''}`}>
         <ProductRail />
         <div className="workbench-content">
           {(Object.keys(PRODUCT_VIEWS) as ProductKey[]).map((key) => {
@@ -105,6 +99,7 @@ export function AppShell() {
             )
           })}
         </div>
+        <AgentPanel collapsed={!agentOpen} />
       </div>
       <StatusBar />
     </div>

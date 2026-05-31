@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"WNavicat/internal/agent"
 	"WNavicat/internal/conn"
 	"WNavicat/internal/data"
 	dockersvc "WNavicat/internal/docker"
@@ -41,7 +42,8 @@ type Service struct {
 	meta      *meta.Service
 	queries   *query.Service
 	table     *data.Service
-	logFollow *logFollowManager
+	logFollow   *logFollowManager
+	agentRunner *agent.Runner
 }
 
 // NewService 创建应用服务。
@@ -87,6 +89,7 @@ func (s *Service) Startup(ctx context.Context) {
 	s.wireTerminalEvents()
 	s.wireSftpEvents()
 	s.wireEnvEvents()
+	s.wireAgentRunner()
 }
 
 // Shutdown Wails 退出回调，释放终端等资源。

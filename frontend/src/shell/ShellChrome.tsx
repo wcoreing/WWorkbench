@@ -4,7 +4,13 @@ import { useAppStore } from '../stores/appStore'
 import { ShellLocaleMenu } from './ShellLocaleMenu'
 
 /** 应用顶栏：品牌、当前产品、主题与语言切换 */
-export function ShellChrome() {
+export function ShellChrome({
+  agentOpen,
+  onToggleAgent,
+}: {
+  agentOpen?: boolean
+  onToggleAgent?: () => void
+}) {
   const { theme, setTheme, activeProduct } = useAppStore()
   const { t } = useI18n()
   const product = useLocalizedProduct(activeProduct)
@@ -21,6 +27,16 @@ export function ShellChrome() {
         <span className="chrome-product-desc">{product.description}</span>
       </div>
       <span className="chrome-spacer" />
+      {onToggleAgent && (
+        <button
+          type="button"
+          className={`wn-btn wn-btn-chrome wn-btn-sm${agentOpen ? ' active' : ''}`}
+          onClick={onToggleAgent}
+          title={agentOpen ? t('agent.collapsePanel') : t('agent.openPanel')}
+        >
+          AI
+        </button>
+      )}
       <ShellLocaleMenu />
       <button
         type="button"

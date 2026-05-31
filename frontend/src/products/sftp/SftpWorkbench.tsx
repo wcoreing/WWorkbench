@@ -5,7 +5,9 @@ import { withSSHHostTrust } from '../../api/sshTrust'
 import { IconPlus, IconServer } from '../../components/Icons'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
-import { openProductLink, useProductLink } from '../../stores/productLink'
+import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
+import { Capability } from '../../workbench/capabilities'
+import { payloadStr } from '../../workbench/commandPayload'
 import { restoreSftpTab } from '../../features/sftp/restoreSftpWorkspace'
 import {
   loadSftpWorkspace,
@@ -216,8 +218,8 @@ export function SftpWorkbench() {
     }
   }
 
-  useProductLink('sftp', (link) => {
-    const { hostId } = link
+  useWorkbenchCommand(Capability.SftpOpen, (cmd) => {
+    const hostId = payloadStr(cmd.payload, 'hostId')
     if (!hostId) return
     void (async () => {
       try {

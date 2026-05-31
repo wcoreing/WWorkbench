@@ -31,7 +31,6 @@ export interface ConnectionDraft {
 
 export interface ProductLinkRequest {
   action: ProductLinkAction
-  nonce?: number
   hostId?: string
   connectionId?: string
   localShell?: boolean
@@ -54,9 +53,10 @@ interface AppState {
   tabs: WorkTab[]
   activeTabId: string | null
   designDrafts: Record<string, TableDesignDraft>
-  productLink: ProductLinkRequest | null
   statusMessage: string
   terminalOpacity: number
+  agentFocusSSHHostId: string | null
+  agentFocusSSHLabel: string
   setVersion: (v: string) => void
   setTheme: (t: 'light' | 'dark') => void
   setLocale: (locale: AppLocale) => void
@@ -69,13 +69,13 @@ interface AppState {
   setActiveTabId: (id: string | null) => void
   setStatusMessage: (msg: string) => void
   setTerminalOpacity: (v: number) => void
+  setAgentFocusSSH: (hostId: string | null, label?: string) => void
   addTab: (tab: WorkTab) => void
   replaceTab: (oldId: string, tab: WorkTab) => void
   updateSqlTab: (id: string, sql: string) => void
   updateDdlTab: (id: string, content: string) => void
   setDesignDraft: (tabId: string, draft: TableDesignDraft) => void
   clearDesignDraft: (tabId: string) => void
-  setProductLink: (req: ProductLinkRequest | null) => void
 }
 
 const defaults = defaultDatabaseWorkspace()
@@ -93,9 +93,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   tabs: defaults.tabs,
   activeTabId: defaults.activeTabId,
   designDrafts: defaults.designDrafts,
-  productLink: null,
   statusMessage: '就绪',
   terminalOpacity: 0.92,
+  agentFocusSSHHostId: null,
+  agentFocusSSHLabel: '',
   setVersion: (version) => set({ version }),
   setTheme: (theme) => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -134,6 +135,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ terminalOpacity: v })
     void saveAppSetting(APP_SETTING_KEYS.terminalOpacity, String(v))
   },
+  setAgentFocusSSH: (agentFocusSSHHostId, label) =>
+    set({
+      agentFocusSSHHostId,
+      agentFocusSSHLabel: agentFocusSSHHostId ? (label ?? '') : '',
+    }),
   addTab: (tab) => {
     const tabs = [...get().tabs, tab]
     set({ tabs, activeTabId: tab.id })
@@ -165,7 +171,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     delete drafts[tabId]
     set({ designDrafts: drafts })
   },
-  setProductLink: (productLink) => set({ productLink }),
 }))
 
 const schedulePersist = subscribeDatabaseWorkspacePersist(() => {

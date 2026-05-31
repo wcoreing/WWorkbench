@@ -1,5 +1,73 @@
 export namespace app {
 	
+	export class ApiResult_WNavicat_internal_model_AgentChatResultDO_ {
+	    ok: boolean;
+	    data: model.AgentChatResultDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_AgentChatResultDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.AgentChatResultDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WNavicat_internal_model_AgentSettingsDO_ {
+	    ok: boolean;
+	    data: model.AgentSettingsDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_AgentSettingsDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.AgentSettingsDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WNavicat_internal_model_ComposeLogsDO_ {
 	    ok: boolean;
 	    data: model.ComposeLogsDO;
@@ -1156,6 +1224,108 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult___WNavicat_internal_model_AgentCapabilityDO_ {
+	    ok: boolean;
+	    data: model.AgentCapabilityDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_AgentCapabilityDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.AgentCapabilityDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WNavicat_internal_model_AgentMessageDO_ {
+	    ok: boolean;
+	    data: model.AgentMessageDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_AgentMessageDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.AgentMessageDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WNavicat_internal_model_AgentThreadDO_ {
+	    ok: boolean;
+	    data: model.AgentThreadDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_AgentThreadDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.AgentThreadDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult___WNavicat_internal_model_ColumnMetaDO_ {
 	    ok: boolean;
 	    data: model.ColumnMetaDO[];
@@ -2150,6 +2320,258 @@ export namespace errno {
 
 export namespace model {
 	
+	export class AgentAPIConfigSaveDO {
+	    apiBase: string;
+	    apiKey: string;
+	    model: string;
+	    provider: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentAPIConfigSaveDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.apiBase = source["apiBase"];
+	        this.apiKey = source["apiKey"];
+	        this.model = source["model"];
+	        this.provider = source["provider"];
+	    }
+	}
+	export class AgentCapabilityDO {
+	    name: string;
+	    label: string;
+	    risk: string;
+	    description: string;
+	    enabled: boolean;
+	    needsConfirm: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentCapabilityDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.label = source["label"];
+	        this.risk = source["risk"];
+	        this.description = source["description"];
+	        this.enabled = source["enabled"];
+	        this.needsConfirm = source["needsConfirm"];
+	    }
+	}
+	export class AgentMentionDO {
+	    kind: string;
+	    id: string;
+	    label: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentMentionDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.id = source["id"];
+	        this.label = source["label"];
+	    }
+	}
+	export class AgentContextDO {
+	    activeProduct: string;
+	    sessionId: string;
+	    connectionId: string;
+	    database: string;
+	    mentions: AgentMentionDO[];
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentContextDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.activeProduct = source["activeProduct"];
+	        this.sessionId = source["sessionId"];
+	        this.connectionId = source["connectionId"];
+	        this.database = source["database"];
+	        this.mentions = this.convertValues(source["mentions"], AgentMentionDO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AgentChatRequestDO {
+	    threadId: string;
+	    message: string;
+	    context: AgentContextDO;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentChatRequestDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.threadId = source["threadId"];
+	        this.message = source["message"];
+	        this.context = this.convertValues(source["context"], AgentContextDO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AgentChatResultDO {
+	    threadId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentChatResultDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.threadId = source["threadId"];
+	    }
+	}
+	
+	
+	export class AgentMessageDO {
+	    role: string;
+	    content: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentMessageDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.role = source["role"];
+	        this.content = source["content"];
+	    }
+	}
+	export class AgentPermissionsSaveDO {
+	    allowWrite: boolean;
+	    toolPermissionsJson: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentPermissionsSaveDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.allowWrite = source["allowWrite"];
+	        this.toolPermissionsJson = source["toolPermissionsJson"];
+	    }
+	}
+	export class AgentSettingsDO {
+	    apiBase: string;
+	    apiKeyMask: string;
+	    hasApiKey: boolean;
+	    model: string;
+	    provider: string;
+	    allowWrite: boolean;
+	    capabilities: AgentCapabilityDO[];
+	    unavailableNote: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentSettingsDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.apiBase = source["apiBase"];
+	        this.apiKeyMask = source["apiKeyMask"];
+	        this.hasApiKey = source["hasApiKey"];
+	        this.model = source["model"];
+	        this.provider = source["provider"];
+	        this.allowWrite = source["allowWrite"];
+	        this.capabilities = this.convertValues(source["capabilities"], AgentCapabilityDO);
+	        this.unavailableNote = source["unavailableNote"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AgentSettingsSaveDO {
+	    apiBase: string;
+	    apiKey: string;
+	    model: string;
+	    provider: string;
+	    allowWrite: boolean;
+	    toolPermissionsJson: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentSettingsSaveDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.apiBase = source["apiBase"];
+	        this.apiKey = source["apiKey"];
+	        this.model = source["model"];
+	        this.provider = source["provider"];
+	        this.allowWrite = source["allowWrite"];
+	        this.toolPermissionsJson = source["toolPermissionsJson"];
+	    }
+	}
+	export class AgentThreadDO {
+	    id: string;
+	    title: string;
+	    updatedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentThreadDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
 	export class CellValueDO {
 	    value?: string;
 	    isNull: boolean;
