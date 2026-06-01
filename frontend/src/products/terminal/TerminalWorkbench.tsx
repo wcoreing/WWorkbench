@@ -4,6 +4,7 @@ import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconLaptop, IconPlus, IconServer, IconTerminal } from '../../components/Icons'
+import { openAgentDraft, mentionSSH } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
@@ -575,6 +576,20 @@ export function TerminalWorkbench() {
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              const host = ctxMenu.host
+              setCtxMenu(null)
+              openAgentDraft({
+                mentions: [mentionSSH(host)],
+                message: t('agent.draftSSH'),
+              })
+            }}
+          >
+            {t('agent.sendToAgent')}
+          </button>
           <button
             type="button"
             className="wn-context-item"

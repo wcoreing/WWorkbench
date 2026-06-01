@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"strings"
 
 	"WNavicat/internal/agent"
@@ -23,6 +24,8 @@ func (s *Service) wireAgentRunner() {
 		Meta:      s.meta,
 		Queries:   s.queries,
 		Store:     s.store,
+		Notebook:  s.notebook,
+		Docker:    s.docker,
 		UIActions: workbenchtools.NewUIActionBus(emit),
 	}
 	reg := workbenchtools.NewRegistry(deps)
@@ -135,6 +138,22 @@ func (s *Service) ApplyAgentBailianPreset() ApiResult[model.AgentSettingsDO] {
 		return ErrResult[model.AgentSettingsDO](err)
 	}
 	return OkResult(s.store.GetAgentSettings())
+}
+
+// GetAgentThread 读取对话线程及上下文（供恢复 @ 资源）。
+func (s *Service) GetAgentThread(threadID string) ApiResult[model.AgentThreadDetailDO] {
+	if threadID == "" {
+		return ErrResult[model.AgentThreadDetailDO](errno.New(errno.CodeInvalidArg, "threadId 不能为空", ""))
+	}
+	meta, ctxJSON, err := s.store.GetAgentThread(threadID)
+	if err != nil {
+		return ErrResult[model.AgentThreadDetailDO](err)
+	}
+	var ctx model.AgentContextDO
+	_ = json.Unmarshal([]byte(ctxJSON), &ctx)
+	return OkResult(model.AgentThreadDetailDO{
+		ID: meta.ID, Title: meta.Title, UpdatedAt: meta.UpdatedAt, Context: ctx,
+	})
 }
 
 // ListAgentThreads 列出已保存的对话线程。

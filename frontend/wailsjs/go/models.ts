@@ -68,6 +68,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WNavicat_internal_model_AgentThreadDetailDO_ {
+	    ok: boolean;
+	    data: model.AgentThreadDetailDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_AgentThreadDetailDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.AgentThreadDetailDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WNavicat_internal_model_ComposeLogsDO_ {
 	    ok: boolean;
 	    data: model.ComposeLogsDO;
@@ -523,6 +557,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.HTTPEnvironmentDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WNavicat_internal_model_HTTPFolderDO_ {
+	    ok: boolean;
+	    data: model.HTTPFolderDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WNavicat_internal_model_HTTPFolderDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.HTTPFolderDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -1632,6 +1700,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult___WNavicat_internal_model_HTTPFolderDO_ {
+	    ok: boolean;
+	    data: model.HTTPFolderDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WNavicat_internal_model_HTTPFolderDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.HTTPFolderDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult___WNavicat_internal_model_HTTPSavedRequestDO_ {
 	    ok: boolean;
 	    data: model.HTTPSavedRequestDO[];
@@ -2572,6 +2674,42 @@ export namespace model {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class AgentThreadDetailDO {
+	    id: string;
+	    title: string;
+	    updatedAt: number;
+	    context: AgentContextDO;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentThreadDetailDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.updatedAt = source["updatedAt"];
+	        this.context = this.convertValues(source["context"], AgentContextDO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class CellValueDO {
 	    value?: string;
 	    isNull: boolean;
@@ -3089,6 +3227,18 @@ export namespace model {
 	        this.modTime = source["modTime"];
 	    }
 	}
+	export class HTTPApiTreeLayoutDO {
+	    childrenByParent: Record<string, Array<string>>;
+	
+	    static createFrom(source: any = {}) {
+	        return new HTTPApiTreeLayoutDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.childrenByParent = source["childrenByParent"];
+	    }
+	}
 	export class HTTPEnvironmentDO {
 	    id: string;
 	    name: string;
@@ -3163,6 +3313,28 @@ export namespace model {
 		    return a;
 		}
 	}
+	export class HTTPFolderDO {
+	    id: string;
+	    name: string;
+	    parentId: string;
+	    sortOrder: number;
+	    createdAt: number;
+	    updatedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new HTTPFolderDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.parentId = source["parentId"];
+	        this.sortOrder = source["sortOrder"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
 	
 	export class HTTPResponseDO {
 	    statusCode: number;
@@ -3208,11 +3380,15 @@ export namespace model {
 	}
 	export class HTTPSavedRequestDO {
 	    id: string;
+	    folderId: string;
 	    name: string;
 	    method: string;
 	    url: string;
+	    paramsJson: string;
 	    headersJson: string;
+	    cookiesJson: string;
 	    body: string;
+	    notes: string;
 	    sortOrder: number;
 	    createdAt: number;
 	    updatedAt: number;
@@ -3224,11 +3400,15 @@ export namespace model {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.folderId = source["folderId"];
 	        this.name = source["name"];
 	        this.method = source["method"];
 	        this.url = source["url"];
+	        this.paramsJson = source["paramsJson"];
 	        this.headersJson = source["headersJson"];
+	        this.cookiesJson = source["cookiesJson"];
 	        this.body = source["body"];
+	        this.notes = source["notes"];
 	        this.sortOrder = source["sortOrder"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
@@ -3410,6 +3590,20 @@ export namespace model {
 	        this.sortOrder = source["sortOrder"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	export class NotebookLayoutDO {
+	    groupOrder: string[];
+	    notesByGroup: Record<string, Array<string>>;
+	
+	    static createFrom(source: any = {}) {
+	        return new NotebookLayoutDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.groupOrder = source["groupOrder"];
+	        this.notesByGroup = source["notesByGroup"];
 	    }
 	}
 	export class NotebookUIDO {

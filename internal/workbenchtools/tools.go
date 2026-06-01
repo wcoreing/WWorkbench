@@ -88,6 +88,17 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 		"openSessions":  open,
 		"recentQueries": history,
 	}
+	if d.Docker != nil {
+		if ctxList, err := d.Docker.ListContexts(ctx); err == nil {
+			out["dockerContexts"] = ctxList
+		}
+	}
+	if logList, err := d.Store.ListLogSources(); err == nil {
+		out["logSources"] = logList
+	}
+	if httpList, err := d.Store.ListHTTPRequests(); err == nil {
+		out["httpRequests"] = httpList
+	}
 	if len(in.Mentions) > 0 {
 		out["mentions"] = in.Mentions
 	}
@@ -219,10 +230,11 @@ func toolExecuteSQL(ctx context.Context, d *Deps, raw json.RawMessage) ToolResul
 		if !settings.AllowWrite && (in.Readonly == nil || *in.Readonly) {
 			return Fail("写入 SQL 需在 AI 设置中开启「允许写入请求」，并使用 readonly=false")
 		}
-		preview := map[string]string{
+		preview := map[string]interface{}{
 			"sessionId": in.SessionID,
 			"database":  in.Database,
 			"sql":       sqlText,
+			"sqlKind":   "write",
 		}
 		return Confirm(uuid.NewString(), "执行写入 SQL："+truncate(sqlText, 120), preview)
 	}

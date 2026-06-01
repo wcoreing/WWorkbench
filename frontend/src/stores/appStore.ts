@@ -57,6 +57,8 @@ interface AppState {
   terminalOpacity: number
   agentFocusSSHHostId: string | null
   agentFocusSSHLabel: string
+  notebookFocusNoteId: string | null
+  notebookActiveNoteId: string | null
   setVersion: (v: string) => void
   setTheme: (t: 'light' | 'dark') => void
   setLocale: (locale: AppLocale) => void
@@ -70,6 +72,8 @@ interface AppState {
   setStatusMessage: (msg: string) => void
   setTerminalOpacity: (v: number) => void
   setAgentFocusSSH: (hostId: string | null, label?: string) => void
+  setNotebookFocusNoteId: (id: string | null) => void
+  setNotebookActiveNoteId: (id: string | null) => void
   addTab: (tab: WorkTab) => void
   replaceTab: (oldId: string, tab: WorkTab) => void
   updateSqlTab: (id: string, sql: string) => void
@@ -97,6 +101,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   terminalOpacity: 0.92,
   agentFocusSSHHostId: null,
   agentFocusSSHLabel: '',
+  notebookFocusNoteId: null,
+  notebookActiveNoteId: null,
   setVersion: (version) => set({ version }),
   setTheme: (theme) => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -140,6 +146,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       agentFocusSSHHostId,
       agentFocusSSHLabel: agentFocusSSHHostId ? (label ?? '') : '',
     }),
+  setNotebookFocusNoteId: (notebookFocusNoteId) => set({ notebookFocusNoteId }),
+  setNotebookActiveNoteId: (notebookActiveNoteId) => set({ notebookActiveNoteId }),
   addTab: (tab) => {
     const tabs = [...get().tabs, tab]
     set({ tabs, activeTabId: tab.id })

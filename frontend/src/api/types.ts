@@ -334,13 +334,26 @@ export interface LogFetchResult {
   content: string
 }
 
+export interface HTTPFolder {
+  id: string
+  name: string
+  parentId: string
+  sortOrder: number
+  createdAt: number
+  updatedAt: number
+}
+
 export interface HTTPSavedRequest {
   id: string
+  folderId: string
   name: string
   method: string
   url: string
+  paramsJson: string
   headersJson: string
+  cookiesJson: string
   body: string
+  notes: string
   sortOrder: number
   createdAt: number
   updatedAt: number

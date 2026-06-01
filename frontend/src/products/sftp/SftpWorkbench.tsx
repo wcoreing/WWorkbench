@@ -5,6 +5,7 @@ import { withSSHHostTrust } from '../../api/sshTrust'
 import { IconPlus, IconServer } from '../../components/Icons'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { openAgentDraft, mentionSSH } from '../../features/agent/openAgentDraft'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
@@ -607,6 +608,20 @@ export function SftpWorkbench() {
 
       {ctxMenu && (
         <div className="wn-context-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              const host = ctxMenu.host
+              setCtxMenu(null)
+              openAgentDraft({
+                mentions: [mentionSSH(host)],
+                message: t('agent.draftSSH'),
+              })
+            }}
+          >
+            {t('agent.sendToAgent')}
+          </button>
           <button
             type="button"
             className="wn-context-item"

@@ -7,6 +7,8 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { MarkdownPreview } from '../../features/notebook/MarkdownPreview'
 import { NoteEditor, type NoteEditorHandle } from '../../features/notebook/NoteEditor'
 import { NotebookGroupModal } from '../../features/notebook/NotebookGroupModal'
+import { NotebookSidebar } from '../../features/notebook/NotebookSidebar'
+import { buildNotebookLayout, moveNoteInTree, nextNoteSortOrder } from '../../features/notebook/notebookTree'
 import {
   buildConnectionTemplate,
   buildServerChecklistTemplate,
@@ -51,7 +53,13 @@ function toSummary(note: Note): NoteSummary {
 /** NotebookWorkbench 笔记本产品线工作区。 */
 export function NotebookWorkbench() {
   const { t } = useI18n()
-  const { setStatusMessage, setActiveProduct } = useAppStore()
+  const {
+    setStatusMessage,
+    setActiveProduct,
+    notebookFocusNoteId,
+    setNotebookFocusNoteId,
+    setNotebookActiveNoteId,
+  } = useAppStore()
   const languages: { id: NoteLanguage; label: string }[] = [
     { id: 'plaintext', label: t('notebook.langPlain') },
     { id: 'shell', label: t('notebook.langShell') },
@@ -70,13 +78,39 @@ export function NotebookWorkbench() {
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'note' | 'group'; id: string; title: string } | null>(null)
   const [groupModal, setGroupModal] = useState<NotebookGroup | null | undefined>(undefined)
   const [showPreview, setShowPreview] = useState(false)
+  const [saveByNote, setSaveByNote] = useState<Record<string, 'saved' | 'dirty' | 'saving'>>({})
   const editorRef = useRef<NoteEditorHandle>(null)
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const noteSnapshots = useRef<Record<string, string>>({})
   const uiTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const booted = useRef(false)
 
   const activeNote = activeTabId ? openNotes[activeTabId] ?? null : null
+
+  useEffect(() => {
+    setNotebookActiveNoteId(activeTabId)
+  }, [activeTabId, setNotebookActiveNoteId])
+  const activeSaveStatus = activeTabId ? saveByNote[activeTabId] ?? 'saved' : 'saved'
   const searching = Boolean(search.trim())
+
+  const noteSnapshot = (note: Note) =>
+    JSON.stringify({
+      title: note.title,
+      content: note.content,
+      groupId: note.groupId,
+      language: note.language,
+      sshHostId: note.sshHostId,
+      connectionId: note.connectionId,
+    })
+
+  const markNoteSaved = useCallback((note: Note) => {
+    noteSnapshots.current[note.id] = noteSnapshot(note)
+    setSaveByNote((prev) => ({ ...prev, [note.id]: 'saved' }))
+  }, [])
+
+  const markNoteDirty = useCallback((id: string) => {
+    setSaveByNote((prev) => ({ ...prev, [id]: 'dirty' }))
+  }, [])
 
   const refreshSummaries = useCallback(async () => {
     const list = searching
@@ -113,17 +147,52 @@ export function NotebookWorkbench() {
     }, 300)
   }, [])
 
-  const openNoteById = useCallback(async (id: string) => {
-    if (openNotes[id]) {
+  const persistNote = useCallback(
+    async (note: Note, opts?: { silent?: boolean }) => {
+      setSaveByNote((prev) => ({ ...prev, [note.id]: 'saving' }))
+      try {
+        const saved = (await api.saveNote(toNoteDO(note))) as Note
+        setOpenNotes((prev) => ({ ...prev, [note.id]: saved }))
+        setSummaries((prev) => [toSummary(saved), ...prev.filter((s) => s.id !== saved.id)])
+        markNoteSaved(saved)
+        if (!opts?.silent) setStatusMessage(t('notebook.saved'))
+        return saved
+      } catch (e) {
+        setSaveByNote((prev) => ({ ...prev, [note.id]: 'dirty' }))
+        setStatusMessage((e as Error).message)
+        throw e
+      }
+    },
+    [markNoteSaved, setStatusMessage, t],
+  )
+
+  const openNoteById = useCallback(
+    async (id: string) => {
+      if (openNotes[id]) {
+        setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
+        setActiveTabId(id)
+        return
+      }
+      const note = (await api.getNote(id)) as Note
+      markNoteSaved(note)
+      setOpenNotes((prev) => ({ ...prev, [id]: note }))
+      setSummaries((prev) => {
+        const sum = toSummary(note)
+        if (prev.some((s) => s.id === id)) return prev
+        return [sum, ...prev]
+      })
       setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
       setActiveTabId(id)
-      return
-    }
-    const note = (await api.getNote(id)) as Note
-    setOpenNotes((prev) => ({ ...prev, [id]: note }))
-    setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
-    setActiveTabId(id)
-  }, [openNotes])
+    },
+    [openNotes, markNoteSaved],
+  )
+
+  useEffect(() => {
+    if (!notebookFocusNoteId || loading) return
+    void openNoteById(notebookFocusNoteId)
+      .then(() => refreshSummaries())
+      .finally(() => setNotebookFocusNoteId(null))
+  }, [notebookFocusNoteId, loading, openNoteById, setNotebookFocusNoteId, refreshSummaries])
 
   useEffect(() => {
     if (booted.current) return
@@ -143,6 +212,7 @@ export function NotebookWorkbench() {
         }
         const validIds = tabIds.filter((id) => loaded[id])
         setOpenNotes(loaded)
+        for (const n of Object.values(loaded)) markNoteSaved(n)
         setOpenTabIds(validIds)
         setActiveTabId(ui.activeTabId && loaded[ui.activeTabId] ? ui.activeTabId : validIds[0] ?? null)
       } catch (e) {
@@ -151,7 +221,7 @@ export function NotebookWorkbench() {
         setLoading(false)
       }
     })()
-  }, [refreshAll, setStatusMessage])
+  }, [refreshAll, setStatusMessage, markNoteSaved])
 
   useEffect(() => {
     if (loading) return
@@ -215,25 +285,53 @@ export function NotebookWorkbench() {
     })()
   })
 
-  const scheduleSave = (note: Note) => {
-    if (saveTimers.current[note.id]) clearTimeout(saveTimers.current[note.id])
-    saveTimers.current[note.id] = setTimeout(() => {
-      void (async () => {
-        try {
-          const saved = (await api.saveNote(toNoteDO(note))) as Note
-          setOpenNotes((prev) => ({ ...prev, [note.id]: saved }))
-          setSummaries((prev) => [toSummary(saved), ...prev.filter((s) => s.id !== saved.id)])
-        } catch (e) {
-          setStatusMessage((e as Error).message)
-        }
-      })()
-    }, 400)
-  }
+  const scheduleSave = useCallback(
+    (note: Note) => {
+      if (saveTimers.current[note.id]) clearTimeout(saveTimers.current[note.id])
+      saveTimers.current[note.id] = setTimeout(() => {
+        void persistNote(note, { silent: true })
+      }, 400)
+    },
+    [persistNote],
+  )
+
+  const flushSaveActive = useCallback(async () => {
+    if (!activeNote) return
+    if (saveTimers.current[activeNote.id]) {
+      clearTimeout(saveTimers.current[activeNote.id])
+      delete saveTimers.current[activeNote.id]
+    }
+    const snap = noteSnapshots.current[activeNote.id]
+    if (snap === noteSnapshot(activeNote) && activeSaveStatus !== 'dirty') {
+      setStatusMessage(t('notebook.saved'))
+      return
+    }
+    await persistNote(activeNote)
+  }, [activeNote, activeSaveStatus, persistNote, setStatusMessage, t])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 's') return
+      if (!activeNote) return
+      e.preventDefault()
+      void flushSaveActive()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [activeNote, flushSaveActive])
 
   const updateActiveNote = (patch: Partial<Note>) => {
     if (!activeTabId || !activeNote) return
-    const next = { ...activeNote, ...patch }
+    const nextPatch = { ...patch }
+    if (nextPatch.groupId && nextPatch.groupId !== activeNote.groupId) {
+      nextPatch.sortOrder = nextNoteSortOrder(
+        summaries.filter((s) => s.id !== activeTabId),
+        nextPatch.groupId,
+      )
+    }
+    const next = { ...activeNote, ...nextPatch }
     setOpenNotes((prev) => ({ ...prev, [activeTabId]: next }))
+    markNoteDirty(activeTabId)
     scheduleSave(next)
   }
 
@@ -250,12 +348,13 @@ export function NotebookWorkbench() {
           language: 'plaintext',
           sshHostId: '',
           connectionId: '',
-          sortOrder: 0,
+          sortOrder: nextNoteSortOrder(summaries, gid),
           createdAt: 0,
           updatedAt: 0,
         })
       )) as Note
-      setSummaries((prev) => [toSummary(saved), ...prev])
+      setSummaries((prev) => [...prev, toSummary(saved)])
+      markNoteSaved(saved)
       await openNoteById(saved.id)
       setStatusMessage(t('notebook.created'))
     } catch (e) {
@@ -401,22 +500,67 @@ export function NotebookWorkbench() {
     })
   }
 
-  const renderNoteItem = (n: NoteSummary) => (
-    <li
-      key={n.id}
-      className={`conn-item ${activeTabId === n.id ? 'active' : ''}`}
-      onClick={() => void openNoteById(n.id)}
-    >
-      <IconNotebook size={14} className="mock-icon" />
-      <div className="conn-meta">
-        <span className="conn-name">{n.title}</span>
-        <span className="conn-host">
-          {languages.find((l) => l.id === n.language)?.label}
-          {n.sshHostId ? ' · SSH' : ''}
-          {n.connectionId ? ' · DB' : ''}
-        </span>
-      </div>
-    </li>
+  const persistNotebookLayout = useCallback(
+    async (layout: { groupOrder: string[]; notesByGroup: Record<string, string[]> }) => {
+      try {
+        await api.applyNotebookLayout(
+          model.NotebookLayoutDO.createFrom({
+            groupOrder: layout.groupOrder,
+            notesByGroup: layout.notesByGroup,
+          }),
+        )
+        setGroups((prev) =>
+          layout.groupOrder.map((id, i) => {
+            const g = prev.find((x) => x.id === id)!
+            return { ...g, sortOrder: i }
+          }),
+        )
+        setSummaries((prev) => {
+          const byId = new Map(prev.map((n) => [n.id, n]))
+          const next: NoteSummary[] = []
+          for (const gid of layout.groupOrder) {
+            const ids = layout.notesByGroup[gid] ?? []
+            ids.forEach((nid, i) => {
+              const n = byId.get(nid)
+              if (n) next.push({ ...n, groupId: gid, sortOrder: i })
+            })
+          }
+          return next
+        })
+        setOpenNotes((prev) => {
+          const out = { ...prev }
+          for (const id of Object.keys(out)) {
+            for (const gid of layout.groupOrder) {
+              if ((layout.notesByGroup[gid] ?? []).includes(id)) {
+                out[id] = { ...out[id], groupId: gid }
+                break
+              }
+            }
+          }
+          return out
+        })
+        setStatusMessage(t('notebook.layoutSaved'))
+      } catch (e) {
+        await refreshAll()
+        setStatusMessage((e as Error).message)
+        throw e
+      }
+    },
+    [refreshAll, setStatusMessage, t],
+  )
+
+  const moveNoteToGroup = useCallback(
+    async (noteId: string, groupId: string) => {
+      const nextSummaries = moveNoteInTree(summaries, noteId, groupId, null)
+      await persistNotebookLayout(buildNotebookLayout(groups, nextSummaries))
+      if (openNotes[noteId]) {
+        setOpenNotes((prev) => ({
+          ...prev,
+          [noteId]: { ...prev[noteId], groupId },
+        }))
+      }
+    },
+    [summaries, groups, persistNotebookLayout, openNotes],
   )
 
   if (loading) {
@@ -482,78 +626,26 @@ export function NotebookWorkbench() {
       </header>
 
       <div className="product-body">
-        <aside className="app-sidebar notebook-sidebar">
-          <div className="notebook-search">
-            <input
-              type="search"
-              placeholder={t('notebook.searchPlaceholder')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          {searching ? (
-            <section className="sidebar-section">
-              <div className="sidebar-header">
-                <span>{t('notebook.searchResults', { count: summaries.length })}</span>
-              </div>
-              <div className="sidebar-body">
-                {summaries.length === 0 ? (
-                  <div className="empty-hint">{t('notebook.noMatch')}</div>
-                ) : (
-                  <ul className="conn-list notebook-note-list">{summaries.map(renderNoteItem)}</ul>
-                )}
-              </div>
-            </section>
-          ) : (
-            groups.map((g) => {
-              const notes = summaries.filter((n) => n.groupId === g.id)
-              const collapsed = collapsedGroups.has(g.id)
-              return (
-                <section key={g.id} className="sidebar-section">
-                  <div className="sidebar-header notebook-group-header">
-                    <button type="button" className="notebook-group-toggle" onClick={() => toggleGroup(g.id)}>
-                      {collapsed ? '▸' : '▾'} {g.name}
-                    </button>
-                    <button
-                      type="button"
-                      className="wn-btn wn-btn-icon wn-btn-sm"
-                      title={t('notebook.renameGroup')}
-                      onClick={() => setGroupModal(g)}
-                    >
-                      ✎
-                    </button>
-                    <button
-                      type="button"
-                      className="wn-btn wn-btn-icon wn-btn-sm"
-                      title={t('notebook.newInGroup')}
-                      onClick={() => void createNote(g.id)}
-                    >
-                      <IconPlus size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      className="wn-btn wn-btn-icon wn-btn-sm notebook-group-delete"
-                      title={t('notebook.deleteGroup')}
-                      onClick={() => setDeleteTarget({ kind: 'group', id: g.id, title: g.name })}
-                    >
-                      ×
-                    </button>
-                  </div>
-                  {!collapsed && (
-                    <div className="sidebar-body">
-                      {notes.length === 0 ? (
-                        <div className="empty-hint">{t('notebook.noNotes')}</div>
-                      ) : (
-                        <ul className="conn-list notebook-note-list">{notes.map(renderNoteItem)}</ul>
-                      )}
-                    </div>
-                  )}
-                </section>
-              )
-            })
-          )}
-        </aside>
+        <NotebookSidebar
+          groups={groups}
+          summaries={summaries}
+          searching={searching}
+          search={search}
+          activeTabId={activeTabId}
+          collapsedGroups={collapsedGroups}
+          languages={languages}
+          onSearchChange={setSearch}
+          onToggleGroup={toggleGroup}
+          onOpenNote={(id) => void openNoteById(id)}
+          onGroupsChange={setGroups}
+          onSummariesChange={setSummaries}
+          onPersistLayout={persistNotebookLayout}
+          onCreateNoteInGroup={(gid) => void createNote(gid)}
+          onEditGroup={setGroupModal}
+          onDeleteGroup={(id, title) => setDeleteTarget({ kind: 'group', id, title })}
+          onDeleteNote={(id, title) => setDeleteTarget({ kind: 'note', id, title })}
+          onMoveNoteToGroup={(noteId, groupId) => void moveNoteToGroup(noteId, groupId)}
+        />
 
         <main className="app-main notebook-main">
           <div className="editor-chrome">
@@ -628,6 +720,27 @@ export function NotebookWorkbench() {
                 {activeNote.sshHostId && (
                   <span className="notebook-host-badge"><IconServer size={12} /> SSH</span>
                 )}
+                <div className="notebook-save-actions">
+                  <button
+                    type="button"
+                    className={`wn-btn wn-btn-sm ${activeSaveStatus === 'dirty' ? 'wn-btn-primary' : 'wn-btn-tool'}`}
+                    disabled={activeSaveStatus === 'saving'}
+                    title={t('notebook.saveShortcut')}
+                    onClick={() => void flushSaveActive()}
+                  >
+                    {activeSaveStatus === 'saving' ? t('notebook.saving') : t('notebook.save')}
+                  </button>
+                  <span
+                    className={`notebook-save-status${activeSaveStatus === 'dirty' ? ' is-dirty' : ''}`}
+                    aria-live="polite"
+                  >
+                    {activeSaveStatus === 'saving'
+                      ? t('notebook.saving')
+                      : activeSaveStatus === 'dirty'
+                        ? t('notebook.unsaved')
+                        : t('notebook.saved')}
+                  </span>
+                </div>
               </div>
               <div className={`notebook-editor-split${showPreview ? ' with-preview' : ''}`}>
                 <NoteEditor

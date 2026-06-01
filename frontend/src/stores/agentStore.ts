@@ -37,12 +37,25 @@ function persistAgentPanelOpen(open: boolean) {
   }
 }
 
+/** AgentToolStep 工具调用轨迹步骤。 */
+export interface AgentToolStep {
+  id: string
+  tool: string
+  status: 'running' | 'done'
+  argsPreview?: string
+}
+
 interface AgentStore {
   panelOpen: boolean
   view: AgentPanelView
   threadId: string
   lines: AgentChatLine[]
   streamingLineId: string | null
+  draftInput: string
+  draftMentions: AgentMention[]
+  draftTick: number
+  toolSteps: AgentToolStep[]
+  threadMentions: AgentMention[]
   setPanelOpen: (open: boolean) => void
   togglePanel: () => void
   setView: (view: AgentPanelView) => void
@@ -54,6 +67,11 @@ interface AgentStore {
   appendStreamDelta: (delta: string) => void
   finishStreaming: (fullContent: string) => void
   cancelStreaming: () => void
+  applyDraft: (payload: { message?: string; mentions: AgentMention[] }) => void
+  pushToolStep: (tool: string, argsPreview?: string) => string
+  finishToolStep: (tool: string) => void
+  clearToolSteps: () => void
+  setThreadMentions: (mentions: AgentMention[]) => void
 }
 
 /** useAgentStore AI 侧栏与对话状态（收起不丢会话）。 */
@@ -63,6 +81,11 @@ export const useAgentStore = create<AgentStore>((set) => ({
   threadId: '',
   lines: [],
   streamingLineId: null,
+  draftInput: '',
+  draftMentions: [],
+  draftTick: 0,
+  toolSteps: [],
+  threadMentions: [],
   setPanelOpen: (open) => {
     persistAgentPanelOpen(open)
     set({ panelOpen: open })
@@ -80,7 +103,37 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set((s) => ({
       lines: typeof lines === 'function' ? lines(s.lines) : lines,
     })),
-  resetThread: () => set({ threadId: '', lines: [], streamingLineId: null, view: 'chat' }),
+  resetThread: () =>
+    set({ threadId: '', lines: [], streamingLineId: null, view: 'chat', toolSteps: [], threadMentions: [] }),
+  setThreadMentions: (threadMentions) => set({ threadMentions }),
+  applyDraft: (payload) =>
+    set((s) => ({
+      panelOpen: true,
+      view: 'chat',
+      draftInput: payload.message ?? '',
+      draftMentions: payload.mentions,
+      draftTick: s.draftTick + 1,
+    })),
+  pushToolStep: (tool, argsPreview) => {
+    const id = `tool-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    set((s) => ({
+      toolSteps: [...s.toolSteps, { id, tool, status: 'running', argsPreview }],
+    }))
+    return id
+  },
+  finishToolStep: (tool) =>
+    set((s) => {
+      let matched = false
+      const toolSteps = s.toolSteps.map((step) => {
+        if (!matched && step.tool === tool && step.status === 'running') {
+          matched = true
+          return { ...step, status: 'done' as const }
+        }
+        return step
+      })
+      return { toolSteps }
+    }),
+  clearToolSteps: () => set({ toolSteps: [] }),
   beginStreaming: () => {
     const id = nextAgentLineId()
     set((s) => ({

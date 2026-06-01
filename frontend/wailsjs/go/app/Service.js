@@ -22,8 +22,20 @@ export function ApplyEnvPreset(arg1) {
   return window['go']['app']['Service']['ApplyEnvPreset'](arg1);
 }
 
+export function ApplyHTTPApiTreeLayout(arg1) {
+  return window['go']['app']['Service']['ApplyHTTPApiTreeLayout'](arg1);
+}
+
+export function ApplyNotebookLayout(arg1) {
+  return window['go']['app']['Service']['ApplyNotebookLayout'](arg1);
+}
+
 export function ApplyTableMutations(arg1, arg2, arg3, arg4) {
   return window['go']['app']['Service']['ApplyTableMutations'](arg1, arg2, arg3, arg4);
+}
+
+export function BatchDeleteHTTP(arg1, arg2) {
+  return window['go']['app']['Service']['BatchDeleteHTTP'](arg1, arg2);
 }
 
 export function CancelSFTPTask(arg1) {
@@ -80,6 +92,14 @@ export function DeleteEnvPreset(arg1) {
 
 export function DeleteHTTPEnvironment(arg1) {
   return window['go']['app']['Service']['DeleteHTTPEnvironment'](arg1);
+}
+
+export function DeleteHTTPFolder(arg1) {
+  return window['go']['app']['Service']['DeleteHTTPFolder'](arg1);
+}
+
+export function DeleteHTTPFolders(arg1) {
+  return window['go']['app']['Service']['DeleteHTTPFolders'](arg1);
 }
 
 export function DeleteHTTPRequest(arg1) {
@@ -172,6 +192,10 @@ export function FetchLogSourceConfig(arg1, arg2) {
 
 export function GetAgentSettings() {
   return window['go']['app']['Service']['GetAgentSettings']();
+}
+
+export function GetAgentThread(arg1) {
+  return window['go']['app']['Service']['GetAgentThread'](arg1);
 }
 
 export function GetComposeLogs(arg1, arg2, arg3, arg4) {
@@ -306,6 +330,10 @@ export function ListHTTPEnvironments() {
   return window['go']['app']['Service']['ListHTTPEnvironments']();
 }
 
+export function ListHTTPFolders() {
+  return window['go']['app']['Service']['ListHTTPFolders']();
+}
+
 export function ListHTTPRequests() {
   return window['go']['app']['Service']['ListHTTPRequests']();
 }
@@ -364,6 +392,10 @@ export function MkdirLocalPath(arg1) {
 
 export function MkdirSFTPRemote(arg1, arg2) {
   return window['go']['app']['Service']['MkdirSFTPRemote'](arg1, arg2);
+}
+
+export function MoveHTTPRequestToFolder(arg1, arg2) {
+  return window['go']['app']['Service']['MoveHTTPRequestToFolder'](arg1, arg2);
 }
 
 export function OpenLocalTerminal(arg1, arg2) {
@@ -452,6 +484,10 @@ export function SaveEnvPreset(arg1) {
 
 export function SaveHTTPEnvironment(arg1) {
   return window['go']['app']['Service']['SaveHTTPEnvironment'](arg1);
+}
+
+export function SaveHTTPFolder(arg1) {
+  return window['go']['app']['Service']['SaveHTTPFolder'](arg1);
 }
 
 export function SaveHTTPRequest(arg1) {

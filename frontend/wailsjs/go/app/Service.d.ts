@@ -13,7 +13,13 @@ export function ApplyAgentBailianPreset():Promise<app.ApiResult_WNavicat_interna
 
 export function ApplyEnvPreset(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_EnvApplyResultDO_>;
 
+export function ApplyHTTPApiTreeLayout(arg1:model.HTTPApiTreeLayoutDO):Promise<app.ApiResult_bool_>;
+
+export function ApplyNotebookLayout(arg1:model.NotebookLayoutDO):Promise<app.ApiResult_bool_>;
+
 export function ApplyTableMutations(arg1:string,arg2:string,arg3:string,arg4:model.RowMutationBatchDO):Promise<app.ApiResult_bool_>;
+
+export function BatchDeleteHTTP(arg1:Array<string>,arg2:Array<string>):Promise<app.ApiResult_bool_>;
 
 export function CancelSFTPTask(arg1:string):Promise<app.ApiResult_bool_>;
 
@@ -42,6 +48,10 @@ export function DeleteDockerContext(arg1:string):Promise<app.ApiResult_bool_>;
 export function DeleteEnvPreset(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteHTTPEnvironment(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function DeleteHTTPFolder(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function DeleteHTTPFolders(arg1:Array<string>):Promise<app.ApiResult_bool_>;
 
 export function DeleteHTTPRequest(arg1:string):Promise<app.ApiResult_bool_>;
 
@@ -88,6 +98,8 @@ export function FetchLogSource(arg1:string,arg2:number):Promise<app.ApiResult_WN
 export function FetchLogSourceConfig(arg1:model.LogSourceDO,arg2:number):Promise<app.ApiResult_WNavicat_internal_model_LogFetchResultDO_>;
 
 export function GetAgentSettings():Promise<app.ApiResult_WNavicat_internal_model_AgentSettingsDO_>;
+
+export function GetAgentThread(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_AgentThreadDetailDO_>;
 
 export function GetComposeLogs(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WNavicat_internal_model_ComposeLogsDO_>;
 
@@ -155,6 +167,8 @@ export function ListEnvVersions(arg1:string):Promise<app.ApiResult___WNavicat_in
 
 export function ListHTTPEnvironments():Promise<app.ApiResult___WNavicat_internal_model_HTTPEnvironmentDO_>;
 
+export function ListHTTPFolders():Promise<app.ApiResult___WNavicat_internal_model_HTTPFolderDO_>;
+
 export function ListHTTPRequests():Promise<app.ApiResult___WNavicat_internal_model_HTTPSavedRequestDO_>;
 
 export function ListImages(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_DockerImageDO_>;
@@ -184,6 +198,8 @@ export function LoadWorkspace(arg1:string):Promise<app.ApiResult_string_>;
 export function MkdirLocalPath(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function MkdirSFTPRemote(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
+export function MoveHTTPRequestToFolder(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
 export function OpenLocalTerminal(arg1:number,arg2:number):Promise<app.ApiResult_WNavicat_internal_model_TerminalSessionInfoDO_>;
 
@@ -228,6 +244,8 @@ export function SaveDockerContext(arg1:model.DockerContextDO):Promise<app.ApiRes
 export function SaveEnvPreset(arg1:model.EnvPresetDO):Promise<app.ApiResult_WNavicat_internal_model_EnvPresetDO_>;
 
 export function SaveHTTPEnvironment(arg1:model.HTTPEnvironmentDO):Promise<app.ApiResult_WNavicat_internal_model_HTTPEnvironmentDO_>;
+
+export function SaveHTTPFolder(arg1:model.HTTPFolderDO):Promise<app.ApiResult_WNavicat_internal_model_HTTPFolderDO_>;
 
 export function SaveHTTPRequest(arg1:model.HTTPSavedRequestDO):Promise<app.ApiResult_WNavicat_internal_model_HTTPSavedRequestDO_>;
 

@@ -8,6 +8,7 @@ import { DockerComposePanel } from '../../features/docker/DockerComposePanel'
 import { DockerRunModal } from '../../features/docker/DockerRunModal'
 import { READY_MESSAGES, useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { openAgentDraft, mentionSSH } from '../../features/agent/openAgentDraft'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
@@ -1085,6 +1086,31 @@ export function DockerWorkbench() {
           style={{ left: ctxMenu.x, top: ctxMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              const c = ctxMenu.container
+              const hostId = activeContext?.sshHostId ?? ''
+              const ssh = hostId ? sshHosts.find((h) => h.id === hostId) : undefined
+              const mentions = hostId
+                ? [
+                    mentionSSH({
+                      id: hostId,
+                      name: ssh?.name ?? activeContext?.name,
+                      host: ssh?.host ?? activeContext?.name ?? hostId,
+                    }),
+                  ]
+                : []
+              setCtxMenu(null)
+              openAgentDraft({
+                mentions,
+                message: `${t('agent.draftDocker')}\n\n容器: ${c.name}\n镜像: ${c.image}\n状态: ${c.status}`,
+              })
+            }}
+          >
+            {t('agent.sendToAgent')}
+          </button>
           {mayHaveDatabase(ctxMenu.container) && (
             <button
               type="button"

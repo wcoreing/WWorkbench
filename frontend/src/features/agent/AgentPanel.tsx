@@ -13,6 +13,7 @@ import { AgentMessageContent } from './AgentMessageContent'
 import { useAgentPanelResize } from './useAgentPanelResize'
 import { subscribeCommandResults } from './agentUiActions'
 import { AgentInputBar } from './AgentInputBar'
+import { AgentToolTrace } from './AgentToolTrace'
 import {
   buildAutoMentions,
   mergeMentions,
@@ -20,6 +21,8 @@ import {
   toContextMentions,
   type AgentMention,
 } from './agentMention'
+import { saveReplyToNotebook, savedToNotebookMessage } from './saveReplyToNotebook'
+import { AgentConfirmPanel } from './AgentConfirmPanel'
 
 interface AgentThreadItem {
   id: string
@@ -51,6 +54,12 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   const appendStreamDelta = useAgentStore((s) => s.appendStreamDelta)
   const finishStreaming = useAgentStore((s) => s.finishStreaming)
   const cancelStreaming = useAgentStore((s) => s.cancelStreaming)
+  const toolSteps = useAgentStore((s) => s.toolSteps)
+  const pushToolStep = useAgentStore((s) => s.pushToolStep)
+  const finishToolStep = useAgentStore((s) => s.finishToolStep)
+  const clearToolSteps = useAgentStore((s) => s.clearToolSteps)
+  const threadMentions = useAgentStore((s) => s.threadMentions)
+  const setThreadMentions = useAgentStore((s) => s.setThreadMentions)
 
   const [showHistory, setShowHistory] = useState(false)
   const [threads, setThreads] = useState<AgentThreadItem[]>([])
@@ -141,7 +150,10 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       setPending(null)
       setBusy(false)
       try {
-        const msgs = await api.listAgentMessages(id)
+        const [msgs, detail] = await Promise.all([
+          api.listAgentMessages(id),
+          api.getAgentThread(id),
+        ])
         setLines(
           msgs.map((m) => ({
             id: nextAgentLineId(),
@@ -149,13 +161,29 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
             content: m.content ?? '',
           })),
         )
+        const ctxMentions = detail?.context?.mentions
+        setThreadMentions(
+          Array.isArray(ctxMentions)
+            ? ctxMentions.map((m) => ({
+                kind: (m.kind === 'ssh' ||
+                m.kind === 'database' ||
+                m.kind === 'docker' ||
+                m.kind === 'log' ||
+                m.kind === 'http'
+                  ? m.kind
+                  : 'ssh') as AgentMention['kind'],
+                id: m.id ?? '',
+                label: m.label ?? '',
+              }))
+            : [],
+        )
       } catch (e) {
         setStatusMessage((e as Error).message)
       }
       setShowHistory(false)
       setView('chat')
     },
-    [setThreadId, setLines, setView, setStatusMessage],
+    [setThreadId, setLines, setView, setStatusMessage, setThreadMentions],
   )
 
   useEffect(() => {
@@ -172,6 +200,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   useEffect(() => {
     const unsub = subscribeAgentEvents({
       onUser: (evt) => {
+        clearToolSteps()
         appendLine({
           id: nextAgentLineId(),
           role: 'user',
@@ -194,11 +223,11 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       },
       onToolStart: (evt) => {
         cancelStreaming()
-        appendLine({
-          id: nextAgentLineId(),
-          role: 'system',
-          content: String(t('agent.toolRun', { tool: evt.tool })),
-        })
+        const args = evt.args?.trim()
+        pushToolStep(evt.tool, args && args.length > 96 ? `${args.slice(0, 93)}…` : args)
+      },
+      onToolEnd: (evt) => {
+        finishToolStep(evt.tool)
       },
       onNeedsConfirm: (evt) => {
         setPending(evt)
@@ -207,6 +236,9 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       onDone: (evt) => {
         setBusy(false)
         cancelStreaming()
+        for (const step of useAgentStore.getState().toolSteps) {
+          if (step.status === 'running') finishToolStep(step.tool)
+        }
         if (evt.stopped) {
           appendLine({ id: nextAgentLineId(), role: 'system', content: t('agent.stopped') })
         } else if (evt.error) {
@@ -225,6 +257,9 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     appendStreamDelta,
     finishStreaming,
     cancelStreaming,
+    clearToolSteps,
+    pushToolStep,
+    finishToolStep,
   ])
 
   useEffect(() => {
@@ -253,7 +288,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       sessionId: session?.sessionId ?? '',
       connectionId: activeConnectionId ?? session?.connectionId ?? '',
       database: session?.database ?? '',
-      mentions: toContextMentions(mergeMentions(mentions, autoMentions)),
+      mentions: toContextMentions(mergeMentions(mentions, threadMentions, autoMentions)),
     })
 
   const stopGeneration = async () => {
@@ -271,6 +306,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
 
   const send = async (text: string, mentions: AgentMention[]) => {
     if (!text.trim() || busy) return
+    clearToolSteps()
     setBusy(true)
     setPending(null)
     try {
@@ -481,7 +517,8 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       )}
 
       {view === 'chat' && !showHistory && (
-        <>
+        <div className="agent-chat-pane">
+          <AgentToolTrace steps={toolSteps} />
           <div className="agent-messages" ref={scrollRef}>
             {lines.length === 0 && <div className="agent-empty">{t('agent.hint')}</div>}
             {lines.map((line) => (
@@ -504,6 +541,24 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
                     role={line.role}
                     mentions={line.mentions}
                   />
+                  {line.role === 'assistant' && line.content.trim() && !busy && (
+                    <div className="agent-turn-actions">
+                      <button
+                        type="button"
+                        className="wn-btn wn-btn-xs wn-btn-ghost"
+                        onClick={() =>
+                          void saveReplyToNotebook(
+                            line.content,
+                            mergeMentions(threadMentions, autoMentions),
+                          )
+                            .then(() => setStatusMessage(t(`agent.${savedToNotebookMessage()}`)))
+                            .catch((e) => setStatusMessage((e as Error).message))
+                        }
+                      >
+                        {t('agent.saveToNotebook')}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -520,27 +575,22 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
           </div>
 
           {pending && (
-            <div className="agent-confirm">
-              <p className="agent-confirm-summary">{pending.summary}</p>
-              <div className="agent-confirm-actions">
-                <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" onClick={() => void confirmPending(true)}>
-                  {t('agent.approve')}
-                </button>
-                <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" onClick={() => void confirmPending(false)}>
-                  {t('agent.reject')}
-                </button>
-              </div>
-            </div>
+            <AgentConfirmPanel
+              pending={pending}
+              onApprove={() => void confirmPending(true)}
+              onReject={() => void confirmPending(false)}
+            />
           )}
 
           <AgentInputBar
             busy={busy}
             threadId={threadId}
             autoMentions={autoMentions}
+            threadMentions={threadMentions}
             onSend={(text, mentions) => void send(text, mentions)}
             onStop={() => void stopGeneration()}
           />
-        </>
+        </div>
       )}
     </aside>
   )

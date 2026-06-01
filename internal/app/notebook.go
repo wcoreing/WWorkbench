@@ -142,6 +142,14 @@ func (s *Service) GetNotebookUI() ApiResult[model.NotebookUIDO] {
 	return OkResult(ui)
 }
 
+// ApplyNotebookLayout 保存笔记本侧栏布局（拖拽排序/跨组移动）。
+func (s *Service) ApplyNotebookLayout(layout model.NotebookLayoutDO) ApiResult[bool] {
+	if err := s.notebook.ApplyLayout(layout); err != nil {
+		return ErrResult[bool](err)
+	}
+	return OkResult(true)
+}
+
 // SaveNotebookUI 保存笔记本 UI 状态。
 func (s *Service) SaveNotebookUI(ui model.NotebookUIDO) ApiResult[bool] {
 	if err := s.notebook.SaveUI(ui); err != nil {

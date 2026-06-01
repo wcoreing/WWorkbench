@@ -258,6 +258,10 @@
   padding: 16px;
 }
 
+.wn-modal-backdrop-top {
+  z-index: 10000;
+}
+
 .wn-modal {
   width: 400px;
   max-width: 100%;
@@ -630,6 +634,41 @@
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
+.wn-modal-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+}
+
+.wn-modal-header-bar .wn-modal-title {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wn-modal-close-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.wn-modal-close-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--color-text);
+}
+
 .wn-modal-title-row {
   display: flex;
   align-items: center;
@@ -764,6 +803,27 @@
 
 .wn-context-item.danger:hover {
   background: var(--color-danger-muted);
+}
+
+.wn-context-item-danger {
+  color: var(--color-danger);
+}
+
+.wn-context-item-danger:hover {
+  background: var(--color-danger-muted);
+}
+
+.wn-context-submenu-label {
+  padding: 4px 10px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.wn-context-item-indent {
+  padding-left: 18px;
 }
 
 .wn-context-sep {

@@ -16,6 +16,7 @@ import { Capability } from '../../workbench/capabilities'
 import { payloadBool, payloadStr } from '../../workbench/commandPayload'
 import type { ConnectionDraft } from '../../stores/appStore'
 import { APP_SETTING_KEYS, saveAppSetting } from '../../stores/appPreferences'
+import { openAgentDraft, mentionDatabase } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { defaultUntitledSql, localizeWorkTabTitle } from '../../i18n/databaseTabTitle'
 import { queryPageToCSV } from '../../utils/queryCsv'
@@ -61,6 +62,7 @@ export function DatabaseWorkbench() {
   const pendingSql = useRef<{ sql: string; run: boolean } | null>(null)
   const [connModalOpen, setConnModalOpen] = useState(false)
   const [editingConn, setEditingConn] = useState<Connection | null>(null)
+  const [connCtxMenu, setConnCtxMenu] = useState<{ x: number; y: number; conn: Connection } | null>(null)
   const [sqlResult, setSqlResult] = useState<SqlResult | null>(null)
   const [resultHeight, setResultHeight] = useState(220)
   const [bottomTab, setBottomTab] = useState<'result' | 'message'>('result')
@@ -76,6 +78,13 @@ export function DatabaseWorkbench() {
   useEffect(() => {
     refreshConnections()
   }, [])
+
+  useEffect(() => {
+    if (!connCtxMenu) return
+    const close = () => setConnCtxMenu(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [connCtxMenu])
 
   const refreshConnections = async () => {
     try {
@@ -761,6 +770,11 @@ export function DatabaseWorkbench() {
                           className={`conn-item ${activeConnectionId === c.id ? 'active' : ''} ${session?.connectionId === c.id ? 'connected' : ''}`}
                           onClick={() => connect(c.id)}
                           onDoubleClick={() => connect(c.id)}
+                          onContextMenu={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setConnCtxMenu({ x: e.clientX, y: e.clientY, conn: c })
+                          }}
                         >
                           <span className="conn-dot" />
                           <div className="conn-meta">
@@ -1001,6 +1015,39 @@ export function DatabaseWorkbench() {
           </div>
         </main>
       </div>
+
+      {connCtxMenu && (
+        <div
+          className="wn-context-menu"
+          style={{ left: connCtxMenu.x, top: connCtxMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              const c = connCtxMenu.conn
+              setConnCtxMenu(null)
+              openAgentDraft({
+                mentions: [mentionDatabase(c)],
+                message: t('agent.draftDatabase'),
+              })
+            }}
+          >
+            {t('agent.sendToAgent')}
+          </button>
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              setConnCtxMenu(null)
+              openConnModal(connCtxMenu.conn)
+            }}
+          >
+            {t('common.edit')}
+          </button>
+        </div>
+      )}
 
       <ConnectionModal
         open={connModalOpen}

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../api/client'
-import type { HTTPEnvironment, HTTPHeaderKV, HTTPResponse, HTTPSavedRequest } from '../../api/types'
+import type { HTTPEnvironment, HTTPFolder, HTTPResponse, HTTPSavedRequest } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
-import { IconPlay, IconPlus } from '../../components/Icons'
+import { IconPlay } from '../../components/Icons'
+import { openAgentDraft, mentionHttpRequest } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import {
@@ -10,116 +11,100 @@ import {
   scheduleHttpApiWorkspacePersist,
 } from '../../stores/httpapiWorkspacePersist'
 import { model } from '../../../wailsjs/go/models'
+import { HttpApiContextMenu, type HttpApiContextMenuState } from './HttpApiContextMenu'
+import { HttpApiSidebar } from './HttpApiSidebar'
+import { persistHttpTreeDrop } from './httpapiMove'
+import { nextHttpChildSortOrder } from './httpapiSort'
+import type { HttpDragPayload, HttpDropTarget } from './httpapiSort'
+import { HttpEnvModal } from './HttpEnvModal'
+import { HttpKeyValueTable } from './HttpKeyValueTable'
+import {
+  type HttpAuthMode,
+  type HttpBodyMode,
+  type HttpKVRow,
+  applyAuthHeader,
+  applyBodyModeHeaders,
+  buildFormBody,
+  buildUrlWithParams,
+  detectBodyMode,
+  emptyKVRow,
+  extractBearerToken,
+  extractCookieRows,
+  formatBodySize,
+  headersToKVRows,
+  kvRowsToHeaders,
+  mergeCookieHeader,
+  methodAllowsBody,
+  parseCurlCommand,
+  parseKVJson,
+  parseQueryString,
+  prettyPrintBody,
+  serializeKVRows,
+  splitUrlBaseAndQuery,
+  statusTone,
+  toCurlCommand,
+  nextUntitledHttpName,
+} from './httpUtils'
+
+const NEW_REQUEST_DEFAULT_URL = 'http://localhost'
+import { historyFromResponse, loadHttpHistory, pushHttpHistory, type HttpHistoryEntry } from './httpHistory'
+import { clearHttpStash, loadHttpStash, saveHttpStash } from './httpStash'
+import { useHttpSplitResize } from './useHttpSplitResize'
+import { useHttpDiscardConfirm } from './useHttpDiscardConfirm'
 
 const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'] as const
+const TIMEOUTS = [5000, 15000, 30000, 60000, 120000] as const
 
-/** parseHeaderText 解析「Key: value」多行请求头。 */
-function parseHeaderText(text: string): HTTPHeaderKV[] {
-  return text
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const i = line.indexOf(':')
-      if (i < 0) return { key: line, value: '' }
-      return { key: line.slice(0, i).trim(), value: line.slice(i + 1).trim() }
-    })
-    .filter((h) => h.key)
-}
+type RequestTab = 'params' | 'body' | 'headers' | 'cookies' | 'auth'
+type ResponseTab = 'body' | 'cookie' | 'header' | 'actual'
 
-/** formatHeaderText 格式化请求头为多行文本。 */
-function formatHeaderText(headers: HTTPHeaderKV[]): string {
-  return headers.map((h) => `${h.key}: ${h.value}`).join('\n')
-}
-
-/** parseHeadersJson 解析存储的 JSON 请求头。 */
-function parseHeadersJson(json: string): HTTPHeaderKV[] {
-  try {
-    const arr = JSON.parse(json || '[]') as HTTPHeaderKV[]
-    return Array.isArray(arr) ? arr : []
-  } catch {
-    return []
-  }
-}
-
-/** parseEnvText 解析 key=value 环境变量文本。 */
-function parseEnvText(text: string): Record<string, string> {
-  const out: Record<string, string> = {}
-  for (const line of text.split('\n')) {
-    const t = line.trim()
-    if (!t || t.startsWith('#')) continue
-    const i = t.indexOf('=')
-    if (i < 0) continue
-    const key = t.slice(0, i).trim()
-    if (key) out[key] = t.slice(i + 1).trim()
-  }
-  return out
-}
-
-/** formatEnvText 将环境变量 JSON 格式化为 key=value 多行。 */
-function formatEnvText(json: string): string {
-  try {
-    const m = JSON.parse(json || '{}') as Record<string, string>
-    if (!m || typeof m !== 'object') return ''
-    return Object.entries(m)
-      .map(([k, v]) => `${k}=${v}`)
-      .join('\n')
-  } catch {
-    return ''
-  }
-}
-
-/** HttpApiWorkbench HTTP API 调试工作区。 */
+/** HttpApiWorkbench HTTP API 工作区（Apifox 式布局与交互）。 */
 export function HttpApiWorkbench() {
   const { t } = useI18n()
   const { setStatusMessage } = useAppStore()
+  const { hostRef, ratio, onResizeStart } = useHttpSplitResize()
+
+  const [folders, setFolders] = useState<HTTPFolder[]>([])
   const [items, setItems] = useState<HTTPSavedRequest[]>([])
+  const [filter, setFilter] = useState('')
   const [activeId, setActiveId] = useState('')
+  const [folderId, setFolderId] = useState('')
   const [name, setName] = useState('')
+  const [notes, setNotes] = useState('')
   const [method, setMethod] = useState<string>('GET')
-  const [url, setUrl] = useState('')
-  const [headerText, setHeaderText] = useState('')
+  const [urlBase, setUrlBase] = useState('')
+  const [paramRows, setParamRows] = useState<HttpKVRow[]>([emptyKVRow()])
+  const [headerRows, setHeaderRows] = useState<HttpKVRow[]>([emptyKVRow()])
+  const [cookieRows, setCookieRows] = useState<HttpKVRow[]>([emptyKVRow()])
+  const [formRows, setFormRows] = useState<HttpKVRow[]>([emptyKVRow()])
   const [body, setBody] = useState('')
+  const [bodyMode, setBodyMode] = useState<HttpBodyMode>('none')
+  const [authMode, setAuthMode] = useState<HttpAuthMode>('none')
+  const [authToken, setAuthToken] = useState('')
+  const [timeoutMs, setTimeoutMs] = useState<number>(30000)
+  const [reqTab, setReqTab] = useState<RequestTab>('params')
+  const [resTab, setResTab] = useState<ResponseTab>('body')
+  const [prettyResponse, setPrettyResponse] = useState(true)
+
   const [response, setResponse] = useState<HTTPResponse | null>(null)
+  const [lastSentCurl, setLastSentCurl] = useState('')
   const [sending, setSending] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<HTTPSavedRequest | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<HttpApiContextMenuState | null>(null)
+  const [envModalOpen, setEnvModalOpen] = useState(false)
+  const [curlOpen, setCurlOpen] = useState(false)
+  const [curlText, setCurlText] = useState('')
+  const [history, setHistory] = useState<HttpHistoryEntry[]>(() => loadHttpHistory())
+  const [historyOpen, setHistoryOpen] = useState(false)
 
   const [envs, setEnvs] = useState<HTTPEnvironment[]>([])
   const [activeEnvId, setActiveEnvId] = useState('')
-  const [selectedEnvId, setSelectedEnvId] = useState('')
-  const [envName, setEnvName] = useState('')
-  const [envVarText, setEnvVarText] = useState('')
-  const [deleteEnvTarget, setDeleteEnvTarget] = useState<HTTPEnvironment | null>(null)
 
   const workspaceLoaded = useRef(false)
+  const dirtyRef = useRef(false)
+  const { discardOpen, runWithDiscardCheck, confirmDiscard, cancelDiscard } = useHttpDiscardConfirm(dirtyRef)
 
-  const loadEditor = useCallback((item: HTTPSavedRequest | null) => {
-    if (!item) {
-      setName('')
-      setMethod('GET')
-      setUrl('')
-      setHeaderText('')
-      setBody('')
-      return
-    }
-    setName(item.name)
-    setMethod(item.method || 'GET')
-    setUrl(item.url)
-    setHeaderText(formatHeaderText(parseHeadersJson(item.headersJson)))
-    setBody(item.body)
-  }, [])
-
-  const loadEnvEditor = useCallback((item: HTTPEnvironment | null) => {
-    if (!item) {
-      setSelectedEnvId('')
-      setEnvName('')
-      setEnvVarText('')
-      return
-    }
-    setSelectedEnvId(item.id)
-    setEnvName(item.name)
-    setEnvVarText(formatEnvText(item.varsJson))
-  }, [])
+  const stashSlot = activeId || '__draft__'
 
   const refreshList = useCallback(async () => {
     const list = (await api.listHTTPRequests()) as HTTPSavedRequest[]
@@ -133,72 +118,156 @@ export function HttpApiWorkbench() {
     return list
   }, [])
 
+  const refreshFolders = useCallback(async () => {
+    const list = (await api.listHTTPFolders()) as HTTPFolder[]
+    setFolders(list)
+    return list
+  }, [])
+
+  const refreshAll = useCallback(async () => {
+    await Promise.all([refreshList(), refreshEnvs(), refreshFolders()])
+  }, [refreshList, refreshEnvs, refreshFolders])
+
+  const loadEditor = useCallback((item: HTTPSavedRequest | null) => {
+    dirtyRef.current = false
+    if (!item) {
+      setName('')
+      setNotes('')
+      setMethod('GET')
+      setUrlBase('')
+      setParamRows([emptyKVRow()])
+      setHeaderRows([emptyKVRow()])
+      setCookieRows([emptyKVRow()])
+      setFormRows([emptyKVRow()])
+      setBody('')
+      setBodyMode('none')
+      setAuthMode('none')
+      setAuthToken('')
+      return
+    }
+    const params = parseKVJson(item.paramsJson || '[]')
+    const cookies = parseKVJson(item.cookiesJson || '[]')
+    let headers = headersToKVRows(parseKVJson(item.headersJson || '[]'))
+    let cookieList = cookies.length ? cookies : [emptyKVRow()]
+    if (!cookies.length) {
+      const split = extractCookieRows(headers)
+      headers = split.headers
+      cookieList = split.cookies
+    }
+    const { base, query } = splitUrlBaseAndQuery(item.url)
+    const paramFromUrl = query ? parseQueryString(query) : params
+    const auth = extractBearerToken(headers)
+    const mode = detectBodyMode(item.body, kvRowsToHeaders(headers))
+    setFolderId(item.folderId || '')
+    setName(item.name)
+    setNotes(item.notes || '')
+    setMethod(item.method || 'GET')
+    setUrlBase(base)
+    setParamRows(paramFromUrl.length ? paramFromUrl : [emptyKVRow()])
+    setHeaderRows(headers)
+    setCookieRows(cookieList)
+    setBody(item.body)
+    setBodyMode(mode)
+    if (mode === 'form' && item.body) setFormRows(parseQueryString(item.body.replace(/^\?/, '')))
+    else setFormRows([emptyKVRow()])
+    setAuthMode(auth.mode)
+    setAuthToken(auth.token)
+  }, [])
+
   useEffect(() => {
     if (workspaceLoaded.current) {
-      void refreshList()
-      void refreshEnvs()
+      void refreshAll()
       return
     }
     workspaceLoaded.current = true
     void (async () => {
-      const [list, envList] = await Promise.all([refreshList(), refreshEnvs()])
+      const list = await refreshList()
+      const envList = await refreshEnvs()
+      await refreshFolders()
       const snap = await loadHttpApiWorkspace()
-      const id = snap?.activeId && list.some((x) => x.id === snap.activeId) ? snap.activeId : list[0]?.id ?? ''
+      let id = list[0]?.id ?? ''
+      if (snap) {
+        if (snap.activeId === '' || list.some((x) => x.id === snap.activeId)) {
+          id = snap.activeId
+        }
+      }
       setActiveId(id)
       loadEditor(list.find((x) => x.id === id) ?? null)
-
-      const envId =
-        snap?.activeEnvId && envList.some((x) => x.id === snap.activeEnvId) ? snap.activeEnvId : ''
-      setActiveEnvId(envId)
-      const env = envList.find((x) => x.id === envId)
-      if (env) loadEnvEditor(env)
+      setActiveEnvId(snap?.activeEnvId && envList.some((x) => x.id === snap.activeEnvId) ? snap.activeEnvId : '')
     })()
-  }, [refreshList, refreshEnvs, loadEditor, loadEnvEditor])
+  }, [refreshAll, loadEditor])
 
   useEffect(() => {
     scheduleHttpApiWorkspacePersist({ version: 2, activeId, activeEnvId })
   }, [activeId, activeEnvId])
 
-  const selectItem = (item: HTTPSavedRequest) => {
-    setActiveId(item.id)
-    loadEditor(item)
-    setResponse(null)
+  useEffect(() => {
+    const close = (e: MouseEvent) => {
+      const el = e.target as HTMLElement | null
+      if (el?.closest('.wn-context-menu')) return
+      setCtxMenu(null)
+    }
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [])
+
+  const markDirty = () => {
+    dirtyRef.current = true
   }
 
-  const createNew = () => {
-    setActiveId('')
-    loadEditor(null)
-    setResponse(null)
+  const resolveBody = (): string => {
+    if (!methodAllowsBody(method) || bodyMode === 'none') return ''
+    if (bodyMode === 'form') return buildFormBody(formRows)
+    return body
   }
 
-  const selectEnv = (item: HTTPEnvironment) => {
-    loadEnvEditor(item)
-  }
+  const mergedHeaders = useCallback(() => {
+    let rows = [...headerRows]
+    rows = applyBodyModeHeaders(rows, bodyMode)
+    rows = applyAuthHeader(rows, authMode, authToken)
+    rows = mergeCookieHeader(rows, cookieRows)
+    return kvRowsToHeaders(rows)
+  }, [headerRows, bodyMode, authMode, authToken, cookieRows])
 
-  const createNewEnv = () => {
-    loadEnvEditor(null)
-  }
+  const fullUrl = useCallback(
+    () => buildUrlWithParams(urlBase.trim(), paramRows),
+    [urlBase, paramRows],
+  )
 
-  const buildExecuteReq = () =>
-    model.HTTPExecuteRequestDO.createFrom({
-      method,
-      url: url.trim(),
-      headers: parseHeaderText(headerText),
-      body,
-      timeoutMs: 30000,
-      envId: activeEnvId,
-    })
+  const buildExecuteReq = useCallback(
+    () =>
+      model.HTTPExecuteRequestDO.createFrom({
+        method,
+        url: fullUrl(),
+        headers: mergedHeaders(),
+        body: resolveBody(),
+        timeoutMs,
+        envId: activeEnvId,
+      }),
+    [method, fullUrl, mergedHeaders, timeoutMs, activeEnvId, body, bodyMode, formRows],
+  )
 
   const send = async () => {
+    const url = fullUrl()
     if (!url.trim()) {
       setStatusMessage(t('httpapi.errUrl'))
       return
     }
+    const req = buildExecuteReq()
+    const curl = toCurlCommand({
+      method,
+      url,
+      headers: mergedHeaders(),
+      body: resolveBody(),
+    })
+    setLastSentCurl(curl)
     setSending(true)
     setStatusMessage(t('httpapi.sending'))
     try {
-      const res = (await api.executeHTTPRequest(buildExecuteReq())) as HTTPResponse
+      const res = (await api.executeHTTPRequest(req)) as HTTPResponse
       setResponse(res)
+      setResTab('body')
+      setHistory(pushHttpHistory(historyFromResponse(method, url, name, res)))
       setStatusMessage(
         res.error
           ? res.error
@@ -216,140 +285,274 @@ export function HttpApiWorkbench() {
       setStatusMessage(t('httpapi.errName'))
       return
     }
+    const url = fullUrl()
     if (!url.trim()) {
       setStatusMessage(t('httpapi.errUrl'))
       return
     }
-    const headers = parseHeaderText(headerText)
-    const saved = (await api.saveHTTPRequest(
-      model.HTTPSavedRequestDO.createFrom({
-        id: activeId,
-        name: name.trim(),
-        method,
-        url: url.trim(),
-        headersJson: JSON.stringify(headers),
-        body,
-        sortOrder: 0,
-        createdAt: 0,
-        updatedAt: 0,
-      }),
-    )) as HTTPSavedRequest
-    setActiveId(saved.id)
-    await refreshList()
-    setStatusMessage(t('httpapi.saved'))
+    const headers = mergedHeaders().filter((h) => h.key.toLowerCase() !== 'cookie')
+    try {
+      const saved = (await api.saveHTTPRequest(
+        model.HTTPSavedRequestDO.createFrom({
+          id: activeId,
+          folderId,
+          name: name.trim(),
+          method,
+          url,
+          paramsJson: serializeKVRows(paramRows),
+          headersJson: JSON.stringify(headers),
+          cookiesJson: serializeKVRows(cookieRows),
+          body: resolveBody(),
+          notes: notes.trim(),
+          sortOrder: activeId
+            ? (items.find((i) => i.id === activeId)?.sortOrder ?? 0)
+            : nextHttpChildSortOrder(folders, items, folderId),
+          createdAt: 0,
+          updatedAt: 0,
+        }),
+      )) as HTTPSavedRequest
+      setActiveId(saved.id)
+      dirtyRef.current = false
+      clearHttpStash(stashSlot)
+      await refreshList()
+      setStatusMessage(t('httpapi.saved'))
+    } catch (e) {
+      setStatusMessage((e as Error).message)
+    }
   }
 
-  const saveEnv = async () => {
-    if (!envName.trim()) {
-      setStatusMessage(t('httpapi.errEnvName'))
+  const stash = () => {
+    saveHttpStash(stashSlot, {
+      name,
+      notes,
+      method,
+      urlBase,
+      paramsJson: serializeKVRows(paramRows),
+      headersJson: serializeKVRows(headerRows),
+      cookiesJson: serializeKVRows(cookieRows),
+      body,
+      bodyMode,
+      authMode,
+      authToken,
+    })
+    setStatusMessage(t('httpapi.stashed'))
+  }
+
+  const loadStashToEditor = () => {
+    const s = loadHttpStash(stashSlot)
+    if (!s) {
+      setStatusMessage(t('httpapi.noStash'))
       return
     }
-    const saved = (await api.saveHTTPEnvironment(
-      model.HTTPEnvironmentDO.createFrom({
-        id: selectedEnvId,
-        name: envName.trim(),
-        varsJson: JSON.stringify(parseEnvText(envVarText)),
-        createdAt: 0,
-        updatedAt: 0,
-      }),
-    )) as HTTPEnvironment
-    setSelectedEnvId(saved.id)
-    await refreshEnvs()
-    setStatusMessage(t('httpapi.envSaved'))
+    setName(s.name)
+    setNotes(s.notes)
+    setMethod(s.method)
+    setUrlBase(s.urlBase)
+    setParamRows(parseKVJson(s.paramsJson))
+    setHeaderRows(parseKVJson(s.headersJson))
+    setCookieRows(parseKVJson(s.cookiesJson))
+    setBody(s.body)
+    setBodyMode(s.bodyMode as HttpBodyMode)
+    setAuthMode(s.authMode as HttpAuthMode)
+    setAuthToken(s.authToken)
+    markDirty()
+    setStatusMessage(t('httpapi.stashLoaded'))
   }
 
+  const duplicate = () => {
+    setActiveId('')
+    setName(name ? `${name} (${t('httpapi.copySuffix')})` : '')
+    markDirty()
+    setStatusMessage(t('httpapi.duplicatedDraft'))
+  }
+
+  const exportCurl = () => {
+    const url = fullUrl()
+    if (!url.trim()) {
+      setStatusMessage(t('httpapi.errUrl'))
+      return
+    }
+    const curl = toCurlCommand({
+      method,
+      url,
+      headers: mergedHeaders(),
+      body: resolveBody(),
+    })
+    void navigator.clipboard
+      .writeText(curl)
+      .then(() => setStatusMessage(t('httpapi.curlCopied')))
+      .catch((e) => setStatusMessage((e as Error).message))
+  }
+
+  const importCurl = () => {
+    const parsed = parseCurlCommand(curlText)
+    if (!parsed) {
+      setStatusMessage(t('httpapi.curlInvalid'))
+      return
+    }
+    setMethod(parsed.method)
+    const { base, query } = splitUrlBaseAndQuery(parsed.url)
+    setUrlBase(base)
+    setParamRows(query ? parseQueryString(query) : [emptyKVRow()])
+    const split = extractCookieRows(parsed.headers)
+    setHeaderRows(split.headers)
+    setCookieRows(split.cookies)
+    setBody(parsed.body)
+    setBodyMode(parsed.body ? detectBodyMode(parsed.body, kvRowsToHeaders(parsed.headers)) : 'none')
+    const auth = extractBearerToken(parsed.headers)
+    setAuthMode(auth.mode)
+    setAuthToken(auth.token)
+    setCurlOpen(false)
+    markDirty()
+    setStatusMessage(t('httpapi.curlImported'))
+  }
+
+  const selectItem = (item: HTTPSavedRequest) => {
+    runWithDiscardCheck(() => {
+      setActiveId(item.id)
+      loadEditor(item)
+      setResponse(null)
+    })
+  }
+
+  /** createNew 新建接口并立即落库，左侧目录树即时显示（Apifox 式）。 */
+  const createNew = (targetFolderId = '') => {
+    runWithDiscardCheck(() => {
+      void (async () => {
+        try {
+          const nextName = nextUntitledHttpName(items, t('httpapi.untitledRequest'))
+          const saved = (await api.saveHTTPRequest(
+            model.HTTPSavedRequestDO.createFrom({
+              id: '',
+              folderId: targetFolderId,
+              name: nextName,
+              method: 'GET',
+              url: NEW_REQUEST_DEFAULT_URL,
+              paramsJson: '[]',
+              headersJson: '[]',
+              cookiesJson: '[]',
+              body: '',
+              notes: '',
+              sortOrder: nextHttpChildSortOrder(folders, items, targetFolderId),
+              createdAt: 0,
+              updatedAt: 0,
+            }),
+          )) as HTTPSavedRequest
+          setActiveId(saved.id)
+          loadEditor(saved)
+          setResponse(null)
+          dirtyRef.current = false
+          clearHttpStash('__draft__')
+          await refreshList()
+          setStatusMessage(t('httpapi.requestCreated'))
+        } catch (e) {
+          setStatusMessage((e as Error).message)
+        }
+      })()
+    })
+  }
+
+  /** onTreeDrop 拖拽后持久化目录树布局（移入/排序）。 */
+  const onTreeDrop = useCallback(
+    async (drag: HttpDragPayload, target: HttpDropTarget) => {
+      try {
+        const layout = await persistHttpTreeDrop(folders, items, drag, target)
+        if (!layout) return
+        if (drag.kind === 'api' && drag.id === activeId) {
+          const pid = target.mode === 'into' ? target.parentId || '' : target.parentId || ''
+          setFolderId(pid)
+        }
+        await refreshList()
+        setStatusMessage(t('httpapi.treeLayoutSaved'))
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    },
+    [folders, items, activeId, refreshList, setStatusMessage, t],
+  )
+
+  /** moveApiToFolder 将接口移入目录（folderId 为空为根目录）。 */
+  const moveApiToFolder = useCallback(
+    async (apiId: string, targetFolderId: string) => {
+      await onTreeDrop({ kind: 'api', id: apiId }, { mode: 'into', parentId: targetFolderId || '' })
+      const target = targetFolderId || ''
+      setStatusMessage(target ? t('httpapi.movedToFolder') : t('httpapi.movedToRoot'))
+    },
+    [onTreeDrop, setStatusMessage, t],
+  )
+
+  const applyHistory = (h: HttpHistoryEntry) => {
+    const apply = () => {
+      const item = items.find((i) => i.url === h.url && i.method === h.method)
+      if (item) {
+        setActiveId(item.id)
+        loadEditor(item)
+        setResponse(null)
+      } else {
+        setActiveId('')
+        setName(h.name)
+        setMethod(h.method)
+        const { base, query } = splitUrlBaseAndQuery(h.url)
+        setUrlBase(base)
+        setParamRows(parseQueryString(query))
+        markDirty()
+      }
+      setHistoryOpen(false)
+    }
+    runWithDiscardCheck(apply)
+  }
+
+  const responseBodyDisplay =
+    response && prettyResponse && !response.error ? prettyPrintBody(response.body) : response?.body
+
+  const reqTabs: RequestTab[] = ['params', 'body', 'headers', 'cookies', 'auth']
+  const resTabs: ResponseTab[] = ['body', 'cookie', 'header', 'actual']
+
   return (
-    <div className="product-workbench httpapi-workbench">
-      <header className="product-toolbar">
-        <div className="product-actions">
-          <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" disabled={sending} onClick={() => void send()}>
-            <IconPlay size={14} /> {t('httpapi.send')}
-          </button>
-          <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void save()}>
-            {t('httpapi.save')}
-          </button>
-        </div>
-      </header>
-
+    <div className="product-workbench httpapi-workbench apifox-theme">
       <div className="product-body">
-        <aside className="app-sidebar httpapi-sidebar">
-          <section className="sidebar-section">
-            <div className="sidebar-header">
-              <span>{t('products.httpapi.label')}</span>
-              <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" title={t('httpapi.newRequest')} onClick={createNew}>
-                <IconPlus size={14} />
-              </button>
-            </div>
-            <div className="sidebar-body">
-              {items.length === 0 ? (
-                <div className="empty-hint">{t('httpapi.emptyList')}</div>
-              ) : (
-                <ul className="conn-list">
-                  {items.map((item) => (
-                    <li
-                      key={item.id}
-                      className={`conn-item ${item.id === activeId ? 'active' : ''}`}
-                      onClick={() => selectItem(item)}
-                      onContextMenu={(e) => {
-                        e.preventDefault()
-                        setDeleteTarget(item)
-                      }}
-                    >
-                      <div className="conn-meta">
-                        <span className="conn-name">{item.name}</span>
-                        <span className="conn-host">
-                          {item.method} {item.url}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
+        <HttpApiSidebar
+          folders={folders}
+          items={items}
+          activeId={activeId}
+          filter={filter}
+          onFilter={setFilter}
+          onSelectApi={selectItem}
+          onCreateApi={createNew}
+          onRefresh={refreshAll}
+          onContextApi={(e, item) => {
+            e.preventDefault()
+            setCtxMenu({ x: e.clientX, y: e.clientY, item })
+          }}
+          onAfterBatchDelete={(deletedApiIds) => {
+            if (deletedApiIds.includes(activeId)) {
+              setActiveId('')
+              loadEditor(null)
+              setResponse(null)
+            }
+          }}
+          onTreeDrop={onTreeDrop}
+        />
 
-          <section className="sidebar-section">
-            <div className="sidebar-header">
-              <span>{t('httpapi.envSection')}</span>
-              <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" title={t('httpapi.newEnv')} onClick={createNewEnv}>
-                <IconPlus size={14} />
-              </button>
+        <main className="app-main httpapi-workspace">
+          <header className="httpapi-run-header">
+            <div className="httpapi-run-title">
+              <span className="httpapi-run-mode">{t('httpapi.runMode')}</span>
+              <input
+                className="httpapi-run-name"
+                value={name}
+                onChange={(e) => { setName(e.target.value); markDirty() }}
+                placeholder={t('httpapi.namePlaceholder')}
+              />
             </div>
-            <div className="sidebar-body">
-              {envs.length === 0 ? (
-                <div className="empty-hint">{t('httpapi.emptyEnvList')}</div>
-              ) : (
-                <ul className="conn-list">
-                  {envs.map((item) => (
-                    <li
-                      key={item.id}
-                      className={`conn-item ${item.id === selectedEnvId ? 'active' : ''}`}
-                      onClick={() => selectEnv(item)}
-                      onContextMenu={(e) => {
-                        e.preventDefault()
-                        setDeleteEnvTarget(item)
-                      }}
-                    >
-                      <div className="conn-meta">
-                        <span className="conn-name">{item.name}</span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-        </aside>
-
-        <main className="app-main httpapi-main">
-          <div className="httpapi-request">
-            <div className="httpapi-env-bar">
-              <label className="wn-label httpapi-env-active">
-                {t('httpapi.activeEnv')}
+            <div className="httpapi-run-actions">
+              <label className="httpapi-env-quick">
+                <span className="httpapi-env-quick-label">{t('httpapi.activeEnv')}</span>
                 <select
-                  className="wn-input"
+                  className="wn-input wn-input-sm"
                   value={activeEnvId}
                   onChange={(e) => setActiveEnvId(e.target.value)}
+                  title={t('httpapi.envQuickHint')}
                 >
                   <option value="">{t('httpapi.noEnv')}</option>
                   {envs.map((e) => (
@@ -359,99 +562,332 @@ export function HttpApiWorkbench() {
                   ))}
                 </select>
               </label>
-              <div className="httpapi-env-editor">
-                <div className="httpapi-row" style={{ gap: 8 }}>
-                  <input
-                    className="wn-input"
-                    value={envName}
-                    onChange={(e) => setEnvName(e.target.value)}
-                    placeholder={t('httpapi.envNamePlaceholder')}
-                  />
-                  <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void saveEnv()}>
-                    {t('httpapi.saveEnv')}
-                  </button>
-                </div>
-                <textarea
-                  className="wn-input httpapi-textarea httpapi-env-vars"
-                  value={envVarText}
-                  onChange={(e) => setEnvVarText(e.target.value)}
-                  placeholder={t('httpapi.envVarsPlaceholder')}
-                  spellCheck={false}
-                />
-                <span className="httpapi-env-hint">{t('httpapi.envVarsHint')}</span>
-              </div>
+              <button
+                type="button"
+                className="httpapi-env-trigger"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setEnvModalOpen(true)
+                }}
+                title={t('httpapi.envManageHint')}
+              >
+                {t('httpapi.envManage')}
+              </button>
+              <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" onClick={() => setHistoryOpen((v) => !v)}>
+                {t('httpapi.history')}
+              </button>
+              <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" onClick={() => { setCurlText(''); setCurlOpen(true) }}>
+                {t('httpapi.importCurl')}
+              </button>
+              <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" onClick={exportCurl}>
+                {t('httpapi.exportCurl')}
+              </button>
             </div>
+          </header>
 
-            <div className="httpapi-row">
-              <label className="wn-label">{t('httpapi.name')}</label>
-              <input className="wn-input" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('httpapi.namePlaceholder')} />
-            </div>
-            <div className="httpapi-row httpapi-method-url">
-              <select className="wn-input httpapi-method" value={method} onChange={(e) => setMethod(e.target.value)}>
-                {METHODS.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-              <input className="wn-input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t('httpapi.urlPlaceholder')} />
-            </div>
-            <div className="httpapi-split">
-              <div className="httpapi-field">
-                <label className="wn-label">{t('httpapi.headers')}</label>
-                <textarea
-                  className="wn-input httpapi-textarea"
-                  value={headerText}
-                  onChange={(e) => setHeaderText(e.target.value)}
-                  placeholder={t('httpapi.headersPlaceholder')}
-                  spellCheck={false}
-                />
-              </div>
-              <div className="httpapi-field">
-                <label className="wn-label">{t('httpapi.body')}</label>
-                <textarea
-                  className="wn-input httpapi-textarea"
-                  value={body}
-                  onChange={(e) => setBody(e.target.value)}
-                  placeholder={t('httpapi.bodyPlaceholder')}
-                  spellCheck={false}
-                />
-              </div>
-            </div>
+          <div className="httpapi-url-bar">
+            <select
+              className={`httpapi-method httpapi-method-${method.toLowerCase()}`}
+              value={method}
+              onChange={(e) => { setMethod(e.target.value); markDirty() }}
+            >
+              {METHODS.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+            <input
+              className="wn-input httpapi-url-input"
+              value={urlBase}
+              onChange={(e) => { setUrlBase(e.target.value); markDirty() }}
+              placeholder={t('httpapi.urlPlaceholder')}
+            />
+            <button type="button" className="wn-btn wn-btn-sm httpapi-btn-stash" onClick={stash}>
+              {t('httpapi.stash')}
+            </button>
+            <button type="button" className="wn-btn wn-btn-sm httpapi-btn-stash" onClick={loadStashToEditor}>
+              {t('httpapi.loadStash')}
+            </button>
+            <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void save()}>
+              {t('httpapi.save')}
+            </button>
+            <button
+              type="button"
+              className="wn-btn wn-btn-sm httpapi-btn-send"
+              disabled={sending}
+              onClick={() => void send()}
+            >
+              <IconPlay size={14} /> {t('httpapi.send')}
+            </button>
           </div>
 
-          <div className="httpapi-response">
-            <div className="httpapi-response-head">
-              <span className="wn-label">{t('httpapi.response')}</span>
-              {response && !response.error && (
-                <>
-                  <span className="httpapi-status">
-                    {t('httpapi.status')}: {response.statusCode} {response.status}
-                  </span>
-                  <span className="httpapi-status">{t('httpapi.elapsed', { ms: response.elapsedMs })}</span>
+          <div
+            ref={hostRef}
+            className="httpapi-split-host"
+            style={{ gridTemplateRows: `${(1 - ratio) * 100}% 6px ${ratio * 100}%` }}
+          >
+            <section className="httpapi-req-pane">
+              <nav className="httpapi-tabs apifox-tabs">
+                {reqTabs.map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    className={`httpapi-tab${reqTab === tab ? ' is-active' : ''}`}
+                    onClick={() => setReqTab(tab)}
+                  >
+                    {t(`httpapi.tab.${tab}`)}
+                  </button>
+                ))}
+              </nav>
+              <div className="httpapi-tab-panel">
+                {reqTab === 'params' && (
+                  <HttpKeyValueTable rows={paramRows} onChange={(rows) => { setParamRows(rows); markDirty() }} />
+                )}
+                {reqTab === 'body' && (
+                  <div className="httpapi-body-pane">
+                    <div className="httpapi-body-type-row">
+                      <span className="httpapi-body-type-label">{t('httpapi.bodyType')}</span>
+                      {(['none', 'form', 'json', 'xml', 'raw'] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          type="button"
+                          className={`httpapi-body-type-btn${bodyMode === mode ? ' is-active' : ''}`}
+                          disabled={!methodAllowsBody(method) && mode !== 'none'}
+                          onClick={() => {
+                            setBodyMode(mode)
+                            if (mode === 'json' && body.trim()) setBody(prettyPrintBody(body))
+                            setHeaderRows(applyBodyModeHeaders(headerRows, mode))
+                            markDirty()
+                          }}
+                        >
+                          {t(`httpapi.bodyMode.${mode}`)}
+                        </button>
+                      ))}
+                    </div>
+                    {bodyMode === 'form' && methodAllowsBody(method) ? (
+                      <HttpKeyValueTable rows={formRows} onChange={(rows) => { setFormRows(rows); markDirty() }} />
+                    ) : bodyMode !== 'none' && methodAllowsBody(method) ? (
+                      <textarea
+                        className="wn-input httpapi-body-editor"
+                        value={body}
+                        onChange={(e) => { setBody(e.target.value); markDirty() }}
+                        placeholder={t('httpapi.bodyPlaceholder')}
+                        spellCheck={false}
+                      />
+                    ) : (
+                      <p className="empty-hint">{t('httpapi.bodyDisabled')}</p>
+                    )}
+                  </div>
+                )}
+                {reqTab === 'headers' && (
+                  <HttpKeyValueTable rows={headerRows} onChange={(rows) => { setHeaderRows(rows); markDirty() }} />
+                )}
+                {reqTab === 'cookies' && (
+                  <HttpKeyValueTable rows={cookieRows} onChange={(rows) => { setCookieRows(rows); markDirty() }} />
+                )}
+                {reqTab === 'auth' && (
+                  <div className="httpapi-auth-pane">
+                    <label className="wn-label">{t('httpapi.authType')}</label>
+                    <select
+                      className="wn-input"
+                      value={authMode}
+                      onChange={(e) => { setAuthMode(e.target.value as HttpAuthMode); markDirty() }}
+                    >
+                      <option value="none">{t('httpapi.authNone')}</option>
+                      <option value="bearer">{t('httpapi.authBearer')}</option>
+                    </select>
+                    {authMode === 'bearer' && (
+                      <input
+                        className="wn-input"
+                        value={authToken}
+                        onChange={(e) => { setAuthToken(e.target.value); markDirty() }}
+                        placeholder={t('httpapi.bearerPlaceholder')}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <div
+              className="httpapi-splitter"
+              role="separator"
+              title={t('httpapi.resize')}
+              onMouseDown={onResizeStart}
+            />
+
+            <section className="httpapi-res-pane">
+              <div className="httpapi-res-title-row">
+                <span className="httpapi-res-title">{t('httpapi.responseTitle')}</span>
+                {response && (
+                  <div className="httpapi-res-meta">
+                    {!response.error && (
+                      <span className={`httpapi-status-pill tone-${statusTone(response.statusCode)}`}>
+                        {response.statusCode} {response.status}
+                      </span>
+                    )}
+                    <span>{t('httpapi.elapsed', { ms: response.elapsedMs })}</span>
+                    {response.body && <span>{formatBodySize(response.body)}</span>}
+                  </div>
+                )}
+              </div>
+              <nav className="httpapi-tabs apifox-tabs">
+                {resTabs.map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    className={`httpapi-tab${resTab === tab ? ' is-active' : ''}`}
+                    onClick={() => setResTab(tab)}
+                  >
+                    {t(`httpapi.resTab.${tab}`)}
+                  </button>
+                ))}
+              </nav>
+              <div className="httpapi-res-panel">
+                {!response ? (
+                  <div className="httpapi-response-empty">{t('httpapi.noResponse')}</div>
+                ) : resTab === 'header' ? (
+                  <pre className="httpapi-pre">
+                    {response.headers?.length
+                      ? response.headers.map((h) => `${h.key}: ${h.value}`).join('\n')
+                      : '—'}
+                  </pre>
+                ) : resTab === 'cookie' ? (
+                  <pre className="httpapi-pre">
+                    {response.headers
+                      ?.filter((h) => h.key.toLowerCase() === 'set-cookie')
+                      .map((h) => h.value)
+                      .join('\n') || '—'}
+                  </pre>
+                ) : resTab === 'actual' ? (
+                  <pre className="httpapi-pre">{lastSentCurl || '—'}</pre>
+                ) : (
+                  <pre className="httpapi-pre">{responseBodyDisplay || response.error}</pre>
+                )}
+              </div>
+              {resTab === 'body' && response?.body && (
+                <div className="httpapi-res-toolbar">
+                  <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" onClick={() => setPrettyResponse((p) => !p)}>
+                    {prettyResponse ? t('httpapi.rawView') : t('httpapi.prettyView')}
+                  </button>
                   <button
                     type="button"
                     className="wn-btn wn-btn-xs wn-btn-ghost"
-                    onClick={() => void navigator.clipboard.writeText(response.body).then(() => setStatusMessage(t('httpapi.copied')))}
+                    onClick={() =>
+                      void navigator.clipboard.writeText(response.body).then(() => setStatusMessage(t('httpapi.copied')))
+                    }
                   >
                     {t('httpapi.copyBody')}
                   </button>
-                </>
+                </div>
               )}
-            </div>
-            {!response ? (
-              <div className="pane-empty">{t('httpapi.noResponse')}</div>
-            ) : (
-              <div className="httpapi-response-body">
-                {response.headers?.length > 0 && (
-                  <pre className="httpapi-pre httpapi-headers-pre">
-                    {response.headers.map((h) => `${h.key}: ${h.value}`).join('\n')}
-                  </pre>
-                )}
-                <pre className="httpapi-pre">{response.body || response.error}</pre>
-              </div>
-            )}
+            </section>
           </div>
+
+          {historyOpen && (
+            <>
+              <div className="httpapi-history-backdrop" onClick={() => setHistoryOpen(false)} />
+              <div className="httpapi-history-drawer" onClick={(e) => e.stopPropagation()}>
+                <div className="httpapi-history-drawer-head">
+                  <span>{t('httpapi.recentHistory')}</span>
+                  <button type="button" className="wn-modal-close-btn" onClick={() => setHistoryOpen(false)}>
+                    ×
+                  </button>
+                </div>
+                <ul>
+                  {history.length === 0 ? (
+                    <li className="empty-hint">{t('httpapi.noHistory')}</li>
+                  ) : (
+                    history.map((h) => (
+                      <li key={h.id} onClick={() => applyHistory(h)}>
+                        <span className={`httpapi-status-pill tone-${statusTone(h.statusCode)}`}>{h.statusCode || '—'}</span>
+                        {h.method} {h.name || h.url}
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+            </>
+          )}
         </main>
       </div>
+
+      <HttpEnvModal
+        open={envModalOpen}
+        activeEnvId={activeEnvId}
+        onActiveEnvId={setActiveEnvId}
+        onSaved={() => void refreshEnvs()}
+        onClose={() => {
+          setEnvModalOpen(false)
+          void refreshEnvs()
+        }}
+      />
+
+      {curlOpen && (
+        <div className="wn-modal-backdrop" onClick={() => setCurlOpen(false)}>
+          <div className="wn-modal httpapi-curl-modal" onClick={(e) => e.stopPropagation()} role="dialog">
+            <header className="wn-modal-header wn-modal-header-bar">
+              <h3 className="wn-modal-title">{t('httpapi.importCurl')}</h3>
+              <button
+                type="button"
+                className="wn-modal-close-btn"
+                onClick={() => setCurlOpen(false)}
+                aria-label={t('common.cancel')}
+              >
+                ×
+              </button>
+            </header>
+            <div className="wn-modal-body">
+              <textarea
+                className="wn-input httpapi-curl-input"
+                value={curlText}
+                onChange={(e) => setCurlText(e.target.value)}
+                placeholder={t('httpapi.curlPlaceholder')}
+                spellCheck={false}
+              />
+            </div>
+            <footer className="wn-modal-footer">
+              <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" onClick={() => setCurlOpen(false)}>
+                {t('common.cancel')}
+              </button>
+              <button type="button" className="wn-btn wn-btn-sm httpapi-btn-send" onClick={importCurl}>
+                {t('httpapi.curlApply')}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {ctxMenu && (
+        <HttpApiContextMenu
+          menu={ctxMenu}
+          folders={folders}
+          onClose={() => setCtxMenu(null)}
+          onMoveToFolder={(apiId, folderId) => void moveApiToFolder(apiId, folderId)}
+          onSendToAgent={(item) =>
+            openAgentDraft({ mentions: [mentionHttpRequest(item)], message: t('agent.draftHttp') })
+          }
+          onDuplicate={(item) => {
+            runWithDiscardCheck(() => {
+              loadEditor(item)
+              setActiveId('')
+              setName(`${item.name} (${t('httpapi.copySuffix')})`)
+              markDirty()
+              setStatusMessage(t('httpapi.duplicatedDraft'))
+            })
+          }}
+          onDelete={(item) => setDeleteTarget(item)}
+        />
+      )}
+
+      <ConfirmDialog
+        open={discardOpen}
+        title={t('httpapi.discardTitle')}
+        message={t('httpapi.discardDirty')}
+        confirmLabel={t('httpapi.discardConfirm')}
+        danger
+        onConfirm={confirmDiscard}
+        onCancel={cancelDiscard}
+      />
 
       <ConfirmDialog
         open={deleteTarget != null}
@@ -473,26 +909,6 @@ export function HttpApiWorkbench() {
           })
         }}
         onCancel={() => setDeleteTarget(null)}
-      />
-
-      <ConfirmDialog
-        open={deleteEnvTarget != null}
-        title={t('httpapi.deleteEnvTitle')}
-        message={deleteEnvTarget ? t('httpapi.deleteEnvMsg', { name: deleteEnvTarget.name }) : undefined}
-        confirmLabel={t('common.delete')}
-        danger
-        onConfirm={() => {
-          const item = deleteEnvTarget
-          setDeleteEnvTarget(null)
-          if (!item) return
-          void api.deleteHTTPEnvironment(item.id).then(async () => {
-            if (activeEnvId === item.id) setActiveEnvId('')
-            if (selectedEnvId === item.id) loadEnvEditor(null)
-            await refreshEnvs()
-            setStatusMessage(t('httpapi.envDeleted'))
-          })
-        }}
-        onCancel={() => setDeleteEnvTarget(null)}
       />
     </div>
   )

@@ -124,9 +124,12 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 		return nil
 	}
 	var result workbenchtools.ToolResult
-	if p.ToolName == "execute_sql" {
+	switch p.ToolName {
+	case "execute_sql":
 		result = workbenchtools.ExecuteSQLConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
-	} else {
+	case "execute_http":
+		result = workbenchtools.ExecuteHTTPConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
+	default:
 		result = r.tools.Invoke(r.appCtx, p.ToolName, json.RawMessage(p.ArgsJSON), r.store.GetToolPermissions())
 	}
 	content, _ := json.Marshal(result)
@@ -451,8 +454,14 @@ func formatMentionsSuffix(mentions []model.AgentMentionDO) string {
 			b.WriteString(fmt.Sprintf("- SSH「%s」 hostId=%s\n", m.Label, m.ID))
 		case "database":
 			b.WriteString(fmt.Sprintf("- 数据库「%s」 connectionId=%s\n", m.Label, m.ID))
+		case "docker":
+			b.WriteString(fmt.Sprintf("- Docker 上下文「%s」 contextId=%s\n", m.Label, m.ID))
+		case "log":
+			b.WriteString(fmt.Sprintf("- 日志源「%s」 logSourceId=%s（用 fetch_logs）\n", m.Label, m.ID))
+		case "http":
+			b.WriteString(fmt.Sprintf("- HTTP 请求「%s」 requestId=%s（用 execute_http）\n", m.Label, m.ID))
 		default:
-			b.WriteString(fmt.Sprintf("- %s id=%s\n", m.Label, m.ID))
+			b.WriteString(fmt.Sprintf("- %s「%s」 id=%s\n", m.Kind, m.Label, m.ID))
 		}
 	}
 	return b.String()
@@ -468,6 +477,9 @@ func systemPrompt() string {
 5. 默认 execute_sql 使用 readonly=true；仅当用户明确要求修改数据时才 readonly=false（需用户确认）。
 6. 禁止执行 DROP DATABASE 等危险操作。
 7. 不要输出或猜测密码。回复使用简体中文，可用 Markdown 表格与列表。
-8. 需要图表时用独立代码块：围栏语言为 echarts，内容为合法 ECharts option JSON（折线、柱状、饼图等）。` +
+8. 需要图表时用独立代码块：围栏语言为 echarts，内容为合法 ECharts option JSON（折线、柱状、饼图等）。
+9. 用户要求巡检/报告/存档时：terminal.exec 或 list_containers + get_container_logs / fetch_logs 收集数据 → 总结 → notebook.append_content 写入 Markdown。
+10. Docker：先 list_docker_contexts，再 list_containers；日志排错先 list_log_sources 再 fetch_logs；HTTP 用 list_http_requests / execute_http（GET 可直接调）。
+11. 用户 @ 了 docker/log/http 资源时优先使用对应 ID。` +
 		"\n   示例围栏：\n```echarts\n{\"title\":{\"text\":\"示例\"},\"xAxis\":{\"type\":\"category\",\"data\":[\"A\",\"B\"]},\"yAxis\":{\"type\":\"value\"},\"series\":[{\"type\":\"bar\",\"data\":[3,5]}]}\n```"
 }

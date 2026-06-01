@@ -147,6 +147,14 @@ func (s *Service) GetUI() (model.NotebookUIDO, error) {
 	return ui, nil
 }
 
+// ApplyLayout 应用侧栏分组与笔记树形布局。
+func (s *Service) ApplyLayout(layout model.NotebookLayoutDO) error {
+	if layout.NotesByGroup == nil {
+		layout.NotesByGroup = map[string][]string{}
+	}
+	return s.store.ApplyNotebookLayout(layout)
+}
+
 // SaveUI 保存笔记本 UI 状态。
 func (s *Service) SaveUI(ui model.NotebookUIDO) error {
 	if ui.OpenTabIDs == nil {

@@ -13,7 +13,17 @@ export function AgentUserContent({ content, mentions }: Props) {
         <div className="agent-mention-chips agent-mention-chips-inline">
           {mentions.map((m) => (
             <span key={`${m.kind}-${m.id}`} className={`agent-mention-chip agent-mention-chip-${m.kind}`}>
-              <span className="agent-mention-chip-kind">{m.kind === 'ssh' ? 'SSH' : 'DB'}</span>
+              <span className="agent-mention-chip-kind">
+                {m.kind === 'ssh'
+                  ? 'SSH'
+                  : m.kind === 'docker'
+                    ? 'DK'
+                    : m.kind === 'log'
+                      ? 'LOG'
+                      : m.kind === 'http'
+                        ? 'API'
+                        : 'DB'}
+              </span>
               <span className="agent-mention-chip-label">{m.label}</span>
             </span>
           ))}

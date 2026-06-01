@@ -3,6 +3,7 @@ import { api } from '../../api/client'
 import type { DockerContainer, DockerContext, LogSource, LogSourceType, SSHHost } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconPlus, IconRefresh } from '../../components/Icons'
+import { openAgentDraft, mentionLogSource } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { subscribeLogsChunks } from '../../api/logsEvents'
@@ -61,10 +62,26 @@ export function LogCenterWorkbench() {
   const [followLive, setFollowLive] = useState(false)
   const followStreamId = useRef('')
   const [deleteTarget, setDeleteTarget] = useState<LogSource | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; item: LogSource } | null>(null)
   const [sshHosts, setSSHHosts] = useState<SSHHost[]>([])
   const [dockerContexts, setDockerContexts] = useState<DockerContext[]>([])
   const [containers, setContainers] = useState<DockerContainer[]>([])
   const workspaceLoaded = useRef(false)
+
+  const activeItem = useMemo(
+    () => items.find((i) => i.id === activeId) ?? null,
+    [items, activeId],
+  )
+
+  const sendToAgent = useCallback(
+    (item: LogSource) => {
+      openAgentDraft({
+        mentions: [mentionLogSource(item)],
+        message: t('agent.draftLogs'),
+      })
+    },
+    [t],
+  )
 
   const loadEditor = useCallback((item: LogSource | null) => {
     if (!item) {
@@ -299,6 +316,15 @@ export function LogCenterWorkbench() {
           <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void save()}>
             {t('logs.save')}
           </button>
+          {activeItem && (
+            <button
+              type="button"
+              className="wn-btn wn-btn-sm wn-btn-tool"
+              onClick={() => sendToAgent(activeItem)}
+            >
+              {t('agent.sendToAgent')}
+            </button>
+          )}
           <label className="logs-auto-label">
             <input
               type="checkbox"
@@ -332,7 +358,7 @@ export function LogCenterWorkbench() {
                       onClick={() => selectItem(item)}
                       onContextMenu={(e) => {
                         e.preventDefault()
-                        setDeleteTarget(item)
+                        setCtxMenu({ x: e.clientX, y: e.clientY, item })
                       }}
                     >
                       <div className="conn-meta">
@@ -474,6 +500,36 @@ export function LogCenterWorkbench() {
           </div>
         </main>
       </div>
+
+      {ctxMenu && (
+        <div
+          className="wn-context-menu"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              const item = ctxMenu.item
+              setCtxMenu(null)
+              sendToAgent(item)
+            }}
+          >
+            {t('agent.sendToAgent')}
+          </button>
+          <button
+            type="button"
+            className="wn-context-item wn-context-item-danger"
+            onClick={() => {
+              setDeleteTarget(ctxMenu.item)
+              setCtxMenu(null)
+            }}
+          >
+            {t('common.delete')}
+          </button>
+        </div>
+      )}
 
       <ConfirmDialog
         open={deleteTarget != null}

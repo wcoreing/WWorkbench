@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
-import type { Connection, SSHHost } from '../../api/types'
+import type { Connection, DockerContext, SSHHost } from '../../api/types'
+import { mergeMentions } from './agentMention'
 import { useI18n } from '../../i18n'
 import { AgentMentionPicker } from './AgentMentionPicker'
+import { useAgentStore } from '../../stores/agentStore'
 import {
   findActiveMentionQuery,
   insertMentionToken,
@@ -14,12 +16,13 @@ interface Props {
   busy: boolean
   threadId: string
   autoMentions: AgentMention[]
+  threadMentions: AgentMention[]
   onSend: (text: string, mentions: AgentMention[]) => void
   onStop: () => void
 }
 
-/** AgentInputBar 对话输入区（@ 提及 SSH / 数据库）。 */
-export function AgentInputBar({ busy, threadId, autoMentions, onSend, onStop }: Props) {
+/** AgentInputBar 对话输入区（@ 提及 SSH / 数据库 / Docker）。 */
+export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, onSend, onStop }: Props) {
   const { t } = useI18n()
   const [input, setInput] = useState('')
   const [mentions, setMentions] = useState<AgentMention[]>([])
@@ -29,22 +32,47 @@ export function AgentInputBar({ busy, threadId, autoMentions, onSend, onStop }: 
   const [query, setQuery] = useState('')
   const [hosts, setHosts] = useState<SSHHost[]>([])
   const [connections, setConnections] = useState<Connection[]>([])
+  const [dockerContexts, setDockerContexts] = useState<DockerContext[]>([])
   const [resourcesLoaded, setResourcesLoaded] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const draftTick = useAgentStore((s) => s.draftTick)
+
+  useEffect(() => {
+    if (draftTick === 0) return
+    const { draftInput, draftMentions } = useAgentStore.getState()
+    setInput(draftInput)
+    setMentions(draftMentions)
+    setMenuOpen(false)
+    requestAnimationFrame(() => textareaRef.current?.focus())
+  }, [draftTick])
 
   const loadResources = useCallback(async () => {
     if (resourcesLoaded) return
     try {
-      const [h, c] = await Promise.all([api.listSSHHosts(), api.listConnections()])
+      const [h, c, d] = await Promise.all([
+        api.listSSHHosts(),
+        api.listConnections(),
+        api.listDockerContexts(),
+      ])
       setHosts(h)
       setConnections(c)
+      setDockerContexts(d)
       setResourcesLoaded(true)
     } catch {
       setHosts([])
       setConnections([])
+      setDockerContexts([])
       setResourcesLoaded(true)
     }
   }, [resourcesLoaded])
+
+  const effectiveMentions = useMemo(
+    () => mergeMentions(mentions, threadMentions, autoMentions),
+    [mentions, threadMentions, autoMentions],
+  )
+
+  const runbookMention = effectiveMentions.find((m) => m.kind === 'ssh' || m.kind === 'docker')
+  const canRunbook = Boolean(runbookMention)
 
   const menuItems = useMemo((): AgentMentionMenuItem[] => {
     const q = query.trim().toLowerCase()
@@ -69,8 +97,16 @@ export function AgentInputBar({ busy, threadId, autoMentions, onSend, onStop }: 
         label: c.name?.trim() || c.host,
         sublabel: `${c.dbType} · ${c.host}:${c.port}`,
       }))
-    return [...sshItems, ...dbItems].slice(0, 24)
-  }, [hosts, connections, query])
+    const dockerItems: AgentMentionMenuItem[] = dockerContexts
+      .filter((ctx) => match(ctx.name, ctx.endpoint))
+      .map((ctx) => ({
+        kind: 'docker' as const,
+        id: ctx.id,
+        label: ctx.name,
+        sublabel: ctx.kind === 'local' ? 'local' : ctx.endpoint,
+      }))
+    return [...sshItems, ...dbItems, ...dockerItems].slice(0, 28)
+  }, [hosts, connections, dockerContexts, query])
 
   const syncMentionMenu = useCallback(
     (text: string, cursor: number) => {
@@ -139,7 +175,7 @@ export function AgentInputBar({ busy, threadId, autoMentions, onSend, onStop }: 
   const send = () => {
     const text = input.trim()
     if (!text || busy) return
-    onSend(text, mentions)
+    onSend(text, mergeMentions(mentions, threadMentions))
     setInput('')
     setMentions([])
     setMenuOpen(false)
@@ -154,12 +190,33 @@ export function AgentInputBar({ busy, threadId, autoMentions, onSend, onStop }: 
 
   return (
     <footer className="agent-input-bar">
+      {threadMentions.length > 0 && (
+        <div className="agent-mention-chips agent-mention-chips-thread">
+          <span className="agent-thread-mentions-label">{t('agent.threadMentions')}</span>
+          {threadMentions.map((m) => (
+            <span key={`t-${m.kind}-${m.id}`} className={`agent-mention-chip agent-mention-chip-${m.kind}`}>
+              <span className="agent-mention-chip-kind">
+                {m.kind === 'ssh'
+                  ? 'SSH'
+                  : m.kind === 'docker'
+                    ? 'DK'
+                    : m.kind === 'log'
+                      ? 'LOG'
+                      : m.kind === 'http'
+                        ? 'API'
+                        : 'DB'}
+              </span>
+              <span className="agent-mention-chip-label">{m.label}</span>
+            </span>
+          ))}
+        </div>
+      )}
       {pendingAuto.length > 0 && (
         <p className="agent-auto-hint">
           {t('agent.attachOnSend')}:{' '}
           {pendingAuto.map((m) => (
             <span key={`${m.kind}-${m.id}`} className="agent-auto-hint-item">
-              {m.kind === 'ssh' ? 'SSH' : 'DB'} {m.label}
+              {m.kind === 'ssh' ? 'SSH' : m.kind === 'docker' ? 'DK' : 'DB'} {m.label}
             </span>
           ))}
         </p>
@@ -168,7 +225,17 @@ export function AgentInputBar({ busy, threadId, autoMentions, onSend, onStop }: 
         <div className="agent-mention-chips">
           {mentions.map((m) => (
             <span key={`${m.kind}-${m.id}`} className={`agent-mention-chip agent-mention-chip-${m.kind}`}>
-              <span className="agent-mention-chip-kind">{m.kind === 'ssh' ? 'SSH' : 'DB'}</span>
+              <span className="agent-mention-chip-kind">
+                {m.kind === 'ssh'
+                  ? 'SSH'
+                  : m.kind === 'docker'
+                    ? 'DK'
+                    : m.kind === 'log'
+                      ? 'LOG'
+                      : m.kind === 'http'
+                        ? 'API'
+                        : 'DB'}
+              </span>
               <span className="agent-mention-chip-label">{m.label}</span>
               <button
                 type="button"
@@ -245,6 +312,24 @@ export function AgentInputBar({ busy, threadId, autoMentions, onSend, onStop }: 
             onClick={() => addMention(autoMentions[0])}
           >
             {t('agent.attachCurrent')}
+          </button>
+        )}
+        {canRunbook && (
+          <button
+            type="button"
+            className="wn-btn wn-btn-xs wn-btn-ghost"
+            disabled={busy}
+            onClick={() => {
+              const prompt =
+                runbookMention?.kind === 'docker'
+                  ? t('agent.runbookPromptDocker')
+                  : t('agent.runbookPrompt')
+              onSend(prompt, mergeMentions(mentions, threadMentions))
+              setInput('')
+              setMenuOpen(false)
+            }}
+          >
+            {t('agent.runbook')}
           </button>
         )}
         <div className="agent-input-actions-main">

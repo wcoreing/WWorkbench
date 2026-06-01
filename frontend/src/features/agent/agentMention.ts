@@ -1,5 +1,5 @@
 /** AgentMentionKind @ 资源类型。 */
-export type AgentMentionKind = 'ssh' | 'database'
+export type AgentMentionKind = 'ssh' | 'database' | 'docker' | 'log' | 'http'
 
 /** AgentMention 用户 @ 选中的资源。 */
 export interface AgentMention {
@@ -101,7 +101,14 @@ export function parseMentionsFromEvent(raw: unknown): AgentMention[] {
   for (const item of raw) {
     if (!item || typeof item !== 'object') continue
     const o = item as Record<string, unknown>
-    const kind = o.kind === 'ssh' || o.kind === 'database' ? o.kind : null
+    const kind =
+      o.kind === 'ssh' ||
+      o.kind === 'database' ||
+      o.kind === 'docker' ||
+      o.kind === 'log' ||
+      o.kind === 'http'
+        ? o.kind
+        : null
     const id = String(o.id ?? '')
     const label = String(o.label ?? '')
     if (!kind || !id) continue

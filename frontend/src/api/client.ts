@@ -13,6 +13,7 @@ import type {
   TerminalSessionInfo,
 } from './types'
 import { ApiCallError } from './errors'
+import { normalizeHTTPFolder, normalizeHTTPSavedRequest } from './httpNormalize'
 import { model } from '../../wailsjs/go/models'
 
 // Wails 绑定在 generate 后可用
@@ -105,8 +106,14 @@ import {
   StopSSHForward,
   ListHTTPRequests,
   SaveHTTPRequest,
+  MoveHTTPRequestToFolder,
   DeleteHTTPRequest,
   ExecuteHTTPRequest,
+  ListHTTPFolders,
+  SaveHTTPFolder,
+  DeleteHTTPFolder,
+  ApplyHTTPApiTreeLayout,
+  BatchDeleteHTTP,
   ListHTTPEnvironments,
   SaveHTTPEnvironment,
   DeleteHTTPEnvironment,
@@ -130,6 +137,7 @@ import {
   TestAgentConnection,
   ListAgentMessages,
   ListAgentThreads,
+  GetAgentThread,
   ListAppSettings,
   SetAppSetting,
   LoadWorkspace,
@@ -151,6 +159,7 @@ import {
   ListNotebookGroups,
   SaveNotebookGroup,
   DeleteNotebookGroup,
+  ApplyNotebookLayout,
   ListNotes,
   SearchNotes,
   GetNote,
@@ -460,10 +469,21 @@ export const api = {
   listActiveSSHForwards: async () => asArray(await unwrap(ListActiveSSHForwards())),
   startSSHForward: async (req: model.SSHForwardStartDO) => unwrap(StartSSHForward(req)),
   stopSSHForward: (id: string) => unwrap(StopSSHForward(id)),
-  listHTTPRequests: async () => asArray(await unwrap(ListHTTPRequests())),
+  listHTTPRequests: async () =>
+    asArray(await unwrap(ListHTTPRequests())).map((r) =>
+      normalizeHTTPSavedRequest(r),
+    ),
   saveHTTPRequest: (r: model.HTTPSavedRequestDO) => unwrap(SaveHTTPRequest(r)),
+  moveHTTPRequestToFolder: (id: string, folderId: string) =>
+    unwrap(MoveHTTPRequestToFolder(id, folderId)),
   deleteHTTPRequest: (id: string) => unwrap(DeleteHTTPRequest(id)),
   executeHTTPRequest: async (req: model.HTTPExecuteRequestDO) => unwrap(ExecuteHTTPRequest(req)),
+  listHTTPFolders: async () =>
+    asArray(await unwrap(ListHTTPFolders())).map((f) => normalizeHTTPFolder(f)),
+  saveHTTPFolder: (f: model.HTTPFolderDO) => unwrap(SaveHTTPFolder(f)),
+  deleteHTTPFolder: (id: string) => unwrap(DeleteHTTPFolder(id)),
+  applyHTTPApiTreeLayout: (layout: model.HTTPApiTreeLayoutDO) => unwrap(ApplyHTTPApiTreeLayout(layout)),
+  batchDeleteHTTP: (folderIds: string[], requestIds: string[]) => unwrap(BatchDeleteHTTP(folderIds, requestIds)),
   listHTTPEnvironments: async () => asArray(await unwrap(ListHTTPEnvironments())),
   saveHTTPEnvironment: (e: model.HTTPEnvironmentDO) => unwrap(SaveHTTPEnvironment(e)),
   deleteHTTPEnvironment: (id: string) => unwrap(DeleteHTTPEnvironment(id)),
@@ -507,6 +527,7 @@ export const api = {
   getEnvScanPath: async () => (await unwrap(GetEnvScanPath())) ?? '',
   listNotebookGroups: async () => asArray(await unwrap(ListNotebookGroups())),
   saveNotebookGroup: (g: model.NotebookGroupDO) => unwrap(SaveNotebookGroup(g)),
+  applyNotebookLayout: (layout: model.NotebookLayoutDO) => unwrap(ApplyNotebookLayout(layout)),
   deleteNotebookGroup: (id: string) => unwrap(DeleteNotebookGroup(id)),
   listNotes: async () => asArray(await unwrap(ListNotes())),
   searchNotes: async (keyword: string) => asArray(await unwrap(SearchNotes(keyword))),
@@ -529,4 +550,5 @@ export const api = {
   agentConfirm: (pendingId: string, approved: boolean) => unwrap(AgentConfirm(pendingId, approved)),
   listAgentMessages: async (threadId: string) => asArray(await unwrap(ListAgentMessages(threadId))),
   listAgentThreads: async () => asArray(await unwrap(ListAgentThreads())),
+  getAgentThread: async (threadId: string) => unwrap(GetAgentThread(threadId)),
 }

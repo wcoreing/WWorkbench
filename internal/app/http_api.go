@@ -31,17 +31,31 @@ func (s *Service) SaveHTTPRequest(r model.HTTPSavedRequestDO) ApiResult[model.HT
 	if r.Method == "" {
 		r.Method = "GET"
 	}
+	if r.ParamsJSON == "" {
+		r.ParamsJSON = "[]"
+	}
 	if r.HeadersJSON == "" {
 		r.HeadersJSON = "[]"
 	}
-	if err := s.store.SaveHTTPRequest(r); err != nil {
-		return ErrResult[model.HTTPSavedRequestDO](err)
+	if r.CookiesJSON == "" {
+		r.CookiesJSON = "[]"
 	}
-	saved, err := s.store.GetHTTPRequest(r.ID)
+	saved, err := s.store.SaveHTTPRequest(r)
 	if err != nil {
 		return ErrResult[model.HTTPSavedRequestDO](err)
 	}
-	return OkResult(*saved)
+	return OkResult(saved)
+}
+
+// MoveHTTPRequestToFolder 将接口移入目录（folderID 为空表示根目录）。
+func (s *Service) MoveHTTPRequestToFolder(id, folderID string) ApiResult[bool] {
+	if strings.TrimSpace(id) == "" {
+		return ErrResult[bool](errno.New(errno.CodeInvalidArg, "缺少接口 ID", ""))
+	}
+	if err := s.store.MoveHTTPRequestToFolder(id, folderID); err != nil {
+		return ErrResult[bool](err)
+	}
+	return OkResult(true)
 }
 
 // DeleteHTTPRequest 删除 HTTP 请求模板。

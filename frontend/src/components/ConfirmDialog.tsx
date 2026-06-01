@@ -1,4 +1,5 @@
 import { useI18n } from '../i18n'
+import { ModalPortal } from './ModalPortal'
 import './ui.css'
 
 interface ConfirmDialogProps {
@@ -27,7 +28,8 @@ export function ConfirmDialog({
   if (!open) return null
 
   return (
-    <div className="wn-modal-backdrop ssh-trust-backdrop" onClick={onCancel}>
+    <ModalPortal>
+    <div className="wn-modal-backdrop wn-modal-backdrop-top ssh-trust-backdrop" onClick={onCancel}>
       <div
         className="wn-modal wn-modal-compact ssh-trust-dialog"
         onClick={(e) => e.stopPropagation()}
@@ -54,5 +56,6 @@ export function ConfirmDialog({
         </footer>
       </div>
     </div>
+    </ModalPortal>
   )
 }

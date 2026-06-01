@@ -230,6 +230,30 @@ CREATE TABLE IF NOT EXISTS notes (
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移笔记本表失败", err)
 	}
+	if err := s.ensureColumn("http_requests", "params_json", "TEXT NOT NULL DEFAULT '[]'"); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移 HTTP 请求 params_json 失败", err)
+	}
+	if err := s.ensureColumn("http_requests", "notes", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移 HTTP 请求 notes 失败", err)
+	}
+	if err := s.ensureColumn("http_requests", "folder_id", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移 HTTP 请求 folder_id 失败", err)
+	}
+	if err := s.ensureColumn("http_requests", "cookies_json", "TEXT NOT NULL DEFAULT '[]'"); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移 HTTP 请求 cookies_json 失败", err)
+	}
+	_, err = s.db.Exec(`
+CREATE TABLE IF NOT EXISTS http_folders (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  parent_id TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);`)
+	if err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移 HTTP 目录表失败", err)
+	}
 	return nil
 }
 

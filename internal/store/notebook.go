@@ -178,6 +178,45 @@ func (s *Store) SaveNote(n model.NoteDO) error {
 	return nil
 }
 
+// ApplyNotebookLayout 批量应用分组顺序与笔记归属/排序。
+func (s *Store) ApplyNotebookLayout(layout model.NotebookLayoutDO) error {
+	if len(layout.GroupOrder) == 0 {
+		return errno.New(errno.CodeInvalidArg, "分组顺序不能为空", "")
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "保存笔记本布局失败", err)
+	}
+	defer tx.Rollback()
+	now := time.Now().Unix()
+	for i, gid := range layout.GroupOrder {
+		res, err := tx.Exec(`UPDATE notebook_groups SET sort_order = ?, updated_at = ? WHERE id = ?`, i, now, gid)
+		if err != nil {
+			return errno.Wrap(errno.CodeStoreFailed, "保存笔记本布局失败", err)
+		}
+		n, _ := res.RowsAffected()
+		if n == 0 {
+			return errno.New(errno.CodeNotFound, "笔记本分组不存在", gid)
+		}
+	}
+	for gid, noteIDs := range layout.NotesByGroup {
+		for i, nid := range noteIDs {
+			res, err := tx.Exec(`UPDATE notes SET group_id = ?, sort_order = ?, updated_at = ? WHERE id = ?`, gid, i, now, nid)
+			if err != nil {
+				return errno.Wrap(errno.CodeStoreFailed, "保存笔记本布局失败", err)
+			}
+			n, _ := res.RowsAffected()
+			if n == 0 {
+				return errno.New(errno.CodeNotFound, "笔记不存在", nid)
+			}
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "保存笔记本布局失败", err)
+	}
+	return nil
+}
+
 // DeleteNote 删除笔记。
 func (s *Store) DeleteNote(id string) error {
 	res, err := s.db.Exec(`DELETE FROM notes WHERE id = ?`, id)

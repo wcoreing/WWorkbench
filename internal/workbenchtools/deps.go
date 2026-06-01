@@ -2,7 +2,9 @@ package workbenchtools
 
 import (
 	"WNavicat/internal/conn"
+	dockersvc "WNavicat/internal/docker"
 	"WNavicat/internal/meta"
+	"WNavicat/internal/notebook"
 	"WNavicat/internal/query"
 	"WNavicat/internal/session"
 	"WNavicat/internal/store"
@@ -17,5 +19,7 @@ type Deps struct {
 	Meta      *meta.Service
 	Queries   *query.Service
 	Store     *store.Store
+	Notebook  *notebook.Service
+	Docker    *dockersvc.Manager
 	UIActions *UIActionBus
 }

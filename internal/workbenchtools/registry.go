@@ -247,4 +247,98 @@ func (r *Registry) registerBuiltins() {
 		},
 		Handler: toolExecuteSQL,
 	})
+	r.add(ToolDef{
+		Name:        "notebook.append_content",
+		Description: "将 Markdown 内容写入笔记本：新建笔记或追加到 appendToNoteId。巡检/总结后应调用此工具留存报告。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"title":          map[string]interface{}{"type": "string", "description": "新笔记标题（追加时可省略）"},
+				"content":        map[string]interface{}{"type": "string", "description": "Markdown 正文"},
+				"sshHostId":      map[string]interface{}{"type": "string", "description": "关联 SSH 主机 ID（可选）"},
+				"connectionId":   map[string]interface{}{"type": "string", "description": "关联数据库连接 ID（可选）"},
+				"appendToNoteId": map[string]interface{}{"type": "string", "description": "追加到已有笔记 ID（可选）"},
+			},
+			"required": []interface{}{"content"},
+		},
+		Handler: toolNotebookAppend,
+	})
+	r.add(ToolDef{
+		Name:        "list_docker_contexts",
+		Description: "列出 Docker 上下文（含本地 local 与 SSH 远端）。",
+		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
+		Handler:     toolListDockerContexts,
+	})
+	r.add(ToolDef{
+		Name:        "list_containers",
+		Description: "列出指定 Docker 上下文下的容器（只读）。contextId 省略或为 local 表示本机。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"contextId": map[string]interface{}{"type": "string", "description": "Docker 上下文 ID，默认 local"},
+			},
+		},
+		Handler: toolListContainers,
+	})
+	r.add(ToolDef{
+		Name:        "get_container_logs",
+		Description: "读取容器日志尾部（只读），用于排查错误与巡检。tail 默认 200，最大 500。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"contextId":   map[string]interface{}{"type": "string"},
+				"containerId": map[string]interface{}{"type": "string"},
+				"tail":        map[string]interface{}{"type": "integer"},
+			},
+			"required": []interface{}{"containerId"},
+		},
+		Handler: toolGetContainerLogs,
+	})
+	r.add(ToolDef{
+		Name:        "list_log_sources",
+		Description: "列出已保存的日志源（本机文件、SSH 文件、Docker 容器、Compose）。",
+		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
+		Handler:     toolListLogSources,
+	})
+	r.add(ToolDef{
+		Name:        "fetch_logs",
+		Description: "按 logSourceId 拉取日志尾部（只读）。需先用 list_log_sources 获取 ID。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"logSourceId": map[string]interface{}{"type": "string"},
+				"tail":        map[string]interface{}{"type": "integer", "description": "行数，默认用源配置，最大 500"},
+			},
+			"required": []interface{}{"logSourceId"},
+		},
+		Handler: toolFetchLogs,
+	})
+	r.add(ToolDef{
+		Name:        "list_http_requests",
+		Description: "列出已保存的 HTTP 请求模板（方法、URL，不含敏感头）。",
+		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
+		Handler:     toolListHTTPRequests,
+	})
+	r.add(ToolDef{
+		Name:        "list_http_environments",
+		Description: "列出 HTTP 环境变量预设（用于 {{var}} 替换）。",
+		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
+		Handler:     toolListHTTPEnvironments,
+	})
+	r.add(ToolDef{
+		Name:        "execute_http",
+		Description: "执行 HTTP 请求。GET/HEAD 直接执行；POST/PUT/PATCH/DELETE 等需用户确认。可用 requestId 引用已保存模板。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"requestId": map[string]interface{}{"type": "string", "description": "已保存请求 ID"},
+				"method":    map[string]interface{}{"type": "string"},
+				"url":       map[string]interface{}{"type": "string"},
+				"body":      map[string]interface{}{"type": "string"},
+				"envId":     map[string]interface{}{"type": "string", "description": "环境变量预设 ID"},
+				"timeoutMs": map[string]interface{}{"type": "integer"},
+			},
+		},
+		Handler: toolExecuteHTTP,
+	})
 }

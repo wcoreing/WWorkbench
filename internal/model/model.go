@@ -480,17 +480,36 @@ type LogFetchResultDO struct {
 	Content string `json:"content"`
 }
 
+// HTTPFolderDO HTTP 接口目录（Apifox 式分组）。
+type HTTPFolderDO struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	ParentID  string `json:"parentId"`
+	SortOrder int    `json:"sortOrder"`
+	CreatedAt int64  `json:"createdAt"`
+	UpdatedAt int64  `json:"updatedAt"`
+}
+
 // HTTPSavedRequestDO 已保存的 HTTP 请求模板。
 type HTTPSavedRequestDO struct {
 	ID          string `json:"id"`
+	FolderID    string `json:"folderId"`
 	Name        string `json:"name"`
 	Method      string `json:"method"`
 	URL         string `json:"url"`
+	ParamsJSON  string `json:"paramsJson"`
 	HeadersJSON string `json:"headersJson"`
+	CookiesJSON string `json:"cookiesJson"`
 	Body        string `json:"body"`
+	Notes       string `json:"notes"`
 	SortOrder   int    `json:"sortOrder"`
 	CreatedAt   int64  `json:"createdAt"`
 	UpdatedAt   int64  `json:"updatedAt"`
+}
+
+// HTTPApiTreeLayoutDO HTTP 侧栏树布局（各父级下目录与接口的混排顺序）。
+type HTTPApiTreeLayoutDO struct {
+	ChildrenByParent map[string][]string `json:"childrenByParent"`
 }
 
 // ComposeServiceDO Compose 服务/容器状态。
@@ -640,6 +659,12 @@ type NotebookUIDO struct {
 	ActiveTabID string   `json:"activeTabId"`
 }
 
+// NotebookLayoutDO 笔记本侧栏树形布局（分组顺序与各组内笔记顺序）。
+type NotebookLayoutDO struct {
+	GroupOrder   []string            `json:"groupOrder"`
+	NotesByGroup map[string][]string `json:"notesByGroup"`
+}
+
 // AgentCapabilityDO 单项 AI 能力（含开关状态）。
 type AgentCapabilityDO struct {
 	Name         string `json:"name"`
@@ -735,4 +760,12 @@ type AgentThreadDO struct {
 	ID        string `json:"id"`
 	Title     string `json:"title"`
 	UpdatedAt int64  `json:"updatedAt"`
+}
+
+// AgentThreadDetailDO 对话线程详情（含上下文）。
+type AgentThreadDetailDO struct {
+	ID        string         `json:"id"`
+	Title     string         `json:"title"`
+	UpdatedAt int64          `json:"updatedAt"`
+	Context   AgentContextDO `json:"context"`
 }
