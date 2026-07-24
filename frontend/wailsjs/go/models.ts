@@ -2396,6 +2396,22 @@ export namespace app {
 	        this.rows = source["rows"];
 	    }
 	}
+	export class ExportExcelRequest {
+	    fileName: string;
+	    headers: string[];
+	    rows: string[][];
+	
+	    static createFrom(source: any = {}) {
+	        return new ExportExcelRequest(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.fileName = source["fileName"];
+	        this.headers = source["headers"];
+	        this.rows = source["rows"];
+	    }
+	}
 
 }
 

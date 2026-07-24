@@ -78,6 +78,10 @@ export function ComposeUp(arg1, arg2) {
   return window['go']['app']['Service']['ComposeUp'](arg1, arg2);
 }
 
+export function CreateDatabase(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['Service']['CreateDatabase'](arg1, arg2, arg3, arg4);
+}
+
 export function DeleteConnection(arg1) {
   return window['go']['app']['Service']['DeleteConnection'](arg1);
 }
@@ -174,8 +178,16 @@ export function ExportConnectionsToFile(arg1) {
   return window['go']['app']['Service']['ExportConnectionsToFile'](arg1);
 }
 
+export function ExportExcel(arg1) {
+  return window['go']['app']['Service']['ExportExcel'](arg1);
+}
+
 export function ExportNote(arg1) {
   return window['go']['app']['Service']['ExportNote'](arg1);
+}
+
+export function ExportTableExcel(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['app']['Service']['ExportTableExcel'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function ExportTableInsertSQL(arg1, arg2, arg3, arg4) {
@@ -308,6 +320,10 @@ export function ListConnections() {
 
 export function ListContainers(arg1) {
   return window['go']['app']['Service']['ListContainers'](arg1);
+}
+
+export function ListDatabaseObjects(arg1, arg2) {
+  return window['go']['app']['Service']['ListDatabaseObjects'](arg1, arg2);
 }
 
 export function ListDockerContexts() {

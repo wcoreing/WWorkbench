@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ColumnMeta, ObjectTreeNode } from '../../api/types'
 import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
+import { isMysqlSystemDatabase } from './mysqlSystemDb'
 import '../../components/ui.css'
 
 interface ContextMenuState {
@@ -15,6 +16,7 @@ interface Props {
   nodes: ObjectTreeNode[]
   filter: string
   onTableDoubleClick: (database: string, table: string) => void
+  onDatabaseSelect?: (database: string) => void
   onShowDDL: (database: string, table: string) => void
   onShowIndexes: (database: string, table: string) => void
   onNewTable: (database: string) => void
@@ -22,16 +24,19 @@ interface Props {
   onTruncateTable: (database: string, table: string) => void
   onDropTable: (database: string, table: string) => void
   onExportInsert: (database: string, table: string) => void
+  onImportSQL?: (database: string) => void
+  onCreateDatabase?: () => void
   tableDesign?: boolean
   isRedis?: boolean
 }
 
-/** ObjectTree 数据库对象树（支持懒加载列、右键菜单、筛选）。 */
+/** ObjectTree 数据库对象树（库/表/列均懒加载）。 */
 export function ObjectTree({
   sessionId,
   nodes,
   filter,
   onTableDoubleClick,
+  onDatabaseSelect,
   onShowDDL,
   onShowIndexes,
   onNewTable,
@@ -39,14 +44,23 @@ export function ObjectTree({
   onTruncateTable,
   onDropTable,
   onExportInsert,
+  onImportSQL,
+  onCreateDatabase,
   tableDesign = true,
   isRedis = false,
 }: Props) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [databaseCache, setDatabaseCache] = useState<Record<string, ObjectTreeNode[]>>({})
   const [columnCache, setColumnCache] = useState<Record<string, ObjectTreeNode[]>>({})
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [menu, setMenu] = useState<ContextMenuState | null>(null)
+
+  useEffect(() => {
+    setExpanded(new Set())
+    setDatabaseCache({})
+    setColumnCache({})
+  }, [sessionId, nodes])
 
   useEffect(() => {
     const close = () => setMenu(null)
@@ -54,16 +68,37 @@ export function ObjectTree({
     return () => window.removeEventListener('click', close)
   }, [])
 
-  const filteredNodes = useMemo(() => filterTree(nodes, filter.trim().toLowerCase()), [nodes, filter])
+  const filteredNodes = useMemo(
+    () => filterTree(nodes, filter.trim().toLowerCase(), databaseCache),
+    [nodes, filter, databaseCache]
+  )
 
   /** treeHint 节点悬停提示。 */
   const treeHint = useCallback(
     (node: ObjectTreeNode) => {
+      if (node.nodeType === 'database') return t('objectTree.databaseHint')
       if (node.nodeType === 'table') return t('objectTree.tableHint')
       if (node.nodeType === 'view') return t('objectTree.viewHint')
       return node.label
     },
     [t]
+  )
+
+  /** loadDatabaseObjects 懒加载库内表/视图。 */
+  const loadDatabaseObjects = useCallback(
+    async (node: ObjectTreeNode) => {
+      if (!node.database || databaseCache[node.id]) return
+      setLoadingId(node.id)
+      try {
+        const children = await api.listDatabaseObjects(sessionId, node.database)
+        setDatabaseCache((prev) => ({ ...prev, [node.id]: children }))
+      } catch {
+        setDatabaseCache((prev) => ({ ...prev, [node.id]: [] }))
+      } finally {
+        setLoadingId(null)
+      }
+    },
+    [sessionId, databaseCache]
   )
 
   /** loadColumns 懒加载表/视图列节点。 */
@@ -93,14 +128,19 @@ export function ObjectTree({
   /** toggleExpand 展开/折叠节点。 */
   const toggleExpand = async (node: ObjectTreeNode, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (node.nodeType !== 'table' && node.nodeType !== 'view') return
+    const isDatabase = node.nodeType === 'database'
+    const isTableOrView = node.nodeType === 'table' || node.nodeType === 'view'
+    if (!isDatabase && !isTableOrView) return
+
     const next = new Set(expanded)
     if (next.has(node.id)) {
       next.delete(node.id)
       setExpanded(next)
       return
     }
-    if (!columnCache[node.id]) {
+    if (isDatabase && !databaseCache[node.id]) {
+      await loadDatabaseObjects(node)
+    } else if (isTableOrView && !columnCache[node.id]) {
       await loadColumns(node)
     }
     next.add(node.id)
@@ -130,18 +170,29 @@ export function ObjectTree({
   }
 
   const renderNode = (node: ObjectTreeNode, depth = 0) => {
-    const expandable = node.nodeType === 'table' || node.nodeType === 'view'
+    const isDatabase = node.nodeType === 'database'
+    const isTableOrView = node.nodeType === 'table' || node.nodeType === 'view'
+    const expandable = isDatabase || isTableOrView
     const isOpen = expanded.has(node.id)
-    const children = expandable ? columnCache[node.id] ?? [] : node.children ?? []
-    const showChildren = expandable ? isOpen : (node.children?.length ?? 0) > 0
+    const children = isTableOrView
+      ? (columnCache[node.id] ?? [])
+      : isDatabase
+        ? (databaseCache[node.id] ?? [])
+        : (node.children ?? [])
+    const showChildren = expandable && isOpen
 
     return (
       <li key={node.id}>
         <div
-          className={`wn-tree-item ${node.nodeType}`}
+          className={`wn-tree-item ${node.nodeType}${isDatabase && node.database ? ' selectable' : ''}`}
           style={{ paddingLeft: 6 + depth * 16 }}
+          onClick={() => {
+            if (isDatabase && node.database && onDatabaseSelect) {
+              onDatabaseSelect(node.database)
+            }
+          }}
           onDoubleClick={() => {
-            if ((node.nodeType === 'table' || node.nodeType === 'view') && node.database && node.table) {
+            if (isTableOrView && node.database && node.table) {
               onTableDoubleClick(node.database, node.table)
             }
           }}
@@ -160,11 +211,20 @@ export function ObjectTree({
           ) : (
             <span className="tree-expand tree-expand-placeholder" />
           )}
-          <span className="tree-icon">{treeIcon(node.nodeType)}</span>
+          <span className="tree-icon">{treeIcon(node.nodeType, node.label)}</span>
           <span className="tree-label">{node.label}</span>
+          {isDatabase && isMysqlSystemDatabase(node.label) && (
+            <span className="tree-tag">{t('database.systemDatabase')}</span>
+          )}
         </div>
-        {showChildren && children.length > 0 && (
-          <ul className="wn-tree">{children.map((c) => renderNode(c, depth + 1))}</ul>
+        {showChildren && (
+          <ul className="wn-tree">
+            {children.length > 0 ? (
+              children.map((c) => renderNode(c, depth + 1))
+            ) : (
+              <li className="tree-empty-item">{t('objectTree.emptyDatabase')}</li>
+            )}
+          </ul>
         )}
       </li>
     )
@@ -193,6 +253,18 @@ export function ObjectTree({
               }}
             >
               {t('objectTree.newTable')}
+            </button>
+          )}
+          {onImportSQL && menu.node.nodeType === 'database' && menu.node.database && (
+            <button
+              type="button"
+              className="wn-context-item"
+              onClick={() => {
+                onImportSQL(menu.node.database!)
+                setMenu(null)
+              }}
+            >
+              {t('objectTree.importSql')}
             </button>
           )}
           {(menu.node.nodeType === 'table' || menu.node.nodeType === 'view') && (
@@ -292,25 +364,29 @@ export function ObjectTree({
   )
 }
 
-/** filterTree 按名称筛选库表视图。 */
-function filterTree(nodes: ObjectTreeNode[], keyword: string): ObjectTreeNode[] {
+/** filterTree 按名称筛选库表视图（仅匹配已加载的表）。 */
+function filterTree(
+  nodes: ObjectTreeNode[],
+  keyword: string,
+  databaseCache: Record<string, ObjectTreeNode[]>
+): ObjectTreeNode[] {
   if (!keyword) return nodes
   return nodes
     .map((db) => {
-      const children = (db.children ?? []).filter((c) => c.label.toLowerCase().includes(keyword))
+      const cached = databaseCache[db.id] ?? []
+      const children = cached.filter((c) => c.label.toLowerCase().includes(keyword))
       if (db.label.toLowerCase().includes(keyword) || children.length > 0) {
-        return { ...db, children: children.length ? children : db.children }
+        return { ...db, children: children.length ? children : undefined }
       }
       return null
     })
     .filter(Boolean) as ObjectTreeNode[]
 }
 
-function treeIcon(type: string) {
-  if (type === 'database') return '◆'
+function treeIcon(type: string, label?: string) {
+  if (type === 'database') return label && isMysqlSystemDatabase(label) ? '⚙' : '◆'
   if (type === 'table') return '▤'
   if (type === 'view') return '◇'
   if (type === 'column') return '│'
   return '○'
 }
-

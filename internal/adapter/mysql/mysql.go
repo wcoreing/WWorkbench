@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -57,7 +58,7 @@ func (a *Adapter) Ping(ctx context.Context, db *sql.DB) error {
 	return nil
 }
 
-// ListDatabases 列出数据库。
+// ListDatabases 列出全部数据库（含系统库，用户库优先排序）。
 func (a *Adapter) ListDatabases(ctx context.Context, db *sql.DB) ([]string, error) {
 	rows, err := db.QueryContext(ctx, "SHOW DATABASES")
 	if err != nil {
@@ -70,12 +71,31 @@ func (a *Adapter) ListDatabases(ctx context.Context, db *sql.DB) ([]string, erro
 		if err := rows.Scan(&name); err != nil {
 			return nil, err
 		}
-		if name == "information_schema" || name == "performance_schema" || name == "mysql" || name == "sys" {
-			continue
-		}
 		list = append(list, name)
 	}
+	sortDatabaseNames(list)
 	return list, nil
+}
+
+// sortDatabaseNames 用户库在前，系统库在后，同组按名称排序。
+func sortDatabaseNames(list []string) {
+	sort.SliceStable(list, func(i, j int) bool {
+		si, sj := isSystemDatabase(list[i]), isSystemDatabase(list[j])
+		if si != sj {
+			return !si
+		}
+		return strings.ToLower(list[i]) < strings.ToLower(list[j])
+	})
+}
+
+// isSystemDatabase 判断 MySQL 系统库。
+func isSystemDatabase(name string) bool {
+	switch strings.ToLower(name) {
+	case "mysql", "information_schema", "performance_schema", "sys":
+		return true
+	default:
+		return false
+	}
 }
 
 // ListTables 列出表。

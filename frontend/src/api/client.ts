@@ -10,6 +10,7 @@ import type {
   TableDataPage,
   TableDataQuery,
   TableRow,
+  ObjectTreeNode,
   TerminalSessionInfo,
 } from './types'
 import { ApiCallError } from './errors'
@@ -27,6 +28,7 @@ import {
   OpenSession,
   CloseSession,
   GetObjectTree,
+  ListDatabaseObjects,
   ListColumns,
   GetTableDDL,
   ListIndexes,
@@ -36,6 +38,8 @@ import {
   ApplyTableMutations,
   ListQueryHistory,
   ExportCSV,
+  ExportExcel,
+  ExportTableExcel,
   SetDatabase,
   ListSSHHosts,
   GetSSHHost,
@@ -72,6 +76,7 @@ import {
   ExportConnectionsToFile,
   ImportConnectionsFromFile,
   ExecuteSQLFile,
+  CreateDatabase,
   ExportTableInsertSQL,
   EnsureSSHHostFromConnection,
   ListDockerContexts,
@@ -307,6 +312,8 @@ export const api = {
     unwrap(OpenSession(connectionId, database)),
   closeSession: (sessionId: string) => unwrap(CloseSession(sessionId)),
   getObjectTree: async (sessionId: string) => asArray(await unwrap(GetObjectTree(sessionId))),
+  listDatabaseObjects: async (sessionId: string, database: string) =>
+    asArray(await unwrap(ListDatabaseObjects(sessionId, database))) as ObjectTreeNode[],
   listColumns: (sessionId: string, database: string, table: string) =>
     unwrap(ListColumns(sessionId, database, table)),
   listIndexes: async (sessionId: string, database: string, table: string) =>
@@ -362,6 +369,46 @@ export const api = {
   listQueryHistory: async (connectionId: string, limit: number) =>
     asArray(await unwrap(ListQueryHistory(connectionId, limit))),
   exportCSV: async (req: Parameters<typeof ExportCSV>[0]) => (await unwrap(ExportCSV(req))).path,
+  exportExcel: async (req: Parameters<typeof ExportExcel>[0]) => (await unwrap(ExportExcel(req))).path,
+  exportTableExcel: async (
+    sessionId: string,
+    database: string,
+    table: string,
+    query: TableDataQuery,
+    columns: string[] = [],
+    maxRows = 10000
+  ) =>
+    (
+      await unwrap(
+        ExportTableExcel(
+          sessionId,
+          database,
+          table,
+          new model.TableDataQueryDO({
+            page: query.page,
+            pageSize: query.pageSize,
+            filters: query.filters.map(
+              (f) =>
+                new model.TableFilterDO({
+                  enabled: f.enabled,
+                  column: f.column,
+                  operator: f.operator,
+                  value: f.value,
+                })
+            ),
+            sorts: query.sorts.map(
+              (s) =>
+                new model.TableSortDO({
+                  column: s.column,
+                  ascending: s.ascending,
+                })
+            ),
+          }),
+          maxRows,
+          columns
+        )
+      )
+    ).path,
   setDatabase: (sessionId: string, database: string) =>
     unwrap(SetDatabase(sessionId, database)),
   listSSHHosts: async () => asArray(await unwrap(ListSSHHosts())),
@@ -426,6 +473,8 @@ export const api = {
   importConnectionsFromFile: () => unwrap(ImportConnectionsFromFile()),
   executeSQLFile: (sessionId: string, database: string) =>
     unwrap(ExecuteSQLFile(sessionId, database)),
+  createDatabase: (sessionId: string, name: string, charset: string, collation: string) =>
+    unwrap(CreateDatabase(sessionId, name, charset, collation)),
   exportTableInsertSQL: async (sessionId: string, database: string, table: string, maxRows: number) =>
     (await unwrap(ExportTableInsertSQL(sessionId, database, table, maxRows))).path,
   ensureSSHHostFromConnection: async (connectionId: string) => unwrap(EnsureSSHHostFromConnection(connectionId)),

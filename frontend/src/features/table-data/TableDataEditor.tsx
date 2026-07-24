@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../api/client'
 import type { ColumnMeta, FieldValue, RowMutationBatch, TableDataPage, TableFilter, TableRow, TableSort } from '../../api/types'
 import { TableFilterPanel, defaultFilters } from './TableFilterPanel'
+import { ExportFieldsDialog } from '../export/ExportFieldsDialog'
 import '../../components/ui.css'
 
 type RowState = 'clean' | 'modified' | 'new' | 'deleted'
@@ -16,11 +17,12 @@ interface Props {
   sessionId: string
   database: string
   table: string
+  excelExport?: boolean
 }
 
 const PAGE_SIZE = 100
 
-export function TableDataEditor({ sessionId, database, table }: Props) {
+export function TableDataEditor({ sessionId, database, table, excelExport }: Props) {
   const [page, setPage] = useState<TableDataPage | null>(null)
   const [rows, setRows] = useState<EditableRow[]>([])
   const [pageNum, setPageNum] = useState(1)
@@ -33,8 +35,10 @@ export function TableDataEditor({ sessionId, database, table }: Props) {
   const [appliedFilters, setAppliedFilters] = useState<TableFilter[]>([])
   const [appliedSorts, setAppliedSorts] = useState<TableSort[]>([])
   const [filterDirty, setFilterDirty] = useState(false)
+  const [excelExportOpen, setExcelExportOpen] = useState(false)
 
   const columns = page?.columns ?? []
+  const columnNames = columns.map((c) => c.name)
 
   useEffect(() => {
     if (columns.length && filters.length === 1 && !filters[0].column) {
@@ -280,6 +284,16 @@ export function TableDataEditor({ sessionId, database, table }: Props) {
             >
               导出 SQL
             </button>
+            {excelExport && (
+              <button
+                type="button"
+                className="wn-btn wn-btn-tool wn-btn-accent"
+                disabled={loading || columnNames.length === 0}
+                onClick={() => setExcelExportOpen(true)}
+              >
+                导出 Excel
+              </button>
+            )}
           </div>
         </div>
 
@@ -355,6 +369,27 @@ export function TableDataEditor({ sessionId, database, table }: Props) {
           </tbody>
         </table>
       </div>
+      <ExportFieldsDialog
+        open={excelExportOpen}
+        columns={columnNames}
+        onConfirm={async (cols) => {
+          setExcelExportOpen(false)
+          const path = await api.exportTableExcel(
+            sessionId,
+            database,
+            table,
+            {
+              page: pageNum,
+              pageSize: PAGE_SIZE,
+              filters: appliedFilters.filter((f) => f.enabled && f.column),
+              sorts: appliedSorts.filter((s) => s.column),
+            },
+            cols
+          )
+          if (path) setSuccess(`已导出 ${path}`)
+        }}
+        onCancel={() => setExcelExportOpen(false)}
+      />
     </div>
   )
 }

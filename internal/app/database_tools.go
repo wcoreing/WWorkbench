@@ -57,10 +57,10 @@ func (s *Service) ImportConnectionsFromFile() ApiResult[int] {
 	return OkResult(count)
 }
 
-// ExecuteSQLFile 选择并执行 SQL 文件。
+// ExecuteSQLFile 选择并执行 SQL 文件（database 可为空，用于建库等语句）。
 func (s *Service) ExecuteSQLFile(sessionID, database string) ApiResult[interface{}] {
 	path, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
-		Title:   "执行 SQL 文件",
+		Title:   "导入 SQL",
 		Filters: []runtime.FileFilter{{DisplayName: "SQL", Pattern: "*.sql"}, {DisplayName: "All", Pattern: "*"}},
 	})
 	if err != nil {
@@ -77,13 +77,23 @@ func (s *Service) ExecuteSQLFile(sessionID, database string) ApiResult[interface
 	if sqlText == "" {
 		return ErrResult[interface{}](errno.New(errno.CodeInvalidArg, "SQL 文件为空", path))
 	}
-	ctx, cancel := session.WithTimeout(s.ctx, 120)
+	ctx, cancel := session.WithTimeout(s.ctx, 300)
 	defer cancel()
 	res, err := s.queries.ExecuteSQL(ctx, sessionID, database, sqlText)
 	if err != nil {
 		return ErrResult[interface{}](err)
 	}
 	return OkResult(res)
+}
+
+// CreateDatabase 创建数据库。
+func (s *Service) CreateDatabase(sessionID, name, charset, collation string) ApiResult[bool] {
+	ctx, cancel := session.WithTimeout(s.ctx, 30)
+	defer cancel()
+	if err := s.meta.CreateDatabase(ctx, sessionID, name, charset, collation); err != nil {
+		return ErrResult[bool](err)
+	}
+	return OkResult(true)
 }
 
 // ExportTableInsertSQL 导出表 INSERT 语句到文件。

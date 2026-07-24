@@ -41,6 +41,8 @@ export function ComposeRestart(arg1:string,arg2:string,arg3:string):Promise<app.
 
 export function ComposeUp(arg1:string,arg2:string):Promise<app.ApiResult_string_>;
 
+export function CreateDatabase(arg1:string,arg2:string,arg3:string,arg4:string):Promise<app.ApiResult_bool_>;
+
 export function DeleteConnection(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteDockerContext(arg1:string):Promise<app.ApiResult_bool_>;
@@ -89,7 +91,11 @@ export function ExportCSV(arg1:app.ExportCSVRequest):Promise<app.ApiResult_WNavi
 
 export function ExportConnectionsToFile(arg1:boolean):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
 
+export function ExportExcel(arg1:app.ExportExcelRequest):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
+
 export function ExportNote(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
+
+export function ExportTableExcel(arg1:string,arg2:string,arg3:string,arg4:model.TableDataQueryDO,arg5:number,arg6:Array<string>):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
 
 export function ExportTableInsertSQL(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
 
@@ -156,6 +162,8 @@ export function ListComposeServices(arg1:string,arg2:string):Promise<app.ApiResu
 export function ListConnections():Promise<app.ApiResult___WNavicat_internal_model_ConnectionDO_>;
 
 export function ListContainers(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_ContainerDO_>;
+
+export function ListDatabaseObjects(arg1:string,arg2:string):Promise<app.ApiResult___WNavicat_internal_model_ObjectTreeNodeDO_>;
 
 export function ListDockerContexts():Promise<app.ApiResult___WNavicat_internal_model_DockerContextDO_>;
 

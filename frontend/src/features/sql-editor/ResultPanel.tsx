@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import type { CellValue, ExecuteResult, QueryPage, SQLBatchResult } from '../../api/types'
+import { ExportFieldsDialog } from '../export/ExportFieldsDialog'
 import '../../components/ui.css'
 
 interface Props {
   result: QueryPage | ExecuteResult | SQLBatchResult | null
   message: string
-  onExport?: () => void
+  onExport?: (columns: string[]) => void | Promise<void>
+  onExportExcel?: (columns: string[]) => void | Promise<void>
   onPageChange?: (page: number) => void
   loading?: boolean
 }
@@ -14,7 +17,7 @@ function isBatchResult(r: QueryPage | ExecuteResult | SQLBatchResult): r is SQLB
   return 'items' in r && Array.isArray((r as SQLBatchResult).items)
 }
 
-export function ResultPanel({ result, message, onExport, onPageChange, loading }: Props) {
+export function ResultPanel({ result, message, onExport, onExportExcel, onPageChange, loading }: Props) {
   if (!result) {
     return <div className="pane-empty">{message || '执行 SQL 后在此显示结果'}</div>
   }
@@ -49,6 +52,7 @@ export function ResultPanel({ result, message, onExport, onPageChange, loading }
     <QueryResultView
       page={result as QueryPage}
       onExport={onExport}
+      onExportExcel={onExportExcel}
       onPageChange={onPageChange}
       loading={loading}
     />
@@ -74,14 +78,18 @@ function ExecuteResultView({ result }: { result: ExecuteResult }) {
 function QueryResultView({
   page,
   onExport,
+  onExportExcel,
   onPageChange,
   loading,
 }: {
   page: QueryPage
-  onExport?: () => void
+  onExport?: (columns: string[]) => void | Promise<void>
+  onExportExcel?: (columns: string[]) => void | Promise<void>
   onPageChange?: (page: number) => void
   loading?: boolean
 }) {
+  const [exportDlg, setExportDlg] = useState<'csv' | 'excel' | null>(null)
+  const columnNames = (page.columns ?? []).map((c) => c.name)
   const rowLen = (page.rows ?? []).length
   const totalPages = page.pageSize > 0 ? Math.max(1, Math.ceil(page.total / page.pageSize)) : 1
   const canPrev = page.page > 1
@@ -117,13 +125,29 @@ function QueryResultView({
               </button>
             </>
           )}
+          {onExportExcel && (
+            <button type="button" className="wn-btn wn-btn-tool wn-btn-accent" onClick={() => setExportDlg('excel')}>
+              导出 Excel
+            </button>
+          )}
           {onExport && (
-            <button type="button" className="wn-btn wn-btn-tool wn-btn-accent" onClick={onExport}>
+            <button type="button" className="wn-btn wn-btn-tool" onClick={() => setExportDlg('csv')}>
               导出 CSV
             </button>
           )}
         </div>
       </div>
+      <ExportFieldsDialog
+        open={exportDlg !== null}
+        columns={columnNames}
+        onConfirm={(cols) => {
+          const fmt = exportDlg
+          setExportDlg(null)
+          if (fmt === 'excel') onExportExcel?.(cols)
+          else if (fmt === 'csv') onExport?.(cols)
+        }}
+        onCancel={() => setExportDlg(null)}
+      />
       <div className="wn-grid-wrap">
         <table className="wn-grid">
           <thead>

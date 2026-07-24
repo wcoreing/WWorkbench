@@ -720,6 +720,177 @@
   height: 26px;
 }
 
+.export-fields-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+}
+
+.export-fields-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.export-fields-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-1);
+}
+
+.export-fields-item {
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.export-fields-item:last-child {
+  border-bottom: none;
+}
+
+.export-fields-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.export-fields-label:hover {
+  background: var(--color-surface-2);
+}
+
+.export-fields-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.database-list-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.sidebar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.database-list-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  padding: 24px 28px;
+  overflow: auto;
+}
+
+.database-list-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.database-list-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.database-list-desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.database-list-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.database-list-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-1);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.database-list-item:hover {
+  border-color: var(--color-accent);
+  background: var(--color-surface-2);
+}
+
+.database-list-icon {
+  font-size: 12px;
+  color: var(--color-accent);
+}
+
+.database-list-name {
+  font-size: 14px;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.database-list-item.system {
+  opacity: 0.92;
+}
+
+.database-list-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.database-list-tag {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-3);
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.wn-tree-item .tree-tag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-3);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.wn-tree-item.database.selectable {
+  cursor: pointer;
+}
+
+.tree-empty-item {
+  padding: 2px 8px 2px 28px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  list-style: none;
+}
+
 .wn-form-msg {
   margin: 0;
   padding: 6px 8px;

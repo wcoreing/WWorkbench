@@ -80,14 +80,11 @@ func (m *Manager) Open(ctx context.Context, connectionID, database string) (*mod
 		Charset:  conn.Charset,
 		Tunnel:   spec,
 	}
-	if cfg.Database == "" {
-		cfg.Database = conn.Database
-	}
 	sid := uuid.NewString()
 	s := &Session{
 		ID:           sid,
 		ConnectionID: connectionID,
-		Database:     cfg.Database,
+		Database:     strings.TrimSpace(database),
 		DbType:       conn.DbType,
 		Tunnel:       tun,
 	}
@@ -117,7 +114,7 @@ func (m *Manager) Open(ctx context.Context, connectionID, database string) (*mod
 	return &model.SessionInfoDO{
 		SessionID:    sid,
 		ConnectionID: connectionID,
-		Database:     cfg.Database,
+		Database:     s.Database,
 	}, nil
 }
 

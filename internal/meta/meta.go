@@ -2,7 +2,9 @@ package meta
 
 import (
 	"context"
+	"database/sql"
 
+	"WNavicat/internal/adapter"
 	redisadapter "WNavicat/internal/adapter/redis"
 	"WNavicat/internal/errno"
 	"WNavicat/internal/model"
@@ -19,7 +21,7 @@ func NewService(sessions *session.Manager) *Service {
 	return &Service{sessions: sessions}
 }
 
-// GetObjectTree 获取对象树（库与表，列懒加载由前端按需请求）。
+// GetObjectTree 获取对象树（仅库列表，表/视图点击库后懒加载）。
 func (s *Service) GetObjectTree(ctx context.Context, sessionID string) ([]model.ObjectTreeNodeDO, error) {
 	sess, err := s.sessions.Get(sessionID)
 	if err != nil {
@@ -36,45 +38,68 @@ func (s *Service) GetObjectTree(ctx context.Context, sessionID string) ([]model.
 	if err != nil {
 		return nil, err
 	}
-	var nodes []model.ObjectTreeNodeDO
+	nodes := make([]model.ObjectTreeNodeDO, 0, len(dbs))
 	for _, db := range dbs {
-		dbNode := model.ObjectTreeNodeDO{
+		nodes = append(nodes, model.ObjectTreeNodeDO{
 			ID:       sessionID + ":db:" + db,
 			Label:    db,
 			NodeType: "database",
 			Database: db,
 			Lazy:     true,
-		}
-		tables, err := ad.ListTables(ctx, sess.DB, db)
-		if err != nil {
-			return nil, err
-		}
-		for _, tbl := range tables {
-			dbNode.Children = append(dbNode.Children, model.ObjectTreeNodeDO{
-				ID:       sessionID + ":tbl:" + db + "." + tbl.Name,
-				Label:    tbl.Name,
-				NodeType: "table",
-				Database: db,
-				Table:    tbl.Name,
-				Lazy:     true,
-			})
-		}
-		views, err := ad.ListViews(ctx, sess.DB, db)
-		if err != nil {
-			return nil, err
-		}
-		for _, v := range views {
-			dbNode.Children = append(dbNode.Children, model.ObjectTreeNodeDO{
-				ID:       sessionID + ":view:" + db + "." + v.Name,
-				Label:    v.Name,
-				NodeType: "view",
-				Database: db,
-				Table:    v.Name,
-				Lazy:     true,
-			})
-		}
-		dbNode.Lazy = false
-		nodes = append(nodes, dbNode)
+		})
+	}
+	return nodes, nil
+}
+
+// ListDatabaseObjects 列出库内表与视图（对象树懒加载）。
+func (s *Service) ListDatabaseObjects(ctx context.Context, sessionID, database string) ([]model.ObjectTreeNodeDO, error) {
+	if database == "" {
+		return nil, errno.New(errno.CodeInvalidArg, "数据库名不能为空", "")
+	}
+	sess, err := s.sessions.Get(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	if sess.DbType == "redis" {
+		return nil, errno.New(errno.CodeInvalidArg, "Redis 不支持按库懒加载", database)
+	}
+	ad, err := s.sessions.Adapter(sess)
+	if err != nil {
+		return nil, err
+	}
+	return listDatabaseObjectNodes(ctx, ad, sess.DB, sessionID, database)
+}
+
+// listDatabaseObjectNodes 构建库内表/视图节点。
+func listDatabaseObjectNodes(ctx context.Context, ad adapter.DatabaseAdapter, db *sql.DB, sessionID, database string) ([]model.ObjectTreeNodeDO, error) {
+	tables, err := ad.ListTables(ctx, db, database)
+	if err != nil {
+		return nil, err
+	}
+	var nodes []model.ObjectTreeNodeDO
+	for _, tbl := range tables {
+		nodes = append(nodes, model.ObjectTreeNodeDO{
+			ID:       sessionID + ":tbl:" + database + "." + tbl.Name,
+			Label:    tbl.Name,
+			NodeType: "table",
+			Database: database,
+			Table:    tbl.Name,
+			Lazy:     true,
+		})
+	}
+	views, err := ad.ListViews(ctx, db, database)
+	if err != nil {
+		return nil, err
+	}
+	for _, v := range views {
+		nodes = append(nodes, model.ObjectTreeNodeDO{
+			ID:       sessionID + ":view:" + database + "." + v.Name,
+			Label:    v.Name,
+			NodeType: "view",
+			Database: database,
+			Table:    v.Name,
+			Lazy:     true,
+		})
 	}
 	return nodes, nil
 }

@@ -189,6 +189,20 @@ func (s *Service) GetObjectTree(sessionID string) ApiResult[[]model.ObjectTreeNo
 	return OkResult(tree)
 }
 
+// ListDatabaseObjects 列出库内表与视图。
+func (s *Service) ListDatabaseObjects(sessionID, database string) ApiResult[[]model.ObjectTreeNodeDO] {
+	ctx, cancel := session.WithTimeout(s.ctx, 30)
+	defer cancel()
+	nodes, err := s.meta.ListDatabaseObjects(ctx, sessionID, database)
+	if err != nil {
+		return ErrResult[[]model.ObjectTreeNodeDO](err)
+	}
+	if nodes == nil {
+		nodes = []model.ObjectTreeNodeDO{}
+	}
+	return OkResult(nodes)
+}
+
 // ListColumns 列出列。
 func (s *Service) ListColumns(sessionID, database, table string) ApiResult[[]model.ColumnMetaDO] {
 	ctx, cancel := session.WithTimeout(s.ctx, 30)
