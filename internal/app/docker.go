@@ -3,10 +3,10 @@ package app
 import (
 	"fmt"
 
-	"WNavicat/internal/docker"
-	"WNavicat/internal/model"
-	"WNavicat/internal/session"
-	"WNavicat/internal/store"
+	"WWorkbench/internal/docker"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/session"
+	"WWorkbench/internal/store"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )

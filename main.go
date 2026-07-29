@@ -4,23 +4,24 @@ import (
 	"embed"
 	"log"
 
-	"WNavicat/internal/adapter"
-	mysqladapter "WNavicat/internal/adapter/mysql"
-	pgadapter "WNavicat/internal/adapter/postgresql"
-	"WNavicat/internal/app"
-	"WNavicat/internal/conn"
-	"WNavicat/internal/data"
-	dockersvc "WNavicat/internal/docker"
-	"WNavicat/internal/environment"
-	"WNavicat/internal/meta"
-	"WNavicat/internal/notebook"
-	"WNavicat/internal/portforward"
-	"WNavicat/internal/query"
-	"WNavicat/internal/session"
-	sftpsvc "WNavicat/internal/sftp"
-	"WNavicat/internal/store"
-	"WNavicat/internal/terminal"
-	"WNavicat/internal/tunnel"
+	"WWorkbench/internal/adapter"
+	mysqladapter "WWorkbench/internal/adapter/mysql"
+	pgadapter "WWorkbench/internal/adapter/postgresql"
+	sqliteadapter "WWorkbench/internal/adapter/sqlite"
+	"WWorkbench/internal/app"
+	"WWorkbench/internal/conn"
+	"WWorkbench/internal/data"
+	dockersvc "WWorkbench/internal/docker"
+	"WWorkbench/internal/environment"
+	"WWorkbench/internal/meta"
+	"WWorkbench/internal/notebook"
+	"WWorkbench/internal/portforward"
+	"WWorkbench/internal/query"
+	"WWorkbench/internal/session"
+	sftpsvc "WWorkbench/internal/sftp"
+	"WWorkbench/internal/store"
+	"WWorkbench/internal/terminal"
+	"WWorkbench/internal/tunnel"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -48,25 +49,26 @@ func main() {
 	registry := adapter.NewRegistry()
 	mysqladapter.Register(registry)
 	pgadapter.Register(registry)
+	sqliteadapter.Register(registry)
 
 	tp := tunnel.NewProvider()
 	connSvc := conn.NewService(st, registry, tp)
 	sshHostSvc := terminal.NewHostService(st)
 	termMgr := terminal.NewManager(sshHostSvc)
 	forwardMgr := portforward.NewManager(st, sshHostSvc)
-	sftpMgr := sftpsvc.NewManager(sshHostSvc)
+	dockerMgr := dockersvc.NewManager(st)
+	sftpMgr := sftpsvc.NewManager(sshHostSvc, dockerMgr)
 	sessMgr := session.NewManager(registry, st, tp)
 	metaSvc := meta.NewService(sessMgr)
 	querySvc := query.NewService(sessMgr, st)
 	dataSvc := data.NewService(sessMgr)
-	dockerMgr := dockersvc.NewManager(st)
 	envMgr := environment.NewManager()
 	notebookSvc := notebook.NewService(st)
 
 	api := app.NewService(AppVersion, st, connSvc, sshHostSvc, termMgr, forwardMgr, sftpMgr, dockerMgr, envMgr, notebookSvc, sessMgr, metaSvc, querySvc, dataSvc)
 
 	err = wails.Run(&options.App{
-		Title:     "WNavicat",
+		Title:     "WWorkbench",
 		Width:     1400,
 		Height:    900,
 		MinWidth:  1024,

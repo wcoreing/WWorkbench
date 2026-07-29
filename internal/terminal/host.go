@@ -3,10 +3,10 @@ package terminal
 import (
 	"context"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/store"
-	"WNavicat/internal/tunnel"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
+	"WWorkbench/internal/tunnel"
 
 	"github.com/google/uuid"
 )

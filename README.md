@@ -1,6 +1,6 @@
 # WWorkbench
 
-**WWorkbench** — an all-in-one local developer workbench: database, terminal, files, containers, runtime environments, and notebooks in a single desktop app.
+**WWorkbench** — a local multi-host ops & development workbench: database, terminal, files, containers, runtimes, HTTP, logs, and notebooks in one desktop app — built to finish work across hosts and services.
 
 **English** | [简体中文](README.zh-CN.md)
 
@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> Current version: **v0.28.0** (shown in the bottom-right corner of the app)
+> Current version: **v0.51.0** (shown in the bottom-right corner of the app)
 
 ---
 
@@ -100,8 +100,8 @@ wails build
 
 Artifacts are written to `build/bin/`:
 
-- macOS: `WNavicat.app` or `WNavicat`
-- Windows: `WNavicat.exe`
+- macOS: `WWorkbench.app` or `WWorkbench`
+- Windows: `WWorkbench.exe`
 
 ### 5. Regenerate Wails frontend bindings
 
@@ -121,7 +121,7 @@ WWorkbench/
 ├── version.go              # Version number (bump before release)
 ├── internal/
 │   ├── app/                # Wails API layer
-│   ├── adapter/            # Database driver adapters (MySQL)
+│   ├── adapter/            # DB adapters (MySQL / PostgreSQL / SQLite / Redis)
 │   ├── conn/               # Connections & sessions
 │   ├── docker/             # Docker management
 │   ├── environment/        # Local runtime versions
@@ -147,9 +147,9 @@ Application data is stored under the user home directory and is **never** commit
 
 | Path | Contents |
 |------|----------|
-| `~/.wnavicat/` | SQLite database, SSH known_hosts, workspace snapshots, etc. |
+| `~/.wworkbench/` | SQLite database, SSH known_hosts, workspace snapshots, etc. |
 
-Passwords and other secrets are stored only in the local database. Do not attach `~/.wnavicat` to issues or commits.
+Passwords and other secrets are stored only in the local database. Do not attach `~/.wworkbench` to issues or commits.
 
 ---
 
@@ -236,4 +236,3 @@ This project is open source under the [MIT License](LICENSE).
 ## Acknowledgements
 
 - [Wails](https://wails.io/) — Go + web desktop app framework
-- [Navicat](https://www.navicat.com/) — UI/UX inspiration (this is an independent open-source project, not affiliated with Navicat)

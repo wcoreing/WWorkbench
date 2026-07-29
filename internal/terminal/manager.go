@@ -5,9 +5,9 @@ import (
 	"io"
 	"sync"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/tunnel"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/tunnel"
 
 	"github.com/google/uuid"
 	"github.com/creack/pty"
@@ -210,6 +210,12 @@ func (m *Manager) Resize(sessionID string, cols, rows int) error {
 			Rows: uint16(rows),
 			Cols: uint16(cols),
 		})
+	}
+	if s.Kind == kindDocker {
+		if s.dockerExec == nil || s.dockerMgr == nil {
+			return errno.New(errno.CodeSessionClosed, "终端已关闭", sessionID)
+		}
+		return s.dockerMgr.ResizeExec(context.Background(), s.dockerExec.Handle, s.dockerExec.ExecID, cols, rows)
 	}
 	if s.sshSess == nil {
 		return errno.New(errno.CodeSessionClosed, "终端已关闭", sessionID)

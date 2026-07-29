@@ -8,10 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-
-	pkgsftp "github.com/pkg/sftp"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 // UploadPath 上传本地文件或目录到远程目录。
@@ -23,11 +21,11 @@ func (m *Manager) UploadPath(ctx context.Context, sessionID, taskID, localPath, 
 	if err != nil {
 		return err
 	}
-	client, err := s.openTransferClient()
+	fs, err := s.fs.OpenTransfer()
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer fs.Close()
 
 	info, err := os.Stat(localPath)
 	if err != nil {
@@ -36,11 +34,11 @@ func (m *Manager) UploadPath(ctx context.Context, sessionID, taskID, localPath, 
 	remoteDir = cleanRemotePath(remoteDir)
 	if !info.IsDir() {
 		remotePath := path.Join(remoteDir, filepath.Base(localPath))
-		return m.uploadFile(ctx, client, sessionID, taskID, localPath, remotePath, emit)
+		return m.uploadFile(ctx, fs, sessionID, taskID, localPath, remotePath, emit)
 	}
 	base := filepath.Base(localPath)
 	remoteBase := path.Join(remoteDir, base)
-	if err := mkdirRemote(client, remoteBase); err != nil {
+	if err := fs.MkdirAll(remoteBase); err != nil {
 		return err
 	}
 	return filepath.Walk(localPath, func(p string, fi os.FileInfo, walkErr error) error {
@@ -58,13 +56,13 @@ func (m *Manager) UploadPath(ctx context.Context, sessionID, taskID, localPath, 
 			if rel == "." {
 				return nil
 			}
-			return mkdirRemote(client, path.Join(remoteBase, filepath.ToSlash(rel)))
+			return fs.MkdirAll(path.Join(remoteBase, filepath.ToSlash(rel)))
 		}
 		rel, err := filepath.Rel(localPath, p)
 		if err != nil {
 			return err
 		}
-		return m.uploadFile(ctx, client, sessionID, taskID, p, path.Join(remoteBase, filepath.ToSlash(rel)), emit)
+		return m.uploadFile(ctx, fs, sessionID, taskID, p, path.Join(remoteBase, filepath.ToSlash(rel)), emit)
 	})
 }
 
@@ -77,149 +75,71 @@ func (m *Manager) DownloadPath(ctx context.Context, sessionID, taskID, remotePat
 	if err != nil {
 		return err
 	}
-	client, err := s.openTransferClient()
+	fs, err := s.fs.OpenTransfer()
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer fs.Close()
 
 	remotePath = cleanRemotePath(remotePath)
-	info, err := client.Stat(remotePath)
+	st, err := fs.Stat(remotePath)
 	if err != nil {
 		return errno.Wrap(errno.CodeConnFailed, "读取远程路径失败", err)
 	}
-	localDir = filepath.Clean(localDir)
-	if !info.IsDir() {
-		localPath := filepath.Join(localDir, filepath.Base(remotePath))
-		return m.downloadFile(ctx, client, sessionID, taskID, remotePath, localPath, emit)
+	name := filepath.Base(strings.ReplaceAll(remotePath, "\\", "/"))
+	localBase := filepath.Join(filepath.Clean(localDir), name)
+	if !st.IsDir {
+		return m.downloadFile(ctx, fs, sessionID, taskID, remotePath, localBase, emit)
 	}
-	localBase := filepath.Join(localDir, filepath.Base(remotePath))
 	if err := os.MkdirAll(localBase, 0o755); err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "创建本地目录失败", err)
 	}
-	return walkRemote(client, remotePath, func(rPath string, isDir bool) error {
+	return fs.Walk(remotePath, func(rPath string, isDir bool) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
 		if isDir {
-			return nil
+			rel := strings.TrimPrefix(rPath, remotePath)
+			rel = strings.TrimPrefix(rel, "/")
+			return os.MkdirAll(filepath.Join(localBase, filepath.FromSlash(rel)), 0o755)
 		}
 		rel := strings.TrimPrefix(rPath, remotePath)
 		rel = strings.TrimPrefix(rel, "/")
 		localPath := filepath.Join(localBase, filepath.FromSlash(rel))
-		return m.downloadFile(ctx, client, sessionID, taskID, rPath, localPath, emit)
+		return m.downloadFile(ctx, fs, sessionID, taskID, rPath, localPath, emit)
 	})
 }
 
-// uploadFile 上传单个文件。
-func (m *Manager) uploadFile(ctx context.Context, client *pkgsftp.Client, sessionID, taskID, localPath, remotePath string, emit ProgressHandler) error {
-	src, err := os.Open(localPath)
-	if err != nil {
-		return errno.Wrap(errno.CodeInvalidArg, "打开本地文件失败", err)
-	}
-	defer src.Close()
-	info, err := src.Stat()
+func (m *Manager) uploadFile(ctx context.Context, fs remoteFS, sessionID, taskID, localPath, remotePath string, emit ProgressHandler) error {
+	name := filepath.Base(localPath)
+	info, err := os.Stat(localPath)
 	if err != nil {
 		return err
 	}
 	total := info.Size()
-	name := filepath.Base(localPath)
 	m.emitProgress(emit, taskID, sessionID, "upload", name, 0, total, "running")
-	if err := mkdirRemote(client, path.Dir(remotePath)); err != nil {
-		m.emitProgress(emit, taskID, sessionID, "upload", name, 0, total, "error")
-		return errno.Wrap(errno.CodeConnFailed, "创建远程目录失败", err)
-	}
-	dst, err := client.Create(remotePath)
-	if err != nil {
-		m.emitProgress(emit, taskID, sessionID, "upload", name, 0, total, "error")
-		return errno.Wrap(errno.CodeConnFailed, "创建远程文件失败", err)
-	}
-	defer dst.Close()
-	done, err := copyWithProgress(ctx, dst, src, func(n int64) {
-		m.emitProgress(emit, taskID, sessionID, "upload", name, n, total, "running")
+	err = fs.UploadFile(ctx, localPath, remotePath, func(done, tot int64) {
+		m.emitProgress(emit, taskID, sessionID, "upload", name, done, tot, "running")
 	})
 	if err != nil {
-		if ctx.Err() != nil {
-			m.emitProgress(emit, taskID, sessionID, "upload", name, done, total, "error")
-			return errno.Wrap(errno.CodeInvalidArg, "上传已取消", ctx.Err())
-		}
-		m.emitProgress(emit, taskID, sessionID, "upload", name, done, total, "error")
-		return errno.Wrap(errno.CodeConnFailed, "上传文件失败", err)
+		m.emitProgress(emit, taskID, sessionID, "upload", name, 0, total, "error")
+		return err
 	}
 	m.emitProgress(emit, taskID, sessionID, "upload", name, total, total, "done")
 	return nil
 }
 
-// downloadFile 下载单个文件。
-func (m *Manager) downloadFile(ctx context.Context, client *pkgsftp.Client, sessionID, taskID, remotePath, localPath string, emit ProgressHandler) error {
-	src, err := client.Open(remotePath)
-	if err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "打开远程文件失败", err)
-	}
-	defer src.Close()
-	info, err := src.Stat()
-	if err != nil {
-		return err
-	}
-	total := info.Size()
+func (m *Manager) downloadFile(ctx context.Context, fs remoteFS, sessionID, taskID, remotePath, localPath string, emit ProgressHandler) error {
 	name := filepath.Base(remotePath)
-	m.emitProgress(emit, taskID, sessionID, "download", name, 0, total, "running")
-	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
-		m.emitProgress(emit, taskID, sessionID, "download", name, 0, total, "error")
-		return errno.Wrap(errno.CodeStoreFailed, "创建本地目录失败", err)
-	}
-	dst, err := os.Create(localPath)
-	if err != nil {
-		m.emitProgress(emit, taskID, sessionID, "download", name, 0, total, "error")
-		return errno.Wrap(errno.CodeStoreFailed, "创建本地文件失败", err)
-	}
-	defer dst.Close()
-	done, err := copyWithProgress(ctx, dst, src, func(n int64) {
-		m.emitProgress(emit, taskID, sessionID, "download", name, n, total, "running")
+	m.emitProgress(emit, taskID, sessionID, "download", name, 0, 0, "running")
+	err := fs.DownloadFile(ctx, remotePath, localPath, func(done, total int64) {
+		m.emitProgress(emit, taskID, sessionID, "download", name, done, total, "running")
 	})
 	if err != nil {
-		if ctx.Err() != nil {
-			m.emitProgress(emit, taskID, sessionID, "download", name, done, total, "error")
-			return errno.Wrap(errno.CodeInvalidArg, "下载已取消", ctx.Err())
-		}
-		m.emitProgress(emit, taskID, sessionID, "download", name, done, total, "error")
-		return errno.Wrap(errno.CodeConnFailed, "下载文件失败", err)
-	}
-	m.emitProgress(emit, taskID, sessionID, "download", name, total, total, "done")
-	return nil
-}
-
-// mkdirRemote 在指定客户端上创建远程目录。
-func mkdirRemote(client *pkgsftp.Client, dir string) error {
-	dir = cleanRemotePath(dir)
-	if err := client.MkdirAll(dir); err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "创建远程目录失败", err)
-	}
-	return nil
-}
-
-// walkRemote 递归遍历远程目录。
-func walkRemote(client *pkgsftp.Client, dir string, fn func(path string, isDir bool) error) error {
-	entries, err := client.ReadDir(dir)
-	if err != nil {
+		m.emitProgress(emit, taskID, sessionID, "download", name, 0, 0, "error")
 		return err
 	}
-	for _, ent := range entries {
-		name := ent.Name()
-		if name == "." || name == ".." {
-			continue
-		}
-		full := path.Join(dir, name)
-		isDir := ent.IsDir()
-		if isDir {
-			if err := walkRemote(client, full, fn); err != nil {
-				return err
-			}
-		}
-		if err := fn(full, isDir); err != nil {
-			return err
-		}
-	}
+	m.emitProgress(emit, taskID, sessionID, "download", name, 1, 1, "done")
 	return nil
 }
 
@@ -279,11 +199,7 @@ func (m *Manager) MkdirRemote(sessionID, dir string) error {
 	if err != nil {
 		return err
 	}
-	dir = cleanRemotePath(dir)
-	if err := s.sftp.MkdirAll(dir); err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "创建远程目录失败", err)
-	}
-	return nil
+	return s.fs.MkdirAll(cleanRemotePath(dir))
 }
 
 // RenameRemote 重命名远程路径。
@@ -292,12 +208,7 @@ func (m *Manager) RenameRemote(sessionID, oldPath, newPath string) error {
 	if err != nil {
 		return err
 	}
-	oldPath = cleanRemotePath(oldPath)
-	newPath = cleanRemotePath(newPath)
-	if err := s.sftp.Rename(oldPath, newPath); err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "重命名远程路径失败", err)
-	}
-	return nil
+	return s.fs.Rename(cleanRemotePath(oldPath), cleanRemotePath(newPath))
 }
 
 // DeletePathRecursive 递归删除远程路径。
@@ -306,32 +217,5 @@ func (m *Manager) DeletePathRecursive(sessionID, remotePath string) error {
 	if err != nil {
 		return err
 	}
-	remotePath = cleanRemotePath(remotePath)
-	info, err := s.sftp.Stat(remotePath)
-	if err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "读取远程路径失败", err)
-	}
-	if !info.IsDir() {
-		if err := s.sftp.Remove(remotePath); err != nil {
-			return errno.Wrap(errno.CodeConnFailed, "删除远程文件失败", err)
-		}
-		return nil
-	}
-	var dirs []string
-	if err := walkRemote(s.sftp, remotePath, func(rPath string, isDir bool) error {
-		if isDir {
-			dirs = append(dirs, rPath)
-		} else if err := s.sftp.Remove(rPath); err != nil {
-			return err
-		}
-		return nil
-	}); err != nil {
-		return err
-	}
-	for i := len(dirs) - 1; i >= 0; i-- {
-		if err := s.sftp.RemoveDirectory(dirs[i]); err != nil {
-			return errno.Wrap(errno.CodeConnFailed, "删除远程目录失败", err)
-		}
-	}
-	return nil
+	return s.fs.RemoveAll(cleanRemotePath(remotePath))
 }

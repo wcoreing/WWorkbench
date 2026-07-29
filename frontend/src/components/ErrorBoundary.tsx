@@ -17,7 +17,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error('[WNavicat]', error, info.componentStack)
+    console.error('[WWorkbench]', error, info.componentStack)
   }
 
   render() {

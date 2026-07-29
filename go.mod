@@ -1,4 +1,4 @@
-module WNavicat
+module WWorkbench
 
 go 1.25.0
 

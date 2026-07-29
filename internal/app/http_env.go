@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"strings"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/httpclient"
-	"WNavicat/internal/model"
-	"WNavicat/internal/store"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/httpclient"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
 )
 
 // ListHTTPEnvironments 列出 HTTP 环境变量预设。

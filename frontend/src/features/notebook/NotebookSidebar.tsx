@@ -4,6 +4,7 @@ import { IconNotebook, IconPlus } from '../../components/Icons'
 import { useI18n } from '../../i18n'
 import {
   NOTEBOOK_DRAG_MIME,
+  NOTEBOOK_ROOT_ID,
   buildNotebookLayout,
   moveGroupBefore,
   moveNoteInTree,
@@ -230,6 +231,61 @@ export function NotebookSidebar({
       ) : (
         <>
           <p className="notebook-dnd-hint">{t('notebook.dragHint')}</p>
+          {(() => {
+            const rootNotes = notesInGroup(summaries, NOTEBOOK_ROOT_ID)
+            const rootCollapsed = collapsedGroups.has(NOTEBOOK_ROOT_ID)
+            const hintRootAppend =
+              dropHint?.kind === 'group-append' && dropHint.groupId === NOTEBOOK_ROOT_ID
+            return (
+              <section className="sidebar-section notebook-group-section notebook-root-section">
+                <div className="sidebar-header notebook-group-header">
+                  <button
+                    type="button"
+                    className="notebook-group-toggle"
+                    onClick={() => onToggleGroup(NOTEBOOK_ROOT_ID)}
+                  >
+                    {rootCollapsed ? '▸' : '▾'} {t('notebook.rootGroup')}
+                  </button>
+                  <button
+                    type="button"
+                    className="wn-btn wn-btn-icon wn-btn-sm"
+                    title={t('notebook.newInRoot')}
+                    onClick={() => onCreateNoteInGroup(NOTEBOOK_ROOT_ID)}
+                  >
+                    <IconPlus size={14} />
+                  </button>
+                </div>
+                {!rootCollapsed && (
+                  <div
+                    className={`sidebar-body notebook-group-body${hintRootAppend ? ' drop-append' : ''}`}
+                    onDragOver={(e) => {
+                      if (dragging?.kind !== 'note') return
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setDropHint({ kind: 'group-append', groupId: NOTEBOOK_ROOT_ID })
+                    }}
+                    onDragLeave={(e) => {
+                      if (e.currentTarget.contains(e.relatedTarget as Node)) return
+                      if (dropHint?.kind === 'group-append' && dropHint.groupId === NOTEBOOK_ROOT_ID) {
+                        clearDrop()
+                      }
+                    }}
+                    onDrop={(e) => void handleGroupAppend(e, NOTEBOOK_ROOT_ID)}
+                  >
+                    {rootNotes.length === 0 ? (
+                      <div className="empty-hint notebook-group-empty-drop">
+                        {dragging?.kind === 'note' ? t('notebook.dropHere') : t('notebook.noNotes')}
+                      </div>
+                    ) : (
+                      <ul className="conn-list notebook-note-list">
+                        {rootNotes.map((n) => renderNoteItem(n, NOTEBOOK_ROOT_ID))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </section>
+            )
+          })()}
           {sortedGroups.map((g) => {
             const notes = notesInGroup(summaries, g.id)
             const collapsed = collapsedGroups.has(g.id)
@@ -347,6 +403,18 @@ export function NotebookSidebar({
             {t('notebook.ctxOpen')}
           </button>
           <div className="wn-context-submenu-label">{t('notebook.ctxMoveToGroup')}</div>
+          <button
+            type="button"
+            className="wn-context-item wn-context-item-indent"
+            disabled={noteMenu.note.groupId === NOTEBOOK_ROOT_ID}
+            onClick={() => {
+              const { note } = noteMenu
+              setNoteMenu(null)
+              onMoveNoteToGroup(note.id, NOTEBOOK_ROOT_ID)
+            }}
+          >
+            {t('notebook.rootGroup')}
+          </button>
           {sortedGroups.map((g) => (
             <button
               key={g.id}

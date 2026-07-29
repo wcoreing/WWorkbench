@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 const (
@@ -60,14 +60,15 @@ func (s *Store) SaveNotebookGroup(g model.NotebookGroupDO) error {
 	return nil
 }
 
-// DeleteNotebookGroup 删除笔记本分组及其下属笔记。
+// DeleteNotebookGroup 删除分组，组内笔记移到根目录。
 func (s *Store) DeleteNotebookGroup(id string) error {
 	tx, err := s.db.Begin()
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本分组失败", err)
 	}
 	defer tx.Rollback()
-	if _, err := tx.Exec(`DELETE FROM notes WHERE group_id = ?`, id); err != nil {
+	now := time.Now().Unix()
+	if _, err := tx.Exec(`UPDATE notes SET group_id = '', updated_at = ? WHERE group_id = ?`, now, id); err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本分组失败", err)
 	}
 	res, err := tx.Exec(`DELETE FROM notebook_groups WHERE id = ?`, id)
@@ -178,11 +179,8 @@ func (s *Store) SaveNote(n model.NoteDO) error {
 	return nil
 }
 
-// ApplyNotebookLayout 批量应用分组顺序与笔记归属/排序。
+// ApplyNotebookLayout 批量应用分组顺序与笔记归属/排序（groupOrder 可空；notesByGroup[""] 为根目录）。
 func (s *Store) ApplyNotebookLayout(layout model.NotebookLayoutDO) error {
-	if len(layout.GroupOrder) == 0 {
-		return errno.New(errno.CodeInvalidArg, "分组顺序不能为空", "")
-	}
 	tx, err := s.db.Begin()
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "保存笔记本布局失败", err)
@@ -190,6 +188,9 @@ func (s *Store) ApplyNotebookLayout(layout model.NotebookLayoutDO) error {
 	defer tx.Rollback()
 	now := time.Now().Unix()
 	for i, gid := range layout.GroupOrder {
+		if strings.TrimSpace(gid) == "" {
+			continue
+		}
 		res, err := tx.Exec(`UPDATE notebook_groups SET sort_order = ?, updated_at = ? WHERE id = ?`, i, now, gid)
 		if err != nil {
 			return errno.Wrap(errno.CodeStoreFailed, "保存笔记本布局失败", err)

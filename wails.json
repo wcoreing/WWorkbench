@@ -1,11 +1,12 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "WNavicat",
-  "outputfilename": "WNavicat",
+  "name": "WWorkbench",
+  "outputfilename": "WWorkbench",
   "frontend:install": "npm install",
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
+  "devServer": "localhost:34116",
   "author": {
     "name": "weining",
     "email": "178441367@qq.com"

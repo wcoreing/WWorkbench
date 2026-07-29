@@ -2,7 +2,6 @@ package sftp
 
 import (
 	"context"
-	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -10,20 +9,22 @@ import (
 	"strings"
 	"sync"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/terminal"
-	"WNavicat/internal/tunnel"
+	"WWorkbench/internal/docker"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/terminal"
+	"WWorkbench/internal/tunnel"
 
 	"github.com/google/uuid"
 	pkgsftp "github.com/pkg/sftp"
-	"golang.org/x/crypto/ssh"
 )
 
 // Manager SFTP 会话管理器。
 type Manager struct {
+	mu         sync.RWMutex
 	sessions   map[string]*Session
 	hosts      *terminal.HostService
+	docker     *docker.Manager
 	onProgress ProgressHandler
 	cancelMu   sync.Mutex
 	cancels    map[string]context.CancelFunc
@@ -45,16 +46,20 @@ func (m *Manager) Progress() ProgressHandler {
 }
 
 // NewManager 创建 SFTP 会话管理器。
-func NewManager(hosts *terminal.HostService) *Manager {
+func NewManager(hosts *terminal.HostService, dockerMgr *docker.Manager) *Manager {
 	return &Manager{
 		sessions: make(map[string]*Session),
 		hosts:    hosts,
+		docker:   dockerMgr,
 		cancels:  make(map[string]context.CancelFunc),
 	}
 }
 
-// Open 建立 SFTP 会话。
+// Open 建立 SFTP / 容器文件会话。
 func (m *Manager) Open(ctx context.Context, hostID string) (*model.SFTPSessionInfoDO, error) {
+	if docker.IsDockerHostID(hostID) {
+		return m.openDocker(ctx, hostID)
+	}
 	host, err := m.hosts.Get(hostID)
 	if err != nil {
 		return nil, err
@@ -70,13 +75,43 @@ func (m *Manager) Open(ctx context.Context, hostID string) (*model.SFTPSessionIn
 	}
 	sid := uuid.NewString()
 	title := host.User + "@" + host.Host
+	m.mu.Lock()
 	m.sessions[sid] = &Session{
 		ID:     sid,
 		HostID: hostID,
 		Title:  title,
-		ssh:    client,
-		sftp:   sftpClient,
+		fs:     newSSHFS(client, sftpClient),
 	}
+	m.mu.Unlock()
+	return &model.SFTPSessionInfoDO{
+		SessionID: sid,
+		HostID:    hostID,
+		Title:     title,
+	}, nil
+}
+
+func (m *Manager) openDocker(ctx context.Context, hostID string) (*model.SFTPSessionInfoDO, error) {
+	if m.docker == nil {
+		return nil, errno.New(errno.CodeInvalidArg, "Docker 管理器未初始化", "")
+	}
+	host, err := m.docker.GetShellHost(hostID)
+	if err != nil {
+		return nil, err
+	}
+	fs, err := openDockerFS(ctx, m.docker, host.ContextID, host.ContainerID)
+	if err != nil {
+		return nil, err
+	}
+	sid := uuid.NewString()
+	title := docker.ResolveShellTitle(host.ContainerName, host.ContainerID)
+	m.mu.Lock()
+	m.sessions[sid] = &Session{
+		ID:     sid,
+		HostID: hostID,
+		Title:  title,
+		fs:     fs,
+	}
+	m.mu.Unlock()
 	return &model.SFTPSessionInfoDO{
 		SessionID: sid,
 		HostID:    hostID,
@@ -86,19 +121,29 @@ func (m *Manager) Open(ctx context.Context, hostID string) (*model.SFTPSessionIn
 
 // Close 关闭 SFTP 会话。
 func (m *Manager) Close(sessionID string) error {
+	m.mu.Lock()
 	s, ok := m.sessions[sessionID]
+	if ok {
+		delete(m.sessions, sessionID)
+	}
+	m.mu.Unlock()
 	if !ok {
 		return errno.New(errno.CodeNotFound, "SFTP 会话不存在", sessionID)
 	}
-	delete(m.sessions, sessionID)
 	s.cleanup()
 	return nil
 }
 
 // CloseAll 关闭全部 SFTP 会话。
 func (m *Manager) CloseAll() {
+	m.mu.Lock()
+	list := make([]*Session, 0, len(m.sessions))
 	for id, s := range m.sessions {
 		delete(m.sessions, id)
+		list = append(list, s)
+	}
+	m.mu.Unlock()
+	for _, s := range list {
 		s.cleanup()
 	}
 }
@@ -109,15 +154,7 @@ func (m *Manager) GetHome(sessionID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	wd, err := s.sftp.Getwd()
-	if err == nil && wd != "" {
-		return cleanRemotePath(wd), nil
-	}
-	home, err := s.sftp.RealPath(".")
-	if err != nil {
-		return "/", errno.Wrap(errno.CodeConnFailed, "获取远程目录失败", err)
-	}
-	return cleanRemotePath(home), nil
+	return s.fs.Home()
 }
 
 // ListDir 列出远程目录。
@@ -126,27 +163,7 @@ func (m *Manager) ListDir(sessionID, dir string) ([]model.FileEntryDO, error) {
 	if err != nil {
 		return nil, err
 	}
-	dir = cleanRemotePath(dir)
-	entries, err := s.sftp.ReadDir(dir)
-	if err != nil {
-		return nil, errno.Wrap(errno.CodeConnFailed, "读取远程目录失败", err)
-	}
-	out := make([]model.FileEntryDO, 0, len(entries))
-	for _, ent := range entries {
-		name := ent.Name()
-		if name == "." {
-			continue
-		}
-		out = append(out, model.FileEntryDO{
-			Name:    name,
-			Path:    path.Join(dir, name),
-			IsDir:   ent.IsDir(),
-			Size:    ent.Size(),
-			ModTime: ent.ModTime().Unix(),
-		})
-	}
-	sortFileEntries(out)
-	return out, nil
+	return s.fs.ListDir(dir)
 }
 
 // Download 下载远程文件到本地路径。
@@ -155,24 +172,7 @@ func (m *Manager) Download(sessionID, remotePath, localPath string) error {
 	if err != nil {
 		return err
 	}
-	remotePath = cleanRemotePath(remotePath)
-	src, err := s.sftp.Open(remotePath)
-	if err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "打开远程文件失败", err)
-	}
-	defer src.Close()
-	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
-		return errno.Wrap(errno.CodeStoreFailed, "创建本地目录失败", err)
-	}
-	dst, err := os.Create(localPath)
-	if err != nil {
-		return errno.Wrap(errno.CodeStoreFailed, "创建本地文件失败", err)
-	}
-	defer dst.Close()
-	if _, err := io.Copy(dst, src); err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "下载文件失败", err)
-	}
-	return nil
+	return s.fs.DownloadFile(context.Background(), cleanRemotePath(remotePath), localPath, nil)
 }
 
 // Upload 上传本地文件到远程路径。
@@ -181,24 +181,7 @@ func (m *Manager) Upload(sessionID, localPath, remotePath string) error {
 	if err != nil {
 		return err
 	}
-	src, err := os.Open(localPath)
-	if err != nil {
-		return errno.Wrap(errno.CodeInvalidArg, "打开本地文件失败", err)
-	}
-	defer src.Close()
-	remotePath = cleanRemotePath(remotePath)
-	if err := s.sftp.MkdirAll(path.Dir(remotePath)); err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "创建远程目录失败", err)
-	}
-	dst, err := s.sftp.Create(remotePath)
-	if err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "创建远程文件失败", err)
-	}
-	defer dst.Close()
-	if _, err := io.Copy(dst, src); err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "上传文件失败", err)
-	}
-	return nil
+	return s.fs.UploadFile(context.Background(), localPath, cleanRemotePath(remotePath), nil)
 }
 
 // DownloadToFile 下载远程文件到指定本地路径。
@@ -207,14 +190,21 @@ func (m *Manager) DownloadToFile(ctx context.Context, sessionID, taskID, remoteP
 	if err != nil {
 		return err
 	}
-	client, err := s.openTransferClient()
+	fs, err := s.fs.OpenTransfer()
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer fs.Close()
 	ctx, done := m.bindTransferCtx(ctx, taskID)
 	defer done()
-	return m.downloadFile(ctx, client, sessionID, taskID, cleanRemotePath(remotePath), filepath.Clean(localPath), m.progress())
+	name := filepath.Base(remotePath)
+	return fs.DownloadFile(ctx, cleanRemotePath(remotePath), filepath.Clean(localPath), func(doneBytes, total int64) {
+		state := "running"
+		if doneBytes >= total && total > 0 {
+			state = "done"
+		}
+		m.emitProgress(m.progress(), taskID, sessionID, "download", name, doneBytes, total, state)
+	})
 }
 
 // DeletePath 删除远程文件或空目录。
@@ -223,21 +213,7 @@ func (m *Manager) DeletePath(sessionID, remotePath string) error {
 	if err != nil {
 		return err
 	}
-	remotePath = cleanRemotePath(remotePath)
-	info, err := s.sftp.Stat(remotePath)
-	if err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "读取远程路径失败", err)
-	}
-	if info.IsDir() {
-		if err := s.sftp.RemoveDirectory(remotePath); err != nil {
-			return errno.Wrap(errno.CodeConnFailed, "删除远程目录失败", err)
-		}
-		return nil
-	}
-	if err := s.sftp.Remove(remotePath); err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "删除远程文件失败", err)
-	}
-	return nil
+	return s.fs.Remove(cleanRemotePath(remotePath))
 }
 
 // ListLocalDir 列出本地目录。
@@ -275,6 +251,8 @@ func ListLocalDir(dir string) ([]model.FileEntryDO, string, error) {
 
 // get 获取 SFTP 会话。
 func (m *Manager) get(sessionID string) (*Session, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	s, ok := m.sessions[sessionID]
 	if !ok {
 		return nil, errno.New(errno.CodeSessionClosed, "SFTP 会话已关闭", sessionID)
@@ -304,32 +282,20 @@ func sortFileEntries(entries []model.FileEntryDO) {
 	})
 }
 
-// Session SFTP 会话。
+// Session SFTP / 容器文件会话。
 type Session struct {
 	ID     string
 	HostID string
 	Title  string
-	ssh    *ssh.Client
-	sftp   *pkgsftp.Client
+	fs     remoteFS
 }
 
-// cleanup 释放 SFTP 会话资源。
+// cleanup 释放会话资源。
 func (s *Session) cleanup() {
-	if s.sftp != nil {
-		_ = s.sftp.Close()
+	if s.fs != nil {
+		s.fs.Close()
+		s.fs = nil
 	}
-	if s.ssh != nil {
-		_ = s.ssh.Close()
-	}
-}
-
-// openTransferClient 为并发传输创建独立 SFTP 客户端（共享 SSH 连接）。
-func (s *Session) openTransferClient() (*pkgsftp.Client, error) {
-	client, err := pkgsftp.NewClient(s.ssh)
-	if err != nil {
-		return nil, errno.Wrap(errno.CodeConnFailed, "创建传输 SFTP 客户端失败", err)
-	}
-	return client, nil
 }
 
 // registerCancel 注册传输任务取消函数。
@@ -363,11 +329,10 @@ func (m *Manager) bindTransferCtx(ctx context.Context, taskID string) (context.C
 	ctx, cancel := context.WithCancel(ctx)
 	if taskID != "" {
 		m.registerCancel(taskID, cancel)
-	}
-	return ctx, func() {
-		cancel()
-		if taskID != "" {
+		return ctx, func() {
+			cancel()
 			m.unregisterCancel(taskID)
 		}
 	}
+	return ctx, cancel
 }

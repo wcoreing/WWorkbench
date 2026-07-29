@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"WNavicat/internal/logs"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/logs"
+	"WWorkbench/internal/model"
 
 	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"

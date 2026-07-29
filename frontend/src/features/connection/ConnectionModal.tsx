@@ -13,15 +13,16 @@ interface Props {
 
 type SSHSource = 'host' | 'manual'
 
-type DbType = 'mysql' | 'postgresql' | 'redis'
+type DbType = 'mysql' | 'postgresql' | 'redis' | 'sqlite'
 
-const DB_PRESETS: Record<DbType, { port: number; database: string; charset: string }> = {
-  mysql: { port: 3306, database: '', charset: 'utf8mb4' },
-  postgresql: { port: 5432, database: 'postgres', charset: '' },
-  redis: { port: 6379, database: '0', charset: '' },
+const DB_PRESETS: Record<DbType, { port: number; database: string; charset: string; host: string; user: string }> = {
+  mysql: { port: 3306, database: '', charset: 'utf8mb4', host: '127.0.0.1', user: 'root' },
+  postgresql: { port: 5432, database: 'postgres', charset: '', host: '127.0.0.1', user: 'postgres' },
+  redis: { port: 6379, database: '0', charset: '', host: '127.0.0.1', user: '' },
+  sqlite: { port: 0, database: 'main', charset: '', host: '', user: '' },
 }
 
-const DB_TYPE_OPTIONS: DbType[] = ['mysql', 'postgresql', 'redis']
+const DB_TYPE_OPTIONS: DbType[] = ['mysql', 'postgresql', 'redis', 'sqlite']
 
 const emptyConn = (): Connection => ({
   id: '',
@@ -50,7 +51,10 @@ type TFn = (key: string, params?: Record<string, string | number>) => string
 /** validateConnectionForm 校验连接表单必填项。 */
 function validateConnectionForm(form: Connection, sshSource: SSHSource, t: TFn): string | null {
   if (!form.name.trim()) return t('connection.errName')
-  if (!form.host.trim()) return t('connection.errHost')
+  if (!form.host.trim()) {
+    return form.dbType === 'sqlite' ? t('connection.errFilePath') : t('connection.errHost')
+  }
+  if (form.dbType === 'sqlite') return null
   if (form.dbType !== 'redis' && !form.user.trim()) return t('connection.errUser')
   if (!form.port || form.port <= 0) return t('connection.errPort')
   if (form.sshEnabled) {
@@ -121,8 +125,13 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
       port: preset.port,
       database: preset.database,
       charset: preset.charset,
+      host: preset.host,
+      user: preset.user,
+      sshEnabled: dbType === 'sqlite' ? false : form.sshEnabled,
     })
   }
+
+  const isSqlite = form.dbType === 'sqlite'
 
   const dbTypeLabel = t(`connection.dbType_${form.dbType}`)
 
@@ -170,12 +179,14 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
     const payload = buildPayload()
     const invalid = validateConnectionForm(payload, sshSource, t)
     if (invalid) {
+      setSuccess('')
       setError(invalid)
       return
     }
     if (!payload.id) payload.id = crypto.randomUUID()
     setSaving(true)
     setError('')
+    setSuccess('')
     try {
       await api.saveConnection(payload)
       onSaved()
@@ -251,75 +262,94 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
               </select>
             </div>
 
-            <div className="wn-form-row">
+            {isSqlite ? (
               <div className="wn-field">
                 <label className="wn-label" htmlFor="conn-host">
-                  {t('connection.host')}
+                  {t('connection.filePath')}
                 </label>
                 <input
                   id="conn-host"
                   className="wn-input"
                   value={form.host}
                   onChange={(e) => update({ host: e.target.value })}
-                  placeholder={t('connection.hostPlaceholder')}
+                  placeholder={t('connection.filePathPlaceholder')}
                 />
+                <p className="conn-ssh-hint">{t('connection.sqliteHint')}</p>
               </div>
-              <div className="wn-field wn-field-narrow">
-                <label className="wn-label" htmlFor="conn-port">
-                  {t('connection.port')}
-                </label>
-                <input
-                  id="conn-port"
-                  className="wn-input"
-                  type="number"
-                  min={1}
-                  max={65535}
-                  value={form.port}
-                  onChange={(e) => update({ port: Number(e.target.value) })}
-                />
-              </div>
-            </div>
+            ) : (
+              <>
+                <div className="wn-form-row">
+                  <div className="wn-field">
+                    <label className="wn-label" htmlFor="conn-host">
+                      {t('connection.host')}
+                    </label>
+                    <input
+                      id="conn-host"
+                      className="wn-input"
+                      value={form.host}
+                      onChange={(e) => update({ host: e.target.value })}
+                      placeholder={t('connection.hostPlaceholder')}
+                    />
+                  </div>
+                  <div className="wn-field wn-field-narrow">
+                    <label className="wn-label" htmlFor="conn-port">
+                      {t('connection.port')}
+                    </label>
+                    <input
+                      id="conn-port"
+                      className="wn-input"
+                      type="number"
+                      min={1}
+                      max={65535}
+                      value={form.port}
+                      onChange={(e) => update({ port: Number(e.target.value) })}
+                    />
+                  </div>
+                </div>
 
-            <div className="wn-form-row wn-form-row-equal">
-              <div className="wn-field">
-                <label className="wn-label" htmlFor="conn-user">
-                  {t('connection.user')}
-                </label>
-                <input
-                  id="conn-user"
-                  className="wn-input"
-                  value={form.user}
-                  onChange={(e) => update({ user: e.target.value })}
-                />
-              </div>
-              <div className="wn-field">
-                <label className="wn-label" htmlFor="conn-pass">
-                  {t('connection.password')}
-                </label>
-                <input
-                  id="conn-pass"
-                  className="wn-input"
-                  type="password"
-                  value={form.password}
-                  onChange={(e) => update({ password: e.target.value })}
-                  placeholder={t('connection.optional')}
-                />
-              </div>
-            </div>
+                <div className="wn-form-row wn-form-row-equal">
+                  <div className="wn-field">
+                    <label className="wn-label" htmlFor="conn-user">
+                      {t('connection.user')}
+                    </label>
+                    <input
+                      id="conn-user"
+                      className="wn-input"
+                      value={form.user}
+                      onChange={(e) => update({ user: e.target.value })}
+                    />
+                  </div>
+                  <div className="wn-field">
+                    <label className="wn-label" htmlFor="conn-pass">
+                      {t('connection.password')}
+                    </label>
+                    <input
+                      id="conn-pass"
+                      className="wn-input"
+                      type="password"
+                      value={form.password}
+                      onChange={(e) => update({ password: e.target.value })}
+                      placeholder={t('connection.optional')}
+                    />
+                  </div>
+                </div>
 
-            <div className="wn-field">
-              <label className="wn-label" htmlFor="conn-db">
-                {form.dbType === 'redis' ? t('connection.redisDb') : t('connection.defaultDb')}
-              </label>
-              <input
-                id="conn-db"
-                className="wn-input"
-                value={form.database}
-                onChange={(e) => update({ database: e.target.value })}
-                placeholder={form.dbType === 'redis' ? t('connection.redisDbPlaceholder') : t('connection.optional')}
-              />
-            </div>
+                <div className="wn-field">
+                  <label className="wn-label" htmlFor="conn-db">
+                    {form.dbType === 'redis' ? t('connection.redisDb') : t('connection.defaultDb')}
+                  </label>
+                  <input
+                    id="conn-db"
+                    className="wn-input"
+                    value={form.database}
+                    onChange={(e) => update({ database: e.target.value })}
+                    placeholder={form.dbType === 'redis' ? t('connection.redisDbPlaceholder') : t('connection.optional')}
+                  />
+                </div>
+              </>
+            )}
 
+            {!isSqlite && (
             <div className="conn-ssh-block">
               <label className="wn-check conn-ssh-toggle">
                 <input
@@ -447,6 +477,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
                 </div>
               )}
             </div>
+            )}
           </div>
 
           {error && <div className="wn-form-msg error">{error}</div>}

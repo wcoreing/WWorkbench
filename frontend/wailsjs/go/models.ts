@@ -1,12 +1,12 @@
 export namespace app {
 	
-	export class ApiResult_WNavicat_internal_model_AgentChatResultDO_ {
+	export class ApiResult_WWorkbench_internal_model_AgentChatResultDO_ {
 	    ok: boolean;
 	    data: model.AgentChatResultDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_AgentChatResultDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_AgentChatResultDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -34,13 +34,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_AgentSettingsDO_ {
+	export class ApiResult_WWorkbench_internal_model_AgentSettingsDO_ {
 	    ok: boolean;
 	    data: model.AgentSettingsDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_AgentSettingsDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_AgentSettingsDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -68,13 +68,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_AgentThreadDetailDO_ {
+	export class ApiResult_WWorkbench_internal_model_AgentThreadDetailDO_ {
 	    ok: boolean;
 	    data: model.AgentThreadDetailDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_AgentThreadDetailDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_AgentThreadDetailDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -102,13 +102,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_ComposeLogsDO_ {
+	export class ApiResult_WWorkbench_internal_model_ComposeLogsDO_ {
 	    ok: boolean;
 	    data: model.ComposeLogsDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_ComposeLogsDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_ComposeLogsDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -136,13 +136,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_ConnectionDO_ {
+	export class ApiResult_WWorkbench_internal_model_ConnectionDO_ {
 	    ok: boolean;
 	    data: model.ConnectionDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_ConnectionDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_ConnectionDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -170,13 +170,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_ContainerDO_ {
+	export class ApiResult_WWorkbench_internal_model_ContainerDO_ {
 	    ok: boolean;
 	    data: model.ContainerDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_ContainerDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_ContainerDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -204,13 +204,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_ContainerDatabaseLinkDO_ {
+	export class ApiResult_WWorkbench_internal_model_ContainerDatabaseLinkDO_ {
 	    ok: boolean;
 	    data: model.ContainerDatabaseLinkDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_ContainerDatabaseLinkDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_ContainerDatabaseLinkDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -238,13 +238,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_ContainerEnvDO_ {
+	export class ApiResult_WWorkbench_internal_model_ContainerEnvDO_ {
 	    ok: boolean;
 	    data: model.ContainerEnvDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_ContainerEnvDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_ContainerEnvDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -272,13 +272,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_ContainerLogsDO_ {
+	export class ApiResult_WWorkbench_internal_model_ContainerLogsDO_ {
 	    ok: boolean;
 	    data: model.ContainerLogsDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_ContainerLogsDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_ContainerLogsDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -306,13 +306,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_ContainerRunPresetDO_ {
+	export class ApiResult_WWorkbench_internal_model_ContainerRunPresetDO_ {
 	    ok: boolean;
 	    data: model.ContainerRunPresetDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_ContainerRunPresetDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_ContainerRunPresetDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -340,13 +340,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_ContainerShellDO_ {
+	export class ApiResult_WWorkbench_internal_model_ContainerShellDO_ {
 	    ok: boolean;
 	    data: model.ContainerShellDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_ContainerShellDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_ContainerShellDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -374,13 +374,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_DDLResultDO_ {
+	export class ApiResult_WWorkbench_internal_model_DDLResultDO_ {
 	    ok: boolean;
 	    data: model.DDLResultDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_DDLResultDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_DDLResultDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -408,13 +408,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_DockerContextDO_ {
+	export class ApiResult_WWorkbench_internal_model_DockerContextDO_ {
 	    ok: boolean;
 	    data: model.DockerContextDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_DockerContextDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_DockerContextDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -442,13 +442,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_EnvApplyResultDO_ {
+	export class ApiResult_WWorkbench_internal_model_EnvApplyResultDO_ {
 	    ok: boolean;
 	    data: model.EnvApplyResultDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_EnvApplyResultDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_EnvApplyResultDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -476,13 +476,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_EnvPresetDO_ {
+	export class ApiResult_WWorkbench_internal_model_EnvPresetDO_ {
 	    ok: boolean;
 	    data: model.EnvPresetDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_EnvPresetDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_EnvPresetDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -510,13 +510,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_ExportResultDO_ {
+	export class ApiResult_WWorkbench_internal_model_ExportResultDO_ {
 	    ok: boolean;
 	    data: model.ExportResultDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_ExportResultDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_ExportResultDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -544,13 +544,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_HTTPEnvironmentDO_ {
+	export class ApiResult_WWorkbench_internal_model_HTTPEnvironmentDO_ {
 	    ok: boolean;
 	    data: model.HTTPEnvironmentDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_HTTPEnvironmentDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_HTTPEnvironmentDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -578,13 +578,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_HTTPFolderDO_ {
+	export class ApiResult_WWorkbench_internal_model_HTTPFolderDO_ {
 	    ok: boolean;
 	    data: model.HTTPFolderDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_HTTPFolderDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_HTTPFolderDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -612,13 +612,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_HTTPResponseDO_ {
+	export class ApiResult_WWorkbench_internal_model_HTTPResponseDO_ {
 	    ok: boolean;
 	    data: model.HTTPResponseDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_HTTPResponseDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_HTTPResponseDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -646,13 +646,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_HTTPSavedRequestDO_ {
+	export class ApiResult_WWorkbench_internal_model_HTTPSavedRequestDO_ {
 	    ok: boolean;
 	    data: model.HTTPSavedRequestDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_HTTPSavedRequestDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_HTTPSavedRequestDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -680,13 +680,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_LocalDirResultDO_ {
+	export class ApiResult_WWorkbench_internal_model_LocalDirResultDO_ {
 	    ok: boolean;
 	    data: model.LocalDirResultDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_LocalDirResultDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_LocalDirResultDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -714,13 +714,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_LogFetchResultDO_ {
+	export class ApiResult_WWorkbench_internal_model_LogFetchResultDO_ {
 	    ok: boolean;
 	    data: model.LogFetchResultDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_LogFetchResultDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_LogFetchResultDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -748,13 +748,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_LogSourceDO_ {
+	export class ApiResult_WWorkbench_internal_model_LogSourceDO_ {
 	    ok: boolean;
 	    data: model.LogSourceDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_LogSourceDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_LogSourceDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -782,13 +782,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_NoteDO_ {
+	export class ApiResult_WWorkbench_internal_model_NoteDO_ {
 	    ok: boolean;
 	    data: model.NoteDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_NoteDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_NoteDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -816,13 +816,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_NotebookGroupDO_ {
+	export class ApiResult_WWorkbench_internal_model_NotebookGroupDO_ {
 	    ok: boolean;
 	    data: model.NotebookGroupDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_NotebookGroupDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_NotebookGroupDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -850,13 +850,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_NotebookUIDO_ {
+	export class ApiResult_WWorkbench_internal_model_NotebookUIDO_ {
 	    ok: boolean;
 	    data: model.NotebookUIDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_NotebookUIDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_NotebookUIDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -884,13 +884,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_QueryPageDO_ {
+	export class ApiResult_WWorkbench_internal_model_QueryPageDO_ {
 	    ok: boolean;
 	    data: model.QueryPageDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_QueryPageDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_QueryPageDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -918,13 +918,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_SFTPSessionInfoDO_ {
+	export class ApiResult_WWorkbench_internal_model_SFTPSessionInfoDO_ {
 	    ok: boolean;
 	    data: model.SFTPSessionInfoDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_SFTPSessionInfoDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_SFTPSessionInfoDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -952,13 +952,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_SSHForwardActiveDO_ {
+	export class ApiResult_WWorkbench_internal_model_SSHForwardActiveDO_ {
 	    ok: boolean;
 	    data: model.SSHForwardActiveDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_SSHForwardActiveDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_SSHForwardActiveDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -986,13 +986,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_SSHForwardPresetDO_ {
+	export class ApiResult_WWorkbench_internal_model_SSHForwardPresetDO_ {
 	    ok: boolean;
 	    data: model.SSHForwardPresetDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_SSHForwardPresetDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_SSHForwardPresetDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1020,13 +1020,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_SSHHostDO_ {
+	export class ApiResult_WWorkbench_internal_model_SSHHostDO_ {
 	    ok: boolean;
 	    data: model.SSHHostDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_SSHHostDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_SSHHostDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1054,13 +1054,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_SessionInfoDO_ {
+	export class ApiResult_WWorkbench_internal_model_SessionInfoDO_ {
 	    ok: boolean;
 	    data: model.SessionInfoDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_SessionInfoDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_SessionInfoDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1088,13 +1088,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_SftpBookmarkDO_ {
+	export class ApiResult_WWorkbench_internal_model_SftpBookmarkDO_ {
 	    ok: boolean;
 	    data: model.SftpBookmarkDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_SftpBookmarkDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_SftpBookmarkDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1122,13 +1122,47 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_TableDataPageDO_ {
+	export class ApiResult_WWorkbench_internal_model_ShellHostDO_ {
+	    ok: boolean;
+	    data: model.ShellHostDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_ShellHostDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.ShellHostDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_model_TableDataPageDO_ {
 	    ok: boolean;
 	    data: model.TableDataPageDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_TableDataPageDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_TableDataPageDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1156,13 +1190,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_TerminalSessionInfoDO_ {
+	export class ApiResult_WWorkbench_internal_model_TerminalSessionInfoDO_ {
 	    ok: boolean;
 	    data: model.TerminalSessionInfoDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_TerminalSessionInfoDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_TerminalSessionInfoDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1190,13 +1224,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_TransferConflictDO_ {
+	export class ApiResult_WWorkbench_internal_model_TransferConflictDO_ {
 	    ok: boolean;
 	    data: model.TransferConflictDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_TransferConflictDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_TransferConflictDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1224,13 +1258,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_TransferResultDO_ {
+	export class ApiResult_WWorkbench_internal_model_TransferResultDO_ {
 	    ok: boolean;
 	    data: model.TransferResultDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_TransferResultDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_TransferResultDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1258,13 +1292,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WNavicat_internal_model_VersionDO_ {
+	export class ApiResult_WWorkbench_internal_model_VersionDO_ {
 	    ok: boolean;
 	    data: model.VersionDO;
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult_WNavicat_internal_model_VersionDO_(source);
+	        return new ApiResult_WWorkbench_internal_model_VersionDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1292,13 +1326,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_AgentCapabilityDO_ {
+	export class ApiResult___WWorkbench_internal_model_AgentCapabilityDO_ {
 	    ok: boolean;
 	    data: model.AgentCapabilityDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_AgentCapabilityDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_AgentCapabilityDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1326,13 +1360,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_AgentMessageDO_ {
+	export class ApiResult___WWorkbench_internal_model_AgentMessageDO_ {
 	    ok: boolean;
 	    data: model.AgentMessageDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_AgentMessageDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_AgentMessageDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1360,13 +1394,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_AgentThreadDO_ {
+	export class ApiResult___WWorkbench_internal_model_AgentThreadDO_ {
 	    ok: boolean;
 	    data: model.AgentThreadDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_AgentThreadDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_AgentThreadDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1394,13 +1428,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_ColumnMetaDO_ {
+	export class ApiResult___WWorkbench_internal_model_ColumnMetaDO_ {
 	    ok: boolean;
 	    data: model.ColumnMetaDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_ColumnMetaDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_ColumnMetaDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1428,13 +1462,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_ComposeServiceDO_ {
+	export class ApiResult___WWorkbench_internal_model_ComposeServiceDO_ {
 	    ok: boolean;
 	    data: model.ComposeServiceDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_ComposeServiceDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_ComposeServiceDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1462,13 +1496,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_ConnectionDO_ {
+	export class ApiResult___WWorkbench_internal_model_ConnectionDO_ {
 	    ok: boolean;
 	    data: model.ConnectionDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_ConnectionDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_ConnectionDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1496,13 +1530,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_ContainerDO_ {
+	export class ApiResult___WWorkbench_internal_model_ContainerDO_ {
 	    ok: boolean;
 	    data: model.ContainerDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_ContainerDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_ContainerDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1530,13 +1564,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_DockerContextDO_ {
+	export class ApiResult___WWorkbench_internal_model_DockerContextDO_ {
 	    ok: boolean;
 	    data: model.DockerContextDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_DockerContextDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_DockerContextDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1564,13 +1598,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_DockerImageDO_ {
+	export class ApiResult___WWorkbench_internal_model_DockerImageDO_ {
 	    ok: boolean;
 	    data: model.DockerImageDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_DockerImageDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_DockerImageDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1598,13 +1632,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_EnvPresetDO_ {
+	export class ApiResult___WWorkbench_internal_model_EnvPresetDO_ {
 	    ok: boolean;
 	    data: model.EnvPresetDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_EnvPresetDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_EnvPresetDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1632,13 +1666,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_FileEntryDO_ {
+	export class ApiResult___WWorkbench_internal_model_FileEntryDO_ {
 	    ok: boolean;
 	    data: model.FileEntryDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_FileEntryDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_FileEntryDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1666,13 +1700,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_HTTPEnvironmentDO_ {
+	export class ApiResult___WWorkbench_internal_model_HTTPEnvironmentDO_ {
 	    ok: boolean;
 	    data: model.HTTPEnvironmentDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_HTTPEnvironmentDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_HTTPEnvironmentDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1700,13 +1734,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_HTTPFolderDO_ {
+	export class ApiResult___WWorkbench_internal_model_HTTPFolderDO_ {
 	    ok: boolean;
 	    data: model.HTTPFolderDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_HTTPFolderDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_HTTPFolderDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1734,13 +1768,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_HTTPSavedRequestDO_ {
+	export class ApiResult___WWorkbench_internal_model_HTTPSavedRequestDO_ {
 	    ok: boolean;
 	    data: model.HTTPSavedRequestDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_HTTPSavedRequestDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_HTTPSavedRequestDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1768,13 +1802,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_IndexMetaDO_ {
+	export class ApiResult___WWorkbench_internal_model_IndexMetaDO_ {
 	    ok: boolean;
 	    data: model.IndexMetaDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_IndexMetaDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_IndexMetaDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1802,13 +1836,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_LogSourceDO_ {
+	export class ApiResult___WWorkbench_internal_model_LogSourceDO_ {
 	    ok: boolean;
 	    data: model.LogSourceDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_LogSourceDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_LogSourceDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1836,13 +1870,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_NoteSummaryDO_ {
+	export class ApiResult___WWorkbench_internal_model_NoteSummaryDO_ {
 	    ok: boolean;
 	    data: model.NoteSummaryDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_NoteSummaryDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_NoteSummaryDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1870,13 +1904,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_NotebookGroupDO_ {
+	export class ApiResult___WWorkbench_internal_model_NotebookGroupDO_ {
 	    ok: boolean;
 	    data: model.NotebookGroupDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_NotebookGroupDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_NotebookGroupDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1904,13 +1938,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_ObjectTreeNodeDO_ {
+	export class ApiResult___WWorkbench_internal_model_ObjectTreeNodeDO_ {
 	    ok: boolean;
 	    data: model.ObjectTreeNodeDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_ObjectTreeNodeDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_ObjectTreeNodeDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1938,13 +1972,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_ProjectEnvHintDO_ {
+	export class ApiResult___WWorkbench_internal_model_ProjectEnvHintDO_ {
 	    ok: boolean;
 	    data: model.ProjectEnvHintDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_ProjectEnvHintDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_ProjectEnvHintDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -1972,13 +2006,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_QueryHistoryDO_ {
+	export class ApiResult___WWorkbench_internal_model_QueryHistoryDO_ {
 	    ok: boolean;
 	    data: model.QueryHistoryDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_QueryHistoryDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_QueryHistoryDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -2006,13 +2040,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_RuntimeDO_ {
+	export class ApiResult___WWorkbench_internal_model_RuntimeDO_ {
 	    ok: boolean;
 	    data: model.RuntimeDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_RuntimeDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_RuntimeDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -2040,13 +2074,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_RuntimeVersionDO_ {
+	export class ApiResult___WWorkbench_internal_model_RuntimeVersionDO_ {
 	    ok: boolean;
 	    data: model.RuntimeVersionDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_RuntimeVersionDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_RuntimeVersionDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -2074,13 +2108,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_SSHForwardActiveDO_ {
+	export class ApiResult___WWorkbench_internal_model_SSHForwardActiveDO_ {
 	    ok: boolean;
 	    data: model.SSHForwardActiveDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_SSHForwardActiveDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_SSHForwardActiveDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -2108,13 +2142,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_SSHForwardPresetDO_ {
+	export class ApiResult___WWorkbench_internal_model_SSHForwardPresetDO_ {
 	    ok: boolean;
 	    data: model.SSHForwardPresetDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_SSHForwardPresetDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_SSHForwardPresetDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -2142,13 +2176,13 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_SSHHostDO_ {
+	export class ApiResult___WWorkbench_internal_model_SSHHostDO_ {
 	    ok: boolean;
 	    data: model.SSHHostDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_SSHHostDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_SSHHostDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -2176,19 +2210,53 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WNavicat_internal_model_SftpBookmarkDO_ {
+	export class ApiResult___WWorkbench_internal_model_SftpBookmarkDO_ {
 	    ok: boolean;
 	    data: model.SftpBookmarkDO[];
 	    error?: errno.AppError;
 	
 	    static createFrom(source: any = {}) {
-	        return new ApiResult___WNavicat_internal_model_SftpBookmarkDO_(source);
+	        return new ApiResult___WWorkbench_internal_model_SftpBookmarkDO_(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.SftpBookmarkDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WWorkbench_internal_model_ShellHostDO_ {
+	    ok: boolean;
+	    data: model.ShellHostDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_ShellHostDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.ShellHostDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -3098,6 +3166,8 @@ export namespace model {
 	export class ContainerShellDO {
 	    mode: string;
 	    hostId: string;
+	    contextId: string;
+	    containerId: string;
 	    command: string;
 	
 	    static createFrom(source: any = {}) {
@@ -3108,6 +3178,8 @@ export namespace model {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.mode = source["mode"];
 	        this.hostId = source["hostId"];
+	        this.contextId = source["contextId"];
+	        this.containerId = source["containerId"];
 	        this.command = source["command"];
 	    }
 	}
@@ -4068,6 +4140,46 @@ export namespace model {
 	        this.name = source["name"];
 	        this.path = source["path"];
 	        this.createdAt = source["createdAt"];
+	    }
+	}
+	export class ShellHostDO {
+	    id: string;
+	    kind: string;
+	    name: string;
+	    host: string;
+	    port: number;
+	    user: string;
+	    password: string;
+	    keyPath: string;
+	    contextId: string;
+	    containerId: string;
+	    containerName: string;
+	    image: string;
+	    running: boolean;
+	    createdAt: number;
+	    updatedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ShellHostDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.kind = source["kind"];
+	        this.name = source["name"];
+	        this.host = source["host"];
+	        this.port = source["port"];
+	        this.user = source["user"];
+	        this.password = source["password"];
+	        this.keyPath = source["keyPath"];
+	        this.contextId = source["contextId"];
+	        this.containerId = source["containerId"];
+	        this.containerName = source["containerName"];
+	        this.image = source["image"];
+	        this.running = source["running"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
 	    }
 	}
 	export class TableRowDO {

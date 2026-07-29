@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 var goVersionRe = regexp.MustCompile(`go([0-9]+\.[0-9]+(?:\.[0-9]+)?)`)

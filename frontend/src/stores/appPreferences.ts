@@ -1,6 +1,7 @@
 import type { ProductId } from '../shell/products'
 import { api } from '../api/client'
 import type { AppLocale } from '../i18n/types'
+import { clampUiFontSize, DEFAULT_UI_FONT_SIZE, type UiFontSize } from '../shell/uiFontSize'
 
 /** 应用设置键（与 Go store 常量一致）。 */
 export const APP_SETTING_KEYS = {
@@ -8,6 +9,7 @@ export const APP_SETTING_KEYS = {
   locale: 'locale',
   activeProduct: 'active_product',
   terminalOpacity: 'terminal_opacity',
+  uiFontSize: 'ui_font_size',
   lastConnectionId: 'last_connection_id',
   lastDockerContextId: 'last_docker_context_id',
 } as const
@@ -17,6 +19,7 @@ export interface AppPreferences {
   locale: AppLocale
   activeProduct: ProductId
   terminalOpacity: number
+  uiFontSize: UiFontSize
   lastConnectionId: string | null
   lastDockerContextId: string | null
 }
@@ -26,6 +29,7 @@ const DEFAULT_PREFERENCES: AppPreferences = {
   locale: 'zh',
   activeProduct: 'database',
   terminalOpacity: 0.92,
+  uiFontSize: DEFAULT_UI_FONT_SIZE,
   lastConnectionId: null,
   lastDockerContextId: null,
 }
@@ -41,11 +45,13 @@ function parsePreferences(settings: Record<string, string>): AppPreferences {
       ? product
       : 'database'
   const opacity = Number(settings[APP_SETTING_KEYS.terminalOpacity])
+  const fontRaw = Number(settings[APP_SETTING_KEYS.uiFontSize])
   return {
     theme,
     locale,
     activeProduct,
     terminalOpacity: Number.isFinite(opacity) ? Math.min(1, Math.max(0.4, opacity)) : 0.92,
+    uiFontSize: Number.isFinite(fontRaw) ? clampUiFontSize(fontRaw) : DEFAULT_UI_FONT_SIZE,
     lastConnectionId: settings[APP_SETTING_KEYS.lastConnectionId] || null,
     lastDockerContextId: settings[APP_SETTING_KEYS.lastDockerContextId] || null,
   }

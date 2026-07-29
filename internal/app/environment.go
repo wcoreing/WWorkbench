@@ -1,8 +1,8 @@
 package app
 
 import (
-	"WNavicat/internal/model"
-	"WNavicat/internal/store"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )

@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"WNavicat/internal/model"
-	"WNavicat/internal/session"
-	sftpsvc "WNavicat/internal/sftp"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/session"
+	sftpsvc "WWorkbench/internal/sftp"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )

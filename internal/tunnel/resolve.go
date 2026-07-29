@@ -1,9 +1,9 @@
 package tunnel
 
 import (
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/store"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
 )
 
 // ResolveConnection 解析连接 SSH 配置（引用已保存 SSH 主机时填充隧道字段）。

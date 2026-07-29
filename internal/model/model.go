@@ -244,12 +244,47 @@ type SSHHostDO struct {
 	UpdatedAt int64  `json:"updatedAt"`
 }
 
+const (
+	ShellHostKindSSH    = "ssh"
+	ShellHostKindDocker = "docker"
+)
+
+// ShellHostDO 统一 Shell 主机（SSH 或 Docker 容器）。
+type ShellHostDO struct {
+	ID            string `json:"id"`
+	Kind          string `json:"kind"` // ssh | docker
+	Name          string `json:"name"`
+	Host          string `json:"host"`
+	Port          int    `json:"port"`
+	User          string `json:"user"`
+	Password      string `json:"password"`
+	KeyPath       string `json:"keyPath"`
+	ContextID     string `json:"contextId"`
+	ContainerID   string `json:"containerId"`
+	ContainerName string `json:"containerName"`
+	Image         string `json:"image"`
+	Running       bool   `json:"running"` // Docker：容器是否在运行；SSH 恒为 true
+	CreatedAt     int64  `json:"createdAt"`
+	UpdatedAt     int64  `json:"updatedAt"`
+}
+
+// DockerShellHostDO 已注册的 Docker 容器 Shell 主机。
+type DockerShellHostDO struct {
+	ID          string `json:"id"`
+	ContextID   string `json:"contextId"`
+	ContainerID string `json:"containerId"`
+	Name        string `json:"name"`
+	Image       string `json:"image"`
+	CreatedAt   int64  `json:"createdAt"`
+	UpdatedAt   int64  `json:"updatedAt"`
+}
+
 // TerminalSessionInfoDO 终端会话信息。
 type TerminalSessionInfoDO struct {
 	SessionID string `json:"sessionId"`
 	HostID    string `json:"hostId"`
 	Title     string `json:"title"`
-	Kind      string `json:"kind"` // local | ssh
+	Kind      string `json:"kind"` // local | ssh | docker
 }
 
 // SFTPSessionInfoDO SFTP 会话信息。
@@ -335,9 +370,11 @@ type DockerImageDO struct {
 
 // ContainerShellDO 容器 Shell 启动信息。
 type ContainerShellDO struct {
-	Mode    string `json:"mode"`
-	HostID  string `json:"hostId"`
-	Command string `json:"command"`
+	Mode      string `json:"mode"` // docker
+	HostID    string `json:"hostId"`
+	ContextID string `json:"contextId"`
+	ContainerID string `json:"containerId"`
+	Command   string `json:"command"` // 已废弃，保留字段兼容
 }
 
 // ContainerDatabaseLinkDO 容器数据库连接建议。

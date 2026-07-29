@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 const dockerContextSelectSQL = `SELECT id, name, kind, ssh_host_id, created_at, updated_at FROM docker_contexts`

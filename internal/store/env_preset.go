@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 const envPresetSelectSQL = `SELECT id, name, active, runtimes_json, created_at, updated_at FROM env_presets`

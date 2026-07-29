@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
-	"WNavicat/internal/httpclient"
-	"WNavicat/internal/model"
-	"WNavicat/internal/store"
+	"WWorkbench/internal/httpclient"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
 
 	"github.com/google/uuid"
 )

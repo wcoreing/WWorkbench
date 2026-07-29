@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 // phpBrewFormula 根据版本号或 formula 解析 brew formula（如 8.3 → php@8.3）。
@@ -140,7 +140,7 @@ func brewInstallFormula(formula string, emit func(string)) error {
 	return err
 }
 
-// syncPhpShellEnv 将 brew PHP 路径写入 ~/.wnavicat/php.env 并接入 shell。
+// syncPhpShellEnv 将 brew PHP 路径写入 ~/.wworkbench/php.env 并接入 shell。
 func syncPhpShellEnv(formula string) error {
 	brew, err := execLookPath("brew")
 	if err != nil {
@@ -155,7 +155,7 @@ func syncPhpShellEnv(formula string) error {
 	phpBin := filepath.Join(formulaPrefix, "bin")
 	brewBin := filepath.Join(brewRoot, "bin")
 	content := `export PATH="` + shellQuotePath(phpBin) + `:` + shellQuotePath(brewBin) + `:$PATH"`
-	return applyWNavicatEnvFile("# wnavicat-php", "php.env", content)
+	return applyWorkbenchEnvFile("# wworkbench-php", "php.env", content)
 }
 
 // phpUnlinkScript 返回切换前 unlink 已链接 PHP 版本的命令片段。

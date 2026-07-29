@@ -6,9 +6,9 @@ import (
 	"os/user"
 	"runtime"
 
-	"WNavicat/internal/environment"
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/environment"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 
 	"github.com/creack/pty"
 	"github.com/google/uuid"

@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 const sshHostSelectSQL = `SELECT id, name, host, port, user_name, password_enc, key_path, created_at, updated_at FROM ssh_hosts`

@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"WNavicat/internal/errno"
+	"WWorkbench/internal/errno"
 )
 
 // MkdirLocal 创建本地目录。

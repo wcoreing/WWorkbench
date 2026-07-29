@@ -10,6 +10,7 @@ import type { WorkTab } from './workTab'
 import { APP_SETTING_KEYS, saveAppSetting } from './appPreferences'
 import type { AppLocale } from '../i18n/types'
 import { applyDocumentLocale, READY_MESSAGES, translate } from '../i18n'
+import { applyUiFontSize, DEFAULT_UI_FONT_SIZE, type UiFontSize } from '../shell/uiFontSize'
 
 export type { WorkTab } from './workTab'
 
@@ -55,6 +56,7 @@ interface AppState {
   designDrafts: Record<string, TableDesignDraft>
   statusMessage: string
   terminalOpacity: number
+  uiFontSize: UiFontSize
   agentFocusSSHHostId: string | null
   agentFocusSSHLabel: string
   notebookFocusNoteId: string | null
@@ -71,6 +73,7 @@ interface AppState {
   setActiveTabId: (id: string | null) => void
   setStatusMessage: (msg: string) => void
   setTerminalOpacity: (v: number) => void
+  setUiFontSize: (px: number) => void
   setAgentFocusSSH: (hostId: string | null, label?: string) => void
   setNotebookFocusNoteId: (id: string | null) => void
   setNotebookActiveNoteId: (id: string | null) => void
@@ -99,6 +102,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   designDrafts: defaults.designDrafts,
   statusMessage: '就绪',
   terminalOpacity: 0.92,
+  uiFontSize: DEFAULT_UI_FONT_SIZE,
   agentFocusSSHHostId: null,
   agentFocusSSHLabel: '',
   notebookFocusNoteId: null,
@@ -140,6 +144,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     const v = Math.min(1, Math.max(0.4, terminalOpacity))
     set({ terminalOpacity: v })
     void saveAppSetting(APP_SETTING_KEYS.terminalOpacity, String(v))
+  },
+  setUiFontSize: (px) => {
+    const uiFontSize = applyUiFontSize(px)
+    set({ uiFontSize })
+    void saveAppSetting(APP_SETTING_KEYS.uiFontSize, String(uiFontSize))
   },
   setAgentFocusSSH: (agentFocusSSHHostId, label) =>
     set({

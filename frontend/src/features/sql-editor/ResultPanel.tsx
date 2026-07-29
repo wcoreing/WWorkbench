@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import type { CellValue, ExecuteResult, QueryPage, SQLBatchResult } from '../../api/types'
 import { ExportFieldsDialog } from '../export/ExportFieldsDialog'
+import { CellViewerDialog, type CellViewerTarget } from '../cell-viewer/CellViewerDialog'
+import { isLikelyLargeCell } from '../cell-viewer/formatCellValue'
+import { ResizableTh, WnGrid, dataColParts, useColumnWidths } from '../grid/columnResize'
 import '../../components/ui.css'
 
 interface Props {
@@ -89,7 +92,10 @@ function QueryResultView({
   loading?: boolean
 }) {
   const [exportDlg, setExportDlg] = useState<'csv' | 'excel' | null>(null)
+  const [viewer, setViewer] = useState<CellViewerTarget | null>(null)
+  const { colStyle, tableStyle, onResizeStart } = useColumnWidths()
   const columnNames = (page.columns ?? []).map((c) => c.name)
+  const gridColParts = dataColParts(columnNames)
   const rowLen = (page.rows ?? []).length
   const totalPages = page.pageSize > 0 ? Math.max(1, Math.ceil(page.total / page.pageSize)) : 1
   const canPrev = page.page > 1
@@ -148,35 +154,56 @@ function QueryResultView({
         }}
         onCancel={() => setExportDlg(null)}
       />
-      <div className="wn-grid-wrap">
-        <table className="wn-grid">
-          <thead>
-            <tr>
-              {(page.columns ?? []).map((c) => (
-                <th key={c.name} title={c.name}>
-                  <span className="col-head-label">{c.name}</span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {(page.rows ?? []).map((row, i) => (
-              <tr key={i}>
-                {(row.cells ?? []).map((cell, j) => (
-                  <td key={j}>
-                    <CellValueView cell={cell} />
-                  </td>
-                ))}
-              </tr>
+      <WnGrid
+        parts={gridColParts}
+        colStyle={colStyle}
+        tableStyle={tableStyle}
+        header={
+          <>
+            {(page.columns ?? []).map((c) => (
+              <ResizableTh key={c.name} colKey={c.name} title={c.name} onResizeStart={onResizeStart}>
+                <span className="col-head-label">{c.name}</span>
+              </ResizableTh>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </>
+        }
+      >
+        {(page.rows ?? []).map((row, i) => (
+          <tr key={i}>
+            {(row.cells ?? []).map((cell, j) => {
+              const colName = page.columns?.[j]?.name ?? `col${j}`
+              const text = cell.isNull ? null : (cell.display ?? cell.value ?? '')
+              const large = isLikelyLargeCell(text)
+              return (
+                <td
+                  key={j}
+                  className={large ? 'grid-cell-expandable' : undefined}
+                  title={large ? '双击查看完整内容' : undefined}
+                  onDoubleClick={() =>
+                    setViewer({
+                      column: colName,
+                      value: text,
+                      isNull: cell.isNull,
+                    })
+                  }
+                >
+                  <CellValueView cell={cell} large={large} />
+                </td>
+              )
+            })}
+          </tr>
+        ))}
+      </WnGrid>
+      <CellViewerDialog target={viewer} onClose={() => setViewer(null)} />
     </div>
   )
 }
 
-function CellValueView({ cell }: { cell: CellValue }) {
+function CellValueView({ cell, large }: { cell: CellValue; large?: boolean }) {
   if (cell.isNull) return <span className="grid-cell-null">NULL</span>
-  return <span className="grid-cell-value">{cell.display ?? cell.value ?? ''}</span>
+  return (
+    <span className={`grid-cell-value ${large ? 'is-large' : ''}`}>
+      {cell.display ?? cell.value ?? ''}
+    </span>
+  )
 }

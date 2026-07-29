@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/adapter"
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/tunnel"
+	"WWorkbench/internal/adapter"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/tunnel"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
@@ -34,7 +34,7 @@ func (a *Adapter) Type() string { return dbType }
 func (a *Adapter) Open(ctx context.Context, cfg model.ConnectionConfigDO, t tunnel.Tunnel) (*sql.DB, error) {
 	host, port := splitAddr(t.Addr(), cfg.Port)
 	dsnDB := cfg.Database
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&loc=Local&charset=%s&multiStatements=true",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&loc=Local&charset=%s&multiStatements=true&timeout=5s&readTimeout=30s&writeTimeout=30s",
 		cfg.User, cfg.Password, host, port, dsnDB, defaultCharset(cfg.Charset))
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {

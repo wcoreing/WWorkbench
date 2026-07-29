@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"WNavicat/internal/errno"
+	"WWorkbench/internal/errno"
 )
 
 var dbNameRe = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
@@ -27,6 +27,9 @@ func (s *Service) CreateDatabase(ctx context.Context, sessionID, name, charset, 
 	}
 	if sess.DbType == "redis" {
 		return errno.New(errno.CodeInvalidArg, "Redis 不支持创建数据库", name)
+	}
+	if sess.DbType == "sqlite" {
+		return errno.New(errno.CodeInvalidArg, "SQLite 不支持创建数据库，请直接打开另一文件", name)
 	}
 	ad, err := s.sessions.Adapter(sess)
 	if err != nil {

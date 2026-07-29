@@ -4,7 +4,7 @@ import (
 	"os"
 	"strings"
 
-	"WNavicat/internal/model"
+	"WWorkbench/internal/model"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )

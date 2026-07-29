@@ -27,7 +27,7 @@ export function newIndexDraft(): IndexDraft {
 export function indexMetaToDrafts(metas: IndexMeta[]): IndexDraft[] {
   const map = new Map<string, IndexDraft>()
   for (const m of metas) {
-    if (m.name === 'PRIMARY') continue
+    if (m.name === 'PRIMARY' || m.name.startsWith('sqlite_autoindex_')) continue
     if (!map.has(m.name)) {
       map.set(m.name, {
         id: `idx-${m.name}`,
@@ -38,7 +38,11 @@ export function indexMetaToDrafts(metas: IndexMeta[]): IndexDraft[] {
         unique: !m.nonUnique,
       })
     }
-    map.get(m.name)!.columns.push(m.column)
+    // SQLite 适配器可能把多列拼成 "a,b"；MySQL 每行一列。
+    const parts = m.column.includes(',')
+      ? m.column.split(',').map((s) => s.trim()).filter(Boolean)
+      : [m.column.trim()].filter(Boolean)
+    map.get(m.name)!.columns.push(...parts)
   }
   return [...map.values()]
 }
@@ -49,17 +53,35 @@ export function activeIndexes(indexes: IndexDraft[]): IndexDraft[] {
 }
 
 /** formatIndexColumnsSQL 格式化索引列列表。 */
-function formatIndexColumnsSQL(columns: string[]): string {
-  return columns.map((c) => `\`${c.trim()}\``).join(', ')
+function formatIndexColumnsSQL(columns: string[], dialect: 'mysql' | 'postgresql' | 'sqlite' = 'mysql'): string {
+  return columns
+    .map((c) => c.trim())
+    .filter(Boolean)
+    .map((c) => (dialect === 'mysql' ? `\`${c.replace(/`/g, '``')}\`` : `"${c.replace(/"/g, '""')}"`))
+    .join(', ')
 }
 
-/** buildCreateTableIndexLines 生成建表索引行。 */
+/** buildCreateTableIndexLines 生成建表内联索引行（仅 MySQL）。 */
 export function buildCreateTableIndexLines(indexes: IndexDraft[]): string[] {
   return activeIndexes(indexes).map((idx) => {
-    const cols = formatIndexColumnsSQL(idx.columns)
+    const cols = formatIndexColumnsSQL(idx.columns, 'mysql')
     return idx.unique
       ? `  UNIQUE KEY \`${idx.name.trim()}\` (${cols})`
       : `  KEY \`${idx.name.trim()}\` (${cols})`
+  })
+}
+
+/** buildStandaloneCreateIndexSQL 生成独立 CREATE INDEX（SQLite / PostgreSQL）。 */
+export function buildStandaloneCreateIndexSQL(
+  table: string,
+  indexes: IndexDraft[],
+  dialect: 'postgresql' | 'sqlite' = 'sqlite',
+): string[] {
+  const q = (n: string) => `"${n.replace(/"/g, '""')}"`
+  return activeIndexes(indexes).map((idx) => {
+    const cols = formatIndexColumnsSQL(idx.columns, dialect)
+    const uniq = idx.unique ? 'UNIQUE ' : ''
+    return `CREATE ${uniq}INDEX ${q(idx.name.trim())} ON ${q(table.trim())} (${cols});`
   })
 }
 

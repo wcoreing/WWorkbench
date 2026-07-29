@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"WNavicat/internal/adapter"
-	redisadapter "WNavicat/internal/adapter/redis"
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/store"
-	"WNavicat/internal/tunnel"
+	"WWorkbench/internal/adapter"
+	redisadapter "WWorkbench/internal/adapter/redis"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
+	"WWorkbench/internal/tunnel"
 
 	"database/sql"
 
@@ -65,10 +65,18 @@ func (m *Manager) Open(ctx context.Context, connectionID, database string) (*mod
 	if conn.DbType == "postgres" {
 		conn.DbType = "postgresql"
 	}
+	if conn.DbType == "sqlite" {
+		conn.SSHEnabled = false
+	}
 	spec := tunnel.SpecFromConnection(*conn)
-	tun, err := m.tunnel.Dial(ctx, spec, conn.Host, conn.Port)
-	if err != nil {
-		return nil, err
+	var tun tunnel.Tunnel
+	if conn.DbType == "sqlite" {
+		tun = tunnel.Nop()
+	} else {
+		tun, err = m.tunnel.Dial(ctx, spec, conn.Host, conn.Port)
+		if err != nil {
+			return nil, err
+		}
 	}
 	cfg := model.ConnectionConfigDO{
 		DbType:   conn.DbType,
@@ -81,10 +89,14 @@ func (m *Manager) Open(ctx context.Context, connectionID, database string) (*mod
 		Tunnel:   spec,
 	}
 	sid := uuid.NewString()
+	dbName := strings.TrimSpace(database)
+	if conn.DbType == "sqlite" && dbName == "" {
+		dbName = "main"
+	}
 	s := &Session{
 		ID:           sid,
 		ConnectionID: connectionID,
-		Database:     strings.TrimSpace(database),
+		Database:     dbName,
 		DbType:       conn.DbType,
 		Tunnel:       tun,
 	}
@@ -168,6 +180,82 @@ func (m *Manager) Get(sessionID string) (*Session, error) {
 		return nil, errno.New(errno.CodeSessionClosed, "会话已关闭", sessionID)
 	}
 	return s, nil
+}
+
+// SwitchDatabase 切换会话当前库。
+// MySQL/SQLite/Redis 仅更新会话状态（查询路径会带 database）；PostgreSQL 需重开连接。
+func (m *Manager) SwitchDatabase(ctx context.Context, sessionID, database string) (*model.SessionInfoDO, error) {
+	database = strings.TrimSpace(database)
+	if database == "" {
+		return nil, errno.New(errno.CodeInvalidArg, "数据库名不能为空", "")
+	}
+	m.mu.Lock()
+	s, ok := m.sessions[sessionID]
+	if !ok {
+		m.mu.Unlock()
+		return nil, errno.New(errno.CodeSessionClosed, "会话已关闭", sessionID)
+	}
+	if s.Database == database {
+		info := &model.SessionInfoDO{SessionID: s.ID, ConnectionID: s.ConnectionID, Database: s.Database}
+		m.mu.Unlock()
+		return info, nil
+	}
+	dbType := s.DbType
+	connID := s.ConnectionID
+	m.mu.Unlock()
+
+	if dbType != "postgresql" {
+		m.mu.Lock()
+		if cur, ok := m.sessions[sessionID]; ok {
+			cur.Database = database
+		}
+		m.mu.Unlock()
+		return &model.SessionInfoDO{SessionID: sessionID, ConnectionID: connID, Database: database}, nil
+	}
+
+	conn, err := m.store.GetConnection(connID)
+	if err != nil {
+		return nil, err
+	}
+	if err := tunnel.ResolveConnection(m.store, conn); err != nil {
+		return nil, err
+	}
+	m.mu.RLock()
+	s, ok = m.sessions[sessionID]
+	if !ok {
+		m.mu.RUnlock()
+		return nil, errno.New(errno.CodeSessionClosed, "会话已关闭", sessionID)
+	}
+	tun := s.Tunnel
+	m.mu.RUnlock()
+
+	ad, err := m.registry.Get(dbType)
+	if err != nil {
+		return nil, err
+	}
+	cfg := model.ConnectionConfigDO{
+		DbType: dbType, Host: conn.Host, Port: conn.Port, User: conn.User,
+		Password: conn.Password, Database: database, Charset: conn.Charset,
+	}
+	newDB, err := ad.Open(ctx, cfg, tun)
+	if err != nil {
+		return nil, err
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, ok = m.sessions[sessionID]
+	if !ok {
+		_ = newDB.Close()
+		return nil, errno.New(errno.CodeSessionClosed, "会话已关闭", sessionID)
+	}
+	old := s.DB
+	s.DB = newDB
+	s.Database = database
+	if old != nil {
+		_ = old.Close()
+	}
+	return &model.SessionInfoDO{SessionID: s.ID, ConnectionID: s.ConnectionID, Database: database}, nil
 }
 
 // WithTimeout 返回带超时的上下文。

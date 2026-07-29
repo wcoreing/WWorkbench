@@ -7,7 +7,7 @@ const SNAPSHOT_VERSION = 1
 /** TerminalTabSnapshot 终端标签持久化结构（不含会话 ID）。 */
 export interface TerminalTabSnapshot {
   hostId: string
-  kind: 'local' | 'ssh'
+  kind: 'local' | 'ssh' | 'docker'
   title: string
   layout: PaneLayout
 }
@@ -22,7 +22,7 @@ export interface TerminalWorkspaceSnapshot {
 export interface TerminalTabPersistInput {
   id: string
   hostId: string
-  kind: 'local' | 'ssh'
+  kind: 'local' | 'ssh' | 'docker'
   title: string
   layout: PaneLayout
 }

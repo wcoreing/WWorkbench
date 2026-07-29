@@ -4,9 +4,9 @@ import (
 	"os"
 	"strings"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/session"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/session"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )

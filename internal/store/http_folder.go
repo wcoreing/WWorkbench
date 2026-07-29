@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 
 	"github.com/google/uuid"
 )

@@ -49,12 +49,19 @@ export function AppShell() {
       return
     }
     void bootstrapAppState()
-      .catch(console.error)
+      .catch((err) => {
+        console.error(err)
+        useAppStore.getState().setStatusMessage(
+          err instanceof Error ? err.message : String(err),
+        )
+      })
       .finally(() => setBooting(false))
   }, [preferencesReady])
 
   useEffect(() => {
-    api.getVersion().then(useAppStore.getState().setVersion).catch(console.error)
+    api.getVersion().then(useAppStore.getState().setVersion).catch((err) => {
+      console.error(err)
+    })
   }, [])
 
   useEffect(() => subscribeAgentUiActions(), [])

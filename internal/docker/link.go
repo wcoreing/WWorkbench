@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/go-connections/nat"

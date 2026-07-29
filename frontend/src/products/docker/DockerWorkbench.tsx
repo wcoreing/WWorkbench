@@ -459,21 +459,27 @@ export function DockerWorkbench() {
     if (container.state !== 'running') return
     setStatusMessage(t('docker.preparingShell'))
     try {
-      const shell = await api.getContainerShell(activeContextId, container.id)
-      if (shell.mode === 'local') {
-        openProductLink({
-          action: 'terminal',
-          localShell: true,
-          initialCommand: `${shell.command}\r`,
-        })
-      } else {
-        openProductLink({
-          action: 'terminal',
-          hostId: shell.hostId,
-          initialCommand: `${shell.command}\r`,
-        })
-      }
+      const host = await api.ensureDockerHost(activeContextId, container.id)
+      openProductLink({
+        action: 'terminal',
+        hostId: host.id,
+      })
       setStatusMessage(t('docker.openingShell', { name: container.name || container.shortId }))
+    } catch (e) {
+      setStatusMessage((e as Error).message)
+    }
+  }
+
+  const openContainerFiles = async (container: DockerContainer) => {
+    if (container.state !== 'running') return
+    setStatusMessage(t('docker.preparingFiles'))
+    try {
+      const host = await api.ensureDockerHost(activeContextId, container.id)
+      openProductLink({
+        action: 'sftp',
+        hostId: host.id,
+      })
+      setStatusMessage(t('docker.openingFiles', { name: container.name || container.shortId }))
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -923,6 +929,15 @@ export function DockerWorkbench() {
                                     >
                                       {t('docker.shell')}
                                     </button>
+                                    <button
+                                      type="button"
+                                      className="docker-act-btn"
+                                      disabled={!dockerReady || acting}
+                                      title={t('docker.files')}
+                                      onClick={() => void openContainerFiles(c)}
+                                    >
+                                      {t('docker.files')}
+                                    </button>
                                   </>
                                 )}
                                 {mayHaveDatabase(c) && (
@@ -1124,16 +1139,28 @@ export function DockerWorkbench() {
             </button>
           )}
           {ctxMenu.container.state === 'running' && (
-            <button
-              type="button"
-              className="wn-context-item"
-              onClick={() => {
-                setCtxMenu(null)
-                void openContainerShell(ctxMenu.container)
-              }}
-            >
-              {t('docker.ctxMenuOpenShell')}
-            </button>
+            <>
+              <button
+                type="button"
+                className="wn-context-item"
+                onClick={() => {
+                  setCtxMenu(null)
+                  void openContainerShell(ctxMenu.container)
+                }}
+              >
+                {t('docker.ctxMenuOpenShell')}
+              </button>
+              <button
+                type="button"
+                className="wn-context-item"
+                onClick={() => {
+                  setCtxMenu(null)
+                  void openContainerFiles(ctxMenu.container)
+                }}
+              >
+                {t('docker.ctxMenuOpenFiles')}
+              </button>
+            </>
           )}
           <button
             type="button"

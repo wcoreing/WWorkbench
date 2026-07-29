@@ -4,8 +4,8 @@ import (
 	"context"
 	"database/sql"
 
-	"WNavicat/internal/model"
-	"WNavicat/internal/tunnel"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/tunnel"
 )
 
 // DatabaseAdapter 数据库方言适配器。

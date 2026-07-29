@@ -1,6 +1,6 @@
 package workbenchtools
 
-import "WNavicat/internal/workbench"
+import "WWorkbench/internal/workbench"
 
 // UIActionKind 工作台 UI 联动动作（与 internal/workbench/capability.go 一致）。
 type UIActionKind string

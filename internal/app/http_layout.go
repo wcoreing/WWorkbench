@@ -1,8 +1,8 @@
 package app
 
 import (
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 // ApplyHTTPApiTreeLayout 保存 HTTP 侧栏树布局（拖拽移动目录/接口与排序）。

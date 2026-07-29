@@ -7,10 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/store"
-	"WNavicat/internal/terminal"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
@@ -94,11 +93,27 @@ func (m *Manager) openClient(ctx context.Context, contextID string) (*dockerClie
 	if err != nil {
 		return nil, err
 	}
-	cli, err := dialSSHDocker(ctx, terminal.HostToSpec(*host))
+	cli, err := dialSSHDocker(ctx, sshHostToTunnel(*host))
 	if err != nil {
 		return nil, err
 	}
 	return &dockerClientHandle{cli: cli, client: cli.Client}, nil
+}
+
+// sshHostToTunnel 将 SSH 主机转为隧道规格。
+func sshHostToTunnel(h model.SSHHostDO) model.TunnelSpecDO {
+	port := h.Port
+	if port <= 0 {
+		port = 22
+	}
+	return model.TunnelSpecDO{
+		Enabled:  true,
+		Host:     h.Host,
+		Port:     port,
+		User:     h.User,
+		KeyPath:  h.KeyPath,
+		Password: h.Password,
+	}
 }
 
 // pingContext 测试上下文连通性。
@@ -345,40 +360,6 @@ func (m *Manager) GetContainerLogs(ctx context.Context, contextID, containerID s
 		return "", errno.Wrap(errno.CodeConnFailed, "读取容器日志失败", err)
 	}
 	return stripDockerLogStream(data), nil
-}
-
-// GetContainerShell 获取进入容器 Shell 的终端启动信息。
-func (m *Manager) GetContainerShell(ctx context.Context, contextID, containerID string) (*model.ContainerShellDO, error) {
-	handle, err := m.openClient(ctx, contextID)
-	if err != nil {
-		return nil, err
-	}
-	defer handle.close()
-
-	inspect, err := handle.client.ContainerInspect(ctx, containerID)
-	if err != nil {
-		return nil, errno.Wrap(errno.CodeConnFailed, "读取容器信息失败", err)
-	}
-	target := strings.TrimPrefix(inspect.Name, "/")
-	if target == "" {
-		target = containerID
-		if len(target) > 12 {
-			target = target[:12]
-		}
-	}
-	cmd := fmt.Sprintf("docker exec -it %s sh", shellQuote(target))
-	if contextID == LocalContextID {
-		return &model.ContainerShellDO{Mode: "local", Command: cmd}, nil
-	}
-	ctxDO, err := m.store.GetDockerContext(contextID)
-	if err != nil {
-		return nil, err
-	}
-	return &model.ContainerShellDO{
-		Mode:    "ssh",
-		HostID:  ctxDO.SSHHostID,
-		Command: cmd,
-	}, nil
 }
 
 // shellQuote 为 shell 命令引用容器名。

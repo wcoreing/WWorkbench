@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/adapter"
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/tunnel"
+	"WWorkbench/internal/adapter"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/tunnel"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/google/uuid"
@@ -37,7 +37,7 @@ func (a *Adapter) Open(ctx context.Context, cfg model.ConnectionConfigDO, t tunn
 	if dbName == "" {
 		dbName = "postgres"
 	}
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable connect_timeout=5",
 		host, port, cfg.User, cfg.Password, dbName)
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {

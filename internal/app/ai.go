@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"strings"
 
-	"WNavicat/internal/agent"
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/workbenchtools"
+	"WWorkbench/internal/agent"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/workbenchtools"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )

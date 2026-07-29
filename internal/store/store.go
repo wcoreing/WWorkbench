@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/crypto"
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/crypto"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 
 	_ "modernc.org/sqlite"
 )
@@ -31,7 +31,7 @@ func New(dataDir string) (*Store, error) {
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeStoreFailed, "初始化加密模块失败", err)
 	}
-	dbPath := filepath.Join(dataDir, "wnavicat.db")
+	dbPath := filepath.Join(dataDir, "wworkbench.db")
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeStoreFailed, "打开本地数据库失败", err)
@@ -254,6 +254,21 @@ CREATE TABLE IF NOT EXISTS http_folders (
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移 HTTP 目录表失败", err)
 	}
+	_, err = s.db.Exec(`
+CREATE TABLE IF NOT EXISTS docker_shell_hosts (
+  id TEXT PRIMARY KEY,
+  context_id TEXT NOT NULL,
+  container_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  image TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_docker_shell_hosts_ctx_ctr
+  ON docker_shell_hosts(context_id, container_id);`)
+	if err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移 Docker Shell 主机表失败", err)
+	}
 	return nil
 }
 
@@ -354,16 +369,35 @@ func (s *Store) GetConnection(id string) (*model.ConnectionDO, error) {
 
 // SaveConnection 保存连接。
 func (s *Store) SaveConnection(c model.ConnectionDO) error {
-	if c.Name == "" || c.Host == "" || c.User == "" {
+	if strings.TrimSpace(c.Name) == "" || strings.TrimSpace(c.Host) == "" {
+		return errno.New(errno.CodeInvalidArg, "连接名称与主机不能为空", "")
+	}
+	dbType := strings.ToLower(strings.TrimSpace(c.DbType))
+	if dbType == "" {
+		dbType = "mysql"
+	}
+	c.DbType = dbType
+	// SQLite / Redis 用户名可空；MySQL / PostgreSQL 必填。
+	if dbType != "sqlite" && dbType != "redis" && strings.TrimSpace(c.User) == "" {
 		return errno.New(errno.CodeInvalidArg, "连接名称、主机、用户名不能为空", "")
 	}
-	if c.Port <= 0 {
-		c.Port = 3306
+	switch dbType {
+	case "sqlite":
+		c.Port = 0
+	case "postgresql":
+		if c.Port <= 0 {
+			c.Port = 5432
+		}
+	case "redis":
+		if c.Port <= 0 {
+			c.Port = 6379
+		}
+	default:
+		if c.Port <= 0 {
+			c.Port = 3306
+		}
 	}
-	if c.DbType == "" {
-		c.DbType = "mysql"
-	}
-	if c.Charset == "" {
+	if c.Charset == "" && dbType == "mysql" {
 		c.Charset = "utf8mb4"
 	}
 	now := time.Now().Unix()
@@ -464,5 +498,5 @@ func DataDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, ".wnavicat"), nil
+	return filepath.Join(home, ".wworkbench"), nil
 }

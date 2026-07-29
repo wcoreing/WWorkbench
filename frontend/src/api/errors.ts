@@ -31,3 +31,10 @@ export function sshHostUnknownFingerprint(err: ApiCallError): string | undefined
   if (err.detail?.startsWith('SHA256:')) return err.detail
   return extractSSHFingerprint(err)
 }
+
+/** isInvalidSortColumn 表数据排序列校验失败。 */
+export function isInvalidSortColumn(err: unknown): err is ApiCallError {
+  if (!(err instanceof ApiCallError)) return false
+  if (err.code === 'INVALID_ARG' && err.message.includes('无效的排序列')) return true
+  return err.message.includes('无效的排序列')
+}

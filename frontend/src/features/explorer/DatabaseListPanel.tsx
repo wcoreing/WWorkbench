@@ -11,7 +11,7 @@ interface Props {
   onImportSQL?: () => void
 }
 
-/** DatabaseListPanel 未选库时展示数据库列表（Navicat 风格）。 */
+/** DatabaseListPanel 未选库时展示数据库列表。 */
 export function DatabaseListPanel({
   databases,
   invalidDatabase,

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/tunnel"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/tunnel"
 
 	goredis "github.com/redis/go-redis/v9"
 )

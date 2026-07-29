@@ -18,8 +18,9 @@ export function AgentMentionPicker({ open, items, activeIndex, onPick, onHoverIn
   const grouped = useMemo(() => {
     const ssh = items.filter((i) => i.kind === 'ssh')
     const db = items.filter((i) => i.kind === 'database')
-    const docker = items.filter((i) => i.kind === 'docker')
-    return { ssh, db, docker }
+    const containers = items.filter((i) => i.kind === 'docker' && i.id.startsWith('docker:'))
+    const docker = items.filter((i) => i.kind === 'docker' && !i.id.startsWith('docker:'))
+    return { ssh, db, containers, docker }
   }, [items])
 
   useEffect(() => {
@@ -52,7 +53,7 @@ export function AgentMentionPicker({ open, items, activeIndex, onPick, onHoverIn
               }}
             >
               <span className={`agent-mention-icon agent-mention-icon-${item.kind}`}>
-                {item.kind === 'ssh' ? 'SSH' : item.kind === 'docker' ? 'DK' : 'DB'}
+                {item.kind === 'ssh' ? 'SSH' : item.kind === 'docker' ? (item.id.startsWith('docker:') ? 'CT' : 'DK') : 'DB'}
               </span>
               <span className="agent-mention-meta">
                 <span className="agent-mention-label">{item.label}</span>
@@ -73,6 +74,7 @@ export function AgentMentionPicker({ open, items, activeIndex, onPick, onHoverIn
         <>
           {renderSection(t('agent.mentionSSH'), grouped.ssh)}
           {renderSection(t('agent.mentionDatabase'), grouped.db)}
+          {renderSection(t('agent.mentionContainer'), grouped.containers)}
           {renderSection(t('agent.mentionDocker'), grouped.docker)}
         </>
       )}

@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/terminal"
-	"WNavicat/internal/tunnel"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/terminal"
+	"WWorkbench/internal/tunnel"
 )
 
 type terminalExecArgs struct {

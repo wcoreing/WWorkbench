@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 
-	"WNavicat/internal/adapter"
-	redisadapter "WNavicat/internal/adapter/redis"
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/session"
+	"WWorkbench/internal/adapter"
+	redisadapter "WWorkbench/internal/adapter/redis"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/session"
 )
 
 // Service 元数据服务。

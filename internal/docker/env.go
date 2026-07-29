@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 var envHighlightKeys = map[string]bool{

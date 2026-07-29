@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/logs"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/logs"
+	"WWorkbench/internal/model"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )

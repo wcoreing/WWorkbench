@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 
 	"golang.org/x/crypto/ssh"
 )

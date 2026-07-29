@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { FileEntry, SftpBookmark, SSHHost } from '../../api/types'
+import type { FileEntry, SftpBookmark, ShellHost, SSHHost } from '../../api/types'
+import { shellHostAsSSH } from '../../api/types'
 import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
-import { IconPlus, IconServer } from '../../components/Icons'
+import { IconDocker, IconPlus, IconServer } from '../../components/Icons'
+import { ContextMenu } from '../../components/ContextMenu'
+import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
-import { openAgentDraft, mentionSSH } from '../../features/agent/openAgentDraft'
+import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
@@ -20,7 +23,7 @@ import { useSSHTrustConfirm } from '../../features/terminal/useSSHTrustConfirm'
 import { FilePane } from '../../features/sftp/FilePane'
 import { selectionHint } from '../../features/sftp/fileSelectionHint'
 import { SftpPrompt, type SftpPromptMode } from '../../features/sftp/SftpPrompt'
-import { SftpTransferPanel } from '../../features/sftp/SftpTransferPanel'
+import { SftpBottomBar } from '../../features/sftp/SftpBottomBar'
 import { SftpTransferRail } from '../../features/sftp/SftpTransferRail'
 import { useFileSelection } from '../../features/sftp/useFileSelection'
 import { useSftpFileDrop } from '../../features/sftp/useSftpFileDrop'
@@ -55,7 +58,7 @@ export function SftpWorkbench() {
   const { t } = useI18n()
   const { setStatusMessage } = useAppStore()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
-  const [hosts, setHosts] = useState<SSHHost[]>([])
+  const [hosts, setHosts] = useState<ShellHost[]>([])
   const [tabs, setTabs] = useState<SftpTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [localFiles, setLocalFiles] = useState<FileEntry[]>([])
@@ -68,8 +71,9 @@ export function SftpWorkbench() {
   const [mutating, setMutating] = useState(false)
   const [hostModalOpen, setHostModalOpen] = useState(false)
   const [editingHost, setEditingHost] = useState<SSHHost | null>(null)
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; host: SSHHost } | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; host: ShellHost } | null>(null)
   const [paneMenu, setPaneMenu] = useState<{ x: number; y: number; side: PaneSide; entry: FileEntry | null } | null>(null)
+  const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
   const [prompt, setPrompt] = useState<PromptState | null>(null)
   const workspaceRestored = useRef(false)
 
@@ -77,7 +81,7 @@ export function SftpWorkbench() {
 
   const refreshHosts = useCallback(async () => {
     try {
-      setHosts(await api.listSSHHosts())
+      setHosts(await api.listShellHosts())
     } catch (e) {
       setHosts([])
       setStatusMessage((e as Error).message)
@@ -107,7 +111,7 @@ export function SftpWorkbench() {
     workspaceRestored.current = true
     void (async () => {
       try {
-        const hostList = await api.listSSHHosts()
+        const hostList = await api.listShellHosts()
         setHosts(hostList)
         const snap = await loadSftpWorkspace()
         if (!snap?.tabs.length) return
@@ -137,14 +141,15 @@ export function SftpWorkbench() {
   }, [tabs, activeTabId])
 
   useEffect(() => {
-    if (!ctxMenu && !paneMenu) return
+    if (!ctxMenu && !paneMenu && !tabCtxMenu) return
     const close = () => {
       setCtxMenu(null)
       setPaneMenu(null)
+      setTabCtxMenu(null)
     }
     window.addEventListener('click', close)
     return () => window.removeEventListener('click', close)
-  }, [ctxMenu, paneMenu])
+  }, [ctxMenu, paneMenu, tabCtxMenu])
 
   const loadLocal = useCallback(async (path: string) => {
     const res = await api.listLocalDir(path)
@@ -155,6 +160,20 @@ export function SftpWorkbench() {
   const loadRemote = useCallback(async (sessionId: string, path: string) => {
     return api.listSFTPDir(sessionId, path)
   }, [])
+
+  const refreshLocal = useCallback(async () => {
+    if (!activeTab) return
+    const localPath = await loadLocal(activeTab.localPath)
+    setTabs((prev) => prev.map((t) => (t.id === activeTab.id ? { ...t, localPath } : t)))
+    localSel.clearSelection()
+  }, [activeTab, loadLocal, localSel.clearSelection])
+
+  const refreshRemote = useCallback(async () => {
+    if (!activeTab) return
+    const remoteList = await loadRemote(activeTab.sessionId, activeTab.remotePath)
+    setRemoteFiles(remoteList)
+    remoteSel.clearSelection()
+  }, [activeTab, loadRemote, remoteSel.clearSelection])
 
   const refreshListings = useCallback(async () => {
     if (!activeTab) return
@@ -175,7 +194,7 @@ export function SftpWorkbench() {
   const conflictResolver = useSftpConflictResolver()
 
   const transferQueue = useSftpTransferQueue(() => {
-    refreshListings().catch(() => {})
+    refreshListings().catch((e) => setStatusMessage((e as Error).message))
   })
 
   useEffect(() => {
@@ -193,12 +212,20 @@ export function SftpWorkbench() {
     setTabs((prev) => prev.map((t) => (t.id === activeTab.id ? { ...t, ...patch } : t)))
   }
 
-  const connectHost = async (host: SSHHost) => {
+  const connectHost = async (host: ShellHost) => {
     if (connectingId) return
+    if (host.kind === 'docker' && host.running === false) {
+      setStatusMessage(t('sftp.containerStoppedHint', { name: host.name }))
+      return
+    }
     setConnectingId(host.id)
     setStatusMessage(t('sftp.connecting', { name: host.name }))
     try {
-      const info = await withSSHHostTrust(host.host, host.port, () => api.openSFTPSession(host.id), confirmTrust)
+      const open = () => api.openSFTPSession(host.id)
+      const info =
+        host.kind === 'docker'
+          ? await open()
+          : await withSSHHostTrust(host.host || '', host.port || 22, open, confirmTrust)
       const remoteHome = await api.getSFTPHome(info.sessionId)
       const local = await api.listLocalDir('')
       const tab: SftpTab = {
@@ -226,7 +253,7 @@ export function SftpWorkbench() {
       try {
         let host = hosts.find((h) => h.id === hostId)
         if (!host) {
-          host = await api.getSSHHost(hostId)
+          host = await api.getShellHost(hostId)
           setHosts((prev) => (prev.some((h) => h.id === hostId) ? prev : [...prev, host!]))
         }
         await connectHost(host)
@@ -248,6 +275,33 @@ export function SftpWorkbench() {
     const next = tabs.filter((t) => t.id !== tabId)
     setTabs(next)
     if (activeTabId === tabId) setActiveTabId(next.length ? next[next.length - 1].id : null)
+  }
+
+  /** closeOtherTabs 关闭除当前外的 SFTP 标签。 */
+  const closeOtherTabs = async (keepId: string) => {
+    const closing = tabs.filter((t) => t.id !== keepId)
+    for (const tab of closing) {
+      try {
+        await api.closeSFTPSession(tab.sessionId)
+      } catch {
+        /* ignore */
+      }
+    }
+    setTabs(tabs.filter((t) => t.id === keepId))
+    setActiveTabId(keepId)
+  }
+
+  /** closeAllTabs 关闭全部 SFTP 标签。 */
+  const closeAllTabs = async () => {
+    for (const tab of tabs) {
+      try {
+        await api.closeSFTPSession(tab.sessionId)
+      } catch {
+        /* ignore */
+      }
+    }
+    setTabs([])
+    setActiveTabId(null)
   }
 
   const runMutating = async (label: string, fn: () => Promise<void>) => {
@@ -446,6 +500,8 @@ export function SftpWorkbench() {
   const localNames = localSel.selectedEntries.map((e) => e.name)
   const remoteNames = remoteSel.selectedEntries.map((e) => e.name)
   const connectedHostIds = new Set(tabs.map((t) => t.hostId))
+  const sshHosts = hosts.filter((h) => h.kind === 'ssh')
+  const dockerHosts = hosts.filter((h) => h.kind === 'docker')
 
   return (
     <div className="product-workbench sftp-workbench">
@@ -464,12 +520,6 @@ export function SftpWorkbench() {
         <span className="product-toolbar-status">{activeTab ? activeTab.title : t('common.notConnected')}</span>
       </div>
 
-      <SftpTransferPanel
-        tasks={transferQueue.tasks}
-        onCancel={transferQueue.cancelTask}
-        onClearFinished={transferQueue.clearFinished}
-      />
-
       <div className="product-body">
         <aside className="app-sidebar terminal-sidebar">
           <section className="sidebar-section">
@@ -480,11 +530,11 @@ export function SftpWorkbench() {
               </button>
             </div>
             <div className="sidebar-body">
-              {hosts.length === 0 ? (
+              {sshHosts.length === 0 ? (
                 <div className="empty-hint">{t('sftp.emptyHosts')}</div>
               ) : (
                 <ul className="conn-list">
-                  {hosts.map((h) => (
+                  {sshHosts.map((h) => (
                     <li
                       key={h.id}
                       className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
@@ -509,6 +559,63 @@ export function SftpWorkbench() {
               )}
             </div>
           </section>
+
+          {dockerHosts.length > 0 && (
+            <section className="sidebar-section">
+              <div className="sidebar-header">
+                <span>{t('sftp.dockerHosts')}</span>
+                {dockerHosts.some((h) => h.running === false) && (
+                  <button
+                    type="button"
+                    className="wn-btn wn-btn-ghost wn-btn-sm"
+                    title={t('sftp.pruneStopped')}
+                    onClick={() => {
+                      void (async () => {
+                        try {
+                          const n = await api.pruneStoppedDockerHosts()
+                          await refreshHosts()
+                          setStatusMessage(
+                            n > 0 ? t('sftp.prunedStopped', { count: n }) : t('sftp.pruneStoppedNone')
+                          )
+                        } catch (e) {
+                          setStatusMessage((e as Error).message)
+                        }
+                      })()
+                    }}
+                  >
+                    {t('sftp.pruneStopped')}
+                  </button>
+                )}
+              </div>
+              <div className="sidebar-body">
+                <ul className="conn-list">
+                  {dockerHosts.map((h) => (
+                    <li
+                      key={h.id}
+                      className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
+                      onClick={() => connectHost(h)}
+                      onDoubleClick={() => connectHost(h)}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setCtxMenu({ x: e.clientX, y: e.clientY, host: h })
+                      }}
+                    >
+                      <IconDocker size={14} className="mock-icon" />
+                      <div className="conn-meta">
+                        <span className="conn-name">{h.name}</span>
+                        <span className="conn-host">
+                          {h.running === false
+                            ? t('sftp.containerStopped')
+                            : h.image || h.containerId?.slice(0, 12) || 'container'}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          )}
         </aside>
 
         <main className="app-main sftp-main">
@@ -521,6 +628,7 @@ export function SftpWorkbench() {
                     type="button"
                     className={`wn-tab wn-tab-terminal wn-tab-ssh ${t.id === activeTabId ? 'active' : ''}`}
                     onClick={() => setActiveTabId(t.id)}
+                    onContextMenu={(e) => openTabContextMenu(e, t.id, setTabCtxMenu, setActiveTabId)}
                   >
                     <IconServer size={12} />
                     <span className="tab-title">{t.title}</span>
@@ -563,6 +671,10 @@ export function SftpWorkbench() {
                 onAddBookmark={() => addBookmark('local')}
                 onBookmarkNavigate={(p) => updateActiveTab({ localPath: p })}
                 onDeleteBookmark={deleteBookmark}
+                onRefresh={() => {
+                  void refreshLocal().catch((e) => setStatusMessage((e as Error).message))
+                }}
+                refreshTitle={t('sftp.refreshLocal')}
                 onInternalDrop={(payload: DragPayload) => {
                   if (payload.side === 'remote') downloadPaths(payload.paths)
                 }}
@@ -595,6 +707,10 @@ export function SftpWorkbench() {
                 onAddBookmark={() => addBookmark('remote')}
                 onBookmarkNavigate={(p) => updateActiveTab({ remotePath: p })}
                 onDeleteBookmark={deleteBookmark}
+                onRefresh={() => {
+                  void refreshRemote().catch((e) => setStatusMessage((e as Error).message))
+                }}
+                refreshTitle={t('sftp.refreshRemote')}
                 onInternalDrop={(payload: DragPayload) => {
                   if (payload.side === 'local') uploadPaths(payload.paths)
                 }}
@@ -604,18 +720,48 @@ export function SftpWorkbench() {
         </main>
       </div>
 
+      <SftpBottomBar
+        tasks={transferQueue.tasks}
+        onCancel={transferQueue.cancelTask}
+        onClearFinished={transferQueue.clearFinished}
+      />
+
       <SSHHostModal open={hostModalOpen} initial={editingHost} onClose={() => setHostModalOpen(false)} onSaved={refreshHosts} />
 
+      {tabCtxMenu && (
+        <TabContextMenu
+          menu={tabCtxMenu}
+          disableCloseOthers={tabs.length <= 1}
+          onDismiss={() => setTabCtxMenu(null)}
+          onClose={() => void closeTab(tabCtxMenu.tabId)}
+          onCloseOthers={() => void closeOtherTabs(tabCtxMenu.tabId)}
+          onCloseAll={() => void closeAllTabs()}
+        />
+      )}
       {ctxMenu && (
-        <div className="wn-context-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={(e) => e.stopPropagation()}>
+        <ContextMenu
+          key={`host-${ctxMenu.host.id}-${ctxMenu.x}-${ctxMenu.y}`}
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             type="button"
             className="wn-context-item"
             onClick={() => {
               const host = ctxMenu.host
               setCtxMenu(null)
+              if (host.kind === 'docker') {
+                openAgentDraft({
+                  mentions: [mentionDockerHost(host)],
+                  message: t('agent.draftContainer'),
+                })
+                return
+              }
+              const ssh = shellHostAsSSH(host)
+              if (!ssh) return
               openAgentDraft({
-                mentions: [mentionSSH(host)],
+                mentions: [mentionSSH(ssh)],
                 message: t('agent.draftSSH'),
               })
             }}
@@ -642,22 +788,52 @@ export function SftpWorkbench() {
           >
             {t('sftp.ctxTerminal')}
           </button>
-          <button
-            type="button"
-            className="wn-context-item"
-            onClick={() => {
-              setCtxMenu(null)
-              setEditingHost(ctxMenu.host)
-              setHostModalOpen(true)
-            }}
-          >
-            {t('common.edit')}
-          </button>
-        </div>
+          {ctxMenu.host.kind === 'ssh' ? (
+            <button
+              type="button"
+              className="wn-context-item"
+              onClick={() => {
+                const ssh = shellHostAsSSH(ctxMenu.host)
+                setCtxMenu(null)
+                if (ssh) {
+                  setEditingHost(ssh)
+                  setHostModalOpen(true)
+                }
+              }}
+            >
+              {t('common.edit')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="wn-context-item danger"
+              onClick={() => {
+                const host = ctxMenu.host
+                setCtxMenu(null)
+                void (async () => {
+                  try {
+                    await api.removeDockerHost(host.id)
+                    await refreshHosts()
+                    setStatusMessage(t('sftp.removedDockerHost', { name: host.name }))
+                  } catch (e) {
+                    setStatusMessage((e as Error).message)
+                  }
+                })()
+              }}
+            >
+              {t('sftp.removeDockerHost')}
+            </button>
+          )}
+        </ContextMenu>
       )}
 
       {paneMenu && (
-        <div className="wn-context-menu" style={{ left: paneMenu.x, top: paneMenu.y }} onClick={(e) => e.stopPropagation()}>
+        <ContextMenu
+          key={`pane-${paneMenu.side}-${paneMenu.x}-${paneMenu.y}`}
+          x={paneMenu.x}
+          y={paneMenu.y}
+          onClick={(e) => e.stopPropagation()}
+        >
           {paneMenu.side === 'local' && localSel.selectedPaths.length > 0 && (
             <button type="button" className="wn-context-item" onClick={uploadFromMenu}>
               {localSel.selectedPaths.length > 1
@@ -703,7 +879,7 @@ export function SftpWorkbench() {
               </button>
             </>
           )}
-        </div>
+        </ContextMenu>
       )}
 
       {prompt && (

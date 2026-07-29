@@ -4,13 +4,13 @@ import (
 	"context"
 	"strings"
 
-	redisadapter "WNavicat/internal/adapter/redis"
-	"WNavicat/internal/adapter"
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/session"
-	"WNavicat/internal/store"
-	"WNavicat/internal/tunnel"
+	redisadapter "WWorkbench/internal/adapter/redis"
+	"WWorkbench/internal/adapter"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/session"
+	"WWorkbench/internal/store"
+	"WWorkbench/internal/tunnel"
 
 	"github.com/google/uuid"
 )
@@ -43,9 +43,15 @@ func (s *Service) Save(c model.ConnectionDO) (*model.ConnectionDO, error) {
 		c.ID = uuid.NewString()
 	}
 	c.DbType = normalizeDbType(c.DbType)
-	c.DbType = normalizeDbType(c.DbType)
 	if c.DbType == "" {
 		c.DbType = "mysql"
+	}
+	if c.DbType == "sqlite" {
+		c.SSHEnabled = false
+		c.Port = 0
+		if strings.TrimSpace(c.Database) == "" {
+			c.Database = "main"
+		}
 	}
 	if err := tunnel.ValidateConnectionSSH(c); err != nil {
 		return nil, err
@@ -72,6 +78,9 @@ func (s *Service) Test(ctx context.Context, c model.ConnectionDO) error {
 		c.DbType = "mysql"
 	}
 	c.Port = defaultPortForType(c.DbType, c.Port)
+	if c.DbType == "sqlite" {
+		c.SSHEnabled = false
+	}
 	if err := tunnel.ValidateConnectionSSH(c); err != nil {
 		return err
 	}
@@ -80,9 +89,15 @@ func (s *Service) Test(ctx context.Context, c model.ConnectionDO) error {
 		return err
 	}
 	spec := tunnel.SpecFromConnection(cCopy)
-	tun, err := s.tunnel.Dial(ctx, spec, cCopy.Host, cCopy.Port)
-	if err != nil {
-		return err
+	var tun tunnel.Tunnel
+	var err error
+	if cCopy.DbType == "sqlite" {
+		tun = tunnel.Nop()
+	} else {
+		tun, err = s.tunnel.Dial(ctx, spec, cCopy.Host, cCopy.Port)
+		if err != nil {
+			return err
+		}
 	}
 	defer tun.Close()
 	cfg := model.ConnectionConfigDO{
@@ -135,6 +150,8 @@ func defaultPortForType(dbType string, port int) int {
 		return 5432
 	case "redis":
 		return 6379
+	case "sqlite":
+		return 0
 	default:
 		return 3306
 	}

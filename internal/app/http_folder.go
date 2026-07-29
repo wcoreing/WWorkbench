@@ -3,8 +3,8 @@ package app
 import (
 	"strings"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 // ListHTTPFolders 列出 HTTP 接口目录。

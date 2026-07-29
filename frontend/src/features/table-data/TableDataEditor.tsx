@@ -1,8 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { ColumnMeta, FieldValue, RowMutationBatch, TableDataPage, TableFilter, TableRow, TableSort } from '../../api/types'
 import { TableFilterPanel, defaultFilters } from './TableFilterPanel'
 import { ExportFieldsDialog } from '../export/ExportFieldsDialog'
+import { CellViewerDialog, type CellViewerTarget } from '../cell-viewer/CellViewerDialog'
+import { isLikelyLargeCell } from '../cell-viewer/formatCellValue'
+import {
+  ACTIONS_COL_WIDTH,
+  INDEX_COL_WIDTH,
+  ResizableTh,
+  WnGrid,
+  dataColParts,
+  useColumnWidths,
+} from '../grid/columnResize'
+import { isInvalidSortColumn } from '../../api/errors'
 import '../../components/ui.css'
 
 type RowState = 'clean' | 'modified' | 'new' | 'deleted'
@@ -36,15 +47,32 @@ export function TableDataEditor({ sessionId, database, table, excelExport }: Pro
   const [appliedSorts, setAppliedSorts] = useState<TableSort[]>([])
   const [filterDirty, setFilterDirty] = useState(false)
   const [excelExportOpen, setExcelExportOpen] = useState(false)
+  const [viewer, setViewer] = useState<(CellViewerTarget & { rowId: string }) | null>(null)
+  const loadSeq = useRef(0)
+  const { colStyle, tableStyle, onResizeStart } = useColumnWidths()
 
   const columns = page?.columns ?? []
   const columnNames = columns.map((c) => c.name)
+  const firstColName = columns[0]?.name ?? ''
+  const gridColParts = [
+    { key: '__index', fallback: INDEX_COL_WIDTH },
+    ...dataColParts(columnNames),
+    ...(!page?.readOnly ? [{ key: '__actions', fallback: ACTIONS_COL_WIDTH }] : []),
+  ]
+  const queryFilters = useMemo(
+    () => appliedFilters.filter((f) => f.enabled && f.column),
+    [appliedFilters],
+  )
+  const querySorts = useMemo(() => appliedSorts.filter((s) => s.column), [appliedSorts])
 
   useEffect(() => {
-    if (columns.length && filters.length === 1 && !filters[0].column) {
-      setFilters([{ enabled: true, column: columns[0].name, operator: 'eq', value: '' }])
-    }
-  }, [columns.length])
+    if (!firstColName) return
+    setFilters((prev) =>
+      prev.length === 1 && !prev[0].column
+        ? [{ enabled: true, column: firstColName, operator: 'eq', value: '' }]
+        : prev,
+    )
+  }, [firstColName])
 
   useEffect(() => {
     const fChanged = JSON.stringify(filters) !== JSON.stringify(appliedFilters)
@@ -53,6 +81,7 @@ export function TableDataEditor({ sessionId, database, table, excelExport }: Pro
   }, [filters, sorts, appliedFilters, appliedSorts])
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current
     setLoading(true)
     setError('')
     setSuccess('')
@@ -60,9 +89,10 @@ export function TableDataEditor({ sessionId, database, table, excelExport }: Pro
       const data = await api.getTableDataPage(sessionId, database, table, {
         page: pageNum,
         pageSize: PAGE_SIZE,
-        filters: appliedFilters.filter((f) => f.enabled && f.column),
-        sorts: appliedSorts.filter((s) => s.column),
+        filters: queryFilters,
+        sorts: querySorts,
       })
+      if (seq !== loadSeq.current) return
       setPage(data)
       setRows(
         data.rows.map((r) => ({
@@ -72,31 +102,23 @@ export function TableDataEditor({ sessionId, database, table, excelExport }: Pro
         }))
       )
     } catch (e) {
-      setPage(null)
-      setRows([])
-      setError((e as Error).message)
+      if (seq !== loadSeq.current) return
+      setError(e instanceof Error ? e.message : String(e))
+      if (isInvalidSortColumn(e) && querySorts.length > 0) {
+        setSorts([])
+        setAppliedSorts([])
+      }
     } finally {
-      setLoading(false)
+      if (seq === loadSeq.current) setLoading(false)
     }
-  }, [sessionId, database, table, pageNum, appliedFilters, appliedSorts])
-
-  useEffect(() => {
-    setPageNum(1)
-    setAppliedFilters([])
-    setAppliedSorts([])
-    setFilters(defaultFilters())
-    setSorts([])
-    setFilterOpen(false)
-  }, [sessionId, database, table])
+  }, [sessionId, database, table, pageNum, queryFilters, querySorts])
 
   useEffect(() => {
     load()
   }, [load])
 
-  const activeFilterCount = useMemo(
-    () => appliedFilters.filter((f) => f.enabled && f.column).length,
-    [appliedFilters]
-  )
+  const activeFilterCount = queryFilters.length
+  const activeSortCount = querySorts.length
 
   const applyFilter = () => {
     setAppliedFilters(filters.map((f) => ({ ...f })))
@@ -116,6 +138,42 @@ export function TableDataEditor({ sessionId, database, table, excelExport }: Pro
     setPageNum(1)
     setFilterDirty(false)
   }
+
+  /** applySortsNow 立即应用排序并回到第一页（表头点击）。 */
+  const applySortsNow = (next: TableSort[]) => {
+    setSorts(next)
+    setAppliedSorts(next)
+    setPageNum(1)
+  }
+
+  /**
+   * toggleColumnSort 表头排序：单击切换 升序→降序→取消；
+   * Shift+单击在多列排序中追加/切换/移除该列。
+   */
+  const toggleColumnSort = (column: string, multi: boolean) => {
+    if (!column || !columns.some((c) => c.name === column)) return
+    const current = appliedSorts.filter((s) => s.column)
+    const idx = current.findIndex((s) => s.column === column)
+    if (multi) {
+      if (idx < 0) {
+        applySortsNow([...current, { column, ascending: true }])
+        return
+      }
+      if (current[idx].ascending) {
+        applySortsNow(current.map((s, i) => (i === idx ? { ...s, ascending: false } : s)))
+        return
+      }
+      applySortsNow(current.filter((_, i) => i !== idx))
+      return
+    }
+    if (idx === 0 && current.length === 1) {
+      applySortsNow(current[0].ascending ? [{ column, ascending: false }] : [])
+      return
+    }
+    applySortsNow([{ column, ascending: true }])
+  }
+
+  const sortIndexOf = (column: string) => appliedSorts.findIndex((s) => s.column === column)
 
   const updateCell = (rowId: string, col: string, value: string) => {
     setRows((prev) =>
@@ -215,6 +273,7 @@ export function TableDataEditor({ sessionId, database, table, excelExport }: Pro
     `第 ${page.page} 页`,
     page.total >= 0 ? `共 ${page.total} 行` : null,
     activeFilterCount > 0 ? `筛选 ${activeFilterCount}` : null,
+    activeSortCount > 0 ? `排序 ${activeSortCount}` : null,
     page.readOnly ? '只读' : null,
     loading ? '加载中' : null,
   ].filter(Boolean)
@@ -238,8 +297,8 @@ export function TableDataEditor({ sessionId, database, table, excelExport }: Pro
             >
               筛选
               {filterDirty && <span className="badge-dot" />}
-              {activeFilterCount > 0 && !filterDirty && (
-                <span className="badge-count">{activeFilterCount}</span>
+              {(activeFilterCount > 0 || activeSortCount > 0) && !filterDirty && (
+                <span className="badge-count">{activeFilterCount + activeSortCount}</span>
               )}
             </button>
             <span className="pane-vrule" />
@@ -317,58 +376,126 @@ export function TableDataEditor({ sessionId, database, table, excelExport }: Pro
         </div>
       )}
 
-      <div className="wn-grid-wrap">
-        <table className="wn-grid">
-          <thead>
-            <tr>
-              <th className="col-index">#</th>
-              {columns.map((c) => (
-                <th key={c.name} title={c.name}>
+      <WnGrid
+        parts={gridColParts}
+        colStyle={colStyle}
+        tableStyle={tableStyle}
+        header={
+          <>
+            <th className="col-index">#</th>
+            {columns.map((c) => {
+              const sortIdx = sortIndexOf(c.name)
+              const sort = sortIdx >= 0 ? appliedSorts[sortIdx] : null
+              const sortClass = sort ? ` is-sorted is-${sort.ascending ? 'asc' : 'desc'}` : ''
+              return (
+                <ResizableTh
+                  key={c.name}
+                  colKey={c.name}
+                  className={`col-sortable${sortClass}`}
+                  title={`${c.name}（点击排序，Shift+点击多列）`}
+                  onClick={(e) => toggleColumnSort(c.name, e.shiftKey)}
+                  onResizeStart={onResizeStart}
+                >
                   <span className="col-head-label">{c.name}</span>
                   {c.isPrimaryKey && <span className="col-pk" title="主键" />}
-                </th>
-              ))}
-              {!page.readOnly && <th className="col-actions">操作</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length + (page.readOnly ? 1 : 2)} className="grid-empty">
-                  {activeFilterCount > 0 ? '无匹配数据' : '（空表）'}
-                </td>
-              </tr>
-            ) : (
-              rows.map((r, idx) => (
-                <tr key={r.rowId} className={`row-${r.state}`}>
-                  <td className="col-index">{idx + 1}</td>
-                  {columns.map((c) => (
-                    <td key={c.name}>
-                      {page.readOnly || !c.editable || r.state === 'deleted' ? (
-                        <CellDisplay row={r} col={c} />
-                      ) : (
+                  {sort && (
+                    <span className="col-sort-ind" aria-hidden>
+                      {sort.ascending ? '↑' : '↓'}
+                      {activeSortCount > 1 ? sortIdx + 1 : ''}
+                    </span>
+                  )}
+                </ResizableTh>
+              )
+            })}
+            {!page.readOnly && <th className="col-actions">操作</th>}
+          </>
+        }
+      >
+        {rows.length === 0 ? (
+          <tr>
+            <td colSpan={columns.length + (page.readOnly ? 1 : 2)} className="grid-empty">
+              {activeFilterCount > 0 ? '无匹配数据' : '（空表）'}
+            </td>
+          </tr>
+        ) : (
+          rows.map((r, idx) => (
+            <tr key={r.rowId} className={`row-${r.state}`}>
+              <td className="col-index">{idx + 1}</td>
+              {columns.map((c) => {
+                const cell = r.values?.[c.name]
+                const display = cell?.isNull ? null : (r.editValues[c.name] ?? cell?.display ?? cell?.value ?? '')
+                const large = isLikelyLargeCell(display)
+                const readOnly = page.readOnly || !c.editable || r.state === 'deleted'
+                return (
+                  <td
+                    key={c.name}
+                    className={large ? 'grid-cell-expandable' : undefined}
+                    title={large ? '双击查看完整内容' : undefined}
+                    onDoubleClick={() =>
+                      setViewer({
+                        rowId: r.rowId,
+                        column: c.name,
+                        value: display,
+                        isNull: display === null,
+                        editable: !readOnly,
+                      })
+                    }
+                  >
+                    {readOnly ? (
+                      <CellDisplay row={r} col={c} />
+                    ) : (
+                      <div className="grid-cell-edit">
                         <input
                           className="grid-cell-input"
                           value={r.editValues[c.name] ?? ''}
                           onChange={(e) => updateCell(r.rowId, c.name, e.target.value)}
                           placeholder={c.nullable ? 'NULL' : ''}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation()
+                            setViewer({
+                              rowId: r.rowId,
+                              column: c.name,
+                              value: display,
+                              isNull: display === null,
+                              editable: true,
+                            })
+                          }}
                         />
-                      )}
-                    </td>
-                  ))}
-                  {!page.readOnly && (
-                    <td className="col-actions">
-                      <button type="button" className="wn-btn-text wn-btn-text-danger" onClick={() => deleteRow(r.rowId)}>
-                        删除
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                        {large && (
+                          <button
+                            type="button"
+                            className="grid-cell-expand"
+                            title="查看完整内容"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setViewer({
+                                rowId: r.rowId,
+                                column: c.name,
+                                value: display,
+                                isNull: display === null,
+                                editable: true,
+                              })
+                            }}
+                          >
+                            ↗
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </td>
+                )
+              })}
+              {!page.readOnly && (
+                <td className="col-actions">
+                  <button type="button" className="wn-btn-text wn-btn-text-danger" onClick={() => deleteRow(r.rowId)}>
+                    删除
+                  </button>
+                </td>
+              )}
+            </tr>
+          ))
+        )}
+      </WnGrid>
       <ExportFieldsDialog
         open={excelExportOpen}
         columns={columnNames}
@@ -381,14 +508,25 @@ export function TableDataEditor({ sessionId, database, table, excelExport }: Pro
             {
               page: pageNum,
               pageSize: PAGE_SIZE,
-              filters: appliedFilters.filter((f) => f.enabled && f.column),
-              sorts: appliedSorts.filter((s) => s.column),
+              filters: queryFilters,
+              sorts: querySorts,
             },
             cols
           )
           if (path) setSuccess(`已导出 ${path}`)
         }}
         onCancel={() => setExcelExportOpen(false)}
+      />
+      <CellViewerDialog
+        target={viewer}
+        onClose={() => setViewer(null)}
+        onApply={
+          viewer?.editable
+            ? (value) => {
+                updateCell(viewer.rowId, viewer.column, value ?? '')
+              }
+            : undefined
+        }
       />
     </div>
   )
@@ -401,7 +539,11 @@ function CellDisplay({ row, col }: { row: EditableRow; col: ColumnMeta }) {
     return <span className="grid-cell-null">NULL</span>
   }
   const text = cell.display ?? cell.value ?? ''
-  return <span className="grid-cell-value">{text}</span>
+  return (
+    <span className={`grid-cell-value ${isLikelyLargeCell(text) ? 'is-large' : ''}`} title={text.length > 80 ? undefined : text}>
+      {text}
+    </span>
+  )
 }
 
 function rowToEdit(row: TableRow, cols: ColumnMeta[]): Record<string, string | null> {

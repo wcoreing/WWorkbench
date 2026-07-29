@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
-	redisadapter "WNavicat/internal/adapter/redis"
-	"WNavicat/internal/adapter"
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/session"
-	"WNavicat/internal/store"
+	redisadapter "WWorkbench/internal/adapter/redis"
+	"WWorkbench/internal/adapter"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/session"
+	"WWorkbench/internal/store"
 
 	"github.com/google/uuid"
 )

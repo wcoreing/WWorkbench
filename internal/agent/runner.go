@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"WNavicat/internal/model"
-	"WNavicat/internal/store"
-	"WNavicat/internal/workbenchtools"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
+	"WWorkbench/internal/workbenchtools"
 
 	"github.com/google/uuid"
 )
@@ -455,7 +455,11 @@ func formatMentionsSuffix(mentions []model.AgentMentionDO) string {
 		case "database":
 			b.WriteString(fmt.Sprintf("- 数据库「%s」 connectionId=%s\n", m.Label, m.ID))
 		case "docker":
-			b.WriteString(fmt.Sprintf("- Docker 上下文「%s」 contextId=%s\n", m.Label, m.ID))
+			if strings.HasPrefix(m.ID, "docker:") {
+				b.WriteString(fmt.Sprintf("- Docker 容器主机「%s」 hostId=%s（用 terminal.open / terminal.exec，勿当 contextId）\n", m.Label, m.ID))
+			} else {
+				b.WriteString(fmt.Sprintf("- Docker 上下文「%s」 contextId=%s\n", m.Label, m.ID))
+			}
 		case "log":
 			b.WriteString(fmt.Sprintf("- 日志源「%s」 logSourceId=%s（用 fetch_logs）\n", m.Label, m.ID))
 		case "http":

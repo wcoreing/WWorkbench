@@ -1,6 +1,9 @@
 import type { NoteSummary, NotebookGroup } from '../../api/types'
 
-export const NOTEBOOK_DRAG_MIME = 'application/x-wnavicat-notebook'
+export const NOTEBOOK_DRAG_MIME = 'application/x-wworkbench-notebook'
+
+/** NOTEBOOK_ROOT_ID 根目录（未分组）笔记的 groupId。 */
+export const NOTEBOOK_ROOT_ID = ''
 
 export type NotebookDragPayload = { kind: 'note' | 'group'; id: string }
 
@@ -27,10 +30,12 @@ export function notesInGroup(summaries: NoteSummary[], groupId: string): NoteSum
     .sort((a, b) => a.sortOrder - b.sortOrder || b.updatedAt - a.updatedAt)
 }
 
-/** buildNotebookLayout 构建可持久化的侧栏布局。 */
+/** buildNotebookLayout 构建可持久化的侧栏布局（含根目录）。 */
 export function buildNotebookLayout(groups: NotebookGroup[], summaries: NoteSummary[]) {
   const ogs = orderedGroups(groups)
-  const notesByGroup: Record<string, string[]> = {}
+  const notesByGroup: Record<string, string[]> = {
+    [NOTEBOOK_ROOT_ID]: notesInGroup(summaries, NOTEBOOK_ROOT_ID).map((n) => n.id),
+  }
   for (const g of ogs) {
     notesByGroup[g.id] = notesInGroup(summaries, g.id).map((n) => n.id)
   }

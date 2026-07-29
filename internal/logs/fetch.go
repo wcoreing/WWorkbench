@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	dockersvc "WNavicat/internal/docker"
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/terminal"
-	"WNavicat/internal/tunnel"
+	dockersvc "WWorkbench/internal/docker"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/terminal"
+	"WWorkbench/internal/tunnel"
 
 	"golang.org/x/crypto/ssh"
 )

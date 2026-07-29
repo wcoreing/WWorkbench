@@ -3,9 +3,9 @@ package data
 import (
 	"context"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/session"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/session"
 )
 
 // Service 表数据服务。

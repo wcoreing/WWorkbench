@@ -3,15 +3,15 @@
 import {model} from '../models';
 import {app} from '../models';
 
-export function AgentChat(arg1:model.AgentChatRequestDO):Promise<app.ApiResult_WNavicat_internal_model_AgentChatResultDO_>;
+export function AgentChat(arg1:model.AgentChatRequestDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentChatResultDO_>;
 
 export function AgentConfirm(arg1:string,arg2:boolean):Promise<app.ApiResult_bool_>;
 
 export function AgentStop(arg1:string):Promise<app.ApiResult_bool_>;
 
-export function ApplyAgentBailianPreset():Promise<app.ApiResult_WNavicat_internal_model_AgentSettingsDO_>;
+export function ApplyAgentBailianPreset():Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 
-export function ApplyEnvPreset(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_EnvApplyResultDO_>;
+export function ApplyEnvPreset(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_EnvApplyResultDO_>;
 
 export function ApplyHTTPApiTreeLayout(arg1:model.HTTPApiTreeLayoutDO):Promise<app.ApiResult_bool_>;
 
@@ -23,9 +23,9 @@ export function BatchDeleteHTTP(arg1:Array<string>,arg2:Array<string>):Promise<a
 
 export function CancelSFTPTask(arg1:string):Promise<app.ApiResult_bool_>;
 
-export function CheckSFTPDownloadConflict(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_WNavicat_internal_model_TransferConflictDO_>;
+export function CheckSFTPDownloadConflict(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferConflictDO_>;
 
-export function CheckSFTPUploadConflict(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_WNavicat_internal_model_TransferConflictDO_>;
+export function CheckSFTPUploadConflict(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferConflictDO_>;
 
 export function CloseSFTPSession(arg1:string):Promise<app.ApiResult_bool_>;
 
@@ -73,71 +73,75 @@ export function DeleteSSHForwardPreset(arg1:string):Promise<app.ApiResult_bool_>
 
 export function DeleteSSHHost(arg1:string):Promise<app.ApiResult_bool_>;
 
-export function DownloadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_TransferResultDO_>;
+export function DownloadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferResultDO_>;
 
-export function DuplicateNote(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_NoteDO_>;
+export function DuplicateNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_NoteDO_>;
+
+export function EnsureDockerHost(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_ShellHostDO_>;
 
 export function EnsureEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
-export function EnsureSSHHostFromConnection(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_SSHHostDO_>;
+export function EnsureSSHHostFromConnection(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_SSHHostDO_>;
 
-export function ExecuteHTTPRequest(arg1:model.HTTPExecuteRequestDO):Promise<app.ApiResult_WNavicat_internal_model_HTTPResponseDO_>;
+export function ExecuteHTTPRequest(arg1:model.HTTPExecuteRequestDO):Promise<app.ApiResult_WWorkbench_internal_model_HTTPResponseDO_>;
 
 export function ExecuteSQL(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_interface____>;
 
 export function ExecuteSQLFile(arg1:string,arg2:string):Promise<app.ApiResult_interface____>;
 
-export function ExportCSV(arg1:app.ExportCSVRequest):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
+export function ExportCSV(arg1:app.ExportCSVRequest):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
-export function ExportConnectionsToFile(arg1:boolean):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
+export function ExportConnectionsToFile(arg1:boolean):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
-export function ExportExcel(arg1:app.ExportExcelRequest):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
+export function ExportExcel(arg1:app.ExportExcelRequest):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
-export function ExportNote(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
+export function ExportNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
-export function ExportTableExcel(arg1:string,arg2:string,arg3:string,arg4:model.TableDataQueryDO,arg5:number,arg6:Array<string>):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
+export function ExportTableExcel(arg1:string,arg2:string,arg3:string,arg4:model.TableDataQueryDO,arg5:number,arg6:Array<string>):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
-export function ExportTableInsertSQL(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WNavicat_internal_model_ExportResultDO_>;
+export function ExportTableInsertSQL(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
-export function FetchLogSource(arg1:string,arg2:number):Promise<app.ApiResult_WNavicat_internal_model_LogFetchResultDO_>;
+export function FetchLogSource(arg1:string,arg2:number):Promise<app.ApiResult_WWorkbench_internal_model_LogFetchResultDO_>;
 
-export function FetchLogSourceConfig(arg1:model.LogSourceDO,arg2:number):Promise<app.ApiResult_WNavicat_internal_model_LogFetchResultDO_>;
+export function FetchLogSourceConfig(arg1:model.LogSourceDO,arg2:number):Promise<app.ApiResult_WWorkbench_internal_model_LogFetchResultDO_>;
 
-export function GetAgentSettings():Promise<app.ApiResult_WNavicat_internal_model_AgentSettingsDO_>;
+export function GetAgentSettings():Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 
-export function GetAgentThread(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_AgentThreadDetailDO_>;
+export function GetAgentThread(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_AgentThreadDetailDO_>;
 
-export function GetComposeLogs(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WNavicat_internal_model_ComposeLogsDO_>;
+export function GetComposeLogs(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WWorkbench_internal_model_ComposeLogsDO_>;
 
-export function GetConnection(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_ConnectionDO_>;
+export function GetConnection(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_ConnectionDO_>;
 
-export function GetContainerEnv(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_ContainerEnvDO_>;
+export function GetContainerEnv(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_ContainerEnvDO_>;
 
-export function GetContainerLogs(arg1:string,arg2:string,arg3:number):Promise<app.ApiResult_WNavicat_internal_model_ContainerLogsDO_>;
+export function GetContainerLogs(arg1:string,arg2:string,arg3:number):Promise<app.ApiResult_WWorkbench_internal_model_ContainerLogsDO_>;
 
-export function GetContainerRunPreset(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_ContainerRunPresetDO_>;
+export function GetContainerRunPreset(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_ContainerRunPresetDO_>;
 
-export function GetContainerShell(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_ContainerShellDO_>;
+export function GetContainerShell(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_ContainerShellDO_>;
 
 export function GetDockerComposeDirectory(arg1:string):Promise<app.ApiResult_string_>;
 
 export function GetEnvScanPath():Promise<app.ApiResult_string_>;
 
-export function GetNote(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_NoteDO_>;
+export function GetNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_NoteDO_>;
 
-export function GetNotebookUI():Promise<app.ApiResult_WNavicat_internal_model_NotebookUIDO_>;
+export function GetNotebookUI():Promise<app.ApiResult_WWorkbench_internal_model_NotebookUIDO_>;
 
-export function GetObjectTree(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_ObjectTreeNodeDO_>;
+export function GetObjectTree(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_ObjectTreeNodeDO_>;
 
 export function GetSFTPHome(arg1:string):Promise<app.ApiResult_string_>;
 
-export function GetSSHHost(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_SSHHostDO_>;
+export function GetSSHHost(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_SSHHostDO_>;
 
-export function GetTableDDL(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_WNavicat_internal_model_DDLResultDO_>;
+export function GetShellHost(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_ShellHostDO_>;
 
-export function GetTableDataPage(arg1:string,arg2:string,arg3:string,arg4:model.TableDataQueryDO):Promise<app.ApiResult_WNavicat_internal_model_TableDataPageDO_>;
+export function GetTableDDL(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_WWorkbench_internal_model_DDLResultDO_>;
 
-export function GetVersion():Promise<app.ApiResult_WNavicat_internal_model_VersionDO_>;
+export function GetTableDataPage(arg1:string,arg2:string,arg3:string,arg4:model.TableDataQueryDO):Promise<app.ApiResult_WWorkbench_internal_model_TableDataPageDO_>;
+
+export function GetVersion():Promise<app.ApiResult_WWorkbench_internal_model_VersionDO_>;
 
 export function ImportConnectionsFromFile():Promise<app.ApiResult_int_>;
 
@@ -145,61 +149,63 @@ export function InstallEnvManager(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function InstallEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
-export function ListActiveSSHForwards():Promise<app.ApiResult___WNavicat_internal_model_SSHForwardActiveDO_>;
+export function ListActiveSSHForwards():Promise<app.ApiResult___WWorkbench_internal_model_SSHForwardActiveDO_>;
 
-export function ListAgentCapabilities():Promise<app.ApiResult___WNavicat_internal_model_AgentCapabilityDO_>;
+export function ListAgentCapabilities():Promise<app.ApiResult___WWorkbench_internal_model_AgentCapabilityDO_>;
 
-export function ListAgentMessages(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_AgentMessageDO_>;
+export function ListAgentMessages(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_AgentMessageDO_>;
 
-export function ListAgentThreads():Promise<app.ApiResult___WNavicat_internal_model_AgentThreadDO_>;
+export function ListAgentThreads():Promise<app.ApiResult___WWorkbench_internal_model_AgentThreadDO_>;
 
 export function ListAppSettings():Promise<app.ApiResult_map_string_string_>;
 
-export function ListColumns(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult___WNavicat_internal_model_ColumnMetaDO_>;
+export function ListColumns(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult___WWorkbench_internal_model_ColumnMetaDO_>;
 
-export function ListComposeServices(arg1:string,arg2:string):Promise<app.ApiResult___WNavicat_internal_model_ComposeServiceDO_>;
+export function ListComposeServices(arg1:string,arg2:string):Promise<app.ApiResult___WWorkbench_internal_model_ComposeServiceDO_>;
 
-export function ListConnections():Promise<app.ApiResult___WNavicat_internal_model_ConnectionDO_>;
+export function ListConnections():Promise<app.ApiResult___WWorkbench_internal_model_ConnectionDO_>;
 
-export function ListContainers(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_ContainerDO_>;
+export function ListContainers(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_ContainerDO_>;
 
-export function ListDatabaseObjects(arg1:string,arg2:string):Promise<app.ApiResult___WNavicat_internal_model_ObjectTreeNodeDO_>;
+export function ListDatabaseObjects(arg1:string,arg2:string):Promise<app.ApiResult___WWorkbench_internal_model_ObjectTreeNodeDO_>;
 
-export function ListDockerContexts():Promise<app.ApiResult___WNavicat_internal_model_DockerContextDO_>;
+export function ListDockerContexts():Promise<app.ApiResult___WWorkbench_internal_model_DockerContextDO_>;
 
-export function ListEnvPresets():Promise<app.ApiResult___WNavicat_internal_model_EnvPresetDO_>;
+export function ListEnvPresets():Promise<app.ApiResult___WWorkbench_internal_model_EnvPresetDO_>;
 
-export function ListEnvRuntimes():Promise<app.ApiResult___WNavicat_internal_model_RuntimeDO_>;
+export function ListEnvRuntimes():Promise<app.ApiResult___WWorkbench_internal_model_RuntimeDO_>;
 
-export function ListEnvVersions(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_RuntimeVersionDO_>;
+export function ListEnvVersions(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_RuntimeVersionDO_>;
 
-export function ListHTTPEnvironments():Promise<app.ApiResult___WNavicat_internal_model_HTTPEnvironmentDO_>;
+export function ListHTTPEnvironments():Promise<app.ApiResult___WWorkbench_internal_model_HTTPEnvironmentDO_>;
 
-export function ListHTTPFolders():Promise<app.ApiResult___WNavicat_internal_model_HTTPFolderDO_>;
+export function ListHTTPFolders():Promise<app.ApiResult___WWorkbench_internal_model_HTTPFolderDO_>;
 
-export function ListHTTPRequests():Promise<app.ApiResult___WNavicat_internal_model_HTTPSavedRequestDO_>;
+export function ListHTTPRequests():Promise<app.ApiResult___WWorkbench_internal_model_HTTPSavedRequestDO_>;
 
-export function ListImages(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_DockerImageDO_>;
+export function ListImages(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_DockerImageDO_>;
 
-export function ListIndexes(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult___WNavicat_internal_model_IndexMetaDO_>;
+export function ListIndexes(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult___WWorkbench_internal_model_IndexMetaDO_>;
 
-export function ListLocalDir(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_LocalDirResultDO_>;
+export function ListLocalDir(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_LocalDirResultDO_>;
 
-export function ListLogSources():Promise<app.ApiResult___WNavicat_internal_model_LogSourceDO_>;
+export function ListLogSources():Promise<app.ApiResult___WWorkbench_internal_model_LogSourceDO_>;
 
-export function ListNotebookGroups():Promise<app.ApiResult___WNavicat_internal_model_NotebookGroupDO_>;
+export function ListNotebookGroups():Promise<app.ApiResult___WWorkbench_internal_model_NotebookGroupDO_>;
 
-export function ListNotes():Promise<app.ApiResult___WNavicat_internal_model_NoteSummaryDO_>;
+export function ListNotes():Promise<app.ApiResult___WWorkbench_internal_model_NoteSummaryDO_>;
 
-export function ListQueryHistory(arg1:string,arg2:number):Promise<app.ApiResult___WNavicat_internal_model_QueryHistoryDO_>;
+export function ListQueryHistory(arg1:string,arg2:number):Promise<app.ApiResult___WWorkbench_internal_model_QueryHistoryDO_>;
 
-export function ListSFTPBookmarks(arg1:string,arg2:string):Promise<app.ApiResult___WNavicat_internal_model_SftpBookmarkDO_>;
+export function ListSFTPBookmarks(arg1:string,arg2:string):Promise<app.ApiResult___WWorkbench_internal_model_SftpBookmarkDO_>;
 
-export function ListSFTPDir(arg1:string,arg2:string):Promise<app.ApiResult___WNavicat_internal_model_FileEntryDO_>;
+export function ListSFTPDir(arg1:string,arg2:string):Promise<app.ApiResult___WWorkbench_internal_model_FileEntryDO_>;
 
-export function ListSSHForwardPresets():Promise<app.ApiResult___WNavicat_internal_model_SSHForwardPresetDO_>;
+export function ListSSHForwardPresets():Promise<app.ApiResult___WWorkbench_internal_model_SSHForwardPresetDO_>;
 
-export function ListSSHHosts():Promise<app.ApiResult___WNavicat_internal_model_SSHHostDO_>;
+export function ListSSHHosts():Promise<app.ApiResult___WWorkbench_internal_model_SSHHostDO_>;
+
+export function ListShellHosts():Promise<app.ApiResult___WWorkbench_internal_model_ShellHostDO_>;
 
 export function LoadWorkspace(arg1:string):Promise<app.ApiResult_string_>;
 
@@ -209,13 +215,13 @@ export function MkdirSFTPRemote(arg1:string,arg2:string):Promise<app.ApiResult_b
 
 export function MoveHTTPRequestToFolder(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
-export function OpenLocalTerminal(arg1:number,arg2:number):Promise<app.ApiResult_WNavicat_internal_model_TerminalSessionInfoDO_>;
+export function OpenLocalTerminal(arg1:number,arg2:number):Promise<app.ApiResult_WWorkbench_internal_model_TerminalSessionInfoDO_>;
 
-export function OpenSFTPSession(arg1:string):Promise<app.ApiResult_WNavicat_internal_model_SFTPSessionInfoDO_>;
+export function OpenSFTPSession(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_SFTPSessionInfoDO_>;
 
-export function OpenSession(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_SessionInfoDO_>;
+export function OpenSession(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_SessionInfoDO_>;
 
-export function OpenTerminal(arg1:string,arg2:number,arg3:number):Promise<app.ApiResult_WNavicat_internal_model_TerminalSessionInfoDO_>;
+export function OpenTerminal(arg1:string,arg2:number,arg3:number):Promise<app.ApiResult_WWorkbench_internal_model_TerminalSessionInfoDO_>;
 
 export function PickDockerComposeDirectory(arg1:string):Promise<app.ApiResult_string_>;
 
@@ -223,9 +229,13 @@ export function PickEnvScanDirectory():Promise<app.ApiResult_string_>;
 
 export function PickLogFilePath():Promise<app.ApiResult_string_>;
 
-export function QuerySQLPage(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<app.ApiResult_WNavicat_internal_model_QueryPageDO_>;
+export function PruneStoppedDockerHosts():Promise<app.ApiResult_int_>;
+
+export function QuerySQLPage(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<app.ApiResult_WWorkbench_internal_model_QueryPageDO_>;
 
 export function RemoveContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
+export function RemoveDockerHost(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function RenameLocalPath(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
@@ -233,59 +243,59 @@ export function RenameSFTPRemote(arg1:string,arg2:string,arg3:string):Promise<ap
 
 export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<app.ApiResult_bool_>;
 
-export function ResolveContainerDatabaseLink(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_ContainerDatabaseLinkDO_>;
+export function ResolveContainerDatabaseLink(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_ContainerDatabaseLinkDO_>;
 
 export function RestartContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
-export function RunContainer(arg1:string,arg2:model.ContainerRunDO):Promise<app.ApiResult_WNavicat_internal_model_ContainerDO_>;
+export function RunContainer(arg1:string,arg2:model.ContainerRunDO):Promise<app.ApiResult_WWorkbench_internal_model_ContainerDO_>;
 
-export function SaveAgentAPIConfig(arg1:model.AgentAPIConfigSaveDO):Promise<app.ApiResult_WNavicat_internal_model_AgentSettingsDO_>;
+export function SaveAgentAPIConfig(arg1:model.AgentAPIConfigSaveDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 
-export function SaveAgentPermissions(arg1:model.AgentPermissionsSaveDO):Promise<app.ApiResult_WNavicat_internal_model_AgentSettingsDO_>;
+export function SaveAgentPermissions(arg1:model.AgentPermissionsSaveDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 
-export function SaveAgentSettings(arg1:model.AgentSettingsSaveDO):Promise<app.ApiResult_WNavicat_internal_model_AgentSettingsDO_>;
+export function SaveAgentSettings(arg1:model.AgentSettingsSaveDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 
-export function SaveConnection(arg1:model.ConnectionDO):Promise<app.ApiResult_WNavicat_internal_model_ConnectionDO_>;
+export function SaveConnection(arg1:model.ConnectionDO):Promise<app.ApiResult_WWorkbench_internal_model_ConnectionDO_>;
 
-export function SaveDockerContext(arg1:model.DockerContextDO):Promise<app.ApiResult_WNavicat_internal_model_DockerContextDO_>;
+export function SaveDockerContext(arg1:model.DockerContextDO):Promise<app.ApiResult_WWorkbench_internal_model_DockerContextDO_>;
 
-export function SaveEnvPreset(arg1:model.EnvPresetDO):Promise<app.ApiResult_WNavicat_internal_model_EnvPresetDO_>;
+export function SaveEnvPreset(arg1:model.EnvPresetDO):Promise<app.ApiResult_WWorkbench_internal_model_EnvPresetDO_>;
 
-export function SaveHTTPEnvironment(arg1:model.HTTPEnvironmentDO):Promise<app.ApiResult_WNavicat_internal_model_HTTPEnvironmentDO_>;
+export function SaveHTTPEnvironment(arg1:model.HTTPEnvironmentDO):Promise<app.ApiResult_WWorkbench_internal_model_HTTPEnvironmentDO_>;
 
-export function SaveHTTPFolder(arg1:model.HTTPFolderDO):Promise<app.ApiResult_WNavicat_internal_model_HTTPFolderDO_>;
+export function SaveHTTPFolder(arg1:model.HTTPFolderDO):Promise<app.ApiResult_WWorkbench_internal_model_HTTPFolderDO_>;
 
-export function SaveHTTPRequest(arg1:model.HTTPSavedRequestDO):Promise<app.ApiResult_WNavicat_internal_model_HTTPSavedRequestDO_>;
+export function SaveHTTPRequest(arg1:model.HTTPSavedRequestDO):Promise<app.ApiResult_WWorkbench_internal_model_HTTPSavedRequestDO_>;
 
-export function SaveLogSource(arg1:model.LogSourceDO):Promise<app.ApiResult_WNavicat_internal_model_LogSourceDO_>;
+export function SaveLogSource(arg1:model.LogSourceDO):Promise<app.ApiResult_WWorkbench_internal_model_LogSourceDO_>;
 
-export function SaveNote(arg1:model.NoteDO):Promise<app.ApiResult_WNavicat_internal_model_NoteDO_>;
+export function SaveNote(arg1:model.NoteDO):Promise<app.ApiResult_WWorkbench_internal_model_NoteDO_>;
 
-export function SaveNotebookGroup(arg1:model.NotebookGroupDO):Promise<app.ApiResult_WNavicat_internal_model_NotebookGroupDO_>;
+export function SaveNotebookGroup(arg1:model.NotebookGroupDO):Promise<app.ApiResult_WWorkbench_internal_model_NotebookGroupDO_>;
 
 export function SaveNotebookUI(arg1:model.NotebookUIDO):Promise<app.ApiResult_bool_>;
 
-export function SaveSFTPBookmark(arg1:model.SftpBookmarkDO):Promise<app.ApiResult_WNavicat_internal_model_SftpBookmarkDO_>;
+export function SaveSFTPBookmark(arg1:model.SftpBookmarkDO):Promise<app.ApiResult_WWorkbench_internal_model_SftpBookmarkDO_>;
 
-export function SaveSSHForwardPreset(arg1:model.SSHForwardPresetDO):Promise<app.ApiResult_WNavicat_internal_model_SSHForwardPresetDO_>;
+export function SaveSSHForwardPreset(arg1:model.SSHForwardPresetDO):Promise<app.ApiResult_WWorkbench_internal_model_SSHForwardPresetDO_>;
 
-export function SaveSSHHost(arg1:model.SSHHostDO):Promise<app.ApiResult_WNavicat_internal_model_SSHHostDO_>;
+export function SaveSSHHost(arg1:model.SSHHostDO):Promise<app.ApiResult_WWorkbench_internal_model_SSHHostDO_>;
 
 export function SaveWorkspace(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
-export function ScanEnvProjects(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_ProjectEnvHintDO_>;
+export function ScanEnvProjects(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_ProjectEnvHintDO_>;
 
-export function SearchNotes(arg1:string):Promise<app.ApiResult___WNavicat_internal_model_NoteSummaryDO_>;
+export function SearchNotes(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_NoteSummaryDO_>;
 
 export function SetAppSetting(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
-export function SetDatabase(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_SessionInfoDO_>;
+export function SetDatabase(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_SessionInfoDO_>;
 
 export function StartContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
 export function StartLogFollow(arg1:model.LogSourceDO,arg2:number):Promise<app.ApiResult_string_>;
 
-export function StartSSHForward(arg1:model.SSHForwardStartDO):Promise<app.ApiResult_WNavicat_internal_model_SSHForwardActiveDO_>;
+export function StartSSHForward(arg1:model.SSHForwardStartDO):Promise<app.ApiResult_WWorkbench_internal_model_SSHForwardActiveDO_>;
 
 export function StopContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
@@ -301,15 +311,15 @@ export function TestDockerContext(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function TestSSHHost(arg1:model.SSHHostDO):Promise<app.ApiResult_bool_>;
 
-export function TransferSFTPDownload(arg1:string,arg2:string,arg3:string,arg4:string):Promise<app.ApiResult_WNavicat_internal_model_TransferResultDO_>;
+export function TransferSFTPDownload(arg1:string,arg2:string,arg3:string,arg4:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferResultDO_>;
 
-export function TransferSFTPUpload(arg1:string,arg2:string,arg3:string,arg4:string):Promise<app.ApiResult_WNavicat_internal_model_TransferResultDO_>;
+export function TransferSFTPUpload(arg1:string,arg2:string,arg3:string,arg4:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferResultDO_>;
 
 export function TrustSSHHost(arg1:string,arg2:number):Promise<app.ApiResult_bool_>;
 
 export function UninstallEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
-export function UploadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WNavicat_internal_model_TransferResultDO_>;
+export function UploadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferResultDO_>;
 
 export function UseEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"WNavicat/internal/workbench"
+	"WWorkbench/internal/workbench"
 )
 
 // ToolHandler 工具处理函数。

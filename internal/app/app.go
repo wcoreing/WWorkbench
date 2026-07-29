@@ -3,24 +3,22 @@ package app
 import (
 	"context"
 	"encoding/csv"
-	"fmt"
 	"os"
-	"strings"
 
-	"WNavicat/internal/agent"
-	"WNavicat/internal/conn"
-	"WNavicat/internal/data"
-	dockersvc "WNavicat/internal/docker"
-	"WNavicat/internal/environment"
-	"WNavicat/internal/meta"
-	"WNavicat/internal/model"
-	"WNavicat/internal/notebook"
-	"WNavicat/internal/portforward"
-	"WNavicat/internal/query"
-	"WNavicat/internal/session"
-	sftpsvc "WNavicat/internal/sftp"
-	"WNavicat/internal/store"
-	"WNavicat/internal/terminal"
+	"WWorkbench/internal/agent"
+	"WWorkbench/internal/conn"
+	"WWorkbench/internal/data"
+	dockersvc "WWorkbench/internal/docker"
+	"WWorkbench/internal/environment"
+	"WWorkbench/internal/meta"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/notebook"
+	"WWorkbench/internal/portforward"
+	"WWorkbench/internal/query"
+	"WWorkbench/internal/session"
+	sftpsvc "WWorkbench/internal/sftp"
+	"WWorkbench/internal/store"
+	"WWorkbench/internal/terminal"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -339,23 +337,11 @@ func (s *Service) ExportCSV(req ExportCSVRequest) ApiResult[model.ExportResultDO
 
 // SetDatabase 切换当前会话数据库。
 func (s *Service) SetDatabase(sessionID, database string) ApiResult[model.SessionInfoDO] {
-	sess, err := s.sessions.Get(sessionID)
-	if err != nil {
-		return ErrResult[model.SessionInfoDO](err)
-	}
 	ctx, cancel := session.WithTimeout(s.ctx, 15)
 	defer cancel()
-	ad, err := s.sessions.Adapter(sess)
+	info, err := s.sessions.SwitchDatabase(ctx, sessionID, database)
 	if err != nil {
 		return ErrResult[model.SessionInfoDO](err)
 	}
-	if _, err := ad.Execute(ctx, sess.DB, database, fmt.Sprintf("USE `%s`", strings.ReplaceAll(database, "`", "``"))); err != nil {
-		return ErrResult[model.SessionInfoDO](err)
-	}
-	sess.Database = database
-	return OkResult(model.SessionInfoDO{
-		SessionID:    sess.ID,
-		ConnectionID: sess.ConnectionID,
-		Database:     database,
-	})
+	return OkResult(*info)
 }

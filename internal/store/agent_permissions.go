@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"strings"
 
-	"WNavicat/internal/agentcap"
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/agentcap"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 // normalizeAgentAPIBase 规范化 LLM API 根地址。

@@ -5,7 +5,7 @@ import {
   isIntegerColumnType,
   MYSQL_COLUMN_TYPES,
 } from './mysqlColumnTypes'
-import { buildCreateTableIndexLines, buildIndexAlterSQL, type IndexDraft } from './tableIndexDraft'
+import { buildCreateTableIndexLines, buildStandaloneCreateIndexSQL, buildIndexAlterSQL, type IndexDraft } from './tableIndexDraft'
 
 export type ColumnDraftStatus = 'existing' | 'new' | 'deleted'
 export type DefaultValueKind = 'none' | 'null' | 'literal' | 'current_timestamp'
@@ -64,6 +64,11 @@ export function parseDefaultFromMeta(col: ColumnMeta): { defaultKind: DefaultVal
 export function columnMetaToDraft(col: ColumnMeta): TableColumnDraft {
   const parsed = parseMysqlColumnType(col.columnType || col.dataType)
   const def = parseDefaultFromMeta(col)
+  const extra = (col.extra || '').toLowerCase()
+  const typeRaw = (col.columnType || col.dataType || '').toLowerCase()
+  // SQLite INTEGER PRIMARY KEY 视为自增
+  const sqliteAuto =
+    col.isPrimaryKey && (typeRaw === 'integer' || typeRaw === 'int') && !extra.includes('auto_increment')
   return {
     id: `col-${col.name}`,
     name: col.name,
@@ -75,7 +80,7 @@ export function columnMetaToDraft(col: ColumnMeta): TableColumnDraft {
     scale: parsed.scale,
     nullable: col.nullable,
     primaryKey: col.isPrimaryKey,
-    autoIncrement: (col.extra || '').toLowerCase().includes('auto_increment'),
+    autoIncrement: extra.includes('auto_increment') || sqliteAuto,
     defaultKind: def.defaultKind,
     defaultValue: def.defaultValue,
     comment: col.comment || '',
@@ -143,16 +148,28 @@ export function formatDefaultSQL(col: TableColumnDraft): string {
 }
 
 /** columnDefinitionSQL 生成单列定义 SQL。 */
-export function columnDefinitionSQL(col: TableColumnDraft): string {
+export function columnDefinitionSQL(col: TableColumnDraft, dialect: SqlDialect = 'mysql'): string {
   const typeSQL = formatColumnTypeSQL(col.typeId, col.length, col.precision, col.scale)
   let def = typeSQL
   if (!col.nullable) def += ' NOT NULL'
   const defaultSQL = formatDefaultSQL(col)
   if (defaultSQL) def += ` ${defaultSQL}`
-  if (col.autoIncrement && isIntegerColumnType(col.typeId)) def += ' AUTO_INCREMENT'
-  if (col.comment.trim()) def += ` COMMENT ${quoteSQLString(col.comment.trim())}`
+  if (col.autoIncrement && isIntegerColumnType(col.typeId)) {
+    if (dialect === 'sqlite') {
+      // SQLite 自增需写在 PRIMARY KEY 上，列级 AUTOINCREMENT 在建表时单独处理
+    } else if (dialect === 'postgresql') {
+      // 交由 SERIAL / 建表逻辑；列定义保持类型
+    } else {
+      def += ' AUTO_INCREMENT'
+    }
+  }
+  if (col.comment.trim() && dialect === 'mysql') {
+    def += ` COMMENT ${quoteSQLString(col.comment.trim())}`
+  }
   return def
 }
+
+export type SqlDialect = 'mysql' | 'postgresql' | 'sqlite'
 
 /** snapshotColumn 用于对比列是否变更。 */
 function snapshotColumn(col: TableColumnDraft) {
@@ -180,27 +197,58 @@ export function activeColumns(columns: TableColumnDraft[]): TableColumnDraft[] {
   return columns.filter((c) => c.status !== 'deleted' && c.name.trim())
 }
 
+/** quoteIdent 按方言引用标识符。 */
+function quoteIdent(name: string, dialect: SqlDialect): string {
+  if (dialect === 'postgresql' || dialect === 'sqlite') return `"${name.replace(/"/g, '""')}"`
+  return `\`${name.replace(/`/g, '``')}\``
+}
+
 /** buildCreateTableSQL 生成建表语句。 */
 export function buildCreateTableSQL(
   database: string,
   table: string,
   columns: TableColumnDraft[],
-  indexes: IndexDraft[] = []
+  indexes: IndexDraft[] = [],
+  dialect: SqlDialect = 'mysql',
 ): string {
   const valid = activeColumns(columns)
   if (!table.trim() || valid.length === 0) return ''
+  const q = (n: string) => quoteIdent(n, dialect)
   const lines: string[] = []
   const pkCols: string[] = []
   for (const col of valid) {
-    lines.push(`  \`${col.name.trim()}\` ${columnDefinitionSQL(col)}`)
-    if (col.primaryKey) pkCols.push(col.name.trim())
+    const name = col.name.trim()
+    if (dialect === 'sqlite' && col.autoIncrement && isIntegerColumnType(col.typeId) && col.primaryKey) {
+      lines.push(`  ${q(name)} INTEGER PRIMARY KEY AUTOINCREMENT`)
+      continue
+    }
+    lines.push(`  ${q(name)} ${columnDefinitionSQL(col, dialect)}`)
+    if (col.primaryKey) pkCols.push(name)
   }
-  if (pkCols.length > 0) {
-    lines.push(`  PRIMARY KEY (${pkCols.map((n) => `\`${n}\``).join(', ')})`)
+  const sqliteInlinePk = dialect === 'sqlite' && valid.some((c) => c.autoIncrement && c.primaryKey)
+  if (pkCols.length > 0 && !sqliteInlinePk) {
+    lines.push(`  PRIMARY KEY (${pkCols.map((n) => q(n)).join(', ')})`)
   }
-  lines.push(...buildCreateTableIndexLines(indexes))
-  const db = database.trim() ? `\`${database.trim()}\`.` : ''
-  return `CREATE TABLE ${db}\`${table.trim()}\` (\n${lines.join(',\n')}\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+  if (dialect === 'mysql') {
+    lines.push(...buildCreateTableIndexLines(indexes))
+  }
+  const tbl =
+    dialect === 'sqlite'
+      ? q(table.trim())
+      : database.trim()
+        ? `${q(database.trim())}.${q(table.trim())}`
+        : q(table.trim())
+  let sql: string
+  if (dialect === 'mysql') {
+    sql = `CREATE TABLE ${tbl} (\n${lines.join(',\n')}\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+  } else {
+    sql = `CREATE TABLE ${tbl} (\n${lines.join(',\n')}\n);`
+  }
+  if (dialect === 'sqlite' || dialect === 'postgresql') {
+    const idxStmts = buildStandaloneCreateIndexSQL(table.trim(), indexes, dialect)
+    if (idxStmts.length) sql = `${sql}\n${idxStmts.join('\n')}`
+  }
+  return sql
 }
 
 /** buildAlterTableSQL 对比原列与当前列生成 ALTER 语句。 */

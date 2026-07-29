@@ -1,4 +1,4 @@
-/* WNavicat 设计令牌 — 精致工具型界面 */
+/* WWorkbench 设计令牌 */
 :root,
 [data-theme='light'] {
   --accent: #3b6fd9;
@@ -29,6 +29,7 @@
   --color-warning: #d97706;
   --color-warning-muted: rgba(217, 119, 6, 0.1);
   --color-tree-hover: rgba(15, 23, 42, 0.04);
+  --color-tree-active: rgba(59, 111, 217, 0.14);
   --color-tab-bar: #eef0f4;
   --color-tab-active: #ffffff;
 
@@ -72,6 +73,7 @@
   --color-success-muted: rgba(52, 211, 153, 0.08);
   --color-warning-muted: rgba(251, 191, 36, 0.08);
   --color-tree-hover: rgba(255, 255, 255, 0.04);
+  --color-tree-active: rgba(107, 159, 255, 0.18);
   --color-tab-bar: #0e0e10;
   --color-tab-active: #161618;
   --shadow-sm: none;

@@ -10,10 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/terminal"
-	"WNavicat/internal/tunnel"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/tunnel"
 )
 
 // composePsRow docker compose ps --format json 单行结构。
@@ -85,7 +84,7 @@ func (m *Manager) runRemoteCompose(ctx context.Context, contextID, dir string, a
 	if err != nil {
 		return "", err
 	}
-	sshClient, err := tunnel.DialSSH(ctx, terminal.HostToSpec(*host))
+	sshClient, err := tunnel.DialSSH(ctx, sshHostToTunnel(*host))
 	if err != nil {
 		return "", err
 	}

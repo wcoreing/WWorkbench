@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 var nodeVersionRe = regexp.MustCompile(`v?([0-9]+\.[0-9]+\.[0-9]+)`)

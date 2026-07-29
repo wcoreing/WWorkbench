@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/store"
-	"WNavicat/internal/terminal"
-	"WNavicat/internal/tunnel"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
+	"WWorkbench/internal/terminal"
+	"WWorkbench/internal/tunnel"
 
 	"github.com/google/uuid"
 )

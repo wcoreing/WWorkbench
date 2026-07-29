@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"WNavicat/internal/errno"
+	"WWorkbench/internal/errno"
 )
 
 var allowedWorkspaces = map[string]bool{

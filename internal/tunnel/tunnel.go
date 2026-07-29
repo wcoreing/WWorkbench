@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"WNavicat/internal/model"
+	"WWorkbench/internal/model"
 )
 
 // Tunnel 隧道连接。
@@ -22,6 +22,11 @@ type directTunnel struct {
 
 func (d *directTunnel) Addr() string { return d.addr }
 func (d *directTunnel) Close() error { return nil }
+
+// Nop 返回无网络地址的直连隧道（用于 SQLite 等本地文件驱动）。
+func Nop() Tunnel {
+	return &directTunnel{addr: ""}
+}
 
 // Provider 隧道提供者。
 type Provider interface {

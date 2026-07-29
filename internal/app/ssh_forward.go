@@ -1,8 +1,8 @@
 package app
 
 import (
-	"WNavicat/internal/model"
-	"WNavicat/internal/session"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/session"
 )
 
 // ListSSHForwardPresets 列出端口转发预设。

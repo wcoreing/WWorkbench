@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 // CheckUploadConflict 检查上传是否与远程已有文件冲突。
@@ -30,7 +30,7 @@ func (m *Manager) CheckUploadConflict(sessionID, localPath, remoteDir string) (*
 	if err != nil {
 		return nil, err
 	}
-	remoteInfo, err := s.sftp.Stat(remotePath)
+	remoteInfo, err := s.fs.Stat(remotePath)
 	if err != nil {
 		if isNotExist(err) {
 			return out, nil
@@ -38,9 +38,9 @@ func (m *Manager) CheckUploadConflict(sessionID, localPath, remoteDir string) (*
 		return nil, errno.Wrap(errno.CodeConnFailed, "读取远程路径失败", err)
 	}
 	out.HasConflict = true
-	out.TargetSize = remoteInfo.Size()
-	out.TargetModTime = remoteInfo.ModTime().Unix()
-	out.TargetIsDir = remoteInfo.IsDir()
+	out.TargetSize = remoteInfo.Size
+	out.TargetModTime = remoteInfo.ModTime
+	out.TargetIsDir = remoteInfo.IsDir
 	return out, nil
 }
 
@@ -51,7 +51,7 @@ func (m *Manager) CheckDownloadConflict(sessionID, remotePath, localDir string) 
 		return nil, err
 	}
 	remotePath = cleanRemotePath(remotePath)
-	remoteInfo, err := s.sftp.Stat(remotePath)
+	remoteInfo, err := s.fs.Stat(remotePath)
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeConnFailed, "读取远程路径失败", err)
 	}
@@ -60,9 +60,9 @@ func (m *Manager) CheckDownloadConflict(sessionID, remotePath, localDir string) 
 	out := &model.TransferConflictDO{
 		Name:          name,
 		SourcePath:    remotePath,
-		SourceSize:    remoteInfo.Size(),
-		SourceModTime: remoteInfo.ModTime().Unix(),
-		SourceIsDir:   remoteInfo.IsDir(),
+		SourceSize:    remoteInfo.Size,
+		SourceModTime: remoteInfo.ModTime,
+		SourceIsDir:   remoteInfo.IsDir,
 		TargetPath:    localPath,
 	}
 	localInfo, err := os.Stat(localPath)
@@ -79,7 +79,7 @@ func (m *Manager) CheckDownloadConflict(sessionID, remotePath, localDir string) 
 	return out, nil
 }
 
-// isNotExist 判断 SFTP 路径不存在错误。
+// isNotExist 判断远程路径不存在错误。
 func isNotExist(err error) bool {
 	if err == nil {
 		return false
@@ -88,5 +88,5 @@ func isNotExist(err error) bool {
 		return true
 	}
 	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "no such file") || strings.Contains(msg, "not found")
+	return strings.Contains(msg, "no such file") || strings.Contains(msg, "not found") || strings.Contains(msg, "404")
 }

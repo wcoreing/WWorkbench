@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/model"
+	"WWorkbench/internal/model"
 
 	"github.com/google/uuid"
 )
@@ -56,13 +56,9 @@ func toolNotebookAppend(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 		})
 	}
 
-	groups, err := d.Notebook.ListGroups()
-	if err != nil || len(groups) == 0 {
-		return Fail("无法创建笔记：缺少笔记本分组")
-	}
 	now := time.Now().Unix()
 	n := model.NoteDO{
-		ID: uuid.NewString(), GroupID: groups[0].ID, Title: title, Content: content,
+		ID: uuid.NewString(), Title: title, Content: content,
 		Language: "markdown", SSHHostID: strings.TrimSpace(in.SSHHostID),
 		ConnectionID: strings.TrimSpace(in.ConnectionID),
 		CreatedAt: now, UpdatedAt: now,

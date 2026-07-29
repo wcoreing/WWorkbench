@@ -1,9 +1,9 @@
 # Build output
 build/bin
 frontend/dist
-/WNavicat
-/WNavicat.app
-WNavicat.exe
+/WWorkbench
+/WWorkbench.app
+WWorkbench.exe
 
 # Dependencies
 node_modules
@@ -27,7 +27,7 @@ id_rsa
 id_ed25519
 
 # Local app data（用户机器上的数据，不属于仓库）
-.wnavicat/
+.wworkbench/
 
 # Logs & temp
 *.log

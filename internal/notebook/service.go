@@ -4,14 +4,13 @@ import (
 	"encoding/json"
 	"strings"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/store"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
 
 	"github.com/google/uuid"
 )
 
-const defaultGroupName = "默认"
 const uiSettingKey = "notebook_ui"
 
 // Service 笔记本业务服务。
@@ -24,24 +23,16 @@ func NewService(st *store.Store) *Service {
 	return &Service{store: st}
 }
 
-// ListGroups 列出分组，若无分组则创建默认分组。
+// ListGroups 列出分组（允许为空；笔记可挂在根目录 groupId=""）。
 func (s *Service) ListGroups() ([]model.NotebookGroupDO, error) {
 	list, err := s.store.ListNotebookGroups()
 	if err != nil {
 		return nil, err
 	}
-	if len(list) > 0 {
-		return list, nil
+	if list == nil {
+		list = []model.NotebookGroupDO{}
 	}
-	g := model.NotebookGroupDO{
-		ID:        uuid.NewString(),
-		Name:      defaultGroupName,
-		SortOrder: 0,
-	}
-	if err := s.store.SaveNotebookGroup(g); err != nil {
-		return nil, err
-	}
-	return []model.NotebookGroupDO{g}, nil
+	return list, nil
 }
 
 // SaveGroup 保存分组。
@@ -58,14 +49,10 @@ func (s *Service) SaveGroup(g model.NotebookGroupDO) (*model.NotebookGroupDO, er
 	return &g, nil
 }
 
-// DeleteGroup 删除分组。
+// DeleteGroup 删除分组，组内笔记移到根目录。
 func (s *Service) DeleteGroup(id string) error {
-	groups, err := s.store.ListNotebookGroups()
-	if err != nil {
-		return err
-	}
-	if len(groups) <= 1 {
-		return errno.New(errno.CodeInvalidArg, "至少保留一个分组", id)
+	if strings.TrimSpace(id) == "" {
+		return errno.New(errno.CodeInvalidArg, "分组 ID 不能为空", "")
 	}
 	return s.store.DeleteNotebookGroup(id)
 }
@@ -85,7 +72,7 @@ func (s *Service) GetNote(id string) (*model.NoteDO, error) {
 	return s.store.GetNote(id)
 }
 
-// SaveNote 保存笔记。
+// SaveNote 保存笔记（groupId 为空表示根目录）。
 func (s *Service) SaveNote(n model.NoteDO) (*model.NoteDO, error) {
 	if n.ID == "" {
 		n.ID = uuid.NewString()
@@ -93,6 +80,7 @@ func (s *Service) SaveNote(n model.NoteDO) (*model.NoteDO, error) {
 	if strings.TrimSpace(n.Title) == "" {
 		return nil, errno.New(errno.CodeInvalidArg, "笔记标题不能为空", "")
 	}
+	n.GroupID = strings.TrimSpace(n.GroupID)
 	if n.Language == "" {
 		n.Language = "plaintext"
 	}

@@ -12,6 +12,7 @@ import {
   columnMetaToDraft,
   newColumnDraft,
   validateColumnDrafts,
+  type SqlDialect,
   type TableColumnDraft,
 } from './tableColumnDraft'
 import {
@@ -27,6 +28,7 @@ interface Props {
   tabId: string
   sessionId: string
   database: string
+  dbType?: string
   mode: 'create' | 'alter'
   table?: string
   onSaved: () => void
@@ -35,12 +37,10 @@ interface Props {
   onOpenDDL: (sql: string, title: string) => void
 }
 
-/** loadTableStructure 从服务端加载表结构草稿。 */
+/** loadTableStructure 从服务端加载表结构草稿。SQLite 单连接，串行请求避免排队卡死感。 */
 async function loadTableStructure(sessionId: string, database: string, table: string) {
-  const [cols, idxs] = await Promise.all([
-    api.listColumns(sessionId, database, table),
-    api.listIndexes(sessionId, database, table),
-  ])
+  const cols = await api.listColumns(sessionId, database, table)
+  const idxs = await api.listIndexes(sessionId, database, table)
   const drafts = cols.map(columnMetaToDraft)
   const idxDrafts = indexMetaToDrafts(idxs)
   return {
@@ -56,6 +56,7 @@ export function TableDesignEditor({
   tabId,
   sessionId,
   database,
+  dbType = 'mysql',
   mode,
   table,
   onSaved,
@@ -64,6 +65,8 @@ export function TableDesignEditor({
   onOpenDDL,
 }: Props) {
   const isCreate = mode === 'create'
+  const dialect: SqlDialect =
+    dbType === 'sqlite' ? 'sqlite' : dbType === 'postgresql' ? 'postgresql' : 'mysql'
   const setDesignDraft = useAppStore((s) => s.setDesignDraft)
   const [tab, setTab] = useState<TableDesignTab>('fields')
   const [tableName, setTableName] = useState('')
@@ -105,7 +108,8 @@ export function TableDesignEditor({
     setError('')
     setRunning(false)
     const cached = useAppStore.getState().designDrafts[tabId]
-    if (cached?.hydrated) {
+    // 仅当草稿确有字段时复用，避免空草稿把面板锁死
+    if (cached?.hydrated && (cached.columns?.length ?? 0) > 0) {
       applyDraft(cached)
       setLoading(false)
       return
@@ -120,20 +124,24 @@ export function TableDesignEditor({
       setLoading(false)
       return
     }
-    if (!table) return
+    if (!table) {
+      setLoading(false)
+      setError('缺少表名')
+      return
+    }
     let cancelled = false
     setLoading(true)
     loadTableStructure(sessionId, database, table)
       .then((data) => {
         if (cancelled) return
         setOriginal(data.original)
-        setColumns(data.columns)
+        setColumns(data.columns.length ? data.columns : [newColumnDraft()])
         setOriginalIndexes(data.originalIndexes)
         setIndexes(data.indexes)
         setDesignDraft(tabId, {
           tab: 'fields',
           tableName: '',
-          columns: data.columns,
+          columns: data.columns.length ? data.columns : [newColumnDraft()],
           indexes: data.indexes,
           original: data.original,
           originalIndexes: data.originalIndexes,
@@ -141,7 +149,10 @@ export function TableDesignEditor({
         })
       })
       .catch((e) => {
-        if (!cancelled) setError((e as Error).message)
+        if (!cancelled) {
+          setError((e as Error).message)
+          setColumns((prev) => (prev.length ? prev : [newColumnDraft()]))
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -157,10 +168,10 @@ export function TableDesignEditor({
   }, [tab, tableName, columns, indexes, original, originalIndexes, loading, persistDraft])
 
   const preview = useMemo(() => {
-    if (isCreate) return buildCreateTableSQL(database, tableName, columns, indexes)
+    if (isCreate) return buildCreateTableSQL(database, tableName, columns, indexes, dialect)
     if (!table) return ''
     return buildAlterTableSQL(database, table, original, columns, originalIndexes, indexes)
-  }, [isCreate, database, tableName, table, original, columns, originalIndexes, indexes])
+  }, [isCreate, database, tableName, table, original, columns, originalIndexes, indexes, dialect])
 
   const subtitle = isCreate ? `${database} · 新建表` : `${database}.${table}`
 

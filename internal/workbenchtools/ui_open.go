@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"WNavicat/internal/workbench"
+	"WWorkbench/internal/workbench"
 )
 
 type databaseOpenArgs struct {

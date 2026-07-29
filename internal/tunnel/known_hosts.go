@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"WNavicat/internal/errno"
+	"WWorkbench/internal/errno"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"

@@ -21,6 +21,21 @@ export function mentionSSH(host: { id: string; name?: string; host: string }): A
   }
 }
 
+/** mentionDockerHost 构造已注册 Docker 容器主机 @ 资源。 */
+export function mentionDockerHost(host: {
+  id: string
+  name?: string
+  image?: string
+  containerId?: string
+}): AgentMention {
+  return {
+    kind: 'docker',
+    id: host.id,
+    label: host.name?.trim() || host.containerId?.slice(0, 12) || host.id,
+    sublabel: host.image || host.containerId?.slice(0, 12),
+  }
+}
+
 /** mentionDatabase 构造数据库 @ 资源。 */
 export function mentionDatabase(conn: {
   id: string

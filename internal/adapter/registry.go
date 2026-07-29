@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"WNavicat/internal/errno"
+	"WWorkbench/internal/errno"
 )
 
 // Registry 适配器注册表。

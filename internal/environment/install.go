@@ -3,8 +3,8 @@ package environment
 import (
 	"strings"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 // InstallVersion 安装指定语言版本（不自动切换）。

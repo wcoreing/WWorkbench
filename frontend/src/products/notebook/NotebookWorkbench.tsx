@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../api/client'
-import type { Connection, Note, NoteLanguage, NoteSummary, NotebookGroup, SSHHost } from '../../api/types'
+import type { Connection, Note, NoteLanguage, NoteSummary, NotebookGroup, ShellHost } from '../../api/types'
 import { model } from '../../../wailsjs/go/models'
-import { IconDatabase, IconNotebook, IconPlay, IconPlus, IconServer } from '../../components/Icons'
+import { IconDatabase, IconDocker, IconNotebook, IconPlay, IconPlus, IconServer } from '../../components/Icons'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { MarkdownPreview } from '../../features/notebook/MarkdownPreview'
 import { NoteEditor, type NoteEditorHandle } from '../../features/notebook/NoteEditor'
 import { NotebookGroupModal } from '../../features/notebook/NotebookGroupModal'
@@ -12,7 +13,7 @@ import { buildNotebookLayout, moveNoteInTree, nextNoteSortOrder } from '../../fe
 import {
   buildConnectionTemplate,
   buildServerChecklistTemplate,
-  buildSSHHostTemplate,
+  buildShellHostTemplate,
   extractRunCommands,
   extractSqlText,
 } from '../../features/notebook/noteTemplates'
@@ -70,7 +71,7 @@ export function NotebookWorkbench() {
   const [openNotes, setOpenNotes] = useState<Record<string, Note>>({})
   const [openTabIds, setOpenTabIds] = useState<string[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
-  const [hosts, setHosts] = useState<SSHHost[]>([])
+  const [hosts, setHosts] = useState<ShellHost[]>([])
   const [connections, setConnections] = useState<Connection[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -79,6 +80,7 @@ export function NotebookWorkbench() {
   const [groupModal, setGroupModal] = useState<NotebookGroup | null | undefined>(undefined)
   const [showPreview, setShowPreview] = useState(false)
   const [saveByNote, setSaveByNote] = useState<Record<string, 'saved' | 'dirty' | 'saving'>>({})
+  const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
   const editorRef = useRef<NoteEditorHandle>(null)
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const noteSnapshots = useRef<Record<string, string>>({})
@@ -90,6 +92,14 @@ export function NotebookWorkbench() {
   useEffect(() => {
     setNotebookActiveNoteId(activeTabId)
   }, [activeTabId, setNotebookActiveNoteId])
+
+  useEffect(() => {
+    if (!tabCtxMenu) return
+    const close = () => setTabCtxMenu(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [tabCtxMenu])
+
   const activeSaveStatus = activeTabId ? saveByNote[activeTabId] ?? 'saved' : 'saved'
   const searching = Boolean(search.trim())
 
@@ -123,7 +133,7 @@ export function NotebookWorkbench() {
     const [groupList, noteList, hostList, connList] = await Promise.all([
       api.listNotebookGroups(),
       api.listNotes(),
-      api.listSSHHosts(),
+      api.listShellHosts(),
       api.listConnections(),
     ])
     setGroups(groupList as NotebookGroup[])
@@ -242,8 +252,7 @@ export function NotebookWorkbench() {
     const initialCommand = payloadStr(cmd.payload, 'initialCommand')
     void (async () => {
       try {
-        const { groupList, hostList, connList } = await refreshAll()
-        const groupId = groupList[0]?.id ?? ''
+        const { hostList, connList } = await refreshAll()
         const host = hostId ? hostList.find((h) => h.id === hostId) : undefined
         const conn = connectionId ? connList.find((c) => c.id === connectionId) : undefined
         let title = t('notebook.newNoteTitle')
@@ -259,13 +268,14 @@ export function NotebookWorkbench() {
           noteConnectionId = conn.id
         } else if (host) {
           title = t('notebook.noteFromHost', { name: host.name })
-          content = content || buildSSHHostTemplate(host)
+          content = content || buildShellHostTemplate(host)
         }
 
+        // groupId 可空：后端 SaveNote 会挂到默认分组
         const saved = (await api.saveNote(
           model.NoteDO.createFrom({
             id: '',
-            groupId,
+            groupId: '',
             title,
             content,
             language,
@@ -276,7 +286,7 @@ export function NotebookWorkbench() {
             updatedAt: 0,
           })
         )) as Note
-        await refreshSummaries()
+        await refreshAll()
         await openNoteById(saved.id)
         setStatusMessage(t('notebook.createdNote', { title: saved.title }))
       } catch (e) {
@@ -323,7 +333,7 @@ export function NotebookWorkbench() {
   const updateActiveNote = (patch: Partial<Note>) => {
     if (!activeTabId || !activeNote) return
     const nextPatch = { ...patch }
-    if (nextPatch.groupId && nextPatch.groupId !== activeNote.groupId) {
+    if (nextPatch.groupId !== undefined && nextPatch.groupId !== activeNote.groupId) {
       nextPatch.sortOrder = nextNoteSortOrder(
         summaries.filter((s) => s.id !== activeTabId),
         nextPatch.groupId,
@@ -335,20 +345,19 @@ export function NotebookWorkbench() {
     scheduleSave(next)
   }
 
-  const createNote = async (groupId?: string) => {
-    const gid = groupId ?? groups[0]?.id
-    if (!gid) return
+  /** createNote 新建笔记；未传 groupId 时建在根目录。 */
+  const createNote = async (groupId = '') => {
     try {
       const saved = (await api.saveNote(
         model.NoteDO.createFrom({
           id: '',
-          groupId: gid,
+          groupId,
           title: t('common.unnamed'),
           content: '',
           language: 'plaintext',
           sshHostId: '',
           connectionId: '',
-          sortOrder: nextNoteSortOrder(summaries, gid),
+          sortOrder: nextNoteSortOrder(summaries, groupId),
           createdAt: 0,
           updatedAt: 0,
         })
@@ -406,7 +415,7 @@ export function NotebookWorkbench() {
     const conn = activeNote.connectionId ? connections.find((c) => c.id === activeNote.connectionId) : undefined
     let block = ''
     if (conn) block = buildConnectionTemplate(conn)
-    else if (host) block = buildSSHHostTemplate(host)
+    else if (host) block = buildShellHostTemplate(host)
     else block = buildServerChecklistTemplate(activeNote.title)
     const content = activeNote.content.trim() ? `${activeNote.content}\n\n${block}` : block
     updateActiveNote({ content, language: 'markdown' })
@@ -419,6 +428,18 @@ export function NotebookWorkbench() {
       if (activeTabId === id) setActiveTabId(next[next.length - 1] ?? null)
       return next
     })
+  }
+
+  /** closeOtherTabs 关闭除当前外的笔记标签。 */
+  const closeOtherTabs = (keepId: string) => {
+    setOpenTabIds([keepId])
+    setActiveTabId(keepId)
+  }
+
+  /** closeAllTabs 关闭全部笔记标签。 */
+  const closeAllTabs = () => {
+    setOpenTabIds([])
+    setActiveTabId(null)
   }
 
   const runInTerminal = () => {
@@ -511,14 +532,15 @@ export function NotebookWorkbench() {
         )
         setGroups((prev) =>
           layout.groupOrder.map((id, i) => {
-            const g = prev.find((x) => x.id === id)!
-            return { ...g, sortOrder: i }
-          }),
+            const g = prev.find((x) => x.id === id)
+            return g ? { ...g, sortOrder: i } : null
+          }).filter((g): g is NotebookGroup => Boolean(g)),
         )
         setSummaries((prev) => {
           const byId = new Map(prev.map((n) => [n.id, n]))
           const next: NoteSummary[] = []
-          for (const gid of layout.groupOrder) {
+          const gids = ['', ...layout.groupOrder]
+          for (const gid of gids) {
             const ids = layout.notesByGroup[gid] ?? []
             ids.forEach((nid, i) => {
               const n = byId.get(nid)
@@ -529,8 +551,9 @@ export function NotebookWorkbench() {
         })
         setOpenNotes((prev) => {
           const out = { ...prev }
+          const gids = ['', ...layout.groupOrder]
           for (const id of Object.keys(out)) {
-            for (const gid of layout.groupOrder) {
+            for (const gid of gids) {
               if ((layout.notesByGroup[gid] ?? []).includes(id)) {
                 out[id] = { ...out[id], groupId: gid }
                 break
@@ -659,6 +682,7 @@ export function NotebookWorkbench() {
                     type="button"
                     className={`wn-tab ${id === activeTabId ? 'active' : ''}`}
                     onClick={() => setActiveTabId(id)}
+                    onContextMenu={(e) => openTabContextMenu(e, id, setTabCtxMenu, setActiveTabId)}
                   >
                     <span className="tab-title">{note.title}</span>
                     <span className="wn-tab-close" onClick={(e) => { e.stopPropagation(); closeTab(id) }}>×</span>
@@ -683,6 +707,7 @@ export function NotebookWorkbench() {
                   onChange={(e) => updateActiveNote({ groupId: e.target.value })}
                   title={t('notebook.groupTitle')}
                 >
+                  <option value="">{t('notebook.rootGroup')}</option>
                   {groups.map((g) => (
                     <option key={g.id} value={g.id}>{g.name}</option>
                   ))}
@@ -703,7 +728,9 @@ export function NotebookWorkbench() {
                 >
                   <option value="">{t('notebook.sshHost')}</option>
                   {hosts.map((h) => (
-                    <option key={h.id} value={h.id}>{h.name}</option>
+                    <option key={h.id} value={h.id}>
+                      {h.kind === 'docker' ? `[Docker] ${h.name}` : h.name}
+                    </option>
                   ))}
                 </select>
                 <select
@@ -718,7 +745,13 @@ export function NotebookWorkbench() {
                   ))}
                 </select>
                 {activeNote.sshHostId && (
-                  <span className="notebook-host-badge"><IconServer size={12} /> SSH</span>
+                  <span className="notebook-host-badge">
+                    {hosts.find((h) => h.id === activeNote.sshHostId)?.kind === 'docker' ? (
+                      <><IconDocker size={12} /> Docker</>
+                    ) : (
+                      <><IconServer size={12} /> SSH</>
+                    )}
+                  </span>
                 )}
                 <div className="notebook-save-actions">
                   <button
@@ -763,6 +796,17 @@ export function NotebookWorkbench() {
           )}
         </main>
       </div>
+
+      {tabCtxMenu && (
+        <TabContextMenu
+          menu={tabCtxMenu}
+          disableCloseOthers={openTabIds.length <= 1}
+          onDismiss={() => setTabCtxMenu(null)}
+          onClose={() => closeTab(tabCtxMenu.tabId)}
+          onCloseOthers={() => closeOtherTabs(tabCtxMenu.tabId)}
+          onCloseAll={closeAllTabs}
+        />
+      )}
 
       <NotebookGroupModal
         open={groupModal !== undefined}

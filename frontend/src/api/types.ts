@@ -180,6 +180,42 @@ export interface SSHHost {
   updatedAt: number
 }
 
+/** ShellHost 统一主机（SSH 或已注册 Docker 容器）。 */
+export interface ShellHost {
+  id: string
+  kind: 'ssh' | 'docker'
+  name: string
+  host?: string
+  port?: number
+  user?: string
+  password?: string
+  keyPath?: string
+  contextId?: string
+  containerId?: string
+  containerName?: string
+  image?: string
+  /** Docker：容器是否在运行；SSH 恒为 true */
+  running?: boolean
+  createdAt: number
+  updatedAt: number
+}
+
+/** shellHostAsSSH 将 SSH 类 ShellHost 转为 SSHHost（供转发等复用）。 */
+export function shellHostAsSSH(h: ShellHost): SSHHost | null {
+  if (h.kind !== 'ssh') return null
+  return {
+    id: h.id,
+    name: h.name,
+    host: h.host || '',
+    port: h.port || 22,
+    user: h.user || '',
+    password: h.password || '',
+    keyPath: h.keyPath || '',
+    createdAt: h.createdAt,
+    updatedAt: h.updatedAt,
+  }
+}
+
 export interface SSHForwardPreset {
   id: string
   name: string
@@ -218,7 +254,7 @@ export interface TerminalSessionInfo {
   sessionId: string
   hostId: string
   title: string
-  kind: 'local' | 'ssh'
+  kind: 'local' | 'ssh' | 'docker'
 }
 
 export interface SFTPSessionInfo {
@@ -282,7 +318,9 @@ export interface DockerImage {
 export interface ContainerShell {
   mode: string
   hostId?: string
-  command: string
+  contextId?: string
+  containerId?: string
+  command?: string
 }
 
 export interface ContainerDatabaseLink {

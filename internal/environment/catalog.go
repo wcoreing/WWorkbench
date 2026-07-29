@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"WNavicat/internal/model"
+	"WWorkbench/internal/model"
 )
 
 // listGoCatalogVersions 列出 goenv 可选 Go 版本。

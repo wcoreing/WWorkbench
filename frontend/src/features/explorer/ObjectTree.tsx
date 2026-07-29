@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ColumnMeta, ObjectTreeNode } from '../../api/types'
 import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
@@ -15,6 +15,12 @@ interface Props {
   sessionId: string
   nodes: ObjectTreeNode[]
   filter: string
+  /** selectedDatabase 当前会话库；变化时自动展开该库表树。 */
+  selectedDatabase?: string
+  /** selectedTable 当前打开的表（用于与 Tab 同步高亮）。 */
+  selectedTable?: string
+  /** refreshNonce 递增时清空懒加载缓存并重载已展开节点。 */
+  refreshNonce?: number
   onTableDoubleClick: (database: string, table: string) => void
   onDatabaseSelect?: (database: string) => void
   onShowDDL: (database: string, table: string) => void
@@ -26,7 +32,10 @@ interface Props {
   onExportInsert: (database: string, table: string) => void
   onImportSQL?: (database: string) => void
   onCreateDatabase?: () => void
-  tableDesign?: boolean
+  /** canCreateTable 库节点右键「新建表」。 */
+  canCreateTable?: boolean
+  /** canDesignTable 表节点右键「设计表」。 */
+  canDesignTable?: boolean
   isRedis?: boolean
 }
 
@@ -35,6 +44,9 @@ export function ObjectTree({
   sessionId,
   nodes,
   filter,
+  selectedDatabase,
+  selectedTable,
+  refreshNonce = 0,
   onTableDoubleClick,
   onDatabaseSelect,
   onShowDDL,
@@ -46,7 +58,8 @@ export function ObjectTree({
   onExportInsert,
   onImportSQL,
   onCreateDatabase,
-  tableDesign = true,
+  canCreateTable = false,
+  canDesignTable = false,
   isRedis = false,
 }: Props) {
   const { t } = useI18n()
@@ -55,12 +68,77 @@ export function ObjectTree({
   const [columnCache, setColumnCache] = useState<Record<string, ObjectTreeNode[]>>({})
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [menu, setMenu] = useState<ContextMenuState | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const expandedRef = useRef(expanded)
+  const nodesRef = useRef(nodes)
+  const databaseCacheRef = useRef(databaseCache)
+  const columnCacheRef = useRef(columnCache)
+  expandedRef.current = expanded
+  nodesRef.current = nodes
+  databaseCacheRef.current = databaseCache
+  columnCacheRef.current = columnCache
 
   useEffect(() => {
     setExpanded(new Set())
     setDatabaseCache({})
     setColumnCache({})
-  }, [sessionId, nodes])
+    setSelectedId(null)
+  }, [sessionId])
+
+  // 顶部刷新：清空懒加载缓存，并重拉当前已展开的库/表子节点。
+  useEffect(() => {
+    if (!refreshNonce) return
+    let cancelled = false
+    const expandedIds = new Set(expandedRef.current)
+    const treeNodes = nodesRef.current
+
+    const run = async () => {
+      setDatabaseCache({})
+      setColumnCache({})
+      const dbNodes = treeNodes.filter(
+        (n) => n.nodeType === 'database' && expandedIds.has(n.id) && n.database,
+      )
+      const nextDbCache: Record<string, ObjectTreeNode[]> = {}
+      await Promise.all(
+        dbNodes.map(async (node) => {
+          try {
+            nextDbCache[node.id] = await api.listDatabaseObjects(sessionId, node.database!)
+          } catch {
+            nextDbCache[node.id] = []
+          }
+        }),
+      )
+      if (cancelled) return
+      setDatabaseCache(nextDbCache)
+
+      const nextColCache: Record<string, ObjectTreeNode[]> = {}
+      const tableNodes = Object.values(nextDbCache)
+        .flat()
+        .filter(
+          (n) =>
+            (n.nodeType === 'table' || n.nodeType === 'view') &&
+            expandedIds.has(n.id) &&
+            n.database &&
+            n.table,
+        )
+      await Promise.all(
+        tableNodes.map(async (node) => {
+          try {
+            const cols = await api.listColumns(sessionId, node.database!, node.table!)
+            nextColCache[node.id] = columnNodesFromMeta(node, cols)
+          } catch {
+            nextColCache[node.id] = []
+          }
+        }),
+      )
+      if (cancelled) return
+      setColumnCache(nextColCache)
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [refreshNonce, sessionId])
 
   useEffect(() => {
     const close = () => setMenu(null)
@@ -87,7 +165,7 @@ export function ObjectTree({
   /** loadDatabaseObjects 懒加载库内表/视图。 */
   const loadDatabaseObjects = useCallback(
     async (node: ObjectTreeNode) => {
-      if (!node.database || databaseCache[node.id]) return
+      if (!node.database || databaseCacheRef.current[node.id]) return
       setLoadingId(node.id)
       try {
         const children = await api.listDatabaseObjects(sessionId, node.database)
@@ -98,32 +176,67 @@ export function ObjectTree({
         setLoadingId(null)
       }
     },
-    [sessionId, databaseCache]
+    [sessionId],
   )
 
   /** loadColumns 懒加载表/视图列节点。 */
   const loadColumns = useCallback(
     async (node: ObjectTreeNode) => {
-      if (!node.database || !node.table || columnCache[node.id]) return
+      if (!node.database || !node.table || columnCacheRef.current[node.id]) return
       setLoadingId(node.id)
       try {
-        const cols: ColumnMeta[] = await api.listColumns(sessionId, node.database, node.table)
-        const children: ObjectTreeNode[] = cols.map((c) => ({
-          id: `${node.id}:col:${c.name}`,
-          label: `${c.name} : ${c.columnType || c.dataType}`,
-          nodeType: 'column',
-          database: node.database,
-          table: node.table,
-        }))
-        setColumnCache((prev) => ({ ...prev, [node.id]: children }))
+        const cols = await api.listColumns(sessionId, node.database, node.table)
+        setColumnCache((prev) => ({ ...prev, [node.id]: columnNodesFromMeta(node, cols) }))
       } catch {
         setColumnCache((prev) => ({ ...prev, [node.id]: [] }))
       } finally {
         setLoadingId(null)
       }
     },
-    [sessionId, columnCache]
+    [sessionId],
   )
+
+  /** ensureExpanded 展开节点并按需懒加载子节点。 */
+  const ensureExpanded = useCallback(
+    async (node: ObjectTreeNode) => {
+      const isDatabase = node.nodeType === 'database'
+      const isTableOrView = node.nodeType === 'table' || node.nodeType === 'view'
+      if (!isDatabase && !isTableOrView) return
+      if (isDatabase && !databaseCacheRef.current[node.id]) {
+        await loadDatabaseObjects(node)
+      } else if (isTableOrView && !columnCacheRef.current[node.id]) {
+        await loadColumns(node)
+      }
+      setExpanded((prev) => {
+        if (prev.has(node.id)) return prev
+        const next = new Set(prev)
+        next.add(node.id)
+        return next
+      })
+    },
+    [loadDatabaseObjects, loadColumns],
+  )
+
+  // 选中库后默认展开表树（含顶部下拉 / 库列表进入后）。
+  useEffect(() => {
+    if (!selectedDatabase) return
+    const dbNode = nodes.find((n) => n.nodeType === 'database' && n.database === selectedDatabase)
+    if (!dbNode) return
+    setSelectedId((prev) => prev ?? dbNode.id)
+    void ensureExpanded(dbNode)
+  }, [selectedDatabase, nodes, ensureExpanded])
+
+  // 与打开的表 Tab 同步高亮。
+  useEffect(() => {
+    if (!selectedDatabase || !selectedTable) return
+    const dbNode = nodes.find((n) => n.nodeType === 'database' && n.database === selectedDatabase)
+    if (!dbNode) return
+    const children = databaseCache[dbNode.id] ?? []
+    const tableNode = children.find(
+      (n) => (n.nodeType === 'table' || n.nodeType === 'view') && n.table === selectedTable,
+    )
+    if (tableNode) setSelectedId(tableNode.id)
+  }, [selectedDatabase, selectedTable, nodes, databaseCache])
 
   /** toggleExpand 展开/折叠节点。 */
   const toggleExpand = async (node: ObjectTreeNode, e: React.MouseEvent) => {
@@ -132,19 +245,29 @@ export function ObjectTree({
     const isTableOrView = node.nodeType === 'table' || node.nodeType === 'view'
     if (!isDatabase && !isTableOrView) return
 
-    const next = new Set(expanded)
-    if (next.has(node.id)) {
-      next.delete(node.id)
-      setExpanded(next)
+    if (expanded.has(node.id)) {
+      setExpanded((prev) => {
+        const next = new Set(prev)
+        next.delete(node.id)
+        return next
+      })
       return
     }
-    if (isDatabase && !databaseCache[node.id]) {
-      await loadDatabaseObjects(node)
-    } else if (isTableOrView && !columnCache[node.id]) {
-      await loadColumns(node)
+    await ensureExpanded(node)
+  }
+
+  /** handleNodeClick 单击：库则选中并展开，表/视图则打开并高亮。 */
+  const handleNodeClick = (node: ObjectTreeNode) => {
+    if (node.nodeType === 'database' && node.database) {
+      setSelectedId(node.id)
+      onDatabaseSelect?.(node.database)
+      void ensureExpanded(node)
+      return
     }
-    next.add(node.id)
-    setExpanded(next)
+    if ((node.nodeType === 'table' || node.nodeType === 'view') && node.database && node.table) {
+      setSelectedId(node.id)
+      onTableDoubleClick(node.database, node.table)
+    }
   }
 
   /** openContextMenu 打开右键菜单。 */
@@ -184,18 +307,11 @@ export function ObjectTree({
     return (
       <li key={node.id}>
         <div
-          className={`wn-tree-item ${node.nodeType}${isDatabase && node.database ? ' selectable' : ''}`}
+          className={`wn-tree-item ${node.nodeType}${isDatabase && node.database ? ' selectable' : ''}${
+            selectedId === node.id ? ' selected' : ''
+          }`}
           style={{ paddingLeft: 6 + depth * 16 }}
-          onClick={() => {
-            if (isDatabase && node.database && onDatabaseSelect) {
-              onDatabaseSelect(node.database)
-            }
-          }}
-          onDoubleClick={() => {
-            if (isTableOrView && node.database && node.table) {
-              onTableDoubleClick(node.database, node.table)
-            }
-          }}
+          onClick={() => handleNodeClick(node)}
           onContextMenu={(e) => openContextMenu(e, node)}
           title={treeHint(node)}
         >
@@ -243,7 +359,7 @@ export function ObjectTree({
       <ul className="wn-tree">{filteredNodes.map((n) => renderNode(n))}</ul>
       {menu && (
         <div className="wn-context-menu" style={{ left: menu.x, top: menu.y }} onClick={(e) => e.stopPropagation()}>
-          {tableDesign && menu.node.nodeType === 'database' && menu.node.database && (
+          {canCreateTable && menu.node.nodeType === 'database' && menu.node.database && (
             <button
               type="button"
               className="wn-context-item"
@@ -252,7 +368,7 @@ export function ObjectTree({
                 setMenu(null)
               }}
             >
-              {t('objectTree.newTable')}
+              {t('objectTree.designNewTable')}
             </button>
           )}
           {onImportSQL && menu.node.nodeType === 'database' && menu.node.database && (
@@ -291,7 +407,7 @@ export function ObjectTree({
             {t('objectTree.viewDdl')}
           </button>
           )}
-          {tableDesign && menu.node.nodeType === 'table' && (
+          {canDesignTable && menu.node.nodeType === 'table' && (
             <button
               type="button"
               className="wn-context-item"
@@ -362,6 +478,17 @@ export function ObjectTree({
       )}
     </>
   )
+}
+
+/** columnNodesFromMeta 将列元数据转为树节点。 */
+function columnNodesFromMeta(parent: ObjectTreeNode, cols: ColumnMeta[]): ObjectTreeNode[] {
+  return cols.map((c) => ({
+    id: `${parent.id}:col:${c.name}`,
+    label: `${c.name} : ${c.columnType || c.dataType}`,
+    nodeType: 'column' as const,
+    database: parent.database,
+    table: parent.table,
+  }))
 }
 
 /** filterTree 按名称筛选库表视图（仅匹配已加载的表）。 */

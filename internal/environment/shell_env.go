@@ -6,22 +6,22 @@ import (
 	"strings"
 )
 
-// wnavicatEnvDir 确保并返回 ~/.wnavicat 目录。
-func wnavicatEnvDir() (string, error) {
+// workbenchEnvDir 确保并返回 ~/.wworkbench 目录。
+func workbenchEnvDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	dir := filepath.Join(home, ".wnavicat")
+	dir := filepath.Join(home, ".wworkbench")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
 	return dir, nil
 }
 
-// applyWNavicatEnvFile 写入 env 文件并确保 shell 加载。
-func applyWNavicatEnvFile(marker, envFileName, envContent string) error {
-	dir, err := wnavicatEnvDir()
+// applyWorkbenchEnvFile 写入 env 文件并确保 shell 加载。
+func applyWorkbenchEnvFile(marker, envFileName, envContent string) error {
+	dir, err := workbenchEnvDir()
 	if err != nil {
 		return err
 	}
@@ -31,14 +31,14 @@ func applyWNavicatEnvFile(marker, envFileName, envContent string) error {
 	if err := os.WriteFile(filepath.Join(dir, envFileName), []byte(envContent), 0o644); err != nil {
 		return err
 	}
-	loader := `[ -f "$HOME/.wnavicat/` + envFileName + `" ] && . "$HOME/.wnavicat/` + envFileName + `"`
+	loader := `[ -f "$HOME/.wworkbench/` + envFileName + `" ] && . "$HOME/.wworkbench/` + envFileName + `"`
 	return appendShellSnippet(shellProfilePath(), marker, loader)
 }
 
-// syncGoShellEnv 将 goenv 环境写入 ~/.wnavicat/go.env。
+// syncGoShellEnv 将 goenv 环境写入 ~/.wworkbench/go.env。
 func syncGoShellEnv() error {
 	ensureGoenvRCFile()
-	return applyWNavicatEnvFile("# wnavicat-go", "go.env", goenvShellBlock())
+	return applyWorkbenchEnvFile("# wworkbench-go", "go.env", goenvShellBlock())
 }
 
 // ensureGoenvRCFile 确保 ~/.goenvrc 含 GOENV_PATH_ORDER=front。
@@ -62,16 +62,17 @@ func ensureGoenvRCFile() {
 	_, _ = f.WriteString("export GOENV_PATH_ORDER=front\n")
 }
 
-// LocalTerminalInitScript 返回内置终端启动脚本（先加载 ~/.wnavicat/*.env）。
+// LocalTerminalInitScript 返回内置终端启动脚本（先加载 ~/.wworkbench/*.env）。
+// zsh 默认 NOMATCH：目录下无 *.env 时裸 glob 会直接失败并结束会话，故先开 nullglob。
 func LocalTerminalInitScript(shell string) string {
 	sh := filepath.Base(shell)
 	if sh == "" {
 		sh = "zsh"
 	}
-	return `for f in "$HOME"/.wnavicat/*.env; do [ -f "$f" ] && . "$f"; done; exec -l ` + sh
+	return `setopt NULL_GLOB 2>/dev/null || true; shopt -s nullglob 2>/dev/null || true; for f in "$HOME"/.wworkbench/*.env; do [ -f "$f" ] && . "$f"; done; exec -l ` + sh
 }
 
-// syncNodeShellEnv 将当前 nvm Node 路径写入 ~/.wnavicat/node.env。
+// syncNodeShellEnv 将当前 nvm Node 路径写入 ~/.wworkbench/node.env。
 func syncNodeShellEnv() error {
 	if !hasNvm() {
 		return nil
@@ -81,7 +82,7 @@ func syncNodeShellEnv() error {
 		return nil
 	}
 	content := `export PATH="` + shellQuotePath(binDir) + `:$PATH"`
-	return applyWNavicatEnvFile("# wnavicat-node", "node.env", content)
+	return applyWorkbenchEnvFile("# wworkbench-node", "node.env", content)
 }
 
 // shellQuotePath 转义路径以便嵌入双引号字符串。

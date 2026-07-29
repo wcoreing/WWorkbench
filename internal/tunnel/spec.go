@@ -1,7 +1,7 @@
 package tunnel
 
 import (
-	"WNavicat/internal/model"
+	"WWorkbench/internal/model"
 )
 
 // SpecFromConnection 从连接配置生成隧道规格。

@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"strings"
 
-	"WNavicat/internal/conn"
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
-	"WNavicat/internal/session"
-	"WNavicat/internal/terminal"
+	"WWorkbench/internal/conn"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/session"
+	"WWorkbench/internal/terminal"
 
 	"github.com/google/uuid"
 )

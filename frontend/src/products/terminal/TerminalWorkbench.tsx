@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { SSHHost } from '../../api/types'
+import type { ShellHost, SSHHost } from '../../api/types'
+import { shellHostAsSSH } from '../../api/types'
 import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
-import { IconLaptop, IconPlus, IconServer, IconTerminal } from '../../components/Icons'
-import { openAgentDraft, mentionSSH } from '../../features/agent/openAgentDraft'
+import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
+import { IconDocker, IconLaptop, IconPlus, IconServer, IconTerminal } from '../../components/Icons'
+import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
@@ -41,7 +43,7 @@ function firstSessionId(layout: PaneLayout): string | null {
 interface TerminalTab {
   id: string
   hostId: string
-  kind: 'local' | 'ssh'
+  kind: 'local' | 'ssh' | 'docker'
   title: string
   layout: PaneLayout
   activePaneId: string
@@ -55,7 +57,7 @@ export function TerminalWorkbench() {
   const { setStatusMessage, terminalOpacity, setTerminalOpacity, setActiveProduct, setAgentFocusSSH } =
     useAppStore()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
-  const [hosts, setHosts] = useState<SSHHost[]>([])
+  const [hosts, setHosts] = useState<ShellHost[]>([])
   const [tabs, setTabs] = useState<TerminalTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [hostModalOpen, setHostModalOpen] = useState(false)
@@ -63,8 +65,9 @@ export function TerminalWorkbench() {
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const [openingLocal, setOpeningLocal] = useState(false)
   const [splitting, setSplitting] = useState(false)
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; host: SSHHost } | null>(null)
-  const [deleteHostConfirm, setDeleteHostConfirm] = useState<SSHHost | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; host: ShellHost } | null>(null)
+  const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
+  const [deleteHostConfirm, setDeleteHostConfirm] = useState<ShellHost | null>(null)
   const workspaceRestored = useRef(false)
   const tabsRef = useRef<TerminalTab[]>([])
   tabsRef.current = tabs
@@ -81,16 +84,12 @@ export function TerminalWorkbench() {
     setAgentFocusSSH(null)
   }, [activeTab, hosts, setAgentFocusSSH])
 
-  useEffect(() => {
-    if (!ctxMenu) return
-    const close = () => setCtxMenu(null)
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
-  }, [ctxMenu])
+  const sshHosts = hosts.filter((h) => h.kind === 'ssh').map((h) => shellHostAsSSH(h)!).filter(Boolean)
+  const dockerHosts = hosts.filter((h) => h.kind === 'docker')
 
   const refreshHosts = useCallback(async () => {
     try {
-      setHosts(await api.listSSHHosts())
+      setHosts(await api.listShellHosts())
     } catch (e) {
       setHosts([])
       setStatusMessage((e as Error).message)
@@ -105,7 +104,7 @@ export function TerminalWorkbench() {
     workspaceRestored.current = true
     void (async () => {
       try {
-        const hostList = await api.listSSHHosts()
+        const hostList = await api.listShellHosts()
         setHosts(hostList)
         const snap = await loadTerminalWorkspace()
         if (!snap?.tabs.length) return
@@ -131,6 +130,20 @@ export function TerminalWorkbench() {
   }, [refreshHosts, setStatusMessage, confirmTrust, t])
 
   useEffect(() => {
+    if (!ctxMenu) return
+    const close = () => setCtxMenu(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [ctxMenu])
+
+  useEffect(() => {
+    if (!tabCtxMenu) return
+    const close = () => setTabCtxMenu(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [tabCtxMenu])
+
+  useEffect(() => {
     scheduleTerminalWorkspacePersist(toTerminalWorkspaceSnapshot(tabs, activeTabId))
   }, [tabs, activeTabId])
 
@@ -143,7 +156,7 @@ export function TerminalWorkbench() {
     setHostModalOpen(true)
   }
 
-  const addTab = (info: { sessionId: string; hostId: string; kind: 'local' | 'ssh'; title: string }) => {
+  const addTab = (info: { sessionId: string; hostId: string; kind: 'local' | 'ssh' | 'docker'; title: string }) => {
     const tabId = `term-${info.sessionId}`
     const paneId = `pane-${info.sessionId}`
     const tab: TerminalTab = {
@@ -182,7 +195,7 @@ export function TerminalWorkbench() {
       const existing = localShell
         ? tabsRef.current.find((t) => t.kind === 'local')
         : hostId
-          ? tabsRef.current.find((t) => t.kind === 'ssh' && t.hostId === hostId)
+          ? tabsRef.current.find((t) => (t.kind === 'ssh' || t.kind === 'docker') && t.hostId === hostId)
           : null
       if (existing) {
         const sessionId = firstSessionId(existing.layout)
@@ -202,7 +215,7 @@ export function TerminalWorkbench() {
     if (!hostId) return
     let host = hosts.find((h) => h.id === hostId)
     if (!host) {
-      host = await api.getSSHHost(hostId)
+      host = await api.getShellHost(hostId)
       setHosts((prev) => (prev.some((h) => h.id === hostId) ? prev : [...prev, host!]))
     }
     await connectHost(host, initialCommand)
@@ -228,17 +241,27 @@ export function TerminalWorkbench() {
     }
   }
 
-  const connectHost = async (host: SSHHost, initialCommand?: string) => {
+  const connectHost = async (host: ShellHost, initialCommand?: string) => {
     if (connectingId || openingLocal) return
+    if (host.kind === 'docker' && host.running === false) {
+      setStatusMessage(t('terminal.containerStoppedHint', { name: host.name }))
+      return
+    }
     setConnectingId(host.id)
     setStatusMessage(t('terminal.connecting', { name: host.name }))
     try {
-      const info = await withSSHHostTrust(host.host, host.port, () => api.openTerminal(host.id, 120, 32), confirmTrust)
+      const open = () => api.openTerminal(host.id, 120, 32)
+      const info =
+        host.kind === 'docker'
+          ? await open()
+          : await withSSHHostTrust(host.host || '', host.port || 22, open, confirmTrust)
       const sessionId = addTab({
         sessionId: info.sessionId,
         hostId: host.id,
-        kind: 'ssh',
-        title: info.title || `${host.user}@${host.host}`,
+        kind: host.kind === 'docker' ? 'docker' : 'ssh',
+        title:
+          info.title ||
+          (host.kind === 'docker' ? host.name : `${host.user}@${host.host}`),
       })
       await writeInitialCommand(sessionId, initialCommand)
     } catch (e) {
@@ -277,7 +300,26 @@ export function TerminalWorkbench() {
     }
   }
 
-  const deleteHost = (host: SSHHost) => {
+  /** closeOtherTabs 关闭除当前外的终端标签。 */
+  const closeOtherTabs = async (keepId: string) => {
+    const closing = tabs.filter((t) => t.id !== keepId)
+    for (const tab of closing) {
+      await closeSessions(collectSessionIds(tab.layout))
+    }
+    setTabs(tabs.filter((t) => t.id === keepId))
+    setActiveTabId(keepId)
+  }
+
+  /** closeAllTabs 关闭全部终端标签。 */
+  const closeAllTabs = async () => {
+    for (const tab of tabs) {
+      await closeSessions(collectSessionIds(tab.layout))
+    }
+    setTabs([])
+    setActiveTabId(null)
+  }
+
+  const deleteHost = (host: ShellHost) => {
     setCtxMenu(null)
     setDeleteHostConfirm(host)
   }
@@ -296,7 +338,11 @@ export function TerminalWorkbench() {
       if (activeTabId && related.some((t) => t.id === activeTabId)) {
         setActiveTabId(nextTabs.length ? nextTabs[nextTabs.length - 1].id : null)
       }
-      await api.deleteSSHHost(host.id)
+      if (host.kind === 'docker') {
+        await api.removeDockerHost(host.id)
+      } else {
+        await api.deleteSSHHost(host.id)
+      }
       await refreshHosts()
       setStatusMessage(t('terminal.deleted', { name: host.name }))
     } catch (e) {
@@ -321,10 +367,11 @@ export function TerminalWorkbench() {
       } else {
         const host = hosts.find((h) => h.id === activeTab.hostId)
         if (!host) throw new Error(t('terminal.errHostNotFound'))
-        const info = await withSSHHostTrust(host.host, host.port, () =>
-          api.openTerminal(activeTab.hostId, 120, 32),
-          confirmTrust
-        )
+        const open = () => api.openTerminal(activeTab.hostId, 120, 32)
+        const info =
+          host.kind === 'docker'
+            ? await open()
+            : await withSSHHostTrust(host.host || '', host.port || 22, open, confirmTrust)
         sessionId = info.sessionId
       }
       const nextLayout = splitPane(activeTab.layout, activeTab.activePaneId, direction, sessionId)
@@ -367,7 +414,7 @@ export function TerminalWorkbench() {
     await closePaneInTab(activeTab.id, activeTab.activePaneId)
   }
 
-  const connectedHostIds = new Set(tabs.filter((t) => t.kind === 'ssh').map((t) => t.hostId))
+  const connectedHostIds = new Set(tabs.filter((t) => t.kind === 'ssh' || t.kind === 'docker').map((t) => t.hostId))
   const localTabCount = tabs.filter((t) => t.kind === 'local').length
 
   return (
@@ -471,20 +518,20 @@ export function TerminalWorkbench() {
               </button>
             </div>
             <div className="sidebar-body">
-              {hosts.length === 0 ? (
+              {sshHosts.length === 0 ? (
                 <div className="empty-hint">{t('terminal.emptyHosts')}</div>
               ) : (
                 <ul className="conn-list">
-                  {hosts.map((h) => (
+                  {sshHosts.map((h) => (
                     <li
                       key={h.id}
                       className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
-                      onClick={() => connectHost(h)}
-                      onDoubleClick={() => connectHost(h)}
+                      onClick={() => connectHost({ ...h, kind: 'ssh' })}
+                      onDoubleClick={() => connectHost({ ...h, kind: 'ssh' })}
                       onContextMenu={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
-                        setCtxMenu({ x: e.clientX, y: e.clientY, host: h })
+                        setCtxMenu({ x: e.clientX, y: e.clientY, host: { ...h, kind: 'ssh' } })
                       }}
                     >
                       <IconServer size={14} className="mock-icon" />
@@ -502,7 +549,64 @@ export function TerminalWorkbench() {
             </div>
           </section>
 
-          <SSHForwardPanel hosts={hosts} onStatus={setStatusMessage} />
+          {dockerHosts.length > 0 && (
+            <section className="sidebar-section">
+              <div className="sidebar-header">
+                <span>{t('terminal.dockerHosts')}</span>
+                {dockerHosts.some((h) => h.running === false) && (
+                  <button
+                    type="button"
+                    className="wn-btn wn-btn-ghost wn-btn-sm"
+                    title={t('terminal.pruneStopped')}
+                    onClick={() => {
+                      void (async () => {
+                        try {
+                          const n = await api.pruneStoppedDockerHosts()
+                          await refreshHosts()
+                          setStatusMessage(
+                            n > 0 ? t('terminal.prunedStopped', { count: n }) : t('terminal.pruneStoppedNone')
+                          )
+                        } catch (e) {
+                          setStatusMessage((e as Error).message)
+                        }
+                      })()
+                    }}
+                  >
+                    {t('terminal.pruneStopped')}
+                  </button>
+                )}
+              </div>
+              <div className="sidebar-body">
+                <ul className="conn-list">
+                  {dockerHosts.map((h) => (
+                    <li
+                      key={h.id}
+                      className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
+                      onClick={() => connectHost(h)}
+                      onDoubleClick={() => connectHost(h)}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setCtxMenu({ x: e.clientX, y: e.clientY, host: h })
+                      }}
+                    >
+                      <IconDocker size={14} className="mock-icon" />
+                      <div className="conn-meta">
+                        <span className="conn-name">{h.name}</span>
+                        <span className="conn-host">
+                          {h.running === false
+                            ? t('terminal.containerStopped')
+                            : h.image || h.containerId?.slice(0, 12) || 'container'}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          )}
+
+          <SSHForwardPanel hosts={sshHosts} onStatus={setStatusMessage} />
         </aside>
 
         <main className="app-main">
@@ -514,8 +618,9 @@ export function TerminalWorkbench() {
                   type="button"
                   className={`wn-tab wn-tab-terminal wn-tab-${t.kind} ${t.id === activeTabId ? 'active' : ''}`}
                   onClick={() => setActiveTabId(t.id)}
+                  onContextMenu={(e) => openTabContextMenu(e, t.id, setTabCtxMenu, setActiveTabId)}
                 >
-                  {t.kind === 'local' ? <IconLaptop size={12} /> : <IconTerminal size={12} />}
+                  {t.kind === 'local' ? <IconLaptop size={12} /> : t.kind === 'docker' ? <IconDocker size={12} /> : <IconTerminal size={12} />}
                   <span className="tab-title">{t.title}</span>
                   {countLeaves(t.layout) > 1 && (
                     <span className="tab-split-badge">{countLeaves(t.layout)}</span>
@@ -570,6 +675,16 @@ export function TerminalWorkbench() {
         onSaved={refreshHosts}
       />
 
+      {tabCtxMenu && (
+        <TabContextMenu
+          menu={tabCtxMenu}
+          disableCloseOthers={tabs.length <= 1}
+          onDismiss={() => setTabCtxMenu(null)}
+          onClose={() => void closeTab(tabCtxMenu.tabId)}
+          onCloseOthers={() => void closeOtherTabs(tabCtxMenu.tabId)}
+          onCloseAll={() => void closeAllTabs()}
+        />
+      )}
       {ctxMenu && (
         <div
           className="wn-context-menu"
@@ -582,8 +697,17 @@ export function TerminalWorkbench() {
             onClick={() => {
               const host = ctxMenu.host
               setCtxMenu(null)
+              if (host.kind === 'docker') {
+                openAgentDraft({
+                  mentions: [mentionDockerHost(host)],
+                  message: t('agent.draftContainer'),
+                })
+                return
+              }
+              const ssh = shellHostAsSSH(host)
+              if (!ssh) return
               openAgentDraft({
-                mentions: [mentionSSH(host)],
+                mentions: [mentionSSH(ssh)],
                 message: t('agent.draftSSH'),
               })
             }}
@@ -600,16 +724,18 @@ export function TerminalWorkbench() {
           >
             {t('terminal.ctxNotebook')}
           </button>
-          <button
-            type="button"
-            className="wn-context-item"
-            onClick={() => {
-              setCtxMenu(null)
-              openProductLink({ action: 'docker-context', hostId: ctxMenu.host.id })
-            }}
-          >
-            {t('terminal.ctxDocker')}
-          </button>
+          {ctxMenu.host.kind === 'ssh' && (
+            <button
+              type="button"
+              className="wn-context-item"
+              onClick={() => {
+                setCtxMenu(null)
+                openProductLink({ action: 'docker-context', hostId: ctxMenu.host.id })
+              }}
+            >
+              {t('terminal.ctxDocker')}
+            </button>
+          )}
           <button
             type="button"
             className="wn-context-item"
@@ -620,31 +746,44 @@ export function TerminalWorkbench() {
           >
             {t('terminal.ctxSftp')}
           </button>
-          <button
-            type="button"
-            className="wn-context-item"
-            onClick={() => {
-              setCtxMenu(null)
-              openHostModal(ctxMenu.host)
-            }}
-          >
-            {t('common.edit')}
-          </button>
+          {ctxMenu.host.kind === 'ssh' && (
+            <button
+              type="button"
+              className="wn-context-item"
+              onClick={() => {
+                const ssh = shellHostAsSSH(ctxMenu.host)
+                setCtxMenu(null)
+                if (ssh) openHostModal(ssh)
+              }}
+            >
+              {t('common.edit')}
+            </button>
+          )}
           <button
             type="button"
             className="wn-context-item danger"
             onClick={() => deleteHost(ctxMenu.host)}
           >
-            {t('common.delete')}
+            {ctxMenu.host.kind === 'docker' ? t('terminal.removeDockerHost') : t('common.delete')}
           </button>
         </div>
       )}
       {trustDialog}
       <ConfirmDialog
         open={deleteHostConfirm != null}
-        title={t('terminal.deleteHostTitle')}
-        message={deleteHostConfirm ? t('terminal.deleteHostMsg', { name: deleteHostConfirm.name }) : undefined}
-        confirmLabel={t('common.delete')}
+        title={
+          deleteHostConfirm?.kind === 'docker'
+            ? t('terminal.removeDockerHost')
+            : t('terminal.deleteHostTitle')
+        }
+        message={
+          deleteHostConfirm
+            ? deleteHostConfirm.kind === 'docker'
+              ? t('terminal.removeDockerHostMsg', { name: deleteHostConfirm.name })
+              : t('terminal.deleteHostMsg', { name: deleteHostConfirm.name })
+            : undefined
+        }
+        confirmLabel={deleteHostConfirm?.kind === 'docker' ? t('terminal.removeDockerHost') : t('common.delete')}
         danger
         onConfirm={() => void confirmDeleteHost()}
         onCancel={() => setDeleteHostConfirm(null)}

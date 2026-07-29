@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"WNavicat/internal/workbenchtools"
+	"WWorkbench/internal/workbenchtools"
 )
 
 type chatRequestStream struct {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { Connection, ExecuteResult, IndexMeta, QueryHistory, QueryPage, SQLBatchResult, SessionInfo } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { IconDisconnect, IconEdit, IconPlay, IconPlus, IconSql } from '../../components/Icons'
 import { ConnectionModal } from '../../features/connection/ConnectionModal'
 import { DdlEditor } from '../../features/ddl/DdlEditor'
@@ -65,6 +66,7 @@ export function DatabaseWorkbench() {
   const [connModalOpen, setConnModalOpen] = useState(false)
   const [editingConn, setEditingConn] = useState<Connection | null>(null)
   const [connCtxMenu, setConnCtxMenu] = useState<{ x: number; y: number; conn: Connection } | null>(null)
+  const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
   const [sqlResult, setSqlResult] = useState<SqlResult | null>(null)
   const [resultHeight, setResultHeight] = useState(220)
   const [bottomTab, setBottomTab] = useState<'result' | 'message'>('result')
@@ -72,9 +74,11 @@ export function DatabaseWorkbench() {
   const [lastQuery, setLastQuery] = useState<{ sql: string; page: QueryPage } | null>(null)
   const [resultLoading, setResultLoading] = useState(false)
   const [treeFilter, setTreeFilter] = useState('')
+  const [treeRefreshNonce, setTreeRefreshNonce] = useState(0)
   const [ddlConfirm, setDdlConfirm] = useState<
     { type: 'truncate' | 'drop'; database: string; table: string } | null
   >(null)
+  const [deleteConnTarget, setDeleteConnTarget] = useState<Connection | null>(null)
   const [createDbOpen, setCreateDbOpen] = useState(false)
   const restoredConnection = useRef(false)
 
@@ -89,6 +93,13 @@ export function DatabaseWorkbench() {
     return () => window.removeEventListener('click', close)
   }, [connCtxMenu])
 
+  useEffect(() => {
+    if (!tabCtxMenu) return
+    const close = () => setTabCtxMenu(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [tabCtxMenu])
+
   const refreshConnections = async () => {
     try {
       const list = await api.listConnections()
@@ -100,10 +111,16 @@ export function DatabaseWorkbench() {
     }
   }
 
+  /** reloadObjectTree 重拉库列表并失效 ObjectTree 懒加载缓存。 */
+  const reloadObjectTree = async (sessionId: string) => {
+    setObjectTree(await api.getObjectTree(sessionId))
+    setTreeRefreshNonce((n) => n + 1)
+  }
+
   const refreshObjectTree = async () => {
     if (!session) return
     try {
-      setObjectTree(await api.getObjectTree(session.sessionId))
+      await reloadObjectTree(session.sessionId)
       setStatusMessage(t('database.treeRefreshed'))
     } catch (e) {
       setStatusMessage((e as Error).message)
@@ -117,8 +134,12 @@ export function DatabaseWorkbench() {
     [connectionList, session?.connectionId, activeConnectionId],
   )
   const isRedis = activeConn?.dbType === 'redis'
+  const isSqlite = activeConn?.dbType === 'sqlite'
   const isMysql = activeConn?.dbType === 'mysql'
-  const tableDesign = isMysql
+  const canCreateDatabase = !isRedis && !isSqlite
+  /** 表设计：非 Redis 可新建；改表设计目前 MySQL / SQLite / PostgreSQL 均可打开。 */
+  const canCreateTable = !isRedis
+  const canDesignTable = !isRedis
   const groupedConnections = useMemo(() => {
     const map = new Map<string, Connection[]>()
     for (const c of connectionList) {
@@ -136,7 +157,11 @@ export function DatabaseWorkbench() {
     if (databaseNames.length === 0) return ''
     return databaseNames.includes(activeTab.database) ? '' : activeTab.database
   }, [activeTab, databaseNames])
-  const showDatabasePicker = Boolean(session && (!session.database || invalidTabDatabase))
+  // 未选库时仅挡 SQL 工作区；打开表/设计时由 openTableTab 切库，避免「先点库再开表」两步。
+  const showDatabasePicker = Boolean(
+    session &&
+      ((!session.database && (!activeTab || activeTab.kind === 'sql')) || invalidTabDatabase)
+  )
 
   /** applySqlResult 处理 SQL 执行返回值。 */
   const applySqlResult = useCallback((res: unknown, sql: string) => {
@@ -244,9 +269,13 @@ export function DatabaseWorkbench() {
         setSession(info)
         setActiveConnectionId(connId)
         void saveAppSetting(APP_SETTING_KEYS.lastConnectionId, connId)
-        setObjectTree(await api.getObjectTree(info.sessionId))
-        setHistory(await api.listQueryHistory(connId, 30))
         setStatusMessage(t('database.connected', { name: conn.name }))
+        const [tree, history] = await Promise.all([
+          api.getObjectTree(info.sessionId),
+          api.listQueryHistory(connId, 30),
+        ])
+        setObjectTree(tree)
+        setHistory(history)
         await fulfillPendingSql(info)
       } catch (e) {
         pendingSql.current = null
@@ -334,6 +363,27 @@ export function DatabaseWorkbench() {
     setStatusMessage(t('database.disconnected'))
   }
 
+  /** confirmDeleteConnection 删除连接（若正在使用则先断开）。 */
+  const confirmDeleteConnection = async () => {
+    const target = deleteConnTarget
+    if (!target) return
+    setDeleteConnTarget(null)
+    try {
+      if (session?.connectionId === target.id) {
+        await api.closeSession(session.sessionId)
+        setSession(null)
+        setObjectTree([])
+        setHistory([])
+      }
+      await api.deleteConnection(target.id)
+      if (activeConnectionId === target.id) setActiveConnectionId(null)
+      await refreshConnections()
+      setStatusMessage(t('database.connectionDeleted', { name: target.name }))
+    } catch (e) {
+      setStatusMessage((e as Error).message)
+    }
+  }
+
   useEffect(() => {
     if (restoredConnection.current || !activeConnectionId || session || pendingSql.current) return
     const conn = connectionList.find((c) => c.id === activeConnectionId)
@@ -414,16 +464,17 @@ export function DatabaseWorkbench() {
   )
 
   const openTableTab = async (database: string, table: string) => {
-    if (session && session.database !== database) {
+    const sess = useAppStore.getState().session
+    if (sess && sess.database !== database) {
       try {
-        setSession(await api.setDatabase(session.sessionId, database))
+        setSession(await api.setDatabase(sess.sessionId, database))
       } catch (e) {
         setStatusMessage((e as Error).message)
         return
       }
     }
     const id = `table-${database}-${table}`
-    if (!tabs.find((t) => t.id === id)) {
+    if (!useAppStore.getState().tabs.find((t) => t.id === id)) {
       addTab({ id, kind: 'table', title: table, database, table })
     } else {
       setActiveTabId(id)
@@ -497,7 +548,7 @@ export function DatabaseWorkbench() {
     setStatusMessage(t('database.executing'))
     try {
       await api.executeSQL(session.sessionId, session.database, sql)
-      setObjectTree(await api.getObjectTree(session.sessionId))
+      await reloadObjectTree(session.sessionId)
       setStatusMessage(okMessage)
       return true
     } catch (e) {
@@ -611,6 +662,24 @@ export function DatabaseWorkbench() {
     if (activeTabId === tabId) setActiveTabId((next[0] || { id: 'sql-1' }).id)
   }
 
+  /** closeOtherTabs 关闭除指定 Tab 外的全部标签。 */
+  const closeOtherTabs = (keepId: string) => {
+    for (const tab of tabs) {
+      if (tab.id !== keepId) clearDesignDraft(tab.id)
+    }
+    const next = tabs.filter((x) => x.id === keepId)
+    useAppStore.getState().setTabs(next)
+    setActiveTabId(keepId)
+  }
+
+  /** closeAllTabs 关闭全部标签，保留一个空查询。 */
+  const closeAllTabs = () => {
+    for (const tab of tabs) clearDesignDraft(tab.id)
+    const fresh = { id: `sql-${Date.now()}`, kind: 'sql' as const, title: t('database.untitledQuery'), sql: defaultUntitledSql() }
+    useAppStore.getState().setTabs([fresh])
+    setActiveTabId(fresh.id)
+  }
+
   const openConnModal = (conn?: Connection) => {
     setEditingConn(conn ?? null)
     setConnModalOpen(true)
@@ -641,7 +710,7 @@ export function DatabaseWorkbench() {
     try {
       const res = await api.executeSQLFile(session.sessionId, targetDb)
       if (res) applySqlResult(res, '-- SQL 文件')
-      setObjectTree(await api.getObjectTree(session.sessionId))
+      await reloadObjectTree(session.sessionId)
       setHistory(await api.listQueryHistory(session.connectionId, 30))
       setStatusMessage(t('database.importedSqlFile'))
     } catch (e) {
@@ -655,7 +724,7 @@ export function DatabaseWorkbench() {
     setCreateDbOpen(false)
     try {
       await api.createDatabase(session.sessionId, name, charset, collation)
-      setObjectTree(await api.getObjectTree(session.sessionId))
+      await reloadObjectTree(session.sessionId)
       await selectDatabase(name)
       setStatusMessage(t('database.databaseCreated', { name }))
     } catch (e) {
@@ -722,6 +791,15 @@ export function DatabaseWorkbench() {
             title={t('database.editConnection')}
           >
             <IconEdit size={13} />
+          </button>
+          <button
+            type="button"
+            className="wn-btn wn-btn-chrome wn-btn-danger"
+            onClick={() => activeConn && setDeleteConnTarget(activeConn)}
+            disabled={!activeConn}
+            title={t('database.deleteConnection')}
+          >
+            ×
           </button>
           <span className="chrome-vrule" />
           <button type="button" className="wn-btn wn-btn-chrome" onClick={newSqlTab} title={t('database.newQuery')}>
@@ -863,7 +941,7 @@ export function DatabaseWorkbench() {
             <div className="sidebar-header">
               <span>{t('database.objectBrowser')}</span>
               <div className="sidebar-header-actions">
-                {!isRedis && session && (
+                {canCreateDatabase && session && (
                   <button
                     type="button"
                     className="wn-btn wn-btn-icon wn-btn-sm"
@@ -900,7 +978,17 @@ export function DatabaseWorkbench() {
                   sessionId={session.sessionId}
                   nodes={treeNodes}
                   filter={treeFilter}
-                  tableDesign={tableDesign}
+                  selectedDatabase={session.database || undefined}
+                  selectedTable={
+                    activeTab?.kind === 'table'
+                      ? activeTab.table
+                      : activeTab?.kind === 'design'
+                        ? activeTab.table
+                        : undefined
+                  }
+                  refreshNonce={treeRefreshNonce}
+                  canCreateTable={canCreateTable}
+                  canDesignTable={canDesignTable}
                   isRedis={isRedis}
                   onTableDoubleClick={openTableTab}
                   onDatabaseSelect={(db) => void selectDatabase(db)}
@@ -912,7 +1000,7 @@ export function DatabaseWorkbench() {
                   onDropTable={dropTable}
                   onExportInsert={exportTableInsert}
                   onImportSQL={(db) => void runSqlFile(db)}
-                  onCreateDatabase={!isRedis ? () => setCreateDbOpen(true) : undefined}
+                  onCreateDatabase={canCreateDatabase ? () => setCreateDbOpen(true) : undefined}
                 />
               ) : (
                 <div className="empty-hint">{t('database.connectToBrowse')}</div>
@@ -955,6 +1043,7 @@ export function DatabaseWorkbench() {
                   type="button"
                   className={`wn-tab wn-tab-${tab.kind} ${tab.id === activeTabId ? 'active' : ''}`}
                   onClick={() => setActiveTabId(tab.id)}
+                  onContextMenu={(e) => openTabContextMenu(e, tab.id, setTabCtxMenu, setActiveTabId)}
                 >
                   <span className="tab-dot" />
                   <span className="tab-title">{localizeWorkTabTitle(tab.title, t)}</span>
@@ -992,7 +1081,7 @@ export function DatabaseWorkbench() {
                 databases={treeNodes}
                 invalidDatabase={invalidTabDatabase || undefined}
                 onSelect={(db) => void selectDatabase(db)}
-                onCreateDatabase={!isRedis ? () => setCreateDbOpen(true) : undefined}
+                onCreateDatabase={canCreateDatabase ? () => setCreateDbOpen(true) : undefined}
                 onImportSQL={!isRedis ? () => void runSqlFile() : undefined}
               />
             ) : (
@@ -1061,6 +1150,7 @@ export function DatabaseWorkbench() {
             )}
             {activeTab?.kind === 'table' && session && activeTab.database && activeTab.table && (
               <TableDataEditor
+                key={`${session.sessionId}:${activeTab.database}:${activeTab.table}`}
                 sessionId={session.sessionId}
                 database={activeTab.database}
                 table={activeTab.table}
@@ -1082,23 +1172,30 @@ export function DatabaseWorkbench() {
               />
             )}
             {activeTab?.kind === 'design' && session && (
-              <TableDesignEditor
-                tabId={activeTab.id}
-                sessionId={session.sessionId}
-                database={activeTab.database}
-                mode={activeTab.mode}
-                table={activeTab.table}
-                onSaved={async () => {
-                  setObjectTree(await api.getObjectTree(session.sessionId))
-                }}
-                onCreated={
-                  activeTab.mode === 'create'
-                    ? (tableName) => handleTableCreated(activeTab.id, activeTab.database, tableName)
-                    : undefined
-                }
-                onStatus={setStatusMessage}
-                onOpenDDL={(sql, title) => openDdlTab(sql, title, activeTab.database)}
-              />
+              <div className="table-workspace">
+                <TableDesignEditor
+                  tabId={activeTab.id}
+                  sessionId={session.sessionId}
+                  database={activeTab.database}
+                  dbType={
+                    activeConn?.dbType ||
+                    connectionList.find((c) => c.id === session.connectionId)?.dbType ||
+                    'mysql'
+                  }
+                  mode={activeTab.mode}
+                  table={activeTab.table}
+                  onSaved={async () => {
+                    await reloadObjectTree(session.sessionId)
+                  }}
+                  onCreated={
+                    activeTab.mode === 'create'
+                      ? (tableName) => handleTableCreated(activeTab.id, activeTab.database, tableName)
+                      : undefined
+                  }
+                  onStatus={setStatusMessage}
+                  onOpenDDL={(sql, title) => openDdlTab(sql, title, activeTab.database)}
+                />
+              </div>
             )}
             {activeTab?.kind === 'design' && !session && (
               <div className="pane-empty">
@@ -1111,6 +1208,16 @@ export function DatabaseWorkbench() {
         </main>
       </div>
 
+      {tabCtxMenu && (
+        <TabContextMenu
+          menu={tabCtxMenu}
+          disableCloseOthers={tabs.length <= 1}
+          onDismiss={() => setTabCtxMenu(null)}
+          onClose={() => closeTab(tabCtxMenu.tabId)}
+          onCloseOthers={() => closeOtherTabs(tabCtxMenu.tabId)}
+          onCloseAll={closeAllTabs}
+        />
+      )}
       {connCtxMenu && (
         <div
           className="wn-context-menu"
@@ -1141,6 +1248,17 @@ export function DatabaseWorkbench() {
           >
             {t('common.edit')}
           </button>
+          <button
+            type="button"
+            className="wn-context-item wn-context-item-danger"
+            onClick={() => {
+              const c = connCtxMenu.conn
+              setConnCtxMenu(null)
+              setDeleteConnTarget(c)
+            }}
+          >
+            {t('common.delete')}
+          </button>
         </div>
       )}
 
@@ -1170,6 +1288,19 @@ export function DatabaseWorkbench() {
         danger
         onConfirm={() => void confirmTableDDL()}
         onCancel={() => setDdlConfirm(null)}
+      />
+      <ConfirmDialog
+        open={deleteConnTarget != null}
+        title={t('database.deleteConnectionTitle')}
+        message={
+          deleteConnTarget
+            ? t('database.deleteConnectionMsg', { name: deleteConnTarget.name })
+            : undefined
+        }
+        confirmLabel={t('common.delete')}
+        danger
+        onConfirm={() => void confirmDeleteConnection()}
+        onCancel={() => setDeleteConnTarget(null)}
       />
     </div>
   )

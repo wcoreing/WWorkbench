@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"WNavicat/internal/model"
+	"WWorkbench/internal/model"
 )
 
 type openTerminalArgs struct {

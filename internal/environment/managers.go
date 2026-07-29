@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/errno"
+	"WWorkbench/internal/errno"
 )
 
 const (
@@ -102,7 +102,7 @@ func installNvmManager(emit func(string)) error {
 			return err
 		}
 		_ = runLoginShellOK(`mkdir -p "$HOME/.nvm"`)
-		if err := appendShellSnippet(shellProfilePath(), "# wnavicat-nvm", nvmShellBlock()); err != nil {
+		if err := appendShellSnippet(shellProfilePath(), "# wworkbench-nvm", nvmShellBlock()); err != nil {
 			emit("写入 shell 配置失败: " + err.Error())
 		}
 		return nil
@@ -133,7 +133,7 @@ func installGoenvManager(emit func(string)) error {
 		if err := brewInstall("goenv", emit); err != nil {
 			return err
 		}
-		if err := appendShellSnippet(shellProfilePath(), "# wnavicat-goenv", goenvShellBlock()); err != nil {
+		if err := appendShellSnippet(shellProfilePath(), "# wworkbench-goenv", goenvShellBlock()); err != nil {
 			emit("写入 shell 配置失败: " + err.Error())
 		}
 		return nil
@@ -159,7 +159,7 @@ func installGoenvManager(emit func(string)) error {
 	if err != nil {
 		return err
 	}
-	return appendShellSnippet(shellProfilePath(), "# wnavicat-goenv", goenvShellBlock())
+	return appendShellSnippet(shellProfilePath(), "# wworkbench-goenv", goenvShellBlock())
 }
 
 // nvmShellBlock 返回 nvm 初始化脚本块。

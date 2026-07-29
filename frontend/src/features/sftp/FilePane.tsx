@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FileEntry, SftpBookmark } from '../../api/types'
-import { IconFolder } from '../../components/Icons'
+import { IconFolder, IconRefresh } from '../../components/Icons'
+import {
+  SFTP_DRAG_THRESHOLD,
+  SFTP_INTERNAL_DROP_EVENT,
+  beginSftpDrag,
+  dispatchSftpDropAt,
+  endSftpDrag,
+  moveSftpDragCursor,
+  type DragPayload,
+} from './sftpInternalDrag'
 import { formatBytes, formatModTime } from './sftpUtils'
 
-const DRAG_PAYLOAD_KEY = 'application/x-wnavicat-sftp-drag'
-const DRAG_FROM_LOCAL = 'application/x-wnavicat-from-local'
-const DRAG_FROM_REMOTE = 'application/x-wnavicat-from-remote'
+export type { DragPayload }
 
-export interface DragPayload {
-  side: 'local' | 'remote'
-  paths: string[]
-}
+const SFTP_INTERNAL_DRAG_MOVE_EVENT = 'sftp-internal-drag-move'
 
 interface Props {
   label: string
@@ -32,14 +36,14 @@ interface Props {
   onBookmarkNavigate?: (path: string) => void
   onDeleteBookmark?: (id: string) => void
   onInternalDrop?: (payload: DragPayload) => void
+  onRefresh?: () => void
+  refreshTitle?: string
 }
 
-/** canAcceptDrag 判断当前拖放是否可接受 */
-function canAcceptDrag(types: readonly string[], acceptFrom?: Array<'local' | 'remote'>): boolean {
+/** canAcceptPayload 判断当前拖放载荷是否可接受 */
+function canAcceptPayload(payload: DragPayload, acceptFrom?: Array<'local' | 'remote'>): boolean {
   if (!acceptFrom?.length) return false
-  if (acceptFrom.includes('local') && types.includes(DRAG_FROM_LOCAL)) return true
-  if (acceptFrom.includes('remote') && types.includes(DRAG_FROM_REMOTE)) return true
-  return false
+  return acceptFrom.includes(payload.side)
 }
 
 /** FilePane 文件列表窗格 */
@@ -63,11 +67,15 @@ export function FilePane({
   onBookmarkNavigate,
   onDeleteBookmark,
   onInternalDrop,
+  onRefresh,
+  refreshTitle = '刷新',
 }: Props) {
   const [draft, setDraft] = useState(path)
   const [bookmarkOpen, setBookmarkOpen] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const bookmarkRef = useRef<HTMLDivElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+  const suppressClickRef = useRef(false)
 
   useEffect(() => {
     setDraft(path)
@@ -80,40 +88,88 @@ export function FilePane({
     return () => window.removeEventListener('click', close)
   }, [bookmarkOpen])
 
+  useEffect(() => {
+    const root = sectionRef.current
+    if (!root || !onInternalDrop) return
+    const handler = (e: Event) => {
+      const payload = (e as CustomEvent<DragPayload>).detail
+      if (payload?.paths?.length) onInternalDrop(payload)
+    }
+    root.addEventListener(SFTP_INTERNAL_DROP_EVENT, handler)
+    return () => root.removeEventListener(SFTP_INTERNAL_DROP_EVENT, handler)
+  }, [onInternalDrop])
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      if (!onInternalDrop || !acceptDropFrom?.length) {
+        setDragOver(false)
+        return
+      }
+      const detail = (e as CustomEvent<{ clientX: number; clientY: number; payload: DragPayload } | null>).detail
+      if (!detail) {
+        setDragOver(false)
+        return
+      }
+      const root = sectionRef.current
+      if (!root || !canAcceptPayload(detail.payload, acceptDropFrom)) {
+        setDragOver(false)
+        return
+      }
+      const rect = root.getBoundingClientRect()
+      const over =
+        detail.clientX >= rect.left &&
+        detail.clientX <= rect.right &&
+        detail.clientY >= rect.top &&
+        detail.clientY <= rect.bottom
+      setDragOver(over)
+    }
+    window.addEventListener(SFTP_INTERNAL_DRAG_MOVE_EVENT, handler)
+    return () => window.removeEventListener(SFTP_INTERNAL_DRAG_MOVE_EVENT, handler)
+  }, [acceptDropFrom, onInternalDrop])
+
   const selectedSet = new Set(selectedPaths)
 
-  const handleDragStart = (e: React.DragEvent, entry: FileEntry) => {
+  const dispatchDragMove = (clientX: number, clientY: number, payload: DragPayload | null) => {
+    window.dispatchEvent(
+      new CustomEvent(SFTP_INTERNAL_DRAG_MOVE_EVENT, {
+        detail: payload ? { clientX, clientY, payload } : null,
+      })
+    )
+  }
+
+  const handleRowMouseDown = (e: React.MouseEvent, entry: FileEntry) => {
+    if (!allowDrag || e.button !== 0) return
     const paths = selectedSet.has(entry.path) ? selectedPaths : [entry.path]
     const payload: DragPayload = { side: paneSide, paths }
-    e.dataTransfer.setData(DRAG_PAYLOAD_KEY, JSON.stringify(payload))
-    e.dataTransfer.setData(paneSide === 'local' ? DRAG_FROM_LOCAL : DRAG_FROM_REMOTE, '')
-    e.dataTransfer.effectAllowed = 'copy'
-  }
+    const startX = e.clientX
+    const startY = e.clientY
+    let dragging = false
 
-  const handleDragOver = (e: React.DragEvent) => {
-    if (!onInternalDrop || !acceptDropFrom?.length) return
-    if (canAcceptDrag(e.dataTransfer.types, acceptDropFrom)) {
-      e.preventDefault()
-      e.dataTransfer.dropEffect = 'copy'
-      setDragOver(true)
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!dragging) {
+        const dx = ev.clientX - startX
+        const dy = ev.clientY - startY
+        if (Math.hypot(dx, dy) < SFTP_DRAG_THRESHOLD) return
+        dragging = true
+        suppressClickRef.current = true
+        beginSftpDrag(payload, ev.clientX, ev.clientY)
+      }
+      moveSftpDragCursor(ev.clientX, ev.clientY)
+      dispatchDragMove(ev.clientX, ev.clientY, payload)
     }
-  }
 
-  const handleDragLeave = () => setDragOver(false)
-
-  const handleDrop = (e: React.DragEvent) => {
-    if (!onInternalDrop || !acceptDropFrom?.length) return
-    e.preventDefault()
-    setDragOver(false)
-    if (!canAcceptDrag(e.dataTransfer.types, acceptDropFrom)) return
-    const raw = e.dataTransfer.getData(DRAG_PAYLOAD_KEY)
-    if (!raw) return
-    try {
-      const payload = JSON.parse(raw) as DragPayload
-      if (payload.paths?.length) onInternalDrop(payload)
-    } catch {
-      /* ignore */
+    const onMouseUp = (ev: MouseEvent) => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+      if (dragging) {
+        dispatchSftpDropAt(ev.clientX, ev.clientY, payload)
+        endSftpDrag()
+        dispatchDragMove(0, 0, null)
+      }
     }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
   }
 
   const dropHint =
@@ -131,8 +187,19 @@ export function FilePane({
     .filter(Boolean)
     .join(' ')
 
+  const dropEnabled = Boolean(onInternalDrop && acceptDropFrom?.length)
+
   return (
-    <section className={paneClass}>
+    <section
+      ref={sectionRef}
+      className={paneClass}
+      {...(dropEnabled
+        ? {
+            'data-sftp-drop-root': '',
+            'data-sftp-accept': acceptDropFrom!.join(','),
+          }
+        : {})}
+    >
       <header className="sftp-pane-header">
         <span>{label}</span>
         <input
@@ -146,6 +213,16 @@ export function FilePane({
             if (draft.trim() && draft !== path) onNavigate(draft.trim())
           }}
         />
+        {onRefresh && (
+          <button
+            type="button"
+            className="wn-btn wn-btn-icon wn-btn-sm"
+            title={refreshTitle}
+            onClick={() => onRefresh()}
+          >
+            <IconRefresh size={13} />
+          </button>
+        )}
         {onAddBookmark && (
           <button type="button" className="wn-btn wn-btn-icon wn-btn-sm sftp-bookmark-add" title="收藏当前路径" onClick={onAddBookmark}>
             ★
@@ -183,13 +260,7 @@ export function FilePane({
           </div>
         )}
       </header>
-      <div
-        className="sftp-pane-body"
-        onContextMenu={(e) => onContextMenu?.(e, null)}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
+      <div className="sftp-pane-body" onContextMenu={(e) => onContextMenu?.(e, null)}>
         {dragOver && dropHint && <div className="sftp-drop-overlay">{dropHint}</div>}
         <table className="sftp-table">
           <thead>
@@ -206,15 +277,18 @@ export function FilePane({
             {entries.map((f, i) => (
               <tr
                 key={f.path}
-                className={`sftp-row ${selectedSet.has(f.path) ? 'selected' : ''}`}
-                draggable={allowDrag}
-                onClick={(e) => onRowClick(f, i, e)}
+                className={`sftp-row ${allowDrag ? 'sftp-row-draggable' : ''} ${selectedSet.has(f.path) ? 'selected' : ''}`}
+                onMouseDown={(e) => handleRowMouseDown(e, f)}
+                onClick={(e) => {
+                  if (suppressClickRef.current) {
+                    suppressClickRef.current = false
+                    return
+                  }
+                  onRowClick(f, i, e)
+                }}
                 onDoubleClick={() => {
                   if (f.isDir) onOpenDir(f)
                   else onOpenFile?.(f)
-                }}
-                onDragStart={(e) => {
-                  if (allowDrag) handleDragStart(e, f)
                 }}
                 onContextMenu={(e) => {
                   e.preventDefault()

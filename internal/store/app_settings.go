@@ -3,7 +3,7 @@ package store
 import (
 	"database/sql"
 
-	"WNavicat/internal/errno"
+	"WWorkbench/internal/errno"
 )
 
 // 应用设置键名。
@@ -11,6 +11,7 @@ const (
 	SettingTheme              = "theme"
 	SettingActiveProduct      = "active_product"
 	SettingTerminalOpacity    = "terminal_opacity"
+	SettingUIFontSize         = "ui_font_size"
 	SettingLastConnectionID   = "last_connection_id"
 	SettingLastDockerContext  = "last_docker_context_id"
 	SettingLocale             = "locale"

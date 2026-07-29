@@ -3,7 +3,7 @@ package httpclient
 import (
 	"strings"
 
-	"WNavicat/internal/model"
+	"WWorkbench/internal/model"
 )
 
 // SubstituteVars 将文本中的 {{name}} 替换为环境变量值。

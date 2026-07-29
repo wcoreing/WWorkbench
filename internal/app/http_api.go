@@ -3,9 +3,9 @@ package app
 import (
 	"strings"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/httpclient"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/httpclient"
+	"WWorkbench/internal/model"
 )
 
 // ListHTTPRequests 列出已保存 HTTP 请求。

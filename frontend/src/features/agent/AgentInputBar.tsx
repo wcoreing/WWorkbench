@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
-import type { Connection, DockerContext, SSHHost } from '../../api/types'
+import type { Connection, DockerContext, ShellHost, SSHHost } from '../../api/types'
 import { mergeMentions } from './agentMention'
 import { useI18n } from '../../i18n'
 import { AgentMentionPicker } from './AgentMentionPicker'
@@ -31,6 +31,7 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
   const [mentionStart, setMentionStart] = useState(-1)
   const [query, setQuery] = useState('')
   const [hosts, setHosts] = useState<SSHHost[]>([])
+  const [shellHosts, setShellHosts] = useState<ShellHost[]>([])
   const [connections, setConnections] = useState<Connection[]>([])
   const [dockerContexts, setDockerContexts] = useState<DockerContext[]>([])
   const [resourcesLoaded, setResourcesLoaded] = useState(false)
@@ -49,17 +50,20 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
   const loadResources = useCallback(async () => {
     if (resourcesLoaded) return
     try {
-      const [h, c, d] = await Promise.all([
+      const [h, shell, c, d] = await Promise.all([
         api.listSSHHosts(),
+        api.listShellHosts(),
         api.listConnections(),
         api.listDockerContexts(),
       ])
       setHosts(h)
+      setShellHosts(shell.filter((x) => x.kind === 'docker'))
       setConnections(c)
       setDockerContexts(d)
       setResourcesLoaded(true)
     } catch {
       setHosts([])
+      setShellHosts([])
       setConnections([])
       setDockerContexts([])
       setResourcesLoaded(true)
@@ -97,16 +101,26 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
         label: c.name?.trim() || c.host,
         sublabel: `${c.dbType} · ${c.host}:${c.port}`,
       }))
-    const dockerItems: AgentMentionMenuItem[] = dockerContexts
-      .filter((ctx) => match(ctx.name, ctx.endpoint))
-      .map((ctx) => ({
-        kind: 'docker' as const,
-        id: ctx.id,
-        label: ctx.name,
-        sublabel: ctx.kind === 'local' ? 'local' : ctx.endpoint,
-      }))
+    const dockerItems: AgentMentionMenuItem[] = [
+      ...shellHosts
+        .filter((h) => match(h.name, `${h.image || ''} ${h.containerId || ''}`))
+        .map((h) => ({
+          kind: 'docker' as const,
+          id: h.id,
+          label: h.name,
+          sublabel: h.image || h.containerId?.slice(0, 12) || 'container',
+        })),
+      ...dockerContexts
+        .filter((ctx) => match(ctx.name, ctx.endpoint))
+        .map((ctx) => ({
+          kind: 'docker' as const,
+          id: ctx.id,
+          label: ctx.name,
+          sublabel: ctx.kind === 'local' ? 'local' : ctx.endpoint,
+        })),
+    ]
     return [...sshItems, ...dbItems, ...dockerItems].slice(0, 28)
-  }, [hosts, connections, dockerContexts, query])
+  }, [hosts, shellHosts, connections, dockerContexts, query])
 
   const syncMentionMenu = useCallback(
     (text: string, cursor: number) => {
@@ -322,7 +336,9 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
             onClick={() => {
               const prompt =
                 runbookMention?.kind === 'docker'
-                  ? t('agent.runbookPromptDocker')
+                  ? runbookMention.id.startsWith('docker:')
+                    ? t('agent.runbookPromptContainer')
+                    : t('agent.runbookPromptDocker')
                   : t('agent.runbookPrompt')
               onSend(prompt, mergeMentions(mentions, threadMentions))
               setInput('')

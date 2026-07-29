@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/model"
+	"WWorkbench/internal/model"
 )
 
 const schemaPublic = "public"

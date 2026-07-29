@@ -80,6 +80,14 @@ export function IconSun({ size = 16, className }: IconProps) {
   )
 }
 
+export function IconFontSize({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className} aria-hidden>
+      <path d="M3 12.5L6.2 3.5h1.6L11 12.5H9.4l-.7-2H4.3l-.7 2H3zm1.7-3.3h2.6L6.1 5.2h-.2L4.7 9.2zM12.2 12.5V7.8h1.3v4.7h-1.3zm.65-5.9a.85.85 0 1 1 0-1.7.85.85 0 0 1 0 1.7z" fill="currentColor" />
+    </svg>
+  )
+}
+
 export function IconGlobe({ size = 16, className }: IconProps) {
   return (
     <svg {...base(size)} className={className}>

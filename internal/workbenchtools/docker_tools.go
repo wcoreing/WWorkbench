@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	dockersvc "WNavicat/internal/docker"
+	dockersvc "WWorkbench/internal/docker"
 )
 
 type listContainersArgs struct {

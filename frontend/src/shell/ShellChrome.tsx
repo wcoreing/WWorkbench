@@ -1,6 +1,7 @@
 import { IconMoon, IconSun } from '../components/Icons'
 import { useI18n, useLocalizedProduct } from '../i18n'
 import { useAppStore } from '../stores/appStore'
+import { ShellFontSizeMenu } from './ShellFontSizeMenu'
 import { ShellLocaleMenu } from './ShellLocaleMenu'
 
 /** 应用顶栏：品牌、当前产品、主题与语言切换 */
@@ -37,6 +38,7 @@ export function ShellChrome({
           AI
         </button>
       )}
+      <ShellFontSizeMenu />
       <ShellLocaleMenu />
       <button
         type="button"

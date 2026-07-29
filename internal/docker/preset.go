@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"strings"
 
-	"WNavicat/internal/model"
+	"WWorkbench/internal/model"
 )
 
 // GetContainerRunPreset 根据镜像名返回运行预设。

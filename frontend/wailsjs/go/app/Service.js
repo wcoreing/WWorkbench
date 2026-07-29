@@ -150,6 +150,10 @@ export function DuplicateNote(arg1) {
   return window['go']['app']['Service']['DuplicateNote'](arg1);
 }
 
+export function EnsureDockerHost(arg1, arg2) {
+  return window['go']['app']['Service']['EnsureDockerHost'](arg1, arg2);
+}
+
 export function EnsureEnvVersion(arg1, arg2) {
   return window['go']['app']['Service']['EnsureEnvVersion'](arg1, arg2);
 }
@@ -260,6 +264,10 @@ export function GetSFTPHome(arg1) {
 
 export function GetSSHHost(arg1) {
   return window['go']['app']['Service']['GetSSHHost'](arg1);
+}
+
+export function GetShellHost(arg1) {
+  return window['go']['app']['Service']['GetShellHost'](arg1);
 }
 
 export function GetTableDDL(arg1, arg2, arg3) {
@@ -398,6 +406,10 @@ export function ListSSHHosts() {
   return window['go']['app']['Service']['ListSSHHosts']();
 }
 
+export function ListShellHosts() {
+  return window['go']['app']['Service']['ListShellHosts']();
+}
+
 export function LoadWorkspace(arg1) {
   return window['go']['app']['Service']['LoadWorkspace'](arg1);
 }
@@ -442,12 +454,20 @@ export function PickLogFilePath() {
   return window['go']['app']['Service']['PickLogFilePath']();
 }
 
+export function PruneStoppedDockerHosts() {
+  return window['go']['app']['Service']['PruneStoppedDockerHosts']();
+}
+
 export function QuerySQLPage(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['app']['Service']['QuerySQLPage'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function RemoveContainer(arg1, arg2) {
   return window['go']['app']['Service']['RemoveContainer'](arg1, arg2);
+}
+
+export function RemoveDockerHost(arg1) {
+  return window['go']['app']['Service']['RemoveDockerHost'](arg1);
 }
 
 export function RenameLocalPath(arg1, arg2) {

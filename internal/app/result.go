@@ -1,6 +1,6 @@
 package app
 
-import "WNavicat/internal/errno"
+import "WWorkbench/internal/errno"
 
 // ApiResult 统一 API 响应。
 type ApiResult[T any] struct {

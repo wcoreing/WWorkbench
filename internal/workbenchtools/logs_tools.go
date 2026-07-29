@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"WNavicat/internal/logs"
+	"WWorkbench/internal/logs"
 )
 
 type fetchLogsArgs struct {

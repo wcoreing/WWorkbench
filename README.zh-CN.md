@@ -1,6 +1,6 @@
 # WWorkbench
 
-**WWorkbench** — 面向开发者的本地一体化工作台：数据库、终端、文件、容器、运行时环境与笔记本，集成在一个桌面应用中。
+**WWorkbench** — 本地多主机运维与开发工作台：数据库、终端、文件、容器、运行时、HTTP、日志与笔记本，集成在一个桌面应用中——围绕跨主机、跨服务把事做完。
 
 [English](README.md) | **简体中文**
 
@@ -9,7 +9,7 @@
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> 当前版本：**v0.28.0**（界面右下角可查看）
+> 当前版本：**v0.51.0**（界面右下角可查看）
 
 ---
 
@@ -100,8 +100,8 @@ wails build
 
 产物默认在 `build/bin/`：
 
-- macOS：`WNavicat.app` 或 `WNavicat`
-- Windows：`WNavicat.exe`
+- macOS：`WWorkbench.app` 或 `WWorkbench`
+- Windows：`WWorkbench.exe`
 
 ### 5. 生成 Wails 前端绑定
 
@@ -121,7 +121,7 @@ WWorkbench/
 ├── version.go              # 版本号（发布前递增）
 ├── internal/
 │   ├── app/                # Wails API 层
-│   ├── adapter/            # 数据库驱动适配（MySQL）
+│   ├── adapter/            # 数据库适配（MySQL / PostgreSQL / SQLite / Redis）
 │   ├── conn/               # 连接与会话
 │   ├── docker/             # Docker 管理
 │   ├── environment/        # 本机运行时版本
@@ -147,9 +147,9 @@ WWorkbench/
 
 | 路径 | 内容 |
 |------|------|
-| `~/.wnavicat/` | SQLite 数据库、SSH known_hosts、工作区快照等 |
+| `~/.wworkbench/` | SQLite 数据库、SSH known_hosts、工作区快照等 |
 
-连接密码等敏感信息仅存于本地数据库，请勿将 `~/.wnavicat` 打包进仓库或 Issue。
+连接密码等敏感信息仅存于本地数据库，请勿将 `~/.wworkbench` 打包进仓库或 Issue。
 
 ---
 
@@ -236,4 +236,3 @@ git checkout -b fix/xxx        # 缺陷修复
 ## 致谢
 
 - [Wails](https://wails.io/) — Go + Web 桌面应用框架
-- [Navicat](https://www.navicat.com/) — 产品交互灵感来源（本项目为独立开源实现，与 Navicat 官方无关）

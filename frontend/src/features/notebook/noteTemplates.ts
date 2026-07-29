@@ -1,4 +1,30 @@
-import type { Connection, SSHHost } from '../../api/types'
+import type { Connection, ShellHost, SSHHost } from '../../api/types'
+
+/** buildShellHostTemplate 生成 Shell 主机信息模板（SSH 或 Docker 容器）。 */
+export function buildShellHostTemplate(host: ShellHost | SSHHost): string {
+  if ('kind' in host && host.kind === 'docker') {
+    const cid = host.containerId || ''
+    const short = cid.length > 12 ? cid.slice(0, 12) : cid
+    return `# ${host.name}
+
+| 项 | 值 |
+|---|---|
+| 类型 | Docker 容器 |
+| 容器 | ${host.containerName || host.name} |
+| ID | ${short || '-'} |
+| 镜像 | ${host.image || '-'} |
+| 上下文 | ${host.contextId || '-'} |
+
+\`\`\`shell
+# 在 WWorkbench 中对该容器主机执行
+uptime
+df -h
+\`\`\`
+`
+  }
+  const ssh = host as SSHHost
+  return buildSSHHostTemplate(ssh)
+}
 
 /** buildSSHHostTemplate 生成 SSH 主机信息模板。 */
 export function buildSSHHostTemplate(host: SSHHost): string {

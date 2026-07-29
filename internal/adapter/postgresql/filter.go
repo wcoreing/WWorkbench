@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"strings"
 
-	"WNavicat/internal/errno"
-	"WNavicat/internal/model"
+	"WWorkbench/internal/errno"
+	"WWorkbench/internal/model"
 )
 
 // buildTableWhere 根据筛选条件生成 WHERE 子句。
-func buildTableWhere(filters []model.TableFilterDO, colSet map[string]bool) (string, []interface{}, error) {
+func buildTableWhere(filters []model.TableFilterDO, colSet map[string]string) (string, []interface{}, error) {
 	var parts []string
 	var args []interface{}
 	idx := 1
@@ -17,10 +17,11 @@ func buildTableWhere(filters []model.TableFilterDO, colSet map[string]bool) (str
 		if !f.Enabled || f.Column == "" {
 			continue
 		}
-		if !colSet[f.Column] {
+		colName, ok := resolveColumn(colSet, f.Column)
+		if !ok {
 			return "", nil, errno.New(errno.CodeInvalidArg, "无效的筛选列", f.Column)
 		}
-		col := quoteIdent(f.Column)
+		col := quoteIdent(colName)
 		ph := func() string {
 			s := fmt.Sprintf("$%d", idx)
 			idx++
@@ -74,20 +75,21 @@ func buildTableWhere(filters []model.TableFilterDO, colSet map[string]bool) (str
 }
 
 // buildTableOrderBy 生成 ORDER BY 子句。
-func buildTableOrderBy(sorts []model.TableSortDO, colSet map[string]bool) (string, error) {
+func buildTableOrderBy(sorts []model.TableSortDO, colSet map[string]string) (string, error) {
 	var parts []string
 	for _, s := range sorts {
 		if s.Column == "" {
 			continue
 		}
-		if !colSet[s.Column] {
+		col, ok := resolveColumn(colSet, s.Column)
+		if !ok {
 			return "", errno.New(errno.CodeInvalidArg, "无效的排序列", s.Column)
 		}
 		dir := "ASC"
 		if !s.Ascending {
 			dir = "DESC"
 		}
-		parts = append(parts, fmt.Sprintf("%s %s", quoteIdent(s.Column), dir))
+		parts = append(parts, fmt.Sprintf("%s %s", quoteIdent(col), dir))
 	}
 	if len(parts) == 0 {
 		return "", nil
@@ -95,10 +97,24 @@ func buildTableOrderBy(sorts []model.TableSortDO, colSet map[string]bool) (strin
 	return " ORDER BY " + strings.Join(parts, ", "), nil
 }
 
-func columnSet(columns []model.ColumnMetaDO) map[string]bool {
-	m := make(map[string]bool, len(columns))
+func columnSet(columns []model.ColumnMetaDO) map[string]string {
+	m := make(map[string]string, len(columns)*2)
 	for _, c := range columns {
-		m[c.Name] = true
+		m[c.Name] = c.Name
+		lower := strings.ToLower(c.Name)
+		if _, exists := m[lower]; !exists {
+			m[lower] = c.Name
+		}
 	}
 	return m
+}
+
+func resolveColumn(colSet map[string]string, name string) (string, bool) {
+	if real, ok := colSet[name]; ok {
+		return real, true
+	}
+	if real, ok := colSet[strings.ToLower(name)]; ok {
+		return real, true
+	}
+	return "", false
 }

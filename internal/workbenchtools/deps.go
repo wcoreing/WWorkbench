@@ -1,14 +1,14 @@
 package workbenchtools
 
 import (
-	"WNavicat/internal/conn"
-	dockersvc "WNavicat/internal/docker"
-	"WNavicat/internal/meta"
-	"WNavicat/internal/notebook"
-	"WNavicat/internal/query"
-	"WNavicat/internal/session"
-	"WNavicat/internal/store"
-	"WNavicat/internal/terminal"
+	"WWorkbench/internal/conn"
+	dockersvc "WWorkbench/internal/docker"
+	"WWorkbench/internal/meta"
+	"WWorkbench/internal/notebook"
+	"WWorkbench/internal/query"
+	"WWorkbench/internal/session"
+	"WWorkbench/internal/store"
+	"WWorkbench/internal/terminal"
 )
 
 // Deps 工作台工具依赖（业务服务，非 Wails）。

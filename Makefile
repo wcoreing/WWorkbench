@@ -1,4 +1,4 @@
-# WNavicat 本地开发/构建（自动包含 $(go env GOPATH)/bin）
+# WWorkbench 本地开发/构建（自动包含 $(go env GOPATH)/bin）
 export PATH := $(shell go env GOPATH)/bin:$(PATH)
 
 .PHONY: dev build install-wails

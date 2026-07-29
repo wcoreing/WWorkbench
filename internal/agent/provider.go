@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"WNavicat/internal/workbenchtools"
+	"WWorkbench/internal/workbenchtools"
 )
 
 // chatMessage OpenAI 风格消息。

@@ -30,18 +30,15 @@ export async function saveReplyToNotebook(
     return saved.id
   }
 
-  const groups = await api.listNotebookGroups()
-  const groupId = groups[0]?.id
-  if (!groupId) throw new Error('请先创建笔记本分组')
-
   const noteTitle =
     title?.trim() ||
     `AI 报告 ${new Date().toLocaleString('zh-CN', { hour12: false })}`
 
+  // groupId 可空：后端 SaveNote 会挂到默认分组
   const saved = await api.saveNote(
     model.NoteDO.createFrom({
       id: '',
-      groupId,
+      groupId: '',
       title: noteTitle,
       content: text,
       language: 'markdown',

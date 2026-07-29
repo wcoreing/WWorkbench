@@ -1,6 +1,6 @@
 import { api } from '../../api/client'
 import { withSSHHostTrust, type SSHTrustConfirm } from '../../api/sshTrust'
-import type { SSHHost } from '../../api/types'
+import type { ShellHost } from '../../api/types'
 import type { SftpTabSnapshot } from '../../stores/sftpWorkspacePersist'
 
 export interface RestoredSftpTab {
@@ -15,12 +15,16 @@ export interface RestoredSftpTab {
 /** restoreSftpTab 从快照恢复 SFTP 标签。 */
 export async function restoreSftpTab(
   snap: SftpTabSnapshot,
-  hosts: SSHHost[],
+  hosts: ShellHost[],
   confirmTrust: SSHTrustConfirm
 ): Promise<RestoredSftpTab | null> {
   const host = hosts.find((h) => h.id === snap.hostId)
   if (!host) return null
-  const info = await withSSHHostTrust(host.host, host.port, () => api.openSFTPSession(host.id), confirmTrust)
+  const open = () => api.openSFTPSession(host.id)
+  const info =
+    host.kind === 'docker'
+      ? await open()
+      : await withSSHHostTrust(host.host || '', host.port || 22, open, confirmTrust)
   return {
     id: `sftp-${info.sessionId}`,
     sessionId: info.sessionId,

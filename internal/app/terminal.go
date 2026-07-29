@@ -1,10 +1,11 @@
 package app
 
 import (
-	"WNavicat/internal/model"
-	"WNavicat/internal/session"
-	"WNavicat/internal/terminal"
-	"WNavicat/internal/tunnel"
+	dockersvc "WWorkbench/internal/docker"
+	"WWorkbench/internal/model"
+	"WWorkbench/internal/session"
+	"WWorkbench/internal/terminal"
+	"WWorkbench/internal/tunnel"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -22,6 +23,96 @@ func (s *Service) ListSSHHosts() ApiResult[[]model.SSHHostDO] {
 		terminal.StripSecrets(&list[i])
 	}
 	return OkResult(list)
+}
+
+// ListShellHosts 列出统一 Shell 主机（SSH + 已注册 Docker 容器）。
+func (s *Service) ListShellHosts() ApiResult[[]model.ShellHostDO] {
+	sshList, err := s.sshHosts.List()
+	if err != nil {
+		return ErrResult[[]model.ShellHostDO](err)
+	}
+	out := make([]model.ShellHostDO, 0, len(sshList)+8)
+	for _, h := range sshList {
+		terminal.StripSecrets(&h)
+		out = append(out, model.ShellHostDO{
+			ID:        h.ID,
+			Kind:      model.ShellHostKindSSH,
+			Name:      h.Name,
+			Host:      h.Host,
+			Port:      h.Port,
+			User:      h.User,
+			KeyPath:   h.KeyPath,
+			Running:   true,
+			CreatedAt: h.CreatedAt,
+			UpdatedAt: h.UpdatedAt,
+		})
+	}
+	ctx, cancel := session.WithTimeout(s.ctx, 20)
+	defer cancel()
+	dockerList, err := s.docker.ListShellHosts(ctx)
+	if err != nil {
+		return ErrResult[[]model.ShellHostDO](err)
+	}
+	out = append(out, dockerList...)
+	return OkResult(out)
+}
+
+// EnsureDockerHost 注册 Docker 容器为 Shell 主机。
+func (s *Service) EnsureDockerHost(contextID, containerID string) ApiResult[model.ShellHostDO] {
+	ctx, cancel := session.WithTimeout(s.ctx, 15)
+	defer cancel()
+	host, err := s.docker.EnsureShellHost(ctx, contextID, containerID)
+	if err != nil {
+		return ErrResult[model.ShellHostDO](err)
+	}
+	return OkResult(*host)
+}
+
+// RemoveDockerHost 从主机列表移除 Docker 容器主机。
+func (s *Service) RemoveDockerHost(id string) ApiResult[bool] {
+	if err := s.docker.RemoveShellHost(id); err != nil {
+		return ErrResult[bool](err)
+	}
+	return OkResult(true)
+}
+
+// PruneStoppedDockerHosts 清理已停止的 Docker 容器主机注册。
+func (s *Service) PruneStoppedDockerHosts() ApiResult[int] {
+	ctx, cancel := session.WithTimeout(s.ctx, 30)
+	defer cancel()
+	n, err := s.docker.PruneStoppedShellHosts(ctx)
+	if err != nil {
+		return ErrResult[int](err)
+	}
+	return OkResult(n)
+}
+
+// GetShellHost 按 ID 获取 Shell 主机。
+func (s *Service) GetShellHost(id string) ApiResult[model.ShellHostDO] {
+	if dockersvc.IsDockerHostID(id) {
+		host, err := s.docker.GetShellHost(id)
+		if err != nil {
+			return ErrResult[model.ShellHostDO](err)
+		}
+		return OkResult(*host)
+	}
+	h, err := s.sshHosts.Get(id)
+	if err != nil {
+		return ErrResult[model.ShellHostDO](err)
+	}
+	terminal.StripSecrets(h)
+	return OkResult(model.ShellHostDO{
+		ID:        h.ID,
+		Kind:      model.ShellHostKindSSH,
+		Name:      h.Name,
+		Host:      h.Host,
+		Port:      h.Port,
+		User:      h.User,
+		Password:  h.Password,
+		KeyPath:   h.KeyPath,
+		CreatedAt: h.CreatedAt,
+		UpdatedAt: h.UpdatedAt,
+	})
 }
 
 // GetSSHHost 获取 SSH 主机详情（含密码，仅供编辑）。
@@ -69,11 +160,19 @@ func (s *Service) TrustSSHHost(host string, port int) ApiResult[bool] {
 	return OkResult(true)
 }
 
-// OpenTerminal 打开 SSH 终端会话。
+// OpenTerminal 打开终端会话（SSH 或 Docker 容器）。
 func (s *Service) OpenTerminal(hostID string, cols, rows int) ApiResult[model.TerminalSessionInfoDO] {
 	ctx, cancel := session.WithTimeout(s.ctx, 30)
 	defer cancel()
-	info, err := s.terminals.Open(ctx, hostID, cols, rows)
+	var (
+		info *model.TerminalSessionInfoDO
+		err  error
+	)
+	if dockersvc.IsDockerHostID(hostID) {
+		info, err = s.terminals.OpenDocker(ctx, s.docker, hostID, cols, rows)
+	} else {
+		info, err = s.terminals.Open(ctx, hostID, cols, rows)
+	}
 	if err != nil {
 		return ErrResult[model.TerminalSessionInfoDO](err)
 	}
