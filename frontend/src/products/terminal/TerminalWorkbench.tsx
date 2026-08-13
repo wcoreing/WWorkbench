@@ -5,7 +5,7 @@ import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
-import { IconDocker, IconLaptop, IconPlus, IconServer, IconTerminal } from '../../components/Icons'
+import { IconDocker, IconLaptop, IconPlus, IconRefresh, IconServer, IconTerminal } from '../../components/Icons'
 import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
@@ -21,7 +21,11 @@ import { restoreTerminalTab } from '../../features/terminal/restoreTerminalWorks
 import { SSHHostModal } from '../../features/terminal/SSHHostModal'
 import { useSSHTrustConfirm } from '../../features/terminal/useSSHTrustConfirm'
 import { SSHForwardPanel } from '../../features/terminal/SSHForwardPanel'
+import { LocalPortsPanel } from '../../features/terminal/LocalPortsPanel'
 import { TerminalSplitView } from '../../features/terminal/TerminalSplitView'
+import { TerminalTabStatusPane } from '../../features/terminal/TerminalTabStatusPane'
+import { focusTerminalSession } from '../../features/terminal/terminalFocus'
+import { bindPointerAction } from '../../utils/pointerAction'
 import { terminalBackground } from '../../features/terminal/TerminalPane'
 import {
   closePane,
@@ -30,6 +34,7 @@ import {
   createLeaf,
   findPane,
   firstLeafId,
+  replaceSessionIds,
   splitPane,
   type PaneLayout,
 } from '../../features/terminal/terminalLayout'
@@ -47,6 +52,14 @@ interface TerminalTab {
   title: string
   layout: PaneLayout
   activePaneId: string
+  connectState: 'connecting' | 'ready' | 'failed'
+  connectError?: string
+  connectHost?: ShellHost
+}
+
+/** isLiveSessionId 是否为已建立的后端会话。 */
+function isLiveSessionId(sessionId: string): boolean {
+  return !sessionId.startsWith('pending-')
 }
 
 const MAX_PANES = 4
@@ -54,7 +67,7 @@ const MAX_PANES = 4
 /** 终端产品线工作区 */
 export function TerminalWorkbench() {
   const { t } = useI18n()
-  const { setStatusMessage, terminalOpacity, setTerminalOpacity, setActiveProduct, setAgentFocusSSH } =
+  const { setStatusMessage, terminalOpacity, setTerminalOpacity, setActiveProduct, setAgentFocusSSH, activeProduct } =
     useAppStore()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [hosts, setHosts] = useState<ShellHost[]>([])
@@ -62,14 +75,14 @@ export function TerminalWorkbench() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [hostModalOpen, setHostModalOpen] = useState(false)
   const [editingHost, setEditingHost] = useState<SSHHost | null>(null)
-  const [connectingId, setConnectingId] = useState<string | null>(null)
-  const [openingLocal, setOpeningLocal] = useState(false)
+  const [reconnectingTabId, setReconnectingTabId] = useState<string | null>(null)
   const [splitting, setSplitting] = useState(false)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; host: ShellHost } | null>(null)
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
   const [deleteHostConfirm, setDeleteHostConfirm] = useState<ShellHost | null>(null)
   const workspaceRestored = useRef(false)
   const tabsRef = useRef<TerminalTab[]>([])
+  const prevProductRef = useRef(activeProduct)
   tabsRef.current = tabs
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
@@ -112,7 +125,7 @@ export function TerminalWorkbench() {
         for (const tabSnap of snap.tabs) {
           try {
             const tab = await restoreTerminalTab(tabSnap, hostList, confirmTrust)
-            if (tab) restored.push(tab)
+            if (tab) restored.push({ ...tab, connectState: 'ready' })
           } catch {
             /* 跳过无法恢复的会话 */
           }
@@ -130,6 +143,25 @@ export function TerminalWorkbench() {
   }, [refreshHosts, setStatusMessage, confirmTrust, t])
 
   useEffect(() => {
+    if (activeProduct !== 'terminal') {
+      setCtxMenu(null)
+      setTabCtxMenu(null)
+      prevProductRef.current = activeProduct
+      return
+    }
+    if (prevProductRef.current !== 'terminal') {
+      const tab = tabs.find((t) => t.id === activeTabId)
+      if (tab?.connectState === 'ready') {
+        const sid = firstSessionId(tab.layout)
+        if (sid && isLiveSessionId(sid)) {
+          requestAnimationFrame(() => focusTerminalSession(sid))
+        }
+      }
+    }
+    prevProductRef.current = activeProduct
+  }, [activeProduct, activeTabId, tabs])
+
+  useEffect(() => {
     if (!ctxMenu) return
     const close = () => setCtxMenu(null)
     window.addEventListener('click', close)
@@ -144,8 +176,21 @@ export function TerminalWorkbench() {
   }, [tabCtxMenu])
 
   useEffect(() => {
-    scheduleTerminalWorkspacePersist(toTerminalWorkspaceSnapshot(tabs, activeTabId))
+    const readyTabs = tabs.filter((t) => t.connectState === 'ready')
+    scheduleTerminalWorkspacePersist(toTerminalWorkspaceSnapshot(readyTabs, activeTabId))
   }, [tabs, activeTabId])
+
+  const selectTab = (tabId: string) => {
+    setTabCtxMenu(null)
+    setCtxMenu(null)
+    setActiveTabId(tabId)
+    const tab = tabsRef.current.find((t) => t.id === tabId)
+    if (tab?.connectState === 'ready') {
+      const sid = firstSessionId(tab.layout)
+      if (!sid || !isLiveSessionId(sid)) return
+      requestAnimationFrame(() => focusTerminalSession(sid))
+    }
+  }
 
   const updateTab = (tabId: string, patch: Partial<TerminalTab>) => {
     setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, ...patch } : t)))
@@ -166,11 +211,63 @@ export function TerminalWorkbench() {
       title: info.title,
       layout: createLeaf(info.sessionId, paneId),
       activePaneId: paneId,
+      connectState: 'ready',
     }
     setTabs((prev) => [...prev, tab])
     setActiveTabId(tabId)
     setStatusMessage(t('terminal.connected', { title: tab.title }))
     return info.sessionId
+  }
+
+  const createPendingTab = (opts: {
+    hostId: string
+    kind: 'local' | 'ssh' | 'docker'
+    title: string
+    host?: ShellHost
+  }): string => {
+    const tabId = `pending-${crypto.randomUUID()}`
+    const paneId = `pane-${tabId}`
+    const tab: TerminalTab = {
+      id: tabId,
+      hostId: opts.hostId,
+      kind: opts.kind,
+      title: opts.title,
+      layout: createLeaf(`pending-${tabId}`, paneId),
+      activePaneId: paneId,
+      connectState: 'connecting',
+      connectHost: opts.host,
+    }
+    setTabs((prev) => [...prev, tab])
+    setActiveTabId(tabId)
+    return tabId
+  }
+
+  const activateTab = (tabId: string, info: { sessionId: string; title?: string }) => {
+    const newTabId = `term-${info.sessionId}`
+    setTabs((prev) => {
+      if (!prev.some((t) => t.id === tabId)) return prev
+      return prev.map((t) =>
+        t.id === tabId
+          ? {
+              ...t,
+              id: newTabId,
+              title: info.title ?? t.title,
+              layout: createLeaf(info.sessionId, `pane-${info.sessionId}`),
+              activePaneId: `pane-${info.sessionId}`,
+              connectState: 'ready' as const,
+              connectError: undefined,
+              connectHost: undefined,
+            }
+          : t,
+      )
+    })
+    setActiveTabId(newTabId)
+  }
+
+  const failTab = (tabId: string, error: string) => {
+    setTabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, connectState: 'failed' as const, connectError: error } : t)),
+    )
   }
 
   /** writeInitialCommand 连接建立后向终端写入并执行命令（带重试）。 */
@@ -193,9 +290,14 @@ export function TerminalWorkbench() {
   const runTerminalLink = async (hostId?: string, localShell?: boolean, initialCommand?: string) => {
     if (initialCommand?.trim()) {
       const existing = localShell
-        ? tabsRef.current.find((t) => t.kind === 'local')
+        ? tabsRef.current.find((t) => t.kind === 'local' && t.connectState === 'ready')
         : hostId
-          ? tabsRef.current.find((t) => (t.kind === 'ssh' || t.kind === 'docker') && t.hostId === hostId)
+          ? tabsRef.current.find(
+            (t) =>
+              (t.kind === 'ssh' || t.kind === 'docker') &&
+              t.hostId === hostId &&
+              t.connectState === 'ready',
+          )
           : null
       if (existing) {
         const sessionId = firstSessionId(existing.layout)
@@ -222,53 +324,165 @@ export function TerminalWorkbench() {
   }
 
   const connectLocal = async (initialCommand?: string) => {
-    if (openingLocal || connectingId) return
-    setOpeningLocal(true)
+    const title = t('terminal.localShellTitle')
+    const tabId = createPendingTab({ hostId: '', kind: 'local', title })
     setStatusMessage(t('terminal.openingLocal'))
     try {
       const info = await api.openLocalTerminal(120, 32)
-      const sessionId = addTab({
-        sessionId: info.sessionId,
-        hostId: '',
-        kind: 'local',
-        title: info.title || t('terminal.localShellTitle'),
-      })
-      await writeInitialCommand(sessionId, initialCommand)
+      if (!tabsRef.current.some((t) => t.id === tabId)) return
+      activateTab(tabId, { sessionId: info.sessionId, title: info.title || title })
+      setStatusMessage(t('terminal.connected', { title: info.title || title }))
+      await writeInitialCommand(info.sessionId, initialCommand)
     } catch (e) {
-      setStatusMessage((e as Error).message)
-    } finally {
-      setOpeningLocal(false)
+      const message = (e as Error).message
+      if (!tabsRef.current.some((t) => t.id === tabId)) return
+      failTab(tabId, message)
+      setStatusMessage(message)
     }
   }
 
+  const resolveHost = async (hostId: string): Promise<ShellHost> => {
+    let host = hosts.find((h) => h.id === hostId)
+    if (!host) {
+      host = await api.getShellHost(hostId)
+      setHosts((prev) => (prev.some((h) => h.id === hostId) ? prev : [...prev, host!]))
+    }
+    return host
+  }
+
+  const openRemoteSession = async (host: ShellHost) => {
+    const open = () => api.openTerminal(host.id, 120, 32)
+    return host.kind === 'docker'
+      ? open()
+      : withSSHHostTrust(host.host || '', host.port || 22, open, confirmTrust)
+  }
+
+  const openSessionForTab = async (tab: TerminalTab): Promise<string> => {
+    if (tab.kind === 'local') {
+      const info = await api.openLocalTerminal(120, 32)
+      return info.sessionId
+    }
+    const host = await resolveHost(tab.hostId)
+    if (host.kind === 'docker' && host.running === false) {
+      throw new Error(t('terminal.containerStoppedHint', { name: host.name }))
+    }
+    const info = await openRemoteSession(host)
+    return info.sessionId
+  }
+
   const connectHost = async (host: ShellHost, initialCommand?: string) => {
-    if (connectingId || openingLocal) return
     if (host.kind === 'docker' && host.running === false) {
       setStatusMessage(t('terminal.containerStoppedHint', { name: host.name }))
       return
     }
-    setConnectingId(host.id)
-    setStatusMessage(t('terminal.connecting', { name: host.name }))
+    const title = host.kind === 'docker' ? host.name : `${host.user}@${host.host}:${host.port || 22}`
+    const tabId = createPendingTab({
+      hostId: host.id,
+      kind: host.kind === 'docker' ? 'docker' : 'ssh',
+      title,
+      host,
+    })
+    setStatusMessage(t('terminal.connecting', { name: title }))
     try {
-      const open = () => api.openTerminal(host.id, 120, 32)
-      const info =
-        host.kind === 'docker'
-          ? await open()
-          : await withSSHHostTrust(host.host || '', host.port || 22, open, confirmTrust)
-      const sessionId = addTab({
-        sessionId: info.sessionId,
-        hostId: host.id,
-        kind: host.kind === 'docker' ? 'docker' : 'ssh',
-        title:
-          info.title ||
-          (host.kind === 'docker' ? host.name : `${host.user}@${host.host}`),
-      })
-      await writeInitialCommand(sessionId, initialCommand)
+      const info = await openRemoteSession(host)
+      if (!tabsRef.current.some((t) => t.id === tabId)) return
+      activateTab(tabId, { sessionId: info.sessionId, title: info.title || title })
+      setStatusMessage(t('terminal.connected', { title: info.title || title }))
+      await writeInitialCommand(info.sessionId, initialCommand)
+    } catch (e) {
+      const message = (e as Error).message
+      if (!tabsRef.current.some((t) => t.id === tabId)) return
+      failTab(tabId, message)
+      setStatusMessage(message)
+    }
+  }
+
+  const retryTabConnect = async (tabId: string) => {
+    const tab = tabsRef.current.find((t) => t.id === tabId)
+    if (!tab || tab.connectState !== 'failed') return
+    updateTab(tabId, { connectState: 'connecting', connectError: undefined })
+    setActiveTabId(tabId)
+    setStatusMessage(t('terminal.reconnecting', { name: tab.title }))
+    try {
+      if (tab.kind === 'local') {
+        const info = await api.openLocalTerminal(120, 32)
+        if (!tabsRef.current.some((t) => t.id === tabId)) return
+        activateTab(tabId, { sessionId: info.sessionId, title: info.title || tab.title })
+      } else {
+        const host = tab.connectHost ?? (await resolveHost(tab.hostId))
+        const info = await openRemoteSession(host)
+        if (!tabsRef.current.some((t) => t.id === tabId)) return
+        activateTab(tabId, { sessionId: info.sessionId, title: info.title || tab.title })
+      }
+      setStatusMessage(t('terminal.connected', { title: tab.title }))
+    } catch (e) {
+      const message = (e as Error).message
+      if (!tabsRef.current.some((t) => t.id === tabId)) return
+      failTab(tabId, message)
+      setStatusMessage(message)
+    }
+  }
+
+  /** reconnectTab 关闭并重开会话，保留分屏布局。 */
+  const reconnectTab = async (tabId: string) => {
+    if (reconnectingTabId) return
+    const tab = tabs.find((t) => t.id === tabId)
+    if (!tab) return
+    if (tab.connectState === 'failed') {
+      await retryTabConnect(tabId)
+      return
+    }
+    if (tab.connectState !== 'ready') return
+
+    setReconnectingTabId(tabId)
+    setActiveTabId(tabId)
+    setStatusMessage(t('terminal.reconnecting', { name: tab.title }))
+    try {
+      await closeSessions(collectSessionIds(tab.layout))
+      const paneCount = countLeaves(tab.layout)
+      const newSessionIds: string[] = []
+      for (let i = 0; i < paneCount; i++) {
+        newSessionIds.push(await openSessionForTab(tab))
+      }
+      const newLayout = replaceSessionIds(tab.layout, newSessionIds)
+      const newTabId = `term-${newSessionIds[0]}`
+      setTabs((prev) =>
+        prev.map((t) =>
+          t.id === tabId
+            ? {
+                ...t,
+                id: newTabId,
+                layout: newLayout,
+                activePaneId: firstLeafId(newLayout),
+                connectState: 'ready' as const,
+                connectError: undefined,
+              }
+            : t,
+        ),
+      )
+      setActiveTabId(newTabId)
+      setStatusMessage(t('terminal.reconnected', { name: tab.title }))
     } catch (e) {
       setStatusMessage((e as Error).message)
     } finally {
-      setConnectingId(null)
+      setReconnectingTabId(null)
     }
+  }
+
+  /** reconnectHost 重连已有标签，无标签则新建连接。 */
+  const reconnectHost = async (host: ShellHost) => {
+    if (host.kind === 'docker' && host.running === false) {
+      setStatusMessage(t('terminal.containerStoppedHint', { name: host.name }))
+      return
+    }
+    const related = tabs.filter((t) => (t.kind === 'ssh' || t.kind === 'docker') && t.hostId === host.id)
+    const target =
+      related.find((t) => t.id === activeTabId) ?? related[related.length - 1]
+    if (target) {
+      await reconnectTab(target.id)
+      return
+    }
+    await connectHost(host)
   }
 
   useWorkbenchCommand(Capability.TerminalOpen, (cmd) => {
@@ -282,6 +496,7 @@ export function TerminalWorkbench() {
 
   const closeSessions = async (sessionIds: string[]) => {
     for (const sid of sessionIds) {
+      if (!isLiveSessionId(sid)) continue
       try {
         await api.closeTerminal(sid)
       } catch {
@@ -352,7 +567,7 @@ export function TerminalWorkbench() {
 
   /** 打开新会话并拆分到当前激活窗格 */
   const splitActivePane = async (direction: 'row' | 'col') => {
-    if (!activeTab || splitting) return
+    if (!activeTab || activeTab.connectState !== 'ready' || splitting) return
     if (activePaneCount >= MAX_PANES) {
       setStatusMessage(t('terminal.maxPanes', { max: MAX_PANES }))
       return
@@ -365,13 +580,8 @@ export function TerminalWorkbench() {
         const info = await api.openLocalTerminal(120, 32)
         sessionId = info.sessionId
       } else {
-        const host = hosts.find((h) => h.id === activeTab.hostId)
-        if (!host) throw new Error(t('terminal.errHostNotFound'))
-        const open = () => api.openTerminal(activeTab.hostId, 120, 32)
-        const info =
-          host.kind === 'docker'
-            ? await open()
-            : await withSSHHostTrust(host.host || '', host.port || 22, open, confirmTrust)
+        const host = await resolveHost(activeTab.hostId)
+        const info = await openRemoteSession(host)
         sessionId = info.sessionId
       }
       const nextLayout = splitPane(activeTab.layout, activeTab.activePaneId, direction, sessionId)
@@ -391,9 +601,9 @@ export function TerminalWorkbench() {
   /** 关闭指定分屏窗格 */
   const closePaneInTab = async (tabId: string, paneId: string) => {
     const tab = tabs.find((t) => t.id === tabId)
-    if (!tab || countLeaves(tab.layout) <= 1) return
+    if (!tab || tab.connectState !== 'ready' || countLeaves(tab.layout) <= 1) return
     const pane = findPane(tab.layout, paneId)
-    if (!pane || pane.kind !== 'leaf') return
+    if (!pane || pane.kind !== 'leaf' || !isLiveSessionId(pane.sessionId)) return
     try {
       await api.closeTerminal(pane.sessionId)
     } catch {
@@ -414,8 +624,51 @@ export function TerminalWorkbench() {
     await closePaneInTab(activeTab.id, activeTab.activePaneId)
   }
 
-  const connectedHostIds = new Set(tabs.filter((t) => t.kind === 'ssh' || t.kind === 'docker').map((t) => t.hostId))
-  const localTabCount = tabs.filter((t) => t.kind === 'local').length
+  const connectedHostIds = new Set(
+    tabs.filter((t) => t.connectState === 'ready' && (t.kind === 'ssh' || t.kind === 'docker')).map((t) => t.hostId),
+  )
+  const localTabCount = tabs.filter((t) => t.connectState === 'ready' && t.kind === 'local').length
+  const readyTabCount = tabs.filter((t) => t.connectState === 'ready').length
+
+  const toolbarStatus = (() => {
+    if (activeTab?.connectState === 'connecting') {
+      return {
+        dot: 'pending',
+        label: t('terminal.connecting', { name: activeTab.title }),
+        title: t('terminal.connecting', { name: activeTab.title }),
+      }
+    }
+    if (activeTab?.connectState === 'failed') {
+      return {
+        dot: 'error',
+        label: t('terminal.connectFailed', { name: activeTab.title }),
+        title: activeTab.connectError || t('terminal.connectFailed', { name: activeTab.title }),
+      }
+    }
+    if (readyTabCount > 0) {
+      return {
+        dot: 'online',
+        label: t('terminal.sessionCount', { count: readyTabCount }),
+        title: t('terminal.sessionCount', { count: readyTabCount }),
+      }
+    }
+    if (tabs.some((t) => t.connectState === 'connecting')) {
+      const pending = tabs.find((t) => t.connectState === 'connecting')
+      return {
+        dot: 'pending',
+        label: t('terminal.connecting', { name: pending?.title ?? '' }),
+        title: t('terminal.connecting', { name: pending?.title ?? '' }),
+      }
+    }
+    return { dot: '', label: t('common.notConnected'), title: t('common.notConnected') }
+  })()
+
+  const hostItemActive = (hostId: string) =>
+    activeTab?.hostId === hostId ||
+    tabs.some((t) => t.hostId === hostId && t.connectState === 'connecting')
+
+  const localItemActive = () =>
+    activeTab?.kind === 'local' || tabs.some((t) => t.kind === 'local' && t.connectState === 'connecting')
 
   return (
     <div className="product-workbench terminal-workbench">
@@ -425,7 +678,6 @@ export function TerminalWorkbench() {
             type="button"
             className="wn-btn wn-btn-chrome wn-btn-run"
             onClick={() => void connectLocal()}
-            disabled={openingLocal}
           >
             <IconLaptop size={13} />
             <span>{t('terminal.localTerminal')}</span>
@@ -435,9 +687,19 @@ export function TerminalWorkbench() {
             <IconPlus size={13} />
             <span>{t('terminal.sshHosts')}</span>
           </button>
-          {activeTab && (
+          {activeTab?.connectState === 'ready' && (
             <>
               <span className="chrome-vrule" />
+              <button
+                type="button"
+                className="wn-btn wn-btn-chrome"
+                title={t('terminal.reconnect')}
+                disabled={Boolean(reconnectingTabId) || splitting}
+                onClick={() => void reconnectTab(activeTab.id)}
+              >
+                <IconRefresh size={13} />
+                <span>{t('terminal.reconnect')}</span>
+              </button>
               <button
                 type="button"
                 className="wn-btn wn-btn-chrome"
@@ -482,8 +744,9 @@ export function TerminalWorkbench() {
           />
           <span className="terminal-opacity-value">{Math.round(terminalOpacity * 100)}%</span>
         </label>
-        <span className="product-toolbar-status">
-          {tabs.length > 0 ? t('terminal.sessionCount', { count: tabs.length }) : t('common.notConnected')}
+        <span className="product-toolbar-status" title={toolbarStatus.title}>
+          <span className={`status-dot ${toolbarStatus.dot}`} />
+          <span>{toolbarStatus.label}</span>
         </span>
       </div>
 
@@ -496,7 +759,7 @@ export function TerminalWorkbench() {
             <div className="sidebar-body connections-body">
               <ul className="conn-list">
                 <li
-                  className={`conn-item ${openingLocal ? 'active' : ''} ${localTabCount > 0 ? 'connected' : ''}`}
+                  className={`conn-item ${localItemActive() ? 'active' : ''} ${localTabCount > 0 ? 'connected' : ''}`}
                   onClick={() => void connectLocal()}
                   onDoubleClick={() => void connectLocal()}
                 >
@@ -525,9 +788,9 @@ export function TerminalWorkbench() {
                   {sshHosts.map((h) => (
                     <li
                       key={h.id}
-                      className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
-                      onClick={() => connectHost({ ...h, kind: 'ssh' })}
-                      onDoubleClick={() => connectHost({ ...h, kind: 'ssh' })}
+                      className={`conn-item ${hostItemActive(h.id) ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
+                      onClick={() => void connectHost({ ...h, kind: 'ssh' })}
+                      onDoubleClick={() => void connectHost({ ...h, kind: 'ssh' })}
                       onContextMenu={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
@@ -581,9 +844,9 @@ export function TerminalWorkbench() {
                   {dockerHosts.map((h) => (
                     <li
                       key={h.id}
-                      className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
-                      onClick={() => connectHost(h)}
-                      onDoubleClick={() => connectHost(h)}
+                      className={`conn-item ${hostItemActive(h.id) ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
+                      onClick={() => void connectHost(h)}
+                      onDoubleClick={() => void connectHost(h)}
                       onContextMenu={(e) => {
                         e.preventDefault()
                         e.stopPropagation()
@@ -606,6 +869,7 @@ export function TerminalWorkbench() {
             </section>
           )}
 
+          <LocalPortsPanel onStatus={setStatusMessage} />
           <SSHForwardPanel hosts={sshHosts} onStatus={setStatusMessage} />
         </aside>
 
@@ -616,12 +880,14 @@ export function TerminalWorkbench() {
                 <button
                   key={t.id}
                   type="button"
-                  className={`wn-tab wn-tab-terminal wn-tab-${t.kind} ${t.id === activeTabId ? 'active' : ''}`}
-                  onClick={() => setActiveTabId(t.id)}
+                  className={`wn-tab wn-tab-terminal wn-tab-${t.kind} ${t.id === activeTabId ? 'active' : ''} ${t.connectState !== 'ready' ? `wn-tab-${t.connectState}` : ''}`}
+                  {...bindPointerAction(() => selectTab(t.id))}
                   onContextMenu={(e) => openTabContextMenu(e, t.id, setTabCtxMenu, setActiveTabId)}
                 >
                   {t.kind === 'local' ? <IconLaptop size={12} /> : t.kind === 'docker' ? <IconDocker size={12} /> : <IconTerminal size={12} />}
                   <span className="tab-title">{t.title}</span>
+                  {t.connectState === 'connecting' && <span className="tab-status-badge connecting" />}
+                  {t.connectState === 'failed' && <span className="tab-status-badge failed">!</span>}
                   {countLeaves(t.layout) > 1 && (
                     <span className="tab-split-badge">{countLeaves(t.layout)}</span>
                   )}
@@ -643,7 +909,7 @@ export function TerminalWorkbench() {
             style={{ backgroundColor: terminalBackground(terminalOpacity) }}
           >
             {tabs.length === 0 && (
-              <div className="pane-empty">
+              <div className="pane-empty terminal-connect-empty">
                 <span>{t('terminal.emptyWorkspace')}</span>
               </div>
             )}
@@ -653,15 +919,34 @@ export function TerminalWorkbench() {
                 className="terminal-pane-wrap"
                 style={{ display: t.id === activeTabId ? 'flex' : 'none' }}
               >
-                <TerminalSplitView
-                  layout={t.layout}
-                  rootLayout={t.layout}
-                  activePaneId={t.activePaneId}
-                  opacity={terminalOpacity}
-                  onSelectPane={(paneId) => updateTab(t.id, { activePaneId: paneId })}
-                  onLayoutChange={(layout) => updateTab(t.id, { layout })}
-                  onClosePane={(paneId) => closePaneInTab(t.id, paneId)}
-                />
+                {t.connectState === 'ready' ? (
+                  <TerminalSplitView
+                    layout={t.layout}
+                    rootLayout={t.layout}
+                    activePaneId={t.activePaneId}
+                    tabActive={t.id === activeTabId}
+                    opacity={terminalOpacity}
+                    onSelectPane={(paneId) => updateTab(t.id, { activePaneId: paneId })}
+                    onLayoutChange={(layout) => updateTab(t.id, { layout })}
+                    onClosePane={(paneId) => closePaneInTab(t.id, paneId)}
+                  />
+                ) : (
+                  <TerminalTabStatusPane
+                    title={t.title}
+                    status={t.connectState}
+                    error={t.connectError}
+                    opacity={terminalOpacity}
+                    onRetry={t.connectState === 'failed' ? () => void retryTabConnect(t.id) : undefined}
+                    onEdit={
+                      t.connectState === 'failed' && t.kind === 'ssh' && t.connectHost
+                        ? () => {
+                            const ssh = shellHostAsSSH(t.connectHost!)
+                            if (ssh) openHostModal(ssh)
+                          }
+                        : undefined
+                    }
+                  />
+                )}
               </div>
             ))}
           </div>
@@ -680,6 +965,7 @@ export function TerminalWorkbench() {
           menu={tabCtxMenu}
           disableCloseOthers={tabs.length <= 1}
           onDismiss={() => setTabCtxMenu(null)}
+          onReconnect={() => void reconnectTab(tabCtxMenu.tabId)}
           onClose={() => void closeTab(tabCtxMenu.tabId)}
           onCloseOthers={() => void closeOtherTabs(tabCtxMenu.tabId)}
           onCloseAll={() => void closeAllTabs()}
@@ -713,6 +999,17 @@ export function TerminalWorkbench() {
             }}
           >
             {t('agent.sendToAgent')}
+          </button>
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              const host = ctxMenu.host
+              setCtxMenu(null)
+              void reconnectHost(host)
+            }}
+          >
+            {t('terminal.reconnect')}
           </button>
           <button
             type="button"

@@ -7,9 +7,11 @@ export function AgentChat(arg1:model.AgentChatRequestDO):Promise<app.ApiResult_W
 
 export function AgentConfirm(arg1:string,arg2:boolean):Promise<app.ApiResult_bool_>;
 
+export function AgentRewind(arg1:string,arg2:number):Promise<app.ApiResult_bool_>;
+
 export function AgentStop(arg1:string):Promise<app.ApiResult_bool_>;
 
-export function ApplyAgentBailianPreset():Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
+export function ApplyAgentProviderPreset(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 
 export function ApplyEnvPreset(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_EnvApplyResultDO_>;
 
@@ -149,6 +151,8 @@ export function InstallEnvManager(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function InstallEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
+export function KillLocalPortProcesses(arg1:number,arg2:boolean):Promise<app.ApiResult_WWorkbench_internal_model_LocalPortKillResultDO_>;
+
 export function ListActiveSSHForwards():Promise<app.ApiResult___WWorkbench_internal_model_SSHForwardActiveDO_>;
 
 export function ListAgentCapabilities():Promise<app.ApiResult___WWorkbench_internal_model_AgentCapabilityDO_>;
@@ -187,7 +191,11 @@ export function ListImages(arg1:string):Promise<app.ApiResult___WWorkbench_inter
 
 export function ListIndexes(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult___WWorkbench_internal_model_IndexMetaDO_>;
 
+export function ListListeningLocalPorts():Promise<app.ApiResult___WWorkbench_internal_model_LocalPortProcessDO_>;
+
 export function ListLocalDir(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_LocalDirResultDO_>;
+
+export function ListLocalPortProcesses(arg1:number):Promise<app.ApiResult___WWorkbench_internal_model_LocalPortProcessDO_>;
 
 export function ListLogSources():Promise<app.ApiResult___WWorkbench_internal_model_LogSourceDO_>;
 

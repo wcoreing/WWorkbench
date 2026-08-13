@@ -451,6 +451,23 @@ type SSHForwardActiveDO struct {
 	StartedAt   int64  `json:"startedAt"`
 }
 
+// LocalPortProcessDO 本机占用端口的进程。
+type LocalPortProcessDO struct {
+	PID     int    `json:"pid"`
+	Port    int    `json:"port"`
+	Name    string `json:"name"`
+	Command string `json:"command"`
+	User    string `json:"user"`
+	Address string `json:"address"`
+}
+
+// LocalPortKillResultDO 按端口结束进程的结果。
+type LocalPortKillResultDO struct {
+	Port   int                  `json:"port"`
+	Force  bool                 `json:"force"`
+	Killed []LocalPortProcessDO `json:"killed"`
+}
+
 // HTTPHeaderKVDO HTTP 请求头键值。
 type HTTPHeaderKVDO struct {
 	Key   string `json:"key"`
@@ -790,6 +807,13 @@ type AgentPendingDO struct {
 type AgentMessageDO struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
+	Seq     int    `json:"seq,omitempty"`
+}
+
+// AgentRewindRequestDO 截断工作记忆。
+type AgentRewindRequestDO struct {
+	ThreadID string `json:"threadId"`
+	KeepSeq  int    `json:"keepSeq"`
 }
 
 // AgentThreadDO 对话线程摘要。

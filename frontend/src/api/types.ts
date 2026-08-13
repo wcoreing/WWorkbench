@@ -250,6 +250,23 @@ export interface SSHForwardActive {
   startedAt: number
 }
 
+/** LocalPortProcess 本机端口占用进程。 */
+export interface LocalPortProcess {
+  pid: number
+  port: number
+  name: string
+  command: string
+  user: string
+  address: string
+}
+
+/** LocalPortKillResult 按端口结束进程结果。 */
+export interface LocalPortKillResult {
+  port: number
+  force: boolean
+  killed: LocalPortProcess[]
+}
+
 export interface TerminalSessionInfo {
   sessionId: string
   hostId: string

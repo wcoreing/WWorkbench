@@ -7,33 +7,36 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
+	"WWorkbench/internal/harness"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/store"
+	"WWorkbench/internal/turnctx"
 	"WWorkbench/internal/workbenchtools"
 
 	"github.com/google/uuid"
+	"github.com/wcoreing/ningharness/history"
+	"github.com/cloudwego/eino/schema"
 )
-
-const maxAgentSteps = 10
 
 // Emitter 向前端推送 Agent 事件。
 type Emitter func(event string, payload map[string]interface{})
 
-// threadState 对话线程状态。
+// threadState 进程内会话缓存。
 type threadState struct {
-	mu       sync.Mutex
-	id       string
-	title    string
-	messages []chatMessage
-	context  model.AgentContextDO
-	updated  int64
+	mu      sync.Mutex
+	id      string
+	title   string
+	context model.AgentContextDO
+	taskID  string
 }
 
-// Runner Agent 编排器。
+// Runner Agent Host 薄封装：编排交给 ningharness Lifecycle，思考交给 WorkbenchGuest（流式）。
 type Runner struct {
 	store   *store.Store
 	tools   *workbenchtools.Registry
+	harness *harness.Host
 	threads map[string]*threadState
 	mu      sync.Mutex
 	emit    Emitter
@@ -43,10 +46,11 @@ type Runner struct {
 }
 
 // NewRunner 创建 Runner。
-func NewRunner(st *store.Store, reg *workbenchtools.Registry, appCtx context.Context, emit Emitter) *Runner {
+func NewRunner(st *store.Store, reg *workbenchtools.Registry, h *harness.Host, appCtx context.Context, emit Emitter) *Runner {
 	return &Runner{
 		store:   st,
 		tools:   reg,
+		harness: h,
 		threads: map[string]*threadState{},
 		emit:    emit,
 		appCtx:  appCtx,
@@ -69,8 +73,31 @@ func (r *Runner) Stop(threadID string) bool {
 	return true
 }
 
-// Chat 处理用户消息（异步调用方应 go routine）。
+// InvalidateThread 丢弃进程内会话缓存。
+func (r *Runner) InvalidateThread(threadID string) {
+	r.mu.Lock()
+	delete(r.threads, threadID)
+	r.mu.Unlock()
+}
+
+// Rewind 截断工作记忆并清缓存。
+func (r *Runner) Rewind(threadID string, keepSeq int) error {
+	r.Stop(threadID)
+	if r.harness == nil {
+		return fmt.Errorf("harness 未就绪")
+	}
+	if err := r.harness.RewindHistory(threadID, keepSeq); err != nil {
+		return err
+	}
+	r.InvalidateThread(threadID)
+	return nil
+}
+
+// Chat 处理用户消息（Lifecycle 异步；Guest 内 Provider 流式）。
 func (r *Runner) Chat(req model.AgentChatRequestDO) (string, error) {
+	if r.harness == nil {
+		return "", fmt.Errorf("ningharness 未就绪，请重启应用")
+	}
 	msg := strings.TrimSpace(req.Message)
 	if msg == "" {
 		return "", fmt.Errorf("消息不能为空")
@@ -87,21 +114,20 @@ func (r *Runner) Chat(req model.AgentChatRequestDO) (string, error) {
 		threadID = uuid.NewString()
 	}
 	th := r.getOrCreateThread(threadID, req.Context, msg)
-	userMsg := chatMessage{Role: "user", Content: strPtr(msg)}
-	// 展示与持久化用原文；@ 资源通过 thread.context.mentions 在 runLoop 注入给模型
-	th.mu.Lock()
-	th.messages = append(th.messages, userMsg)
-	th.mu.Unlock()
-	r.persistMessage(threadID, userMsg)
+	ff := turnctx.Gather(req.Context)
+	_ = r.harness.SetBindings(threadID, req.Context.Mentions, turnctx.FocusRefFromContext(req.Context))
 	r.emit("agent:user", map[string]interface{}{
 		"threadId": threadID, "content": msg, "mentions": req.Context.Mentions,
 	})
-	go r.runLoop(threadID)
+	go r.runTurn(th.id, msg, ff, false)
 	return threadID, nil
 }
 
 // Confirm 用户批准待确认操作并继续对话。
 func (r *Runner) Confirm(pendingID string, approved bool) error {
+	if r.harness == nil {
+		return fmt.Errorf("ningharness 未就绪")
+	}
 	p, err := r.store.GetAgentPending(pendingID)
 	if err != nil {
 		return err
@@ -110,19 +136,28 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 	if th == nil {
 		return fmt.Errorf("对话线程不存在")
 	}
+	taskID := r.store.GetAgentPendingTaskID(pendingID)
 	_ = r.store.DeleteAgentPending(pendingID)
+	root := r.harness.Root
+
 	if !approved {
-		th.mu.Lock()
-		rejectMsg := chatMessage{
-			Role: "tool", ToolCallID: pendingID, Name: p.ToolName,
-			Content: strPtr(`{"ok":false,"error":"用户已拒绝"}`),
-		}
-		th.messages = append(th.messages, rejectMsg)
-		th.mu.Unlock()
-		r.persistMessage(p.ThreadID, rejectMsg)
-		go r.runLoop(p.ThreadID)
+		summary := "用户已拒绝"
+		denied := workbenchtools.Fail(summary)
+		body, _ := json.Marshal(denied)
+		rid, _, _ := r.harness.PutToolResult(p.ThreadID, taskID, pendingID, p.ToolName, string(body))
+		ids := history.EncodeResourceIDs([]int64{rid})
+		_ = history.Append(root, p.ThreadID, history.Msg{
+			Role: "tool", ToolCallID: pendingID, TaskID: taskID,
+			Content: formatToolMessage(denied, rid), ResourceIDsJSON: ids,
+		})
+		r.emit("agent:tool_end", map[string]interface{}{
+			"threadId": p.ThreadID, "tool": p.ToolName,
+			"status": StatusDenied, "summary": summary, "result": denied,
+		})
+		go r.runTurn(p.ThreadID, "", "", true)
 		return nil
 	}
+
 	var result workbenchtools.ToolResult
 	switch p.ToolName {
 	case "execute_sql":
@@ -130,184 +165,99 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 	case "execute_http":
 		result = workbenchtools.ExecuteHTTPConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
 	default:
-		result = r.tools.Invoke(r.appCtx, p.ToolName, json.RawMessage(p.ArgsJSON), r.store.GetToolPermissions())
+		result = r.harness.CallTool(r.appCtx, p.ToolName, json.RawMessage(p.ArgsJSON))
 	}
-	content, _ := json.Marshal(result)
-	th.mu.Lock()
-	toolMsg := chatMessage{
-		Role: "tool", ToolCallID: pendingID, Name: p.ToolName, Content: strPtr(string(content)),
+	st, summary := toolStatus(p.ToolName, result)
+	body, _ := json.Marshal(result)
+	rid, _, _ := r.harness.PutToolResult(p.ThreadID, taskID, pendingID, p.ToolName, string(body))
+	if rid > 0 {
+		summary = fmt.Sprintf("%s · #%d", summary, rid)
 	}
-	th.messages = append(th.messages, toolMsg)
-	th.mu.Unlock()
-	r.persistMessage(p.ThreadID, toolMsg)
-	r.emit("agent:tool_end", map[string]interface{}{
-		"threadId": p.ThreadID, "tool": p.ToolName, "result": result,
+	_ = history.Append(root, p.ThreadID, history.Msg{
+		Role: "tool", ToolCallID: pendingID, TaskID: taskID,
+		Content: formatToolMessage(result, rid),
+		ResourceIDsJSON: history.EncodeResourceIDs([]int64{rid}),
 	})
-	go r.runLoop(p.ThreadID)
+	end := map[string]interface{}{
+		"threadId": p.ThreadID, "tool": p.ToolName,
+		"status": st, "summary": summary, "result": result,
+	}
+	if rid > 0 {
+		end["resourceId"] = rid
+	}
+	r.emit("agent:tool_end", end)
+	go r.runTurn(p.ThreadID, "", "", true)
 	return nil
 }
 
-// TestConnection 测试 LLM 连接（简单问答，不调用工具）。
+// TestConnection 测试 LLM 连接（经 harness guest/model）。
 func (r *Runner) TestConnection() (string, error) {
+	if r.harness == nil {
+		return "", fmt.Errorf("harness 未就绪")
+	}
 	settings := r.store.GetAgentSettings()
 	if !settings.HasAPIKey {
 		return "", fmt.Errorf("请先保存 API Key")
 	}
-	provider := NewProvider(settings.APIBase, r.store.AgentAPIKey(), settings.Model)
 	ctx, cancel := context.WithTimeout(r.appCtx, 60*time.Second)
 	defer cancel()
-	reply, err := provider.Complete(ctx, []chatMessage{
-		{Role: "user", Content: strPtr("回复 OK 两个字母即可")},
+	cm, err := r.harness.NewChatModel(ctx, settings.Provider, r.store.AgentAPIKey(), settings.APIBase, settings.Model)
+	if err != nil {
+		return "", err
+	}
+	out, err := r.harness.Complete(ctx, cm, []*schema.Message{
+		schema.UserMessage("回复 OK 两个字母即可"),
 	}, nil)
 	if err != nil {
 		return "", err
 	}
-	text := contentString(reply.Content)
+	text := strings.TrimSpace(out.Content)
 	if text == "" {
 		return "连接成功（模型未返回文本）", nil
 	}
-	return "连接成功: " + strings.TrimSpace(text), nil
+	return "连接成功: " + text, nil
 }
 
-// ListMessages 列出线程消息（用于 UI）。
+// ListMessages 列出线程消息（UI；SSOT=ningharness history）。
 func (r *Runner) ListMessages(threadID string) []model.AgentMessageDO {
-	th := r.getThread(threadID)
-	if th == nil {
+	if r.harness == nil {
 		return nil
 	}
-	th.mu.Lock()
-	defer th.mu.Unlock()
-	out := make([]model.AgentMessageDO, 0, len(th.messages))
-	for _, m := range th.messages {
-		if m.Role == "tool" || m.Role == "system" {
+	msgs, err := history.Load(r.harness.Root, threadID)
+	if err != nil {
+		return nil
+	}
+	out := make([]model.AgentMessageDO, 0, len(msgs))
+	for _, m := range msgs {
+		if !history.IsUIRole(m) {
 			continue
 		}
-		out = append(out, model.AgentMessageDO{Role: m.Role, Content: displayContent(m)})
+		out = append(out, model.AgentMessageDO{
+			Role: m.Role, Content: history.ContentForUI(m.Content), Seq: m.Seq,
+		})
 	}
 	return out
 }
 
-func contentString(c *string) string {
-	if c == nil {
-		return ""
-	}
-	return *c
-}
-
-func displayContent(m chatMessage) string {
-	if s := contentString(m.Content); s != "" {
-		return s
-	}
-	if len(m.ToolCalls) > 0 {
-		var names []string
-		for _, tc := range m.ToolCalls {
-			names = append(names, tc.Function.Name)
-		}
-		return "调用工具: " + strings.Join(names, ", ")
-	}
-	return ""
-}
-
-func (r *Runner) getOrCreateThread(id string, ctx model.AgentContextDO, firstMsg string) *threadState {
-	if th := r.ensureThread(id); th != nil {
-		th.mu.Lock()
-		th.context = ctx
-		th.mu.Unlock()
-		return th
-	}
-	title := firstMsg
-	if len([]rune(title)) > 24 {
-		title = string([]rune(title)[:24]) + "…"
-	}
-	sys := chatMessage{Role: "system", Content: strPtr(systemPrompt())}
-	th := &threadState{
-		id: id, title: title, context: ctx, updated: time.Now().Unix(),
-		messages: []chatMessage{sys},
-	}
-	r.mu.Lock()
-	r.threads[id] = th
-	r.mu.Unlock()
-	ctxJSON, _ := json.Marshal(ctx)
-	_ = r.store.SaveAgentThread(model.AgentThreadDO{ID: id, Title: title, UpdatedAt: time.Now().Unix()}, string(ctxJSON))
-	r.persistMessage(id, sys)
-	return th
-}
-
-func (r *Runner) getThread(id string) *threadState {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.threads[id]
-}
-
-// ensureThread 从内存或数据库加载线程。
-func (r *Runner) ensureThread(id string) *threadState {
-	if th := r.getThread(id); th != nil {
-		return th
-	}
-	if th := r.loadThreadFromStore(id); th != nil {
-		r.mu.Lock()
-		r.threads[id] = th
-		r.mu.Unlock()
-		return th
-	}
-	return nil
-}
-
-// loadThreadFromStore 从 SQLite 恢复线程。
-func (r *Runner) loadThreadFromStore(id string) *threadState {
-	meta, ctxJSON, err := r.store.GetAgentThread(id)
-	if err != nil {
-		return nil
-	}
-	payloads, err := r.store.ListAgentMessagePayloads(id)
-	if err != nil {
-		return nil
-	}
-	msgs := make([]chatMessage, 0, len(payloads))
-	for _, raw := range payloads {
-		var m chatMessage
-		if json.Unmarshal(raw, &m) == nil {
-			msgs = append(msgs, m)
-		}
-	}
-	if len(msgs) == 0 {
-		msgs = []chatMessage{{Role: "system", Content: strPtr(systemPrompt())}}
-	}
-	var ctx model.AgentContextDO
-	_ = json.Unmarshal([]byte(ctxJSON), &ctx)
-	return &threadState{
-		id: meta.ID, title: meta.Title, context: ctx, updated: meta.UpdatedAt, messages: msgs,
-	}
-}
-
-// persistMessage 将消息写入本地库。
-func (r *Runner) persistMessage(threadID string, m chatMessage) {
-	payload, err := json.Marshal(m)
-	if err != nil {
-		return
-	}
-	disp := displayContent(m)
-	if m.Role == "tool" && disp == "" {
-		disp = "tool:" + m.Name
-	}
-	_ = r.store.AppendAgentMessage(threadID, m.Role, disp, string(payload))
-}
-
-func (r *Runner) runLoop(threadID string) {
+func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			r.emit("agent:done", map[string]interface{}{
-				"threadId": threadID,
-				"error":    fmt.Sprintf("AI 内部错误: %v", rec),
+				"threadId": threadID, "error": fmt.Sprintf("AI 内部错误: %v", rec),
 			})
 		}
 	}()
-	th := r.getThread(threadID)
-	if th == nil {
+	th := r.ensureThread(threadID)
+	if th == nil || r.harness == nil {
+		r.emit("agent:done", map[string]interface{}{"threadId": threadID, "error": "会话或 harness 不可用"})
 		return
 	}
 	settings := r.store.GetAgentSettings()
-	provider := NewProvider(settings.APIBase, r.store.AgentAPIKey(), settings.Model)
+	cm, err := r.harness.NewChatModel(r.appCtx, settings.Provider, r.store.AgentAPIKey(), settings.APIBase, settings.Model)
+	if err != nil {
+		r.emit("agent:done", map[string]interface{}{"threadId": threadID, "error": err.Error()})
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.appCtx, 180*time.Second)
 	r.runsMu.Lock()
 	if old, ok := r.runs[threadID]; ok {
@@ -322,168 +272,139 @@ func (r *Runner) runLoop(threadID string) {
 		cancel()
 	}()
 
-	for step := 0; step < maxAgentSteps; step++ {
+	taskID := fmt.Sprintf("chat:%d", time.Now().UnixMilli())
+	th.mu.Lock()
+	th.taskID = taskID
+	ctxSnap := th.context
+	th.mu.Unlock()
+
+	g := &workbenchGuest{
+		r: r, threadID: threadID, taskID: taskID,
+		ctxSnap: ctxSnap, cm: cm,
+	}
+	r.harness.RT.SetGuest(g)
+
+	_, err = r.harness.RunTurn(ctx, harness.TurnInput{
+		SessionKey:     threadID,
+		Prompt:         prompt,
+		Feedforward:    feedforward,
+		SkipUserAppend: skipUser,
+		TaskID:         taskID,
+		SkillPaths:     turnctx.SkillPathsFromContext(ctxSnap),
+		OnDelta: func(delta string) {
+			if delta == "" {
+				return
+			}
+			r.emit("agent:assistant_delta", map[string]interface{}{
+				"threadId": threadID, "delta": delta,
+			})
+		},
+	})
+	if err != nil {
 		if ctx.Err() != nil {
 			r.emit("agent:done", map[string]interface{}{"threadId": threadID, "stopped": true})
 			return
 		}
-		th.mu.Lock()
-		msgs := injectMentionHints(append([]chatMessage(nil), th.messages...), th.context.Mentions)
-		ctxSnap := th.context
-		th.mu.Unlock()
-
-		perms := r.store.GetToolPermissions()
-		toolDefs := r.tools.ListDefsFiltered(perms)
-		assistant, err := provider.CompleteStream(ctx, msgs, toolDefs, func(delta string) {
-			if delta != "" {
-				r.emit("agent:assistant_delta", map[string]interface{}{
-					"threadId": threadID, "delta": delta,
-				})
-			}
-		})
-		if err != nil {
-			if ctx.Err() != nil {
-				r.emit("agent:done", map[string]interface{}{"threadId": threadID, "stopped": true})
-				return
-			}
-			r.emit("agent:done", map[string]interface{}{"threadId": threadID, "error": err.Error()})
+		if g.waiting {
 			return
 		}
-		th.mu.Lock()
-		th.messages = append(th.messages, assistant)
-		th.mu.Unlock()
-		r.persistMessage(threadID, assistant)
-
-		if len(assistant.ToolCalls) == 0 {
-			if text := contentString(assistant.Content); text != "" {
-				r.emit("agent:assistant", map[string]interface{}{
-					"threadId": threadID, "content": text,
-				})
-			}
-			r.emit("agent:done", map[string]interface{}{"threadId": threadID})
-			return
-		}
-
-		for _, tc := range assistant.ToolCalls {
-			callID := tc.ID
-			if callID == "" {
-				callID = uuid.NewString()
-			}
-			name := tc.Function.Name
-			if name == "" {
-				continue
-			}
-			args := json.RawMessage(tc.Function.Arguments)
-			if len(args) == 0 {
-				args = json.RawMessage("{}")
-			}
-			if name == "get_workbench_context" {
-				var merged map[string]interface{}
-				_ = json.Unmarshal(args, &merged)
-				if merged == nil {
-					merged = map[string]interface{}{}
-				}
-				merged["activeProduct"] = ctxSnap.ActiveProduct
-				merged["sessionId"] = ctxSnap.SessionID
-				merged["connectionId"] = ctxSnap.ConnectionID
-				merged["database"] = ctxSnap.Database
-				if len(ctxSnap.Mentions) > 0 {
-					merged["mentions"] = ctxSnap.Mentions
-				}
-				args, _ = json.Marshal(merged)
-			}
-			r.emit("agent:tool_start", map[string]interface{}{
-				"threadId": threadID, "tool": name, "args": string(args),
-			})
-			result := r.tools.Invoke(ctx, name, args, perms)
-			if result.NeedsConfirm {
-				_ = r.store.SaveAgentPending(model.AgentPendingDO{
-					ID: callID, ThreadID: threadID, ToolName: name,
-					ArgsJSON: string(args), Summary: result.ConfirmSummary,
-				})
-				r.emit("agent:needs_confirm", map[string]interface{}{
-					"threadId": threadID, "pendingId": callID, "tool": name,
-					"summary": result.ConfirmSummary, "preview": json.RawMessage(result.Data),
-				})
-				r.emit("agent:done", map[string]interface{}{"threadId": threadID, "waitingConfirm": true})
-				return
-			}
-			content, _ := json.Marshal(result)
-			th.mu.Lock()
-			toolMsg := chatMessage{
-				Role: "tool", ToolCallID: callID, Name: name, Content: strPtr(string(content)),
-			}
-			th.messages = append(th.messages, toolMsg)
-			th.mu.Unlock()
-			r.persistMessage(threadID, toolMsg)
-			r.emit("agent:tool_end", map[string]interface{}{
-				"threadId": threadID, "tool": name, "result": result,
-			})
-		}
+		r.emit("agent:done", map[string]interface{}{"threadId": threadID, "error": err.Error()})
 	}
-	r.emit("agent:done", map[string]interface{}{"threadId": threadID, "error": "已达到最大工具调用步数"})
 }
 
-// injectMentionHints 将 @ 选中的资源附加到最近一条用户消息供模型使用。
-func injectMentionHints(msgs []chatMessage, mentions []model.AgentMentionDO) []chatMessage {
-	if len(mentions) == 0 {
-		return msgs
+func (r *Runner) getOrCreateThread(id string, ctx model.AgentContextDO, firstMsg string) *threadState {
+	if th := r.ensureThread(id); th != nil {
+		th.mu.Lock()
+		th.context = ctx
+		th.mu.Unlock()
+		return th
 	}
-	out := append([]chatMessage(nil), msgs...)
-	for i := len(out) - 1; i >= 0; i-- {
-		if out[i].Role != "user" {
+	title := firstMsg
+	if utf8.RuneCountInString(title) > 24 {
+		title = string([]rune(title)[:24]) + "…"
+	}
+	_ = r.harness.EnsureSession(id, title)
+	_ = r.harness.SetBindings(id, ctx.Mentions, turnctx.FocusRefFromContext(ctx))
+	th := &threadState{id: id, title: title, context: ctx}
+	r.mu.Lock()
+	r.threads[id] = th
+	r.mu.Unlock()
+	return th
+}
+
+func (r *Runner) getThread(id string) *threadState {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.threads[id]
+}
+
+func (r *Runner) ensureThread(id string) *threadState {
+	if th := r.getThread(id); th != nil {
+		return th
+	}
+	if r.harness == nil {
+		return nil
+	}
+	info, mentions, _, err := r.harness.GetSession(id)
+	if err != nil {
+		return nil
+	}
+	th := &threadState{
+		id:      info.ID,
+		title:   info.Title,
+		context: model.AgentContextDO{Mentions: mentions},
+	}
+	r.mu.Lock()
+	r.threads[id] = th
+	r.mu.Unlock()
+	return th
+}
+
+func (r *Runner) listToolDefs(perms map[string]bool) []workbenchtools.ToolDef {
+	defs := r.tools.ListDefsFiltered(perms)
+	if r.harness == nil {
+		return defs
+	}
+	for _, d := range harness.MemoryToolDefs() {
+		if perms != nil && !workbenchtools.IsToolEnabled(perms, d.Name) {
 			continue
 		}
-		base := contentString(out[i].Content)
-		out[i] = chatMessage{Role: "user", Content: strPtr(base + formatMentionsSuffix(mentions))}
-		break
+		defs = append(defs, d)
 	}
-	return out
+	return defs
 }
 
-// formatMentionsSuffix 生成 @ 资源说明后缀。
-func formatMentionsSuffix(mentions []model.AgentMentionDO) string {
-	if len(mentions) == 0 {
-		return ""
+func toolStatus(toolName string, result workbenchtools.ToolResult) (status, summary string) {
+	if result.NeedsConfirm {
+		return StatusNeedConfirm, meaningfulSummary(toolName, result)
 	}
-	var b strings.Builder
-	b.WriteString("\n\n---\n[用户通过 @ 指定的资源（优先使用以下 ID，勿编造）]\n")
-	for _, m := range mentions {
-		switch m.Kind {
-		case "ssh":
-			b.WriteString(fmt.Sprintf("- SSH「%s」 hostId=%s\n", m.Label, m.ID))
-		case "database":
-			b.WriteString(fmt.Sprintf("- 数据库「%s」 connectionId=%s\n", m.Label, m.ID))
-		case "docker":
-			if strings.HasPrefix(m.ID, "docker:") {
-				b.WriteString(fmt.Sprintf("- Docker 容器主机「%s」 hostId=%s（用 terminal.open / terminal.exec，勿当 contextId）\n", m.Label, m.ID))
-			} else {
-				b.WriteString(fmt.Sprintf("- Docker 上下文「%s」 contextId=%s\n", m.Label, m.ID))
-			}
-		case "log":
-			b.WriteString(fmt.Sprintf("- 日志源「%s」 logSourceId=%s（用 fetch_logs）\n", m.Label, m.ID))
-		case "http":
-			b.WriteString(fmt.Sprintf("- HTTP 请求「%s」 requestId=%s（用 execute_http）\n", m.Label, m.ID))
-		default:
-			b.WriteString(fmt.Sprintf("- %s「%s」 id=%s\n", m.Kind, m.Label, m.ID))
-		}
+	if result.OK {
+		return StatusOK, meaningfulSummary(toolName, result)
 	}
-	return b.String()
+	return StatusError, meaningfulSummary(toolName, result)
 }
 
-func systemPrompt() string {
-	return `你是 WWorkbench 内置助手，只能通过提供的工具操作工作台。
+func (r *Runner) systemPrompt() string {
+	locale, _ := r.store.GetAppSetting(store.SettingLocale)
+	langRule := "【语言】对用户可见的全部文字必须使用简体中文（含工具调用之间的说明）；不要用英文自言自语。工具名与代码标识符可保持原文。"
+	if locale == "en" {
+		langRule = "[Language] All user-visible text must be in English (including brief notes between tool calls)."
+	}
+	return langRule + `
+
+你是 WWorkbench 内置助手，只能通过提供的工具操作工作台。
 规则：
-1. 用户问「有哪些连接/链接」时，必须同时调用 list_connections（数据库）与 list_ssh_hosts（SSH），分开展示，不要遗漏 SSH。
-2. 查看远程资源：优先 terminal.exec（command 如 uptime、free -h、df -h）拿到输出再总结；若需用户自己看交互式输出，用 terminal.open 打开终端并注入 initialCommand。
-3. 要在数据库工作台查数据：可用 database.open 打开连接并填 SQL，或 open_database_session + execute_sql。
-4. 操作数据库前先 list_connections 或 get_workbench_context，不要编造 connectionId 与 sessionId。用户消息末尾若含 @ 指定资源，必须优先使用其中的 hostId / connectionId。
-5. 默认 execute_sql 使用 readonly=true；仅当用户明确要求修改数据时才 readonly=false（需用户确认）。
-6. 禁止执行 DROP DATABASE 等危险操作。
-7. 不要输出或猜测密码。回复使用简体中文，可用 Markdown 表格与列表。
-8. 需要图表时用独立代码块：围栏语言为 echarts，内容为合法 ECharts option JSON（折线、柱状、饼图等）。
-9. 用户要求巡检/报告/存档时：terminal.exec 或 list_containers + get_container_logs / fetch_logs 收集数据 → 总结 → notebook.append_content 写入 Markdown。
-10. Docker：先 list_docker_contexts，再 list_containers；日志排错先 list_log_sources 再 fetch_logs；HTTP 用 list_http_requests / execute_http（GET 可直接调）。
-11. 用户 @ 了 docker/log/http 资源时优先使用对应 ID。` +
-		"\n   示例围栏：\n```echarts\n{\"title\":{\"text\":\"示例\"},\"xAxis\":{\"type\":\"category\",\"data\":[\"A\",\"B\"]},\"yAxis\":{\"type\":\"value\"},\"series\":[{\"type\":\"bar\",\"data\":[3,5]}]}\n```"
+1. 每轮用户消息可能带有「本轮工作台现状」前馈（含 @ 绑定与当前连接）；优先使用其中的 ID，不要编造。
+2. 用户问「有哪些连接/链接」时，必须同时调用 list_connections（数据库）与 list_ssh_hosts（SSH），分开展示。
+3. 查看远程资源：优先 terminal.exec（只读诊断如 uptime、free -h、df -h）；交互式输出用 terminal.open。
+4. terminal.exec 禁止管道/重定向/rm 等危险命令；删容器等变更须用 Docker 相关能力并经用户确认。
+5. 查库：database.open 或 open_database_session + execute_sql；默认 readonly=true。
+6. 禁止 DROP DATABASE；不要输出或猜测密码。
+7. 需要图表时用 echarts 围栏代码块（合法 ECharts option JSON）。
+8. 巡检/报告：收集数据后可用 notebook.append_content 存档。
+9. Docker：先 list_docker_contexts 再 list_containers；日志用 list_log_sources / fetch_logs；HTTP 用 list_http_requests / execute_http。
+10. 本轮工具返回已在上下文中，直接基于其内容作答；不要为本轮结果调用 recall_resource。跨轮或历史被挤出窗口后，用 recall_resource（resource#N / resource_id）取回全文；可用 search_session / get_task_summary 定位。
+11. 需要用户拍板（选库/选操作/可选下一步）时：在回复末尾挂 fenced 代码块，语言标记 agent-choice（或 desk-choice），JSON 示例：
+{"n":1,"mode":"single","prompt":"可选下一步","options":[{"key":"a","label":"列出表"},{"key":"b","label":"查慢查询"}]}
+用户点选后会直接发送选项原文；也可手打选项文案。mode 可为 single / multi / text。勿只写 Markdown 列表代替（对方只能手打）。禁止向用户描述工具管道内部细节或自言自语。`
 }

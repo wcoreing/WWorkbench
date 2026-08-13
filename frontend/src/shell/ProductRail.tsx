@@ -2,6 +2,7 @@ import type { ProductId } from './products'
 import { IconDatabase, IconDocker, IconFolder, IconHttp, IconLayers, IconLogs, IconNotebook, IconTerminal } from '../components/Icons'
 import { useI18n, useLocalizedProducts } from '../i18n'
 import { useAppStore } from '../stores/appStore'
+import { bindPointerAction } from '../utils/pointerAction'
 import './shell.css'
 
 const PRODUCT_ICONS: Record<ProductId, typeof IconDatabase> = {
@@ -31,7 +32,7 @@ export function ProductRail() {
               key={p.id}
               type="button"
               className={`product-rail-btn ${activeProduct === p.id ? 'active' : ''}`}
-              onClick={() => setActiveProduct(p.id)}
+              {...bindPointerAction(() => setActiveProduct(p.id))}
               title={`${p.label} — ${p.description}`}
               aria-current={activeProduct === p.id ? 'page' : undefined}
             >

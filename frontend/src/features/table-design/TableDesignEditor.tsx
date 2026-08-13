@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
+import { isTableMissing } from '../../api/errors'
 import { useAppStore } from '../../stores/appStore'
 import { ColumnEditorRows } from './ColumnEditorRows'
 import { IndexEditorRows } from './IndexEditorRows'
@@ -35,6 +36,8 @@ interface Props {
   onCreated?: (tableName: string) => void
   onStatus: (msg: string) => void
   onOpenDDL: (sql: string, title: string) => void
+  /** 表已不存在时回调（由工作台关闭 Tab）。 */
+  onTableMissing?: () => void
 }
 
 /** loadTableStructure 从服务端加载表结构草稿。SQLite 单连接，串行请求避免排队卡死感。 */
@@ -63,11 +66,14 @@ export function TableDesignEditor({
   onCreated,
   onStatus,
   onOpenDDL,
+  onTableMissing,
 }: Props) {
   const isCreate = mode === 'create'
   const dialect: SqlDialect =
     dbType === 'sqlite' ? 'sqlite' : dbType === 'postgresql' ? 'postgresql' : 'mysql'
   const setDesignDraft = useAppStore((s) => s.setDesignDraft)
+  const onTableMissingRef = useRef(onTableMissing)
+  onTableMissingRef.current = onTableMissing
   const [tab, setTab] = useState<TableDesignTab>('fields')
   const [tableName, setTableName] = useState('')
   const [original, setOriginal] = useState<TableColumnDraft[]>([])
@@ -149,10 +155,13 @@ export function TableDesignEditor({
         })
       })
       .catch((e) => {
-        if (!cancelled) {
-          setError((e as Error).message)
-          setColumns((prev) => (prev.length ? prev : [newColumnDraft()]))
+        if (cancelled) return
+        if (isTableMissing(e)) {
+          onTableMissingRef.current?.()
+          return
         }
+        setError((e as Error).message)
+        setColumns((prev) => (prev.length ? prev : [newColumnDraft()]))
       })
       .finally(() => {
         if (!cancelled) setLoading(false)

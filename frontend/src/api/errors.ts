@@ -38,3 +38,21 @@ export function isInvalidSortColumn(err: unknown): err is ApiCallError {
   if (err.code === 'INVALID_ARG' && err.message.includes('无效的排序列')) return true
   return err.message.includes('无效的排序列')
 }
+
+/** isTableMissing 表/关系不存在（打开数据或设计时自动关 Tab）。 */
+export function isTableMissing(err: unknown): boolean {
+  const blob =
+    err instanceof ApiCallError
+      ? `${err.code} ${err.message} ${err.detail ?? ''}`
+      : err instanceof Error
+        ? err.message
+        : String(err)
+  const lower = blob.toLowerCase()
+  if (blob.includes('表不存在')) return true
+  return (
+    lower.includes('no such table') ||
+    /table ['"`][^'"`]+['"`] doesn't exist/.test(lower) ||
+    lower.includes('unknown table') ||
+    /relation ['"`][^'"`]+['"`] does not exist/.test(lower)
+  )
+}

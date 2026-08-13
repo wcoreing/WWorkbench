@@ -85,7 +85,7 @@ export function ObjectTree({
     setSelectedId(null)
   }, [sessionId])
 
-  // 顶部刷新：清空懒加载缓存，并重拉当前已展开的库/表子节点。
+  // 顶部刷新：清空懒加载缓存，并重拉已展开库 + 当前选中库的表/列。
   useEffect(() => {
     if (!refreshNonce) return
     let cancelled = false
@@ -95,9 +95,10 @@ export function ObjectTree({
     const run = async () => {
       setDatabaseCache({})
       setColumnCache({})
-      const dbNodes = treeNodes.filter(
-        (n) => n.nodeType === 'database' && expandedIds.has(n.id) && n.database,
-      )
+      const dbNodes = treeNodes.filter((n) => {
+        if (n.nodeType !== 'database' || !n.database) return false
+        return expandedIds.has(n.id) || n.database === selectedDatabase
+      })
       const nextDbCache: Record<string, ObjectTreeNode[]> = {}
       await Promise.all(
         dbNodes.map(async (node) => {
@@ -133,12 +134,26 @@ export function ObjectTree({
       )
       if (cancelled) return
       setColumnCache(nextColCache)
+      // 选中库未展开时，刷新后也展开，避免只看到库名、看不到新表。
+      if (selectedDatabase) {
+        const dbNode = treeNodes.find(
+          (n) => n.nodeType === 'database' && n.database === selectedDatabase,
+        )
+        if (dbNode) {
+          setExpanded((prev) => {
+            if (prev.has(dbNode.id)) return prev
+            const next = new Set(prev)
+            next.add(dbNode.id)
+            return next
+          })
+        }
+      }
     }
     void run()
     return () => {
       cancelled = true
     }
-  }, [refreshNonce, sessionId])
+  }, [refreshNonce, sessionId, selectedDatabase])
 
   useEffect(() => {
     const close = () => setMenu(null)

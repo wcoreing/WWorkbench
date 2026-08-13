@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { api } from '../../api/client'
 import { onTerminalClosed, onTerminalOutput } from '../../api/terminalEvents'
+import { registerTerminalFocus } from './terminalFocus'
 
 interface Props {
   sessionId: string
@@ -17,6 +18,17 @@ export function terminalBackground(opacity: number): string {
   return `rgba(12, 12, 14, ${a.toFixed(3)})`
 }
 
+/** 在容器可见且有尺寸时调整 xterm，避免 hidden/销毁后报错。 */
+function safeFit(fit: FitAddon, term: Terminal, el: HTMLElement): boolean {
+  if (el.clientWidth <= 0 || el.clientHeight <= 0) return false
+  try {
+    fit.fit()
+    return term.cols > 0 && term.rows > 0
+  } catch {
+    return false
+  }
+}
+
 /** xterm 终端视图 */
 export function TerminalPane({ sessionId, active, opacity }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -26,6 +38,8 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
+
+    let disposed = false
 
     const term = new Terminal({
       cursorBlink: true,
@@ -42,33 +56,43 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.open(el)
-    fit.fit()
     termRef.current = term
     fitRef.current = fit
 
+    const resize = () => {
+      if (disposed) return
+      if (!safeFit(fit, term, el)) return
+      api.resizeTerminal(sessionId, term.cols, term.rows).catch(() => {})
+    }
+
+    requestAnimationFrame(resize)
+
+    const unregisterFocus = registerTerminalFocus(sessionId, () => {
+      if (!disposed) term.focus()
+    })
+
     const disposeData = term.onData((data) => {
       api.writeTerminal(sessionId, data).catch(() => {
-        term.writeln('\r\n\x1b[31m[连接已断开]\x1b[0m')
+        if (!disposed) term.writeln('\r\n\x1b[31m[连接已断开]\x1b[0m')
       })
     })
 
     const offOutput = onTerminalOutput((evt) => {
-      if (evt.sessionId !== sessionId) return
+      if (evt.sessionId !== sessionId || disposed) return
       if (evt.data) term.write(evt.data)
     })
 
     const offClosed = onTerminalClosed((sid) => {
-      if (sid !== sessionId) return
+      if (sid !== sessionId || disposed) return
       term.writeln('\r\n\x1b[33m[会话已结束]\x1b[0m')
     })
 
-    const ro = new ResizeObserver(() => {
-      fit.fit()
-      api.resizeTerminal(sessionId, term.cols, term.rows).catch(() => {})
-    })
+    const ro = new ResizeObserver(() => resize())
     ro.observe(el)
 
     return () => {
+      disposed = true
+      unregisterFocus()
       disposeData.dispose()
       offOutput()
       offClosed()
@@ -94,12 +118,14 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
 
   useEffect(() => {
     if (!active) return
+    const el = containerRef.current
     const fit = fitRef.current
     const term = termRef.current
-    if (!fit || !term) return
+    if (!el || !fit || !term) return
     requestAnimationFrame(() => {
-      fit.fit()
+      if (!safeFit(fit, term, el)) return
       api.resizeTerminal(sessionId, term.cols, term.rows).catch(() => {})
+      term.focus()
     })
   }, [active, sessionId])
 

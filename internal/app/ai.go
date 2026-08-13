@@ -1,18 +1,21 @@
 package app
 
 import (
-	"encoding/json"
+	"log"
 	"strings"
 
 	"WWorkbench/internal/agent"
 	"WWorkbench/internal/errno"
+	"WWorkbench/internal/harness"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
 	"WWorkbench/internal/workbenchtools"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wcoreing/ningharness/toolgateway"
 )
 
-// wireAgentRunner 初始化 Agent 编排器。
+// wireAgentRunner 初始化 ningharness + Agent 编排器。
 func (s *Service) wireAgentRunner() {
 	emit := func(event string, payload map[string]interface{}) {
 		runtime.EventsEmit(s.ctx, event, payload)
@@ -29,7 +32,26 @@ func (s *Service) wireAgentRunner() {
 		UIActions: workbenchtools.NewUIActionBus(emit),
 	}
 	reg := workbenchtools.NewRegistry(deps)
-	s.agentRunner = agent.NewRunner(s.store, reg, s.ctx, emit)
+
+	var host *harness.Host
+	dataDir, err := store.DataDir()
+	if err != nil {
+		log.Printf("harness: data dir: %v", err)
+	} else {
+		host, err = harness.Open(dataDir, func(gw *toolgateway.Gateway) {
+			harness.RegisterWorkbenchTools(gw, reg, func() map[string]bool {
+				return s.store.GetToolPermissions()
+			})
+		})
+		if err != nil {
+			log.Printf("harness: open failed: %v", err)
+			host = nil
+		} else {
+			s.harnessHost = host
+			log.Printf("harness: opened at %s", host.Root)
+		}
+	}
+	s.agentRunner = agent.NewRunner(s.store, reg, host, s.ctx, emit)
 }
 
 // GetAgentSettings 获取 Agent 配置。
@@ -132,9 +154,9 @@ func (s *Service) ListAgentCapabilities() ApiResult[[]model.AgentCapabilityDO] {
 	return OkResult(s.store.BuildAgentCapabilities())
 }
 
-// ApplyAgentBailianPreset 应用阿里云百炼（千问）OpenAI 兼容端点预设。
-func (s *Service) ApplyAgentBailianPreset() ApiResult[model.AgentSettingsDO] {
-	if err := s.store.ApplyBailianPreset(); err != nil {
+// ApplyAgentProviderPreset 应用 AI 服务商预设（bailian / deepseek / minimax）。
+func (s *Service) ApplyAgentProviderPreset(provider string) ApiResult[model.AgentSettingsDO] {
+	if err := s.store.ApplyProviderPreset(provider); err != nil {
 		return ErrResult[model.AgentSettingsDO](err)
 	}
 	return OkResult(s.store.GetAgentSettings())
@@ -145,47 +167,69 @@ func (s *Service) GetAgentThread(threadID string) ApiResult[model.AgentThreadDet
 	if threadID == "" {
 		return ErrResult[model.AgentThreadDetailDO](errno.New(errno.CodeInvalidArg, "threadId 不能为空", ""))
 	}
-	meta, ctxJSON, err := s.store.GetAgentThread(threadID)
-	if err != nil {
-		return ErrResult[model.AgentThreadDetailDO](err)
+	if s.harnessHost == nil {
+		return ErrResult[model.AgentThreadDetailDO](errAgentNotReady())
 	}
-	var ctx model.AgentContextDO
-	_ = json.Unmarshal([]byte(ctxJSON), &ctx)
+	info, mentions, _, err := s.harnessHost.GetSession(threadID)
+	if err != nil {
+		return ErrResult[model.AgentThreadDetailDO](errno.New(errno.CodeNotFound, err.Error(), threadID))
+	}
 	return OkResult(model.AgentThreadDetailDO{
-		ID: meta.ID, Title: meta.Title, UpdatedAt: meta.UpdatedAt, Context: ctx,
+		ID: info.ID, Title: info.Title, UpdatedAt: info.UpdatedAt,
+		Context: model.AgentContextDO{Mentions: mentions},
 	})
 }
 
 // ListAgentThreads 列出已保存的对话线程。
 func (s *Service) ListAgentThreads() ApiResult[[]model.AgentThreadDO] {
-	list, err := s.store.ListAgentThreads(50)
+	if s.harnessHost == nil {
+		return OkResult([]model.AgentThreadDO{})
+	}
+	list, err := s.harnessHost.ListSessions(50)
 	if err != nil {
 		return ErrResult[[]model.AgentThreadDO](err)
 	}
-	if list == nil {
-		list = []model.AgentThreadDO{}
+	out := make([]model.AgentThreadDO, 0, len(list))
+	for _, sess := range list {
+		out = append(out, model.AgentThreadDO{ID: sess.ID, Title: sess.Title, UpdatedAt: sess.UpdatedAt})
 	}
-	return OkResult(list)
+	return OkResult(out)
 }
 
-// ListAgentMessages 列出线程消息（优先 SQLite，供 UI 恢复对话）。
+// ListAgentMessages 列出线程消息（ningharness history）。
 func (s *Service) ListAgentMessages(threadID string) ApiResult[[]model.AgentMessageDO] {
 	if threadID == "" {
 		return ErrResult[[]model.AgentMessageDO](errno.New(errno.CodeInvalidArg, "threadId 不能为空", ""))
 	}
-	list, err := s.store.ListAgentMessagesUI(threadID)
-	if err != nil {
-		return ErrResult[[]model.AgentMessageDO](err)
+	if s.agentRunner != nil {
+		mem := s.agentRunner.ListMessages(threadID)
+		if mem == nil {
+			mem = []model.AgentMessageDO{}
+		}
+		return OkResult(mem)
 	}
-	if len(list) > 0 {
-		return OkResult(list)
+	return OkResult([]model.AgentMessageDO{})
+}
+
+// AgentRewind 截断会话工作记忆（保留 keepSeq 及之前的消息）。
+func (s *Service) AgentRewind(threadID string, keepSeq int) ApiResult[bool] {
+	if threadID == "" {
+		return ErrResult[bool](errno.New(errno.CodeInvalidArg, "threadId 不能为空", ""))
+	}
+	if keepSeq < 0 {
+		return ErrResult[bool](errno.New(errno.CodeInvalidArg, "keepSeq 无效", ""))
 	}
 	if s.agentRunner == nil {
-		return OkResult([]model.AgentMessageDO{})
+		if s.harnessHost != nil {
+			if err := s.harnessHost.RewindHistory(threadID, keepSeq); err != nil {
+				return ErrResult[bool](err)
+			}
+			return OkResult(true)
+		}
+		return ErrResult[bool](errAgentNotReady())
 	}
-	mem := s.agentRunner.ListMessages(threadID)
-	if mem == nil {
-		mem = []model.AgentMessageDO{}
+	if err := s.agentRunner.Rewind(threadID, keepSeq); err != nil {
+		return ErrResult[bool](err)
 	}
-	return OkResult(mem)
+	return OkResult(true)
 }

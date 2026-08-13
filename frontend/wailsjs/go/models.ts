@@ -714,6 +714,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_LocalPortKillResultDO_ {
+	    ok: boolean;
+	    data: model.LocalPortKillResultDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_LocalPortKillResultDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.LocalPortKillResultDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_LogFetchResultDO_ {
 	    ok: boolean;
 	    data: model.LogFetchResultDO;
@@ -1836,6 +1870,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult___WWorkbench_internal_model_LocalPortProcessDO_ {
+	    ok: boolean;
+	    data: model.LocalPortProcessDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_LocalPortProcessDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.LocalPortProcessDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult___WWorkbench_internal_model_LogSourceDO_ {
 	    ok: boolean;
 	    data: model.LogSourceDO[];
@@ -2651,6 +2719,7 @@ export namespace model {
 	export class AgentMessageDO {
 	    role: string;
 	    content: string;
+	    seq?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new AgentMessageDO(source);
@@ -2660,6 +2729,7 @@ export namespace model {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.role = source["role"];
 	        this.content = source["content"];
+	        this.seq = source["seq"];
 	    }
 	}
 	export class AgentPermissionsSaveDO {
@@ -3554,6 +3624,63 @@ export namespace model {
 		    return a;
 		}
 	}
+	export class LocalPortProcessDO {
+	    pid: number;
+	    port: number;
+	    name: string;
+	    command: string;
+	    user: string;
+	    address: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LocalPortProcessDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pid = source["pid"];
+	        this.port = source["port"];
+	        this.name = source["name"];
+	        this.command = source["command"];
+	        this.user = source["user"];
+	        this.address = source["address"];
+	    }
+	}
+	export class LocalPortKillResultDO {
+	    port: number;
+	    force: boolean;
+	    killed: LocalPortProcessDO[];
+	
+	    static createFrom(source: any = {}) {
+	        return new LocalPortKillResultDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.port = source["port"];
+	        this.force = source["force"];
+	        this.killed = this.convertValues(source["killed"], LocalPortProcessDO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class LogFetchResultDO {
 	    content: string;
 	

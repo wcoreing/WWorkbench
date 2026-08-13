@@ -9,6 +9,8 @@ export interface AgentChatLine {
   role: 'user' | 'assistant' | 'system'
   content: string
   mentions?: AgentMention[]
+  /** history_message.seq；有值时可「截到此处」 */
+  seq?: number
 }
 
 let lineSeq = 0
@@ -41,8 +43,9 @@ function persistAgentPanelOpen(open: boolean) {
 export interface AgentToolStep {
   id: string
   tool: string
-  status: 'running' | 'done'
+  status: 'running' | 'ok' | 'error' | 'denied' | 'need_confirm'
   argsPreview?: string
+  summary?: string
 }
 
 interface AgentStore {
@@ -65,11 +68,11 @@ interface AgentStore {
   resetThread: () => void
   beginStreaming: () => void
   appendStreamDelta: (delta: string) => void
-  finishStreaming: (fullContent: string) => void
+  finishStreaming: (fullContent: string, seq?: number) => void
   cancelStreaming: () => void
   applyDraft: (payload: { message?: string; mentions: AgentMention[] }) => void
   pushToolStep: (tool: string, argsPreview?: string) => string
-  finishToolStep: (tool: string) => void
+  finishToolStep: (tool: string, status?: AgentToolStep['status'], summary?: string) => void
   clearToolSteps: () => void
   setThreadMentions: (mentions: AgentMention[]) => void
 }
@@ -121,13 +124,13 @@ export const useAgentStore = create<AgentStore>((set) => ({
     }))
     return id
   },
-  finishToolStep: (tool) =>
+  finishToolStep: (tool, status = 'ok', summary) =>
     set((s) => {
       let matched = false
       const toolSteps = s.toolSteps.map((step) => {
         if (!matched && step.tool === tool && step.status === 'running') {
           matched = true
-          return { ...step, status: 'done' as const }
+          return { ...step, status, summary }
         }
         return step
       })
@@ -151,14 +154,16 @@ export const useAgentStore = create<AgentStore>((set) => ({
         ),
       }
     }),
-  finishStreaming: (fullContent) =>
+  finishStreaming: (fullContent, seq) =>
     set((s) => {
       const sid = s.streamingLineId
       if (!sid) return { streamingLineId: null }
       return {
         streamingLineId: null,
         lines: s.lines.map((ln) =>
-          ln.id === sid ? { ...ln, content: fullContent || ln.content } : ln,
+          ln.id === sid
+            ? { ...ln, content: fullContent || ln.content, seq: seq ?? ln.seq }
+            : ln,
         ),
       }
     }),

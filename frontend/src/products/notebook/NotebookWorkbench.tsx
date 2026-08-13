@@ -22,6 +22,7 @@ import { useAppStore } from '../../stores/appStore'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
+import { bindPointerAction, bindPointerActionWithEvent } from '../../utils/pointerAction'
 
 function toNoteDO(note: Note): model.NoteDO {
   return model.NoteDO.createFrom({
@@ -681,11 +682,19 @@ export function NotebookWorkbench() {
                     key={id}
                     type="button"
                     className={`wn-tab ${id === activeTabId ? 'active' : ''}`}
-                    onClick={() => setActiveTabId(id)}
+                    {...bindPointerAction(() => setActiveTabId(id))}
                     onContextMenu={(e) => openTabContextMenu(e, id, setTabCtxMenu, setActiveTabId)}
                   >
                     <span className="tab-title">{note.title}</span>
-                    <span className="wn-tab-close" onClick={(e) => { e.stopPropagation(); closeTab(id) }}>×</span>
+                    <span
+                      className="wn-tab-close"
+                      {...bindPointerActionWithEvent((e) => {
+                        e.stopPropagation()
+                        closeTab(id)
+                      })}
+                    >
+                      ×
+                    </span>
                   </button>
                 )
               })}

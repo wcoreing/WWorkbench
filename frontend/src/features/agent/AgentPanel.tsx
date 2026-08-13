@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../api/client'
+import { askConfirm } from '../../utils/askConfirm'
 import { subscribeAgentEvents } from '../../api/agentEvents'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
@@ -159,6 +160,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
             id: nextAgentLineId(),
             role: (m.role === 'assistant' ? 'assistant' : m.role === 'system' ? 'system' : 'user') as AgentChatLine['role'],
             content: m.content ?? '',
+            seq: typeof m.seq === 'number' && m.seq > 0 ? m.seq : undefined,
           })),
         )
         const ctxMentions = detail?.context?.mentions
@@ -206,6 +208,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
           role: 'user',
           content: evt.content,
           mentions: parseMentionsFromEvent(evt.mentions),
+          seq: evt.seq,
         })
       },
       onAssistantDelta: (_tid, delta) => {
@@ -216,9 +219,9 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       onAssistant: (evt) => {
         const { streamingLineId } = useAgentStore.getState()
         if (streamingLineId) {
-          finishStreaming(evt.content)
+          finishStreaming(evt.content, evt.seq)
         } else if (evt.content) {
-          appendLine({ id: nextAgentLineId(), role: 'assistant', content: evt.content })
+          appendLine({ id: nextAgentLineId(), role: 'assistant', content: evt.content, seq: evt.seq })
         }
       },
       onToolStart: (evt) => {
@@ -227,9 +230,11 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
         pushToolStep(evt.tool, args && args.length > 96 ? `${args.slice(0, 93)}…` : args)
       },
       onToolEnd: (evt) => {
-        finishToolStep(evt.tool)
+        const st = (evt.status || 'ok') as 'ok' | 'error' | 'denied' | 'need_confirm'
+        finishToolStep(evt.tool, st, evt.summary)
       },
       onNeedsConfirm: (evt) => {
+        finishToolStep(evt.tool, 'need_confirm', evt.summary)
         setPending(evt)
         setBusy(false)
       },
@@ -237,7 +242,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
         setBusy(false)
         cancelStreaming()
         for (const step of useAgentStore.getState().toolSteps) {
-          if (step.status === 'running') finishToolStep(step.tool)
+          if (step.status === 'running') finishToolStep(step.tool, evt.error ? 'error' : 'ok', evt.error)
         }
         if (evt.stopped) {
           appendLine({ id: nextAgentLineId(), role: 'system', content: t('agent.stopped') })
@@ -324,6 +329,29 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     }
   }
 
+  const rewindTo = async (keepSeq: number) => {
+    if (!threadId || busy || keepSeq <= 0) return
+    const ok = await askConfirm({
+      title: t('agent.rewindTitle'),
+      message: t('agent.rewindConfirm'),
+      confirmLabel: t('agent.rewindHere'),
+      danger: true,
+    })
+    if (!ok) return
+    setBusy(true)
+    try {
+      await api.agentRewind(threadId, keepSeq)
+      clearToolSteps()
+      setPending(null)
+      setLines((prev) => prev.filter((ln) => !ln.seq || ln.seq <= keepSeq))
+      setStatusMessage(t('agent.rewindDone'))
+    } catch (e) {
+      setStatusMessage((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const confirmPending = async (approved: boolean) => {
     if (!pending) return
     const id = pending.pendingId
@@ -395,13 +423,19 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     }
   }
 
-  const applyBailian = async () => {
+  const applyPreset = async (id: 'bailian' | 'deepseek' | 'minimax') => {
     try {
-      const s = await api.applyAgentBailianPreset()
+      const s = await api.applyAgentProviderPreset(id)
       setApiBase(s.apiBase)
       setModelName(s.model)
-      setProvider(s.provider || 'bailian')
-      setStatusMessage(t('agent.bailianPresetApplied'))
+      setProvider(s.provider || id)
+      const msgKey =
+        id === 'deepseek'
+          ? 'agent.deepseekPresetApplied'
+          : id === 'minimax'
+            ? 'agent.minimaxPresetApplied'
+            : 'agent.bailianPresetApplied'
+      setStatusMessage(t(msgKey))
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -481,7 +515,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
           error={configError}
           saving={savingConfig}
           testing={testing}
-          onApplyBailian={() => void applyBailian()}
+          onApplyPreset={(id) => void applyPreset(id)}
           onTest={() => void testConnection()}
           onSave={() => void handleSaveConfig()}
         />
@@ -521,7 +555,11 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
           <AgentToolTrace steps={toolSteps} />
           <div className="agent-messages" ref={scrollRef}>
             {lines.length === 0 && <div className="agent-empty">{t('agent.hint')}</div>}
-            {lines.map((line) => (
+            {lines.map((line, idx) => {
+              const isLastAssistant =
+                line.role === 'assistant' &&
+                !lines.slice(idx + 1).some((l) => l.role === 'assistant')
+              return (
               <div key={line.id} className={`agent-turn agent-turn-${line.role}`}>
                 {line.role === 'assistant' && (
                   <span className="agent-turn-label">{t('agent.assistantLabel')}</span>
@@ -540,28 +578,51 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
                     content={line.content}
                     role={line.role}
                     mentions={line.mentions}
+                    choiceDisabled={busy || !isLastAssistant}
+                    onChoiceSend={
+                      line.role === 'assistant'
+                        ? (text) =>
+                            void send(
+                              text,
+                              mergeMentions(threadMentions, autoMentions),
+                            )
+                        : undefined
+                    }
                   />
-                  {line.role === 'assistant' && line.content.trim() && !busy && (
+                  {(line.role === 'assistant' || line.role === 'user') && line.content.trim() && !busy && (
                     <div className="agent-turn-actions">
-                      <button
-                        type="button"
-                        className="wn-btn wn-btn-xs wn-btn-ghost"
-                        onClick={() =>
-                          void saveReplyToNotebook(
-                            line.content,
-                            mergeMentions(threadMentions, autoMentions),
-                          )
-                            .then(() => setStatusMessage(t(`agent.${savedToNotebookMessage()}`)))
-                            .catch((e) => setStatusMessage((e as Error).message))
-                        }
-                      >
-                        {t('agent.saveToNotebook')}
-                      </button>
+                      {line.role === 'assistant' && (
+                        <button
+                          type="button"
+                          className="wn-btn wn-btn-xs wn-btn-ghost"
+                          onClick={() =>
+                            void saveReplyToNotebook(
+                              line.content,
+                              mergeMentions(threadMentions, autoMentions),
+                            )
+                              .then(() => setStatusMessage(t(`agent.${savedToNotebookMessage()}`)))
+                              .catch((e) => setStatusMessage((e as Error).message))
+                          }
+                        >
+                          {t('agent.saveToNotebook')}
+                        </button>
+                      )}
+                      {!!line.seq && (
+                        <button
+                          type="button"
+                          className="wn-btn wn-btn-xs wn-btn-ghost"
+                          title={t('agent.rewindConfirm')}
+                          onClick={() => void rewindTo(line.seq!)}
+                        >
+                          {t('agent.rewindHere')}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
-            ))}
+              )
+            })}
             {busy && (
               <div className="agent-turn agent-turn-system">
                 <span className="agent-thinking">

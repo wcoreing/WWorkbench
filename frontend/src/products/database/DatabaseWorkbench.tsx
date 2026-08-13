@@ -3,7 +3,7 @@ import { api } from '../../api/client'
 import type { Connection, ExecuteResult, IndexMeta, QueryHistory, QueryPage, SQLBatchResult, SessionInfo } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
-import { IconDisconnect, IconEdit, IconPlay, IconPlus, IconSql } from '../../components/Icons'
+import { IconDisconnect, IconEdit, IconPlay, IconPlus, IconRefresh, IconSql } from '../../components/Icons'
 import { ConnectionModal } from '../../features/connection/ConnectionModal'
 import { DdlEditor } from '../../features/ddl/DdlEditor'
 import { ObjectTree } from '../../features/explorer/ObjectTree'
@@ -23,6 +23,7 @@ import { openAgentDraft, mentionDatabase } from '../../features/agent/openAgentD
 import { useI18n } from '../../i18n'
 import { defaultUntitledSql, localizeWorkTabTitle } from '../../i18n/databaseTabTitle'
 import { queryPageToExport } from '../../utils/queryCsv'
+import { bindPointerAction, bindPointerActionWithEvent } from '../../utils/pointerAction'
 
 type SqlResult = QueryPage | ExecuteResult | SQLBatchResult
 
@@ -239,7 +240,7 @@ export function DatabaseWorkbench() {
   )
 
   const connect = useCallback(
-    async (connId: string) => {
+    async (connId: string, opts?: { force?: boolean }) => {
       let list = useAppStore.getState().connections
       if (!list.length) {
         list = await api.listConnections()
@@ -252,29 +253,39 @@ export function DatabaseWorkbench() {
         return
       }
       const currentSession = useAppStore.getState().session
-      if (currentSession?.connectionId === connId) {
+      const sameConn = currentSession?.connectionId === connId
+      if (sameConn && !opts?.force) {
         await fulfillPendingSql(currentSession)
         return
       }
+      const keepDatabase =
+        opts?.force && sameConn ? (currentSession?.database ?? '') : ''
       if (currentSession) {
         try {
           await api.closeSession(currentSession.sessionId)
         } catch {
           /* ignore */
         }
+        setSession(null)
+        setObjectTree([])
       }
-      setStatusMessage(t('database.connecting'))
+      setStatusMessage(opts?.force ? t('database.reconnecting') : t('database.connecting'))
       try {
-        const info = await api.openSession(connId, '')
+        const info = await api.openSession(connId, keepDatabase)
         setSession(info)
         setActiveConnectionId(connId)
         void saveAppSetting(APP_SETTING_KEYS.lastConnectionId, connId)
-        setStatusMessage(t('database.connected', { name: conn.name }))
+        setStatusMessage(
+          opts?.force
+            ? t('database.reconnected', { name: conn.name })
+            : t('database.connected', { name: conn.name }),
+        )
         const [tree, history] = await Promise.all([
           api.getObjectTree(info.sessionId),
           api.listQueryHistory(connId, 30),
         ])
         setObjectTree(tree)
+        setTreeRefreshNonce((n) => n + 1)
         setHistory(history)
         await fulfillPendingSql(info)
       } catch (e) {
@@ -282,7 +293,30 @@ export function DatabaseWorkbench() {
         setStatusMessage((e as Error).message)
       }
     },
-    [setConnections, setSession, setActiveConnectionId, setObjectTree, setHistory, setStatusMessage, fulfillPendingSql]
+    [
+      setConnections,
+      setSession,
+      setActiveConnectionId,
+      setObjectTree,
+      setHistory,
+      setStatusMessage,
+      fulfillPendingSql,
+      t,
+    ],
+  )
+
+  /** reconnect 关闭并重开当前（或指定）连接，拿到最新库表元数据。 */
+  const reconnect = useCallback(
+    async (connId?: string) => {
+      const current = useAppStore.getState().session
+      const targetId = connId ?? current?.connectionId ?? activeConnectionId
+      if (!targetId) {
+        setStatusMessage(t('database.connectFirst'))
+        return
+      }
+      await connect(targetId, { force: true })
+    },
+    [activeConnectionId, connect, setStatusMessage, t],
   )
 
   /** onDatabaseCommand 处理 database.open 命令。 */
@@ -834,6 +868,15 @@ export function DatabaseWorkbench() {
           >
             <span>{t('database.importSql')}</span>
           </button>
+          <button
+            type="button"
+            className="wn-btn wn-btn-chrome"
+            onClick={() => void reconnect()}
+            disabled={!session}
+            title={t('database.reconnect')}
+          >
+            <IconRefresh size={13} />
+          </button>
           <button type="button" className="wn-btn wn-btn-chrome" onClick={disconnect} disabled={!session} title={t('database.disconnect')}>
             <IconDisconnect size={13} />
           </button>
@@ -909,12 +952,17 @@ export function DatabaseWorkbench() {
                           key={c.id}
                           className={`conn-item ${activeConnectionId === c.id ? 'active' : ''} ${session?.connectionId === c.id ? 'connected' : ''}`}
                           onClick={() => connect(c.id)}
-                          onDoubleClick={() => connect(c.id)}
+                          onDoubleClick={() => void reconnect(c.id)}
                           onContextMenu={(e) => {
                             e.preventDefault()
                             e.stopPropagation()
                             setConnCtxMenu({ x: e.clientX, y: e.clientY, conn: c })
                           }}
+                          title={
+                            session?.connectionId === c.id
+                              ? t('database.reconnectHint')
+                              : undefined
+                          }
                         >
                           <span className="conn-dot" />
                           <div className="conn-meta">
@@ -1042,12 +1090,18 @@ export function DatabaseWorkbench() {
                   key={tab.id}
                   type="button"
                   className={`wn-tab wn-tab-${tab.kind} ${tab.id === activeTabId ? 'active' : ''}`}
-                  onClick={() => setActiveTabId(tab.id)}
+                  {...bindPointerAction(() => setActiveTabId(tab.id))}
                   onContextMenu={(e) => openTabContextMenu(e, tab.id, setTabCtxMenu, setActiveTabId)}
                 >
                   <span className="tab-dot" />
                   <span className="tab-title">{localizeWorkTabTitle(tab.title, t)}</span>
-                  <span className="wn-tab-close" onClick={(e) => { e.stopPropagation(); closeTab(tab.id) }}>
+                  <span
+                    className="wn-tab-close"
+                    {...bindPointerActionWithEvent((e) => {
+                      e.stopPropagation()
+                      closeTab(tab.id)
+                    })}
+                  >
                     ×
                   </span>
                 </button>
@@ -1155,6 +1209,12 @@ export function DatabaseWorkbench() {
                 database={activeTab.database}
                 table={activeTab.table}
                 excelExport={isMysql}
+                onTableMissing={() => {
+                  const db = activeTab.database!
+                  const tbl = activeTab.table!
+                  setStatusMessage(t('database.tableMissingClosed', { table: tbl }))
+                  closeTabsForTable(db, tbl)
+                }}
               />
             )}
             {activeTab?.kind === 'table' && !session && (
@@ -1194,6 +1254,16 @@ export function DatabaseWorkbench() {
                   }
                   onStatus={setStatusMessage}
                   onOpenDDL={(sql, title) => openDdlTab(sql, title, activeTab.database)}
+                  onTableMissing={
+                    activeTab.mode === 'alter' && activeTab.table
+                      ? () => {
+                          const db = activeTab.database
+                          const tbl = activeTab.table!
+                          setStatusMessage(t('database.tableMissingClosed', { table: tbl }))
+                          closeTabsForTable(db, tbl)
+                        }
+                      : undefined
+                  }
                 />
               </div>
             )}
@@ -1237,6 +1307,17 @@ export function DatabaseWorkbench() {
             }}
           >
             {t('agent.sendToAgent')}
+          </button>
+          <button
+            type="button"
+            className="wn-context-item"
+            onClick={() => {
+              const c = connCtxMenu.conn
+              setConnCtxMenu(null)
+              void reconnect(c.id)
+            }}
+          >
+            {t('database.reconnect')}
           </button>
           <button
             type="button"

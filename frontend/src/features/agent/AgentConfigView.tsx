@@ -2,6 +2,8 @@ import { useI18n } from '../../i18n'
 import { api } from '../../api/client'
 import { model } from '../../../wailsjs/go/models'
 
+export type AgentProviderId = 'bailian' | 'deepseek' | 'minimax' | string
+
 export interface AgentConfigViewProps {
   apiBase: string
   setApiBase: (v: string) => void
@@ -10,13 +12,61 @@ export interface AgentConfigViewProps {
   modelName: string
   setModelName: (v: string) => void
   hasKey: boolean
-  provider: string
+  provider: AgentProviderId
   error: string
   saving: boolean
   testing: boolean
-  onApplyBailian: () => void
+  onApplyPreset: (provider: 'bailian' | 'deepseek' | 'minimax') => void
   onTest: () => void
   onSave: () => void
+}
+
+const PRESETS: { id: 'bailian' | 'deepseek' | 'minimax'; labelKey: string }[] = [
+  { id: 'bailian', labelKey: 'agent.bailianPreset' },
+  { id: 'deepseek', labelKey: 'agent.deepseekPreset' },
+  { id: 'minimax', labelKey: 'agent.minimaxPreset' },
+]
+
+/** providerLabel 服务商标签文案。 */
+export function providerLabel(provider: string, t: (key: string) => string): string {
+  switch (provider) {
+    case 'bailian':
+      return t('agent.providerBailian')
+    case 'deepseek':
+      return t('agent.providerDeepseek')
+    case 'minimax':
+      return t('agent.providerMinimax')
+    default:
+      return t('agent.providerOther')
+  }
+}
+
+/** providerHint 当前服务商配置提示。 */
+function providerHint(provider: string, t: (key: string) => string): string {
+  switch (provider) {
+    case 'deepseek':
+      return t('agent.deepseekHint')
+    case 'minimax':
+      return t('agent.minimaxHint')
+    case 'bailian':
+      return t('agent.bailianHint')
+    default:
+      return t('agent.openaiCompatHint')
+  }
+}
+
+/** modelPlaceholder 模型输入占位。 */
+function modelPlaceholder(provider: string): string {
+  switch (provider) {
+    case 'deepseek':
+      return 'deepseek-chat / deepseek-reasoner'
+    case 'minimax':
+      return 'MiniMax-M2.5 / MiniMax-M3'
+    case 'bailian':
+      return 'qwen-plus / qwen-turbo'
+    default:
+      return 'model-id'
+  }
 }
 
 /** AgentConfigView AI 连接设置（API / 模型）。 */
@@ -32,7 +82,7 @@ export function AgentConfigView({
   error,
   saving,
   testing,
-  onApplyBailian,
+  onApplyPreset,
   onTest,
   onSave,
 }: AgentConfigViewProps) {
@@ -42,14 +92,21 @@ export function AgentConfigView({
     <div className="agent-subview agent-config-view">
       <p className="agent-subview-title">{t('agent.configTitle')}</p>
       {error && <p className="agent-settings-error">{error}</p>}
-      <div className="agent-settings-row">
-        <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={onApplyBailian}>
-          {t('agent.bailianPreset')}
-        </button>
+      <div className="agent-settings-row agent-preset-row">
+        {PRESETS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            className={`wn-btn wn-btn-sm wn-btn-tool${provider === p.id ? ' active' : ''}`}
+            onClick={() => onApplyPreset(p.id)}
+          >
+            {t(p.labelKey)}
+          </button>
+        ))}
         <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" disabled={testing || saving} onClick={onTest}>
           {testing ? t('agent.testing') : t('agent.testConnection')}
         </button>
-        <span className="agent-provider-tag">{provider === 'bailian' ? t('agent.providerBailian') : t('agent.providerOther')}</span>
+        <span className="agent-provider-tag">{providerLabel(provider, t)}</span>
       </div>
       <label className="wn-label">{t('agent.apiBase')}</label>
       <input className="wn-input" value={apiBase} onChange={(e) => setApiBase(e.target.value)} />
@@ -66,9 +123,9 @@ export function AgentConfigView({
         className="wn-input"
         value={modelName}
         onChange={(e) => setModelName(e.target.value)}
-        placeholder="qwen-plus / qwen-turbo"
+        placeholder={modelPlaceholder(provider)}
       />
-      <p className="agent-settings-hint">{t('agent.bailianHint')}</p>
+      <p className="agent-settings-hint">{providerHint(provider, t)}</p>
       <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" disabled={saving} onClick={onSave}>
         {saving ? t('common.saving') : t('agent.saveConfig')}
       </button>

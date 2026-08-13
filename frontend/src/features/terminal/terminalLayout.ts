@@ -33,6 +33,24 @@ export function collectSessionIds(layout: PaneLayout): string[] {
   return [...collectSessionIds(layout.first), ...collectSessionIds(layout.second)]
 }
 
+/** replaceSessionIds 按深度优先顺序替换各叶子的 sessionId 与 paneId。 */
+export function replaceSessionIds(layout: PaneLayout, sessionIds: string[]): PaneLayout {
+  let idx = 0
+  const walk = (node: PaneLayout): PaneLayout => {
+    if (node.kind === 'leaf') {
+      const sessionId = sessionIds[idx++]
+      if (!sessionId) return node
+      return { kind: 'leaf', paneId: `pane-${sessionId}`, sessionId }
+    }
+    return {
+      ...node,
+      first: walk(node.first),
+      second: walk(node.second),
+    }
+  }
+  return walk(layout)
+}
+
 /** findPane 按 paneId 查找节点。 */
 export function findPane(layout: PaneLayout, paneId: string): PaneLayout | null {
   if (layout.paneId === paneId) return layout

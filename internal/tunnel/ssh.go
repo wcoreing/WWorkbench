@@ -127,7 +127,7 @@ func DialSSH(ctx context.Context, spec model.TunnelSpecDO) (*ssh.Client, error) 
 		return nil, err
 	}
 
-	dialer := &net.Dialer{Timeout: 15 * time.Second}
+	dialer := &net.Dialer{Timeout: 10 * time.Second}
 	conn, err := dialer.DialContext(ctx, "tcp", remote)
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeConnFailed, "连接 SSH 服务器失败", err)
@@ -222,7 +222,7 @@ func buildSSHConfig(spec model.TunnelSpecDO) (*ssh.ClientConfig, error) {
 		User:            spec.User,
 		Auth:            auths,
 		HostKeyCallback: hostKeyCallback(),
-		Timeout:         15 * time.Second,
+		Timeout:         10 * time.Second,
 	}, nil
 }
 

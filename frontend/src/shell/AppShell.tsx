@@ -16,6 +16,7 @@ import { StatusBar } from './StatusBar'
 import { AgentPanel } from '../features/agent/AgentPanel'
 import { subscribeAgentUiActions } from '../features/agent/agentUiActions'
 import { useAgentStore } from '../stores/agentStore'
+import { ConfirmHost } from '../components/ConfirmHost'
 import { useI18n } from '../i18n'
 import './shell.css'
 
@@ -109,6 +110,7 @@ export function AppShell() {
         <AgentPanel collapsed={!agentOpen} />
       </div>
       <StatusBar />
+      <ConfirmHost />
     </div>
   )
 }

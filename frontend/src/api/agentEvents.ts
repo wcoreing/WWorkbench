@@ -3,6 +3,7 @@ import { EventsOn } from '../../wailsjs/runtime/runtime'
 export interface AgentAssistantEvent {
   threadId: string
   content: string
+  seq?: number
 }
 
 export interface AgentToolEvent {
@@ -10,6 +11,8 @@ export interface AgentToolEvent {
   tool: string
   args?: string
   result?: unknown
+  status?: string
+  summary?: string
 }
 
 export interface AgentConfirmEvent {
@@ -31,6 +34,17 @@ export interface AgentUserEvent {
   threadId: string
   content: string
   mentions: unknown
+  seq?: number
+}
+
+function optionalSeq(raw: Record<string, unknown>): number | undefined {
+  const v = raw.seq
+  if (typeof v === 'number' && Number.isFinite(v) && v > 0) return v
+  if (typeof v === 'string' && v.trim()) {
+    const n = Number(v)
+    if (Number.isFinite(n) && n > 0) return n
+  }
+  return undefined
 }
 
 /** subscribeAgentEvents 订阅 Agent 运行时事件。 */
@@ -51,6 +65,7 @@ export function subscribeAgentEvents(handlers: {
           threadId: String(raw.threadId ?? ''),
           content: String(raw.content ?? ''),
           mentions: raw.mentions,
+          seq: optionalSeq(raw),
         })
       }),
     )
@@ -61,6 +76,7 @@ export function subscribeAgentEvents(handlers: {
         handlers.onAssistant!({
           threadId: String(raw.threadId ?? ''),
           content: String(raw.content ?? ''),
+          seq: optionalSeq(raw),
         })
       }),
     )
@@ -93,6 +109,8 @@ export function subscribeAgentEvents(handlers: {
           threadId: String(raw.threadId ?? ''),
           tool: String(raw.tool ?? ''),
           result: raw.result,
+          status: raw.status ? String(raw.status) : undefined,
+          summary: raw.summary ? String(raw.summary) : undefined,
         })
       }),
     )

@@ -6,7 +6,24 @@ interface Props {
   steps: AgentToolStep[]
 }
 
-/** AgentToolTrace 展示本轮对话的工具调用时间线。 */
+function statusLabel(status: AgentToolStep['status'], t: (k: string) => string): string {
+  switch (status) {
+    case 'running':
+      return t('agent.traceStepRunning')
+    case 'ok':
+      return t('agent.traceStepOk')
+    case 'error':
+      return t('agent.traceStepError')
+    case 'denied':
+      return t('agent.traceStepDenied')
+    case 'need_confirm':
+      return t('agent.traceStepNeedConfirm')
+    default:
+      return status
+  }
+}
+
+/** AgentToolTrace 展示本轮对话的工具调用时间线（须展示成败，勿一律「完成」）。 */
 export function AgentToolTrace({ steps }: Props) {
   const { t } = useI18n()
   const [open, setOpen] = useState(true)
@@ -34,14 +51,12 @@ export function AgentToolTrace({ steps }: Props) {
           {steps.map((step) => (
             <li key={step.id} className={`agent-tool-trace-item agent-tool-trace-${step.status}`}>
               <span className="agent-tool-trace-name">{step.tool}</span>
-              {step.argsPreview && (
-                <span className="agent-tool-trace-args" title={step.argsPreview}>
-                  {step.argsPreview}
+              {(step.summary || step.argsPreview) && (
+                <span className="agent-tool-trace-args" title={step.summary || step.argsPreview}>
+                  {step.summary || step.argsPreview}
                 </span>
               )}
-              <span className="agent-tool-trace-status">
-                {step.status === 'running' ? t('agent.traceStepRunning') : t('agent.traceStepDone')}
-              </span>
+              <span className="agent-tool-trace-status">{statusLabel(step.status, t)}</span>
             </li>
           ))}
         </ol>

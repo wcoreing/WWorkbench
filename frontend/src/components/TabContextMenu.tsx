@@ -7,6 +7,8 @@ interface Props {
   menu: TabContextMenuState
   /** 仅一个 Tab 时禁用「关闭其他」。 */
   disableCloseOthers?: boolean
+  /** 提供时显示「重新连接」。 */
+  onReconnect?: () => void
   onClose: () => void
   onCloseOthers: () => void
   onCloseAll: () => void
@@ -17,6 +19,7 @@ interface Props {
 export function TabContextMenu({
   menu,
   disableCloseOthers,
+  onReconnect,
   onClose,
   onCloseOthers,
   onCloseAll,
@@ -29,6 +32,18 @@ export function TabContextMenu({
       style={{ left: menu.x, top: menu.y }}
       onClick={(e) => e.stopPropagation()}
     >
+      {onReconnect && (
+        <button
+          type="button"
+          className="wn-context-item"
+          onClick={() => {
+            onDismiss()
+            onReconnect()
+          }}
+        >
+          {t('terminal.reconnect')}
+        </button>
+      )}
       <button
         type="button"
         className="wn-context-item"

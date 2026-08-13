@@ -13,7 +13,7 @@ import {
   dataColParts,
   useColumnWidths,
 } from '../grid/columnResize'
-import { isInvalidSortColumn } from '../../api/errors'
+import { isInvalidSortColumn, isTableMissing } from '../../api/errors'
 import '../../components/ui.css'
 
 type RowState = 'clean' | 'modified' | 'new' | 'deleted'
@@ -29,11 +29,13 @@ interface Props {
   database: string
   table: string
   excelExport?: boolean
+  /** 表已不存在时回调（由工作台关闭 Tab）。 */
+  onTableMissing?: () => void
 }
 
 const PAGE_SIZE = 100
 
-export function TableDataEditor({ sessionId, database, table, excelExport }: Props) {
+export function TableDataEditor({ sessionId, database, table, excelExport, onTableMissing }: Props) {
   const [page, setPage] = useState<TableDataPage | null>(null)
   const [rows, setRows] = useState<EditableRow[]>([])
   const [pageNum, setPageNum] = useState(1)
@@ -49,6 +51,8 @@ export function TableDataEditor({ sessionId, database, table, excelExport }: Pro
   const [excelExportOpen, setExcelExportOpen] = useState(false)
   const [viewer, setViewer] = useState<(CellViewerTarget & { rowId: string }) | null>(null)
   const loadSeq = useRef(0)
+  const onTableMissingRef = useRef(onTableMissing)
+  onTableMissingRef.current = onTableMissing
   const { colStyle, tableStyle, onResizeStart } = useColumnWidths()
 
   const columns = page?.columns ?? []
@@ -103,6 +107,10 @@ export function TableDataEditor({ sessionId, database, table, excelExport }: Pro
       )
     } catch (e) {
       if (seq !== loadSeq.current) return
+      if (isTableMissing(e)) {
+        onTableMissingRef.current?.()
+        return
+      }
       setError(e instanceof Error ? e.message : String(e))
       if (isInvalidSortColumn(e) && querySorts.length > 0) {
         setSorts([])

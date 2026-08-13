@@ -21,8 +21,10 @@ const AgentKeyToolPermissions = "agent_tool_permissions"
 const AgentKeyProvider = "agent_provider"
 
 const (
-	AgentProviderOpenAI  = "openai"
-	AgentProviderBailian = "bailian"
+	AgentProviderOpenAI   = "openai"
+	AgentProviderBailian  = "bailian"
+	AgentProviderDeepSeek = "deepseek"
+	AgentProviderMiniMax  = "minimax"
 )
 
 // BailianAPIBase 阿里云百炼 OpenAI 兼容地址。
@@ -30,6 +32,39 @@ const BailianAPIBase = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
 // BailianDefaultModel 百炼默认模型。
 const BailianDefaultModel = "qwen-plus"
+
+// DeepSeekAPIBase DeepSeek OpenAI 兼容地址。
+const DeepSeekAPIBase = "https://api.deepseek.com/v1"
+
+// DeepSeekDefaultModel DeepSeek 默认模型。
+const DeepSeekDefaultModel = "deepseek-chat"
+
+// MiniMaxAPIBase MiniMax 国内站 OpenAI 兼容地址。
+const MiniMaxAPIBase = "https://api.minimaxi.com/v1"
+
+// MiniMaxDefaultModel MiniMax 默认模型。
+const MiniMaxDefaultModel = "MiniMax-M2.5"
+
+// AgentProviderPreset 服务商预设（端点 + 默认模型）。
+type AgentProviderPreset struct {
+	Provider string
+	APIBase  string
+	Model    string
+}
+
+// LookupAgentProviderPreset 按 provider 返回预设；未知则 ok=false。
+func LookupAgentProviderPreset(provider string) (AgentProviderPreset, bool) {
+	switch strings.TrimSpace(strings.ToLower(provider)) {
+	case AgentProviderBailian:
+		return AgentProviderPreset{Provider: AgentProviderBailian, APIBase: BailianAPIBase, Model: BailianDefaultModel}, true
+	case AgentProviderDeepSeek:
+		return AgentProviderPreset{Provider: AgentProviderDeepSeek, APIBase: DeepSeekAPIBase, Model: DeepSeekDefaultModel}, true
+	case AgentProviderMiniMax:
+		return AgentProviderPreset{Provider: AgentProviderMiniMax, APIBase: MiniMaxAPIBase, Model: MiniMaxDefaultModel}, true
+	default:
+		return AgentProviderPreset{}, false
+	}
+}
 
 // GetToolPermissions 读取工具权限映射（缺省为全部启用）。
 func (s *Store) GetToolPermissions() map[string]bool {
@@ -97,8 +132,15 @@ func detectProvider(base, saved string) string {
 	if saved != "" {
 		return saved
 	}
-	if strings.Contains(strings.ToLower(base), "dashscope.aliyuncs.com") {
+	b := strings.ToLower(base)
+	switch {
+	case strings.Contains(b, "dashscope.aliyuncs.com"):
 		return AgentProviderBailian
+	case strings.Contains(b, "deepseek.com"):
+		return AgentProviderDeepSeek
+	case strings.Contains(b, "minimax"):
+		return AgentProviderMiniMax
+	default:
+		return AgentProviderOpenAI
 	}
-	return AgentProviderOpenAI
 }

@@ -27,6 +27,7 @@ import { SftpBottomBar } from '../../features/sftp/SftpBottomBar'
 import { SftpTransferRail } from '../../features/sftp/SftpTransferRail'
 import { useFileSelection } from '../../features/sftp/useFileSelection'
 import { useSftpFileDrop } from '../../features/sftp/useSftpFileDrop'
+import { bindPointerAction, bindPointerActionWithEvent } from '../../utils/pointerAction'
 import { useSftpTransferQueue } from '../../features/sftp/useSftpTransferQueue'
 import { useSftpConflictResolver } from '../../features/sftp/useSftpConflictResolver'
 import { filterPathsWithConflict } from '../../features/sftp/transferConflict'
@@ -627,17 +628,17 @@ export function SftpWorkbench() {
                     key={t.id}
                     type="button"
                     className={`wn-tab wn-tab-terminal wn-tab-ssh ${t.id === activeTabId ? 'active' : ''}`}
-                    onClick={() => setActiveTabId(t.id)}
+                    {...bindPointerAction(() => setActiveTabId(t.id))}
                     onContextMenu={(e) => openTabContextMenu(e, t.id, setTabCtxMenu, setActiveTabId)}
                   >
                     <IconServer size={12} />
                     <span className="tab-title">{t.title}</span>
                     <span
                       className="wn-tab-close"
-                      onClick={(e) => {
+                      {...bindPointerActionWithEvent((e) => {
                         e.stopPropagation()
                         closeTab(t.id)
-                      }}
+                      })}
                     >
                       ×
                     </span>

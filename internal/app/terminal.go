@@ -162,7 +162,7 @@ func (s *Service) TrustSSHHost(host string, port int) ApiResult[bool] {
 
 // OpenTerminal 打开终端会话（SSH 或 Docker 容器）。
 func (s *Service) OpenTerminal(hostID string, cols, rows int) ApiResult[model.TerminalSessionInfoDO] {
-	ctx, cancel := session.WithTimeout(s.ctx, 30)
+	ctx, cancel := session.WithTimeout(s.ctx, 12)
 	defer cancel()
 	var (
 		info *model.TerminalSessionInfoDO

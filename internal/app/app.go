@@ -10,6 +10,7 @@ import (
 	"WWorkbench/internal/data"
 	dockersvc "WWorkbench/internal/docker"
 	"WWorkbench/internal/environment"
+	"WWorkbench/internal/harness"
 	"WWorkbench/internal/meta"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/notebook"
@@ -42,6 +43,7 @@ type Service struct {
 	table     *data.Service
 	logFollow   *logFollowManager
 	agentRunner *agent.Runner
+	harnessHost *harness.Host
 }
 
 // NewService 创建应用服务。
@@ -98,6 +100,10 @@ func (s *Service) Shutdown(ctx context.Context) {
 	s.terminals.CloseAll()
 	s.forwards.CloseAll()
 	s.sftp.CloseAll()
+	if s.harnessHost != nil {
+		_ = s.harnessHost.Close()
+		s.harnessHost = nil
+	}
 }
 
 // GetVersion 返回应用版本。

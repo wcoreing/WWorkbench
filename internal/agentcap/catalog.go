@@ -28,6 +28,21 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "recall_resource", Label: "跨轮召回资源全文", Risk: RiskRead,
+			Description: "从 ningharness 外置资源表取回工具结果全文（本轮结果已在上下文，勿对本轮调用）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "search_session", Label: "检索历史对话", Risk: RiskRead,
+			Description: "按关键词搜历史会话；全文再用 recall_resource",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "get_task_summary", Label: "任务台账摘要", Risk: RiskRead,
+			Description: "单轮执行短摘要（不含工具全文）",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "list_connections", Label: "列出数据库连接", Risk: RiskRead,
 			Description: "已保存的 MySQL / PostgreSQL / Redis 连接（不含密码）",
 			DefaultEnabled: true,

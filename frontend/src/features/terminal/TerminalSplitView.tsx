@@ -6,6 +6,8 @@ interface Props {
   layout: PaneLayout
   rootLayout: PaneLayout
   activePaneId: string
+  /** 所属标签页当前可见（非 display:none）。 */
+  tabActive: boolean
   opacity: number
   onSelectPane: (paneId: string) => void
   onLayoutChange: (layout: PaneLayout) => void
@@ -17,6 +19,7 @@ export function TerminalSplitView({
   layout,
   rootLayout,
   activePaneId,
+  tabActive,
   opacity,
   onSelectPane,
   onLayoutChange,
@@ -47,7 +50,7 @@ export function TerminalSplitView({
             </button>
           </div>
         )}
-        <TerminalPane sessionId={layout.sessionId} active opacity={opacity} />
+        <TerminalPane sessionId={layout.sessionId} active={tabActive} opacity={opacity} />
       </div>
     )
   }
@@ -57,6 +60,7 @@ export function TerminalSplitView({
       node={layout}
       rootLayout={rootLayout}
       activePaneId={activePaneId}
+      tabActive={tabActive}
       opacity={opacity}
       onSelectPane={onSelectPane}
       onLayoutChange={onLayoutChange}
@@ -69,6 +73,7 @@ interface SplitNodeProps {
   node: Extract<PaneLayout, { kind: 'split' }>
   rootLayout: PaneLayout
   activePaneId: string
+  tabActive: boolean
   opacity: number
   onSelectPane: (paneId: string) => void
   onLayoutChange: (layout: PaneLayout) => void
@@ -79,6 +84,7 @@ function SplitNode({
   node,
   rootLayout,
   activePaneId,
+  tabActive,
   opacity,
   onSelectPane,
   onLayoutChange,
@@ -114,6 +120,7 @@ function SplitNode({
           layout={node.first}
           rootLayout={rootLayout}
           activePaneId={activePaneId}
+          tabActive={tabActive}
           opacity={opacity}
           onSelectPane={onSelectPane}
           onLayoutChange={onLayoutChange}
@@ -131,6 +138,7 @@ function SplitNode({
           layout={node.second}
           rootLayout={rootLayout}
           activePaneId={activePaneId}
+          tabActive={tabActive}
           opacity={opacity}
           onSelectPane={onSelectPane}
           onLayoutChange={onLayoutChange}

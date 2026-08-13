@@ -10,12 +10,16 @@ export function AgentConfirm(arg1, arg2) {
   return window['go']['app']['Service']['AgentConfirm'](arg1, arg2);
 }
 
+export function AgentRewind(arg1, arg2) {
+  return window['go']['app']['Service']['AgentRewind'](arg1, arg2);
+}
+
 export function AgentStop(arg1) {
   return window['go']['app']['Service']['AgentStop'](arg1);
 }
 
-export function ApplyAgentBailianPreset() {
-  return window['go']['app']['Service']['ApplyAgentBailianPreset']();
+export function ApplyAgentProviderPreset(arg1) {
+  return window['go']['app']['Service']['ApplyAgentProviderPreset'](arg1);
 }
 
 export function ApplyEnvPreset(arg1) {
@@ -294,6 +298,10 @@ export function InstallEnvVersion(arg1, arg2) {
   return window['go']['app']['Service']['InstallEnvVersion'](arg1, arg2);
 }
 
+export function KillLocalPortProcesses(arg1, arg2) {
+  return window['go']['app']['Service']['KillLocalPortProcesses'](arg1, arg2);
+}
+
 export function ListActiveSSHForwards() {
   return window['go']['app']['Service']['ListActiveSSHForwards']();
 }
@@ -370,8 +378,16 @@ export function ListIndexes(arg1, arg2, arg3) {
   return window['go']['app']['Service']['ListIndexes'](arg1, arg2, arg3);
 }
 
+export function ListListeningLocalPorts() {
+  return window['go']['app']['Service']['ListListeningLocalPorts']();
+}
+
 export function ListLocalDir(arg1) {
   return window['go']['app']['Service']['ListLocalDir'](arg1);
+}
+
+export function ListLocalPortProcesses(arg1) {
+  return window['go']['app']['Service']['ListLocalPortProcesses'](arg1);
 }
 
 export function ListLogSources() {

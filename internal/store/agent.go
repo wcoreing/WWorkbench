@@ -1,15 +1,11 @@
 package store
 
 import (
-	"database/sql"
 	"strings"
-	"time"
 
 	"WWorkbench/internal/agentcap"
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -136,54 +132,23 @@ func (s *Store) SaveAgentPermissions(in model.AgentPermissionsSaveDO) error {
 	return s.SetAppSetting(AgentKeyAllowWrite, allow)
 }
 
-// ApplyBailianPreset 应用百炼千问默认端点与模型名。
-func (s *Store) ApplyBailianPreset() error {
-	if err := s.SetAppSetting(AgentKeyAPIBase, BailianAPIBase); err != nil {
+// ApplyProviderPreset 应用服务商预设（端点与默认模型；不改动 API Key）。
+func (s *Store) ApplyProviderPreset(provider string) error {
+	p, ok := LookupAgentProviderPreset(provider)
+	if !ok {
+		return errno.New(errno.CodeInvalidArg, "不支持的服务商预设: "+provider, "")
+	}
+	if err := s.SetAppSetting(AgentKeyAPIBase, p.APIBase); err != nil {
 		return err
 	}
-	if err := s.SetAppSetting(AgentKeyModel, BailianDefaultModel); err != nil {
+	if err := s.SetAppSetting(AgentKeyModel, p.Model); err != nil {
 		return err
 	}
-	return s.SetAppSetting(AgentKeyProvider, AgentProviderBailian)
+	return s.SetAppSetting(AgentKeyProvider, p.Provider)
 }
 
 // AgentAPIKey 读取 API 密钥（内部使用）。
 func (s *Store) AgentAPIKey() string {
 	k, _ := s.GetAppSetting(AgentKeyAPIKey)
 	return k
-}
-
-// SaveAgentPending 保存待确认工具调用。
-func (s *Store) SaveAgentPending(p model.AgentPendingDO) error {
-	if p.ID == "" {
-		p.ID = uuid.NewString()
-	}
-	p.CreatedAt = time.Now().Unix()
-	_, err := s.db.Exec(`INSERT INTO agent_pending (id, thread_id, tool_name, args_json, summary, created_at)
-		VALUES (?, ?, ?, ?, ?, ?)`,
-		p.ID, p.ThreadID, p.ToolName, p.ArgsJSON, p.Summary, p.CreatedAt)
-	if err != nil {
-		return errno.Wrap(errno.CodeStoreFailed, "保存待确认操作失败", err)
-	}
-	return nil
-}
-
-// GetAgentPending 获取待确认项。
-func (s *Store) GetAgentPending(id string) (*model.AgentPendingDO, error) {
-	var p model.AgentPendingDO
-	err := s.db.QueryRow(`SELECT id, thread_id, tool_name, args_json, summary, created_at FROM agent_pending WHERE id = ?`, id).
-		Scan(&p.ID, &p.ThreadID, &p.ToolName, &p.ArgsJSON, &p.Summary, &p.CreatedAt)
-	if err == sql.ErrNoRows {
-		return nil, errno.New(errno.CodeNotFound, "待确认操作不存在", id)
-	}
-	if err != nil {
-		return nil, errno.Wrap(errno.CodeStoreFailed, "读取待确认操作失败", err)
-	}
-	return &p, nil
-}
-
-// DeleteAgentPending 删除待确认项。
-func (s *Store) DeleteAgentPending(id string) error {
-	_, err := s.db.Exec(`DELETE FROM agent_pending WHERE id = ?`, id)
-	return err
 }
