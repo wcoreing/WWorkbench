@@ -4347,7 +4347,8 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: #0c0c0e;
+  background: var(--color-surface);
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .docker-log-header {
@@ -4398,6 +4399,8 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .docker-env-empty {
@@ -4412,6 +4415,7 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
   border-collapse: collapse;
   font-size: 11px;
   font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--color-text);
 }
 
 .docker-env-table th,
@@ -4424,9 +4428,10 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
 .docker-env-table th {
   position: sticky;
   top: 0;
-  background: #0c0c0e;
+  background: var(--color-surface-2);
   color: var(--color-text-muted);
   font-weight: 500;
+  z-index: 1;
 }
 
 .docker-env-table tr.is-highlight {
@@ -4438,7 +4443,8 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--color-accent, #60a5fa);
+  color: var(--color-text-secondary, var(--color-text));
+  font-weight: 500;
 }
 
 .docker-env-value {
@@ -4455,6 +4461,7 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
   font-size: 11px;
   line-height: 1.5;
   color: #a8a8b0;
+  background: #0c0c0e;
   white-space: pre-wrap;
 }
 
