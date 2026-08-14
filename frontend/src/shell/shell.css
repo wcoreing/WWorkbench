@@ -1246,18 +1246,12 @@
   flex-shrink: 0;
 }
 
-.shell-chrome .logo-mark {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-  background: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 7px;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.04em;
+.shell-chrome .logo-mark-img {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .shell-chrome .logo-text {
