@@ -2635,6 +2635,12 @@ export namespace model {
 	    sessionId: string;
 	    connectionId: string;
 	    database: string;
+	    table?: string;
+	    focusKind?: string;
+	    focusLabel?: string;
+	    tabTitle?: string;
+	    openTabsBrief?: string;
+	    selectionBrief?: string;
 	    mentions: AgentMentionDO[];
 	
 	    static createFrom(source: any = {}) {
@@ -2647,6 +2653,12 @@ export namespace model {
 	        this.sessionId = source["sessionId"];
 	        this.connectionId = source["connectionId"];
 	        this.database = source["database"];
+	        this.table = source["table"];
+	        this.focusKind = source["focusKind"];
+	        this.focusLabel = source["focusLabel"];
+	        this.tabTitle = source["tabTitle"];
+	        this.openTabsBrief = source["openTabsBrief"];
+	        this.selectionBrief = source["selectionBrief"];
 	        this.mentions = this.convertValues(source["mentions"], AgentMentionDO);
 	    }
 	

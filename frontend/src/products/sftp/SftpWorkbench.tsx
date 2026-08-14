@@ -8,6 +8,7 @@ import { ContextMenu } from '../../components/ContextMenu'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { buildSftpSurface, briefList } from '../../stores/agentSurface'
 import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
@@ -57,7 +58,7 @@ type PaneSide = 'local' | 'remote'
 /** SFTP 产品线工作区 */
 export function SftpWorkbench() {
   const { t } = useI18n()
-  const { setStatusMessage } = useAppStore()
+  const { setStatusMessage, setAgentSurface, activeProduct } = useAppStore()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [hosts, setHosts] = useState<ShellHost[]>([])
   const [tabs, setTabs] = useState<SftpTab[]>([])
@@ -79,6 +80,35 @@ export function SftpWorkbench() {
   const workspaceRestored = useRef(false)
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
+
+  useEffect(() => {
+    if (activeProduct !== 'sftp') return
+    const host = activeTab ? hosts.find((h) => h.id === activeTab.hostId) : undefined
+    setAgentSurface(
+      buildSftpSurface({
+        title: activeTab?.title,
+        hostId: activeTab?.hostId,
+        hostLabel: host?.name?.trim() || host?.host || activeTab?.title,
+        hostKind: host?.kind === 'docker' ? 'docker' : host?.kind === 'ssh' ? 'ssh' : '',
+        localPath: activeTab?.localPath,
+        remotePath: activeTab?.remotePath,
+        localSelected: localSel.selectedPaths,
+        remoteSelected: remoteSel.selectedPaths,
+        openTabsBrief: briefList(
+          tabs.map((t) => t.title),
+          12,
+        ),
+      }),
+    )
+  }, [
+    activeProduct,
+    activeTab,
+    hosts,
+    tabs,
+    localSel.selectedPaths,
+    remoteSel.selectedPaths,
+    setAgentSurface,
+  ])
 
   const refreshHosts = useCallback(async () => {
     try {

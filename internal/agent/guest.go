@@ -9,6 +9,7 @@ import (
 
 	"WWorkbench/internal/harness"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/turnctx"
 	"WWorkbench/internal/workbenchtools"
 
 	"github.com/google/uuid"
@@ -211,13 +212,7 @@ func mergeWorkbenchContext(args json.RawMessage, snap model.AgentContextDO) json
 	if merged == nil {
 		merged = map[string]interface{}{}
 	}
-	merged["activeProduct"] = snap.ActiveProduct
-	merged["sessionId"] = snap.SessionID
-	merged["connectionId"] = snap.ConnectionID
-	merged["database"] = snap.Database
-	if len(snap.Mentions) > 0 {
-		merged["mentions"] = snap.Mentions
-	}
+	turnctx.ApplySnapshot(merged, snap)
 	out, _ := json.Marshal(merged)
 	return out
 }

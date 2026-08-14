@@ -19,6 +19,7 @@ import {
 } from '../../features/notebook/noteTemplates'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { buildNotebookSurface, briefList } from '../../stores/agentSurface'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
@@ -58,9 +59,11 @@ export function NotebookWorkbench() {
   const {
     setStatusMessage,
     setActiveProduct,
+    activeProduct,
     notebookFocusNoteId,
     setNotebookFocusNoteId,
     setNotebookActiveNoteId,
+    setAgentSurface,
   } = useAppStore()
   const languages: { id: NoteLanguage; label: string }[] = [
     { id: 'plaintext', label: t('notebook.langPlain') },
@@ -93,6 +96,33 @@ export function NotebookWorkbench() {
   useEffect(() => {
     setNotebookActiveNoteId(activeTabId)
   }, [activeTabId, setNotebookActiveNoteId])
+
+  useEffect(() => {
+    if (activeProduct !== 'notebook') return
+    const group = activeNote?.groupId ? groups.find((g) => g.id === activeNote.groupId) : undefined
+    setAgentSurface(
+      buildNotebookSurface({
+        noteId: activeNote?.id ?? activeTabId,
+        title: activeNote?.title,
+        language: activeNote?.language,
+        groupLabel: group?.name,
+        sshHostId: activeNote?.sshHostId,
+        connectionId: activeNote?.connectionId,
+        openTabsBrief: briefList(
+          openTabIds.map((id) => openNotes[id]?.title || id),
+          12,
+        ),
+      }),
+    )
+  }, [
+    activeProduct,
+    activeNote,
+    activeTabId,
+    groups,
+    openTabIds,
+    openNotes,
+    setAgentSurface,
+  ])
 
   useEffect(() => {
     if (!tabCtxMenu) return

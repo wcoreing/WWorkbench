@@ -10,16 +10,23 @@ import (
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/session"
 	"WWorkbench/internal/terminal"
+	"WWorkbench/internal/turnctx"
 
 	"github.com/google/uuid"
 )
 
 type ctxArgs struct {
-	ActiveProduct string                `json:"activeProduct"`
-	SessionID     string                `json:"sessionId"`
-	ConnectionID  string                `json:"connectionId"`
-	Database      string                `json:"database"`
-	Mentions      []model.AgentMentionDO `json:"mentions"`
+	ActiveProduct  string                 `json:"activeProduct"`
+	SessionID      string                 `json:"sessionId"`
+	ConnectionID   string                 `json:"connectionId"`
+	Database       string                 `json:"database"`
+	Table          string                 `json:"table"`
+	FocusKind      string                 `json:"focusKind"`
+	FocusLabel     string                 `json:"focusLabel"`
+	TabTitle       string                 `json:"tabTitle"`
+	OpenTabsBrief  string                 `json:"openTabsBrief"`
+	SelectionBrief string                 `json:"selectionBrief"`
+	Mentions       []model.AgentMentionDO `json:"mentions"`
 }
 
 type openSessionArgs struct {
@@ -79,15 +86,24 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 		sshHosts = append(sshHosts, h)
 	}
 	out := map[string]interface{}{
-		"activeProduct": in.ActiveProduct,
-		"sessionId":     in.SessionID,
-		"connectionId":  in.ConnectionID,
-		"database":      in.Database,
 		"connections":   conns,
 		"sshHosts":      sshHosts,
 		"openSessions":  open,
 		"recentQueries": history,
 	}
+	turnctx.ApplySnapshot(out, model.AgentContextDO{
+		ActiveProduct:  in.ActiveProduct,
+		SessionID:      in.SessionID,
+		ConnectionID:   in.ConnectionID,
+		Database:       in.Database,
+		Table:          in.Table,
+		FocusKind:      in.FocusKind,
+		FocusLabel:     in.FocusLabel,
+		TabTitle:       in.TabTitle,
+		OpenTabsBrief:  in.OpenTabsBrief,
+		SelectionBrief: in.SelectionBrief,
+		Mentions:       in.Mentions,
+	})
 	if d.Docker != nil {
 		if ctxList, err := d.Docker.ListContexts(ctx); err == nil {
 			out["dockerContexts"] = ctxList
@@ -98,9 +114,6 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 	}
 	if httpList, err := d.Store.ListHTTPRequests(); err == nil {
 		out["httpRequests"] = httpList
-	}
-	if len(in.Mentions) > 0 {
-		out["mentions"] = in.Mentions
 	}
 	return OKData(out)
 }

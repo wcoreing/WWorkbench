@@ -14,6 +14,7 @@ import { SqlEditor, type SqlEditorHandle } from '../../features/sql-editor/SqlEd
 import { TableDesignEditor } from '../../features/table-design/TableDesignEditor'
 import { TableDataEditor } from '../../features/table-data/TableDataEditor'
 import { useAppStore } from '../../stores/appStore'
+import { buildDatabaseSurface } from '../../stores/agentSurface'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadBool, payloadStr } from '../../workbench/commandPayload'
@@ -59,6 +60,8 @@ export function DatabaseWorkbench() {
     updateDdlTab,
     clearDesignDraft,
     statusMessage,
+    setAgentSurface,
+    activeProduct,
   } = useAppStore()
   const { t } = useI18n()
 
@@ -86,6 +89,28 @@ export function DatabaseWorkbench() {
   useEffect(() => {
     refreshConnections()
   }, [])
+
+  useEffect(() => {
+    if (activeProduct !== 'database') return
+    setAgentSurface(
+      buildDatabaseSurface({
+        tabs,
+        activeTabId,
+        connectionId: activeConnectionId ?? session?.connectionId ?? '',
+        sessionId: session?.sessionId ?? '',
+        sessionDatabase: session?.database ?? '',
+      }),
+    )
+  }, [
+    activeProduct,
+    tabs,
+    activeTabId,
+    activeConnectionId,
+    session?.connectionId,
+    session?.sessionId,
+    session?.database,
+    setAgentSurface,
+  ])
 
   useEffect(() => {
     if (!connCtxMenu) return

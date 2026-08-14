@@ -8,6 +8,7 @@ import { DockerComposePanel } from '../../features/docker/DockerComposePanel'
 import { DockerRunModal } from '../../features/docker/DockerRunModal'
 import { READY_MESSAGES, useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { buildDockerSurface } from '../../stores/agentSurface'
 import { openAgentDraft, mentionSSH } from '../../features/agent/openAgentDraft'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
@@ -207,7 +208,7 @@ function clampPage(page: number, total: number, pageSize: number) {
 
 /** DockerWorkbench Docker 容器与镜像管理工作区。 */
 export function DockerWorkbench() {
-  const { setStatusMessage, setActiveProduct, statusMessage } = useAppStore()
+  const { setStatusMessage, setActiveProduct, statusMessage, setAgentSurface, activeProduct } = useAppStore()
   const { t } = useI18n()
   const [contexts, setContexts] = useState<DockerContext[]>([DEFAULT_LOCAL_CONTEXT])
   const [activeContextId, setActiveContextId] = useState(LOCAL_CONTEXT)
@@ -242,6 +243,34 @@ export function DockerWorkbench() {
   const dockerReady = Boolean(activeContext?.connected)
   const isRemoteContext = activeContext != null && activeContext.id !== LOCAL_CONTEXT
   const canDeleteActiveContext = canDeleteDockerContext(activeContext)
+
+  useEffect(() => {
+    if (activeProduct !== 'docker') return
+    setAgentSurface(
+      buildDockerSurface({
+        contextId: activeContextId,
+        contextLabel: activeContext ? contextDisplayName(activeContext, t('docker.localContext')) : activeContextId,
+        view,
+        containerId: selected?.id,
+        containerName: selected?.name || selected?.shortId,
+        containerState: selected?.state,
+        composeDir: composeProjectDir,
+        imageCount: images.length,
+        openTabsBrief: `${view} · ${containers.length} containers · ${images.length} images`,
+      }),
+    )
+  }, [
+    activeProduct,
+    activeContextId,
+    activeContext,
+    view,
+    selected,
+    composeProjectDir,
+    images.length,
+    containers.length,
+    setAgentSurface,
+    t,
+  ])
 
   const pagedContainers = useMemo(
     () => paginateList(containers, containerPage, PAGE_SIZE),

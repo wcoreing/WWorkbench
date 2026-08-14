@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../api/client'
 import { askConfirm } from '../../utils/askConfirm'
 import { subscribeAgentEvents } from '../../api/agentEvents'
@@ -12,6 +12,7 @@ import { AgentConfigView, saveAgentAPIConfig } from './AgentConfigView'
 import { AgentPermissionsView, saveAgentPermissions } from './AgentPermissionsView'
 import { AgentMessageContent } from './AgentMessageContent'
 import { useAgentPanelResize } from './useAgentPanelResize'
+import { useAgentChatScroll } from './useAgentChatScroll'
 import { subscribeCommandResults } from './agentUiActions'
 import { AgentInputBar } from './AgentInputBar'
 import { AgentToolTrace } from './AgentToolTrace'
@@ -39,8 +40,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     session,
     activeConnectionId,
     connections,
-    agentFocusSSHHostId,
-    agentFocusSSHLabel,
+    agentSurface,
     setStatusMessage,
   } = useAppStore()
   const view = useAgentStore((s) => s.view)
@@ -82,8 +82,18 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   const [savingConfig, setSavingConfig] = useState(false)
   const [savingPerm, setSavingPerm] = useState(false)
   const [testing, setTesting] = useState(false)
-  const scrollRef = useRef<HTMLDivElement>(null)
   const { width, onResizeStart } = useAgentPanelResize()
+
+  const scrollContentKey = [
+    lines.map((l) => `${l.id}:${l.content.length}`).join('|'),
+    toolSteps.map((s) => `${s.id}:${s.status}`).join('|'),
+    pending?.pendingId ?? '',
+    busy ? '1' : '0',
+  ].join('#')
+  const { scrollRef, onScroll: onMessagesScroll, pinToBottom } = useAgentChatScroll(
+    view === 'chat' && !collapsed && !showHistory,
+    scrollContentKey,
+  )
 
   const switchView = (next: AgentPanelView) => {
     if (next === 'config') setConfigError('')
@@ -150,6 +160,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       setThreadId(id)
       setPending(null)
       setBusy(false)
+      pinToBottom()
       try {
         const [msgs, detail] = await Promise.all([
           api.listAgentMessages(id),
@@ -185,7 +196,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       setShowHistory(false)
       setView('chat')
     },
-    [setThreadId, setLines, setView, setStatusMessage, setThreadMentions],
+    [setThreadId, setLines, setView, setStatusMessage, setThreadMentions, pinToBottom],
   )
 
   useEffect(() => {
@@ -267,16 +278,9 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     finishToolStep,
   ])
 
-  useEffect(() => {
-    if (view === 'chat' && !collapsed) {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
-    }
-  }, [lines, pending, view, collapsed])
-
   const autoMentions = buildAutoMentions({
     activeProduct,
-    focusSSHHostId: agentFocusSSHHostId,
-    focusSSHLabel: agentFocusSSHLabel,
+    surface: agentSurface,
     activeConnectionId,
     sessionConnectionId: session?.connectionId,
     connections: connections.map((c) => ({
@@ -290,9 +294,15 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   const buildContext = (mentions: AgentMention[]) =>
     model.AgentContextDO.createFrom({
       activeProduct,
-      sessionId: session?.sessionId ?? '',
-      connectionId: activeConnectionId ?? session?.connectionId ?? '',
-      database: session?.database ?? '',
+      sessionId: session?.sessionId ?? agentSurface.sessionId ?? '',
+      connectionId: activeConnectionId ?? session?.connectionId ?? agentSurface.connectionId ?? '',
+      database: agentSurface.database || session?.database || '',
+      table: agentSurface.table || '',
+      focusKind: agentSurface.focusKind || '',
+      focusLabel: agentSurface.focusLabel || '',
+      tabTitle: agentSurface.tabTitle || '',
+      openTabsBrief: agentSurface.openTabsBrief || '',
+      selectionBrief: agentSurface.selectionBrief || '',
       mentions: toContextMentions(mergeMentions(mentions, threadMentions, autoMentions)),
     })
 
@@ -314,6 +324,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     clearToolSteps()
     setBusy(true)
     setPending(null)
+    pinToBottom()
     try {
       const res = await api.agentChat(
         model.AgentChatRequestDO.createFrom({
@@ -553,7 +564,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       {view === 'chat' && !showHistory && (
         <div className="agent-chat-pane">
           <AgentToolTrace steps={toolSteps} />
-          <div className="agent-messages" ref={scrollRef}>
+          <div className="agent-messages" ref={scrollRef} onScroll={onMessagesScroll}>
             {lines.length === 0 && <div className="agent-empty">{t('agent.hint')}</div>}
             {lines.map((line, idx) => {
               const isLastAssistant =

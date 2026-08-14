@@ -7,6 +7,7 @@ import { EnvPresetModal } from '../../features/environment/EnvPresetModal'
 import { EnvVersionModal } from '../../features/environment/EnvVersionModal'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { buildEnvironmentSurface, briefList } from '../../stores/agentSurface'
 
 const RUNTIME_META: Record<RuntimeLang, { label: string; color: string }> = {
   node: { label: 'Node.js', color: '#3c873a' },
@@ -20,7 +21,7 @@ const LANGS: RuntimeLang[] = ['node', 'go', 'php', 'java']
 /** EnvironmentWorkbench 本机开发环境管理。 */
 export function EnvironmentWorkbench() {
   const { t } = useI18n()
-  const { setStatusMessage } = useAppStore()
+  const { setStatusMessage, setAgentSurface, activeProduct } = useAppStore()
   const [runtimes, setRuntimes] = useState<RuntimeInfo[]>([])
   const [presets, setPresets] = useState<EnvPreset[]>([])
   const [projects, setProjects] = useState<ProjectEnvHint[]>([])
@@ -36,6 +37,26 @@ export function EnvironmentWorkbench() {
 
   const activePreset = useMemo(() => presets.find((p) => p.active) ?? null, [presets])
   const runtimeMap = useMemo(() => Object.fromEntries(runtimes.map((r) => [r.lang, r])), [runtimes])
+
+  useEffect(() => {
+    if (activeProduct !== 'environment') return
+    const runtimeBrief = briefList(
+      runtimes.map((r) => `${r.lang}:${r.version || '?'}`),
+      6,
+    )
+    setAgentSurface(
+      buildEnvironmentSurface({
+        presetId: activePreset?.id,
+        presetName: activePreset?.name,
+        scanPath,
+        runtimeBrief,
+        openTabsBrief: briefList(
+          presets.map((p) => (p.active ? `${p.name}*` : p.name)),
+          8,
+        ),
+      }),
+    )
+  }, [activeProduct, activePreset, scanPath, runtimes, presets, setAgentSurface])
 
   const refreshRuntimes = useCallback(async () => {
     const list = await api.listEnvRuntimes()

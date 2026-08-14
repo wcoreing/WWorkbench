@@ -64,24 +64,32 @@ export function mergeMentions(...groups: AgentMention[][]): AgentMention[] {
 
 export interface AgentAutoMentionInput {
   activeProduct: string
-  focusSSHHostId: string | null
-  focusSSHLabel: string
+  surface: {
+    focusKind?: string
+    focusLabel?: string
+    hostId?: string
+    connectionId?: string
+  }
   activeConnectionId: string | null
   sessionConnectionId?: string
   connections: { id: string; name: string; host: string; dbType: string }[]
 }
 
-/** buildAutoMentions 根据当前工作台 Tab 生成默认 @ 资源。 */
+/** buildAutoMentions 根据界面快照与当前产品线生成默认 @ 资源。 */
 export function buildAutoMentions(input: AgentAutoMentionInput): AgentMention[] {
   const out: AgentMention[] = []
-  if (input.activeProduct === 'terminal' && input.focusSSHHostId) {
+  const s = input.surface
+  if (
+    (input.activeProduct === 'terminal' && s.focusKind === 'terminal.ssh' && s.hostId) ||
+    (input.activeProduct === 'sftp' && s.focusKind === 'sftp' && s.hostId)
+  ) {
     out.push({
       kind: 'ssh',
-      id: input.focusSSHHostId,
-      label: input.focusSSHLabel || input.focusSSHHostId,
+      id: s.hostId,
+      label: s.focusLabel || s.hostId,
     })
   }
-  const connId = input.sessionConnectionId || input.activeConnectionId
+  const connId = input.sessionConnectionId || input.activeConnectionId || s.connectionId || ''
   if (input.activeProduct === 'database' && connId) {
     const c = input.connections.find((x) => x.id === connId)
     out.push({

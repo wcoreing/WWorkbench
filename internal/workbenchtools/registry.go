@@ -91,7 +91,7 @@ func (r *Registry) add(def ToolDef) {
 func (r *Registry) registerBuiltins() {
 	r.add(ToolDef{
 		Name:        "get_workbench_context",
-		Description: "获取当前工作台上下文：产品线、连接、打开的数据库会话、最近查询历史摘要。",
+		Description: "获取当前工作台上下文：产品线、界面焦点（表/标签）、连接、打开的数据库会话、最近查询历史摘要。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -99,6 +99,12 @@ func (r *Registry) registerBuiltins() {
 				"sessionId":      map[string]interface{}{"type": "string", "description": "当前数据库 sessionId"},
 				"connectionId":   map[string]interface{}{"type": "string", "description": "当前连接 ID"},
 				"database":       map[string]interface{}{"type": "string", "description": "当前库名"},
+				"table":          map[string]interface{}{"type": "string", "description": "界面焦点表名"},
+				"focusKind":      map[string]interface{}{"type": "string", "description": "界面焦点类型"},
+				"focusLabel":     map[string]interface{}{"type": "string", "description": "界面焦点人话标签"},
+				"tabTitle":       map[string]interface{}{"type": "string", "description": "当前标签标题"},
+				"openTabsBrief":  map[string]interface{}{"type": "string", "description": "中栏打开标签摘要"},
+				"selectionBrief": map[string]interface{}{"type": "string", "description": "树/资源选中摘要"},
 			},
 		},
 		Handler: toolGetWorkbenchContext,

@@ -1,6 +1,7 @@
 /**
  * Agent 可选表单：回复里挂 ```agent-choice / ```desk-choice，侧栏渲成可点选项。
  * 点选后发送选项 label 原文（与 AgentDesk desk-choice 同构）。
+ * 模型常误写成 ```json / 无语言标记，形似选项表时一并抽出。
  */
 
 export type AgentChoiceOption = {
@@ -24,7 +25,8 @@ export type AgentChoiceParse = {
   questions: AgentChoiceQuestion[]
 }
 
-const FENCE_RE = /```\s*(?:agent-choice|desk-choice)\s*\r?\n([\s\S]*?)```/gi
+/** 显式标记；模型常误写成 json / 空 lang，形似选项表时一并抽出。 */
+const FENCE_RE = /```\s*([a-zA-Z0-9_-]*)\s*\r?\n([\s\S]*?)```/gi
 
 type RawOption = { key?: unknown; label?: unknown }
 type RawQuestion = {
@@ -106,13 +108,27 @@ function questionsFromJSON(text: string, startN: number): AgentChoiceQuestion[] 
   return q ? [q] : []
 }
 
+function isChoiceFenceLang(lang: string): boolean {
+  const t = lang.trim().toLowerCase()
+  return (
+    t === 'agent-choice' ||
+    t === 'agentchoice' ||
+    t === 'desk-choice' ||
+    t === 'deskchoice' ||
+    t === 'json' ||
+    t === ''
+  )
+}
+
 /** 从助手正文抽出 agent-choice / 「可选下一步」列表。 */
 export function extractAgentChoices(content: string): AgentChoiceParse {
   const src = content || ''
   const questions: AgentChoiceQuestion[] = []
   let nextN = 1
-  let body = src.replace(FENCE_RE, (_full, inner: string) => {
+  let body = src.replace(FENCE_RE, (full, lang: string, inner: string) => {
+    if (!isChoiceFenceLang(lang || '')) return full
     const qs = questionsFromJSON(inner, nextN)
+    if (!qs.length) return full
     for (const q of qs) {
       questions.push(q)
       nextN = Math.max(nextN, q.n) + 1

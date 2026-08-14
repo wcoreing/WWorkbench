@@ -370,11 +370,11 @@ type DockerImageDO struct {
 
 // ContainerShellDO 容器 Shell 启动信息。
 type ContainerShellDO struct {
-	Mode      string `json:"mode"` // docker
-	HostID    string `json:"hostId"`
-	ContextID string `json:"contextId"`
+	Mode        string `json:"mode"` // docker
+	HostID      string `json:"hostId"`
+	ContextID   string `json:"contextId"`
 	ContainerID string `json:"containerId"`
-	Command   string `json:"command"` // 已废弃，保留字段兼容
+	Command     string `json:"command"` // 已废弃，保留字段兼容
 }
 
 // ContainerDatabaseLinkDO 容器数据库连接建议。
@@ -772,13 +772,19 @@ type AgentMentionDO struct {
 	Label string `json:"label"`
 }
 
-// AgentContextDO 前端传入的工作台上下文。
+// AgentContextDO 前端传入的工作台上下文（含界面快照，进 feedforward）。
 type AgentContextDO struct {
-	ActiveProduct string           `json:"activeProduct"`
-	SessionID     string           `json:"sessionId"`
-	ConnectionID  string           `json:"connectionId"`
-	Database      string           `json:"database"`
-	Mentions      []AgentMentionDO `json:"mentions"`
+	ActiveProduct  string           `json:"activeProduct"`
+	SessionID      string           `json:"sessionId"`
+	ConnectionID   string           `json:"connectionId"`
+	Database       string           `json:"database"`
+	Table          string           `json:"table,omitempty"`
+	FocusKind      string           `json:"focusKind,omitempty"`  // table|design|sql|terminal.ssh|terminal.local|…
+	FocusLabel     string           `json:"focusLabel,omitempty"` // 人话焦点，如 gbu_admissions.admin
+	TabTitle       string           `json:"tabTitle,omitempty"`
+	OpenTabsBrief  string           `json:"openTabsBrief,omitempty"` // 中栏打开标签摘要
+	SelectionBrief string           `json:"selectionBrief,omitempty"`
+	Mentions       []AgentMentionDO `json:"mentions"`
 }
 
 // AgentChatRequestDO 发起对话请求。

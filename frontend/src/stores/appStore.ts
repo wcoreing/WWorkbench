@@ -11,8 +11,10 @@ import { APP_SETTING_KEYS, saveAppSetting } from './appPreferences'
 import type { AppLocale } from '../i18n/types'
 import { applyDocumentLocale, READY_MESSAGES, translate } from '../i18n'
 import { applyUiFontSize, DEFAULT_UI_FONT_SIZE, type UiFontSize } from '../shell/uiFontSize'
+import { emptyAgentSurface, type AgentSurface } from './agentSurface'
 
 export type { WorkTab } from './workTab'
+export type { AgentSurface } from './agentSurface'
 
 export type ProductLinkAction = 'terminal' | 'sftp' | 'database' | 'docker-context' | 'notebook'
 
@@ -57,8 +59,7 @@ interface AppState {
   statusMessage: string
   terminalOpacity: number
   uiFontSize: UiFontSize
-  agentFocusSSHHostId: string | null
-  agentFocusSSHLabel: string
+  agentSurface: AgentSurface
   notebookFocusNoteId: string | null
   notebookActiveNoteId: string | null
   setVersion: (v: string) => void
@@ -74,7 +75,7 @@ interface AppState {
   setStatusMessage: (msg: string) => void
   setTerminalOpacity: (v: number) => void
   setUiFontSize: (px: number) => void
-  setAgentFocusSSH: (hostId: string | null, label?: string) => void
+  setAgentSurface: (surface: AgentSurface) => void
   setNotebookFocusNoteId: (id: string | null) => void
   setNotebookActiveNoteId: (id: string | null) => void
   addTab: (tab: WorkTab) => void
@@ -103,8 +104,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   statusMessage: '就绪',
   terminalOpacity: 0.92,
   uiFontSize: DEFAULT_UI_FONT_SIZE,
-  agentFocusSSHHostId: null,
-  agentFocusSSHLabel: '',
+  agentSurface: emptyAgentSurface(),
   notebookFocusNoteId: null,
   notebookActiveNoteId: null,
   setVersion: (version) => set({ version }),
@@ -150,11 +150,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ uiFontSize })
     void saveAppSetting(APP_SETTING_KEYS.uiFontSize, String(uiFontSize))
   },
-  setAgentFocusSSH: (agentFocusSSHHostId, label) =>
-    set({
-      agentFocusSSHHostId,
-      agentFocusSSHLabel: agentFocusSSHHostId ? (label ?? '') : '',
-    }),
+  setAgentSurface: (agentSurface) => set({ agentSurface }),
   setNotebookFocusNoteId: (notebookFocusNoteId) => set({ notebookFocusNoteId }),
   setNotebookActiveNoteId: (notebookActiveNoteId) => set({ notebookActiveNoteId }),
   addTab: (tab) => {

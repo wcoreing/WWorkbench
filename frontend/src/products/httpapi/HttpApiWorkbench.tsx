@@ -6,6 +6,7 @@ import { IconPlay } from '../../components/Icons'
 import { openAgentDraft, mentionHttpRequest } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { buildHttpApiSurface, briefList } from '../../stores/agentSurface'
 import {
   loadHttpApiWorkspace,
   scheduleHttpApiWorkspacePersist,
@@ -61,7 +62,7 @@ type ResponseTab = 'body' | 'cookie' | 'header' | 'actual'
 /** HttpApiWorkbench HTTP API 工作区（Apifox 式布局与交互）。 */
 export function HttpApiWorkbench() {
   const { t } = useI18n()
-  const { setStatusMessage } = useAppStore()
+  const { setStatusMessage, setAgentSurface, activeProduct } = useAppStore()
   const { hostRef, ratio, onResizeStart } = useHttpSplitResize()
 
   const [folders, setFolders] = useState<HTTPFolder[]>([])
@@ -233,6 +234,38 @@ export function HttpApiWorkbench() {
     () => buildUrlWithParams(urlBase.trim(), paramRows),
     [urlBase, paramRows],
   )
+
+  useEffect(() => {
+    if (activeProduct !== 'httpapi') return
+    const folder = folderId ? folders.find((f) => f.id === folderId) : undefined
+    const env = activeEnvId ? envs.find((e) => e.id === activeEnvId) : undefined
+    setAgentSurface(
+      buildHttpApiSurface({
+        requestId: activeId || undefined,
+        name,
+        method,
+        url: fullUrl(),
+        folderLabel: folder?.name,
+        envLabel: env?.name,
+        openTabsBrief: briefList(
+          items.slice(0, 12).map((i) => `${i.method} ${i.name}`),
+          12,
+        ),
+      }),
+    )
+  }, [
+    activeProduct,
+    activeId,
+    name,
+    method,
+    folderId,
+    folders,
+    activeEnvId,
+    envs,
+    items,
+    fullUrl,
+    setAgentSurface,
+  ])
 
   const buildExecuteReq = useCallback(
     () =>

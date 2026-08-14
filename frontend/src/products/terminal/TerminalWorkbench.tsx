@@ -9,6 +9,7 @@ import { IconDocker, IconLaptop, IconPlus, IconRefresh, IconServer, IconTerminal
 import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { buildTerminalSurface } from '../../stores/agentSurface'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadBool, payloadStr } from '../../workbench/commandPayload'
@@ -67,7 +68,7 @@ const MAX_PANES = 4
 /** 终端产品线工作区 */
 export function TerminalWorkbench() {
   const { t } = useI18n()
-  const { setStatusMessage, terminalOpacity, setTerminalOpacity, setActiveProduct, setAgentFocusSSH, activeProduct } =
+  const { setStatusMessage, terminalOpacity, setTerminalOpacity, setActiveProduct, setAgentSurface, activeProduct } =
     useAppStore()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [hosts, setHosts] = useState<ShellHost[]>([])
@@ -89,13 +90,27 @@ export function TerminalWorkbench() {
   const activePaneCount = activeTab ? countLeaves(activeTab.layout) : 0
 
   useEffect(() => {
-    if (activeTab?.kind === 'ssh' && activeTab.hostId) {
-      const host = hosts.find((h) => h.id === activeTab.hostId)
-      setAgentFocusSSH(activeTab.hostId, host?.name?.trim() || host?.host || activeTab.title)
+    if (activeProduct !== 'terminal') return
+    if (!activeTab) {
+      setAgentSurface(buildTerminalSurface({ kind: '', title: '' }))
       return
     }
-    setAgentFocusSSH(null)
-  }, [activeTab, hosts, setAgentFocusSSH])
+    const host = hosts.find((h) => h.id === activeTab.hostId)
+    const hostLabel = host?.name?.trim() || host?.host || activeTab.title
+    const openTabsBrief = tabs
+      .slice(0, 12)
+      .map((t) => `${t.title}(${t.kind})`)
+      .join(' · ')
+    setAgentSurface(
+      buildTerminalSurface({
+        kind: activeTab.kind,
+        title: activeTab.title,
+        hostId: activeTab.hostId,
+        hostLabel,
+        openTabsBrief,
+      }),
+    )
+  }, [activeProduct, activeTab, hosts, tabs, setAgentSurface])
 
   const sshHosts = hosts.filter((h) => h.kind === 'ssh').map((h) => shellHostAsSSH(h)!).filter(Boolean)
   const dockerHosts = hosts.filter((h) => h.kind === 'docker')

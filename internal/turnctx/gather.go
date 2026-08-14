@@ -8,27 +8,63 @@ import (
 	"WWorkbench/internal/model"
 )
 
-const maxSnapshotRunes = 4200
+const (
+	maxSnapshotRunes = 4200
+	maxTabsBrief     = 280
+	maxFocusLabel    = 120
+)
 
-// Gather 组装本轮 TurnSnapshot 文本（进 feedforward，不污染旧历史 content）。
+// Gather 组装本轮界面快照（Turn Transport）进 feedforward，与界面一致；细节用工具核实。
 func Gather(ctx model.AgentContextDO) string {
 	var b strings.Builder
-	b.WriteString("【本轮工作台现状】\n")
+	b.WriteString("## 工作台现状（Turn Transport · 与界面一致；细节用工具核实）\n")
 	if ctx.ActiveProduct != "" {
-		fmt.Fprintf(&b, "- 当前产品线: %s\n", ctx.ActiveProduct)
+		fmt.Fprintf(&b, "- **产品线**：`%s`\n", ctx.ActiveProduct)
 	}
-	if ctx.ConnectionID != "" {
-		fmt.Fprintf(&b, "- 数据库连接 connectionId=%s", ctx.ConnectionID)
-		if ctx.Database != "" {
-			fmt.Fprintf(&b, " database=%s", ctx.Database)
-		}
-		if ctx.SessionID != "" {
-			fmt.Fprintf(&b, " sessionId=%s", ctx.SessionID)
+
+	focus := strings.TrimSpace(ctx.FocusLabel)
+	if focus == "" {
+		focus = deriveFocusLabel(ctx)
+	}
+	if focus != "" {
+		fmt.Fprintf(&b, "- **界面焦点**：`%s`", trimBrief(focus, maxFocusLabel))
+		if k := strings.TrimSpace(ctx.FocusKind); k != "" {
+			fmt.Fprintf(&b, "（%s）", k)
 		}
 		b.WriteByte('\n')
+		b.WriteString("- 用户说「这个 / 这张表 / 这个库 / 这个主机 / 这个请求」时优先指界面焦点，勿空猜。\n")
+	} else {
+		b.WriteString("- **界面焦点**：无（以 @ 绑定、连接信息或工具查询为准）\n")
 	}
+
+	if ctx.ConnectionID != "" {
+		fmt.Fprintf(&b, "- **数据库连接** connectionId=`%s`", ctx.ConnectionID)
+		if ctx.Database != "" {
+			fmt.Fprintf(&b, " database=`%s`", ctx.Database)
+		}
+		if ctx.Table != "" {
+			fmt.Fprintf(&b, " table=`%s`", ctx.Table)
+		}
+		if ctx.SessionID != "" {
+			fmt.Fprintf(&b, " sessionId=`%s`", ctx.SessionID)
+		}
+		b.WriteByte('\n')
+	} else if ctx.SessionID != "" {
+		fmt.Fprintf(&b, "- **会话** sessionId=`%s`\n", ctx.SessionID)
+	}
+
+	if tb := strings.TrimSpace(ctx.TabTitle); tb != "" {
+		fmt.Fprintf(&b, "- **当前标签**：%s\n", trimBrief(tb, 80))
+	}
+	if ot := strings.TrimSpace(ctx.OpenTabsBrief); ot != "" {
+		fmt.Fprintf(&b, "- **中栏标签**：%s\n", trimBrief(ot, maxTabsBrief))
+	}
+	if sel := strings.TrimSpace(ctx.SelectionBrief); sel != "" {
+		fmt.Fprintf(&b, "- **树/资源选中**：%s\n", trimBrief(sel, 160))
+	}
+
 	if len(ctx.Mentions) > 0 {
-		b.WriteString("- 本轮 @ 绑定（优先使用，勿编造 ID）:\n")
+		b.WriteString("- **本轮 @ 绑定**（优先使用，勿编造 ID）:\n")
 		for _, m := range ctx.Mentions {
 			switch m.Kind {
 			case "ssh":
@@ -59,6 +95,30 @@ func Gather(ctx model.AgentContextDO) string {
 	return out
 }
 
+func deriveFocusLabel(ctx model.AgentContextDO) string {
+	db := strings.TrimSpace(ctx.Database)
+	table := strings.TrimSpace(ctx.Table)
+	if db != "" && table != "" {
+		return db + "." + table
+	}
+	if table != "" {
+		return table
+	}
+	if db != "" {
+		return db
+	}
+	return strings.TrimSpace(ctx.TabTitle)
+}
+
+func trimBrief(s string, max int) string {
+	s = strings.TrimSpace(s)
+	if max <= 0 || utf8.RuneCountInString(s) <= max {
+		return s
+	}
+	r := []rune(s)
+	return string(r[:max]) + "…"
+}
+
 // FocusRefFromContext 推导 sessions.focus_ref。
 func FocusRefFromContext(ctx model.AgentContextDO) string {
 	for _, m := range ctx.Mentions {
@@ -66,18 +126,30 @@ func FocusRefFromContext(ctx model.AgentContextDO) string {
 		case "ssh":
 			return "ssh:" + m.ID
 		case "database":
+			if ctx.Database != "" && ctx.Table != "" {
+				return "db:" + m.ID + "/" + ctx.Database + "." + ctx.Table
+			}
+			if ctx.Database != "" {
+				return "db:" + m.ID + "/" + ctx.Database
+			}
 			return "db:" + m.ID
 		case "docker":
 			return "docker:" + m.ID
 		}
 	}
 	if ctx.ConnectionID != "" {
+		if ctx.Database != "" && ctx.Table != "" {
+			return "db:" + ctx.ConnectionID + "/" + ctx.Database + "." + ctx.Table
+		}
+		if ctx.Database != "" {
+			return "db:" + ctx.ConnectionID + "/" + ctx.Database
+		}
 		return "db:" + ctx.ConnectionID
 	}
 	return ""
 }
 
-// SkillPathsFromContext 推导本轮 Skill 匹配路径（产品线 / @绑定）。
+// SkillPathsFromContext 推导本轮 Skill 匹配路径（产品线 / @绑定 / 焦点表）。
 func SkillPathsFromContext(ctx model.AgentContextDO) []string {
 	var out []string
 	seen := map[string]struct{}{}
@@ -94,6 +166,15 @@ func SkillPathsFromContext(ctx model.AgentContextDO) []string {
 	}
 	if ctx.ActiveProduct != "" {
 		add("product/" + ctx.ActiveProduct)
+	}
+	if k := strings.TrimSpace(ctx.FocusKind); k != "" {
+		add("focus/" + k)
+	}
+	if ctx.Database != "" {
+		add("database/" + ctx.Database)
+	}
+	if ctx.Table != "" {
+		add("table/" + ctx.Table)
 	}
 	for _, m := range ctx.Mentions {
 		if m.Kind != "" {

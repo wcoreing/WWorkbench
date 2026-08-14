@@ -6,6 +6,7 @@ import { IconPlus, IconRefresh } from '../../components/Icons'
 import { openAgentDraft, mentionLogSource } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { buildLogsSurface, briefList } from '../../stores/agentSurface'
 import { subscribeLogsChunks } from '../../api/logsEvents'
 import { loadLogsWorkspace, scheduleLogsWorkspacePersist } from '../../stores/logsWorkspacePersist'
 import { model } from '../../../wailsjs/go/models'
@@ -45,7 +46,7 @@ function canFetchLogConfig(
 /** LogCenterWorkbench 日志中心工作区。 */
 export function LogCenterWorkbench() {
   const { t } = useI18n()
-  const { setStatusMessage } = useAppStore()
+  const { setStatusMessage, setAgentSurface, activeProduct } = useAppStore()
   const [items, setItems] = useState<LogSource[]>([])
   const [activeId, setActiveId] = useState('')
   const [name, setName] = useState('')
@@ -72,6 +73,24 @@ export function LogCenterWorkbench() {
     () => items.find((i) => i.id === activeId) ?? null,
     [items, activeId],
   )
+
+  useEffect(() => {
+    if (activeProduct !== 'logs') return
+    setAgentSurface(
+      buildLogsSurface({
+        sourceId: activeId || undefined,
+        name: name || activeItem?.name,
+        sourceType,
+        path,
+        containerId,
+        followLive,
+        openTabsBrief: briefList(
+          items.map((i) => i.name),
+          12,
+        ),
+      }),
+    )
+  }, [activeProduct, activeId, name, activeItem, sourceType, path, containerId, followLive, items, setAgentSurface])
 
   const sendToAgent = useCallback(
     (item: LogSource) => {

@@ -15,9 +15,9 @@ import (
 	"WWorkbench/internal/turnctx"
 	"WWorkbench/internal/workbenchtools"
 
+	"github.com/cloudwego/eino/schema"
 	"github.com/google/uuid"
 	"github.com/wcoreing/ningharness/history"
-	"github.com/cloudwego/eino/schema"
 )
 
 // Emitter 向前端推送 Agent 事件。
@@ -175,7 +175,7 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 	}
 	_ = history.Append(root, p.ThreadID, history.Msg{
 		Role: "tool", ToolCallID: pendingID, TaskID: taskID,
-		Content: formatToolMessage(result, rid),
+		Content:         formatToolMessage(result, rid),
 		ResourceIDsJSON: history.EncodeResourceIDs([]int64{rid}),
 	})
 	end := map[string]interface{}{
@@ -394,7 +394,7 @@ func (r *Runner) systemPrompt() string {
 
 你是 WWorkbench 内置助手，只能通过提供的工具操作工作台。
 规则：
-1. 每轮用户消息可能带有「本轮工作台现状」前馈（含 @ 绑定与当前连接）；优先使用其中的 ID，不要编造。
+1. 每轮用户消息可能带有「本轮工作台现状」前馈（含界面焦点、中栏标签、@ 绑定与当前连接）；用户说「这个 / 这张表 / 这个库 / 这个主机 / 这个请求」时优先指界面焦点，不要空猜；优先使用其中的 ID，不要编造。
 2. 用户问「有哪些连接/链接」时，必须同时调用 list_connections（数据库）与 list_ssh_hosts（SSH），分开展示。
 3. 查看远程资源：优先 terminal.exec（只读诊断如 uptime、free -h、df -h）；交互式输出用 terminal.open。
 4. terminal.exec 禁止管道/重定向/rm 等危险命令；删容器等变更须用 Docker 相关能力并经用户确认。
