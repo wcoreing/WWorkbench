@@ -53,17 +53,17 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
-			Name: "terminal.open", Label: "打开终端", Risk: RiskSession,
+			Name: "terminal_open", Label: "打开终端", Risk: RiskSession,
 			Description: "打开本机或 SSH 终端并可选注入命令；输出在终端面板由用户查看",
 			DefaultEnabled: true,
 		},
 		{
-			Name: "terminal.exec", Label: "执行 Shell 命令（只读）", Risk: RiskRead,
+			Name: "terminal_exec", Label: "执行 Shell 命令（只读）", Risk: RiskRead,
 			Description: "无头执行单条诊断命令并返回输出（如 uptime、free -h、df -h）",
 			DefaultEnabled: true,
 		},
 		{
-			Name: "database.open", Label: "打开数据库工作台", Risk: RiskSession,
+			Name: "database_open", Label: "打开数据库工作台", Risk: RiskSession,
 			Description: "切换到数据库并连接，可选填入或执行 SQL",
 			DefaultEnabled: true,
 		},
@@ -93,7 +93,7 @@ func Catalog() []Item {
 			NeedsConfirm: true, DefaultEnabled: true,
 		},
 		{
-			Name: "notebook.append_content", Label: "写入笔记本", Risk: RiskWrite,
+			Name: "notebook_append_content", Label: "写入笔记本", Risk: RiskWrite,
 			Description: "将 Markdown 巡检/总结追加到笔记本（新建或追加指定笔记）",
 			DefaultEnabled: true,
 		},

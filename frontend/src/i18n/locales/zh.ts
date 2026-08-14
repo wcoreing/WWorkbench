@@ -41,11 +41,11 @@ export const zh: MessageTree = {
     threadMentions: '本对话已绑定',
     runbook: '一键巡检',
     runbookPrompt:
-      '请对当前绑定的 SSH 主机做只读巡检：用 terminal.exec 执行 uptime、free -h、df -h 等诊断命令，汇总内存/磁盘/负载结论，最后用 notebook.append_content 把 Markdown 报告写入笔记本。',
+      '请对当前绑定的 SSH 主机做只读巡检：用 terminal_exec 执行 uptime、free -h、df -h 等诊断命令，汇总内存/磁盘/负载结论，最后用 notebook_append_content 把 Markdown 报告写入笔记本。',
     runbookPromptDocker:
-      '请对当前绑定的 Docker 上下文做只读巡检：list_containers 查看容器状态，对异常或核心容器 get_container_logs，必要时 fetch_logs；汇总后用 notebook.append_content 写入 Markdown 报告。',
+      '请对当前绑定的 Docker 上下文做只读巡检：list_containers 查看容器状态，对异常或核心容器 get_container_logs，必要时 fetch_logs；汇总后用 notebook_append_content 写入 Markdown 报告。',
     runbookPromptContainer:
-      '请对当前绑定的容器主机做只读巡检：用 terminal.exec（hostId=该容器）执行 uptime、df -h、free -h 等，必要时再 list_containers / get_container_logs；汇总后 notebook.append_content 写入报告。',
+      '请对当前绑定的容器主机做只读巡检：用 terminal_exec（hostId=该容器）执行 uptime、df -h、free -h 等，必要时再 list_containers / get_container_logs；汇总后 notebook_append_content 写入报告。',
     saveToNotebook: '写入笔记本',
     savedToNotebook: '已保存到笔记本',
     appendedToNotebook: '已追加到当前笔记',
@@ -121,7 +121,7 @@ export const zh: MessageTree = {
     bailianHint: '百炼：在阿里云控制台创建 API Key，兼容 OpenAI 接口；模型可填 qwen-plus、qwen-turbo 等。',
     deepseekPreset: 'DeepSeek',
     deepseekPresetApplied: '已应用 DeepSeek 端点，请填写 API Key 后保存',
-    deepseekHint: 'DeepSeek：在 platform.deepseek.com 创建 API Key；模型可填 deepseek-chat、deepseek-reasoner。',
+    deepseekHint: 'DeepSeek：在 platform.deepseek.com 创建 API Key；默认 deepseek-v4-pro，也可选 deepseek-v4-flash。',
     minimaxPreset: 'MiniMax',
     minimaxPresetApplied: '已应用 MiniMax 端点，请填写 API Key 后保存',
     minimaxHint: 'MiniMax：国内站 api.minimaxi.com；国际站可改为 api.minimax.io/v1。模型可填 MiniMax-M2.5、MiniMax-M3。',
@@ -133,6 +133,7 @@ export const zh: MessageTree = {
     testConnection: '测试连接',
     testing: '测试中…',
     needApiKey: '请先填写 API Key',
+    sendFailed: '发送失败',
     resize: '拖动调整宽度',
     mcpTitle: 'MCP HTTP',
     mcpEnabled: '启用 MCP HTTP（供 Cursor 等外置客户端）',

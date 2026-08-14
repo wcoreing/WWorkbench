@@ -336,7 +336,14 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       if (res.threadId) setThreadId(res.threadId)
     } catch (e) {
       setBusy(false)
-      setStatusMessage((e as Error).message)
+      const msg = (e as Error).message || t('agent.sendFailed')
+      appendLine({ id: nextAgentLineId(), role: 'system', content: msg })
+      setStatusMessage(msg)
+      if (/API Key|模型名称|AI 设置|api key|model/i.test(msg)) {
+        setConfigError(msg)
+        setView('config')
+      }
+      throw e
     }
   }
 
@@ -592,11 +599,12 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
                     choiceDisabled={busy || !isLastAssistant}
                     onChoiceSend={
                       line.role === 'assistant'
-                        ? (text) =>
+                        ? (text) => {
                             void send(
                               text,
                               mergeMentions(threadMentions, autoMentions),
-                            )
+                            ).catch(() => {})
+                          }
                         : undefined
                     }
                   />
@@ -659,7 +667,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
             threadId={threadId}
             autoMentions={autoMentions}
             threadMentions={threadMentions}
-            onSend={(text, mentions) => void send(text, mentions)}
+            onSend={(text, mentions) => send(text, mentions)}
             onStop={() => void stopGeneration()}
           />
         </div>

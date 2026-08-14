@@ -28,6 +28,8 @@ const PRESETS: { id: 'bailian' | 'deepseek' | 'minimax'; labelKey: string }[] = 
   { id: 'minimax', labelKey: 'agent.minimaxPreset' },
 ]
 
+const DEEPSEEK_MODELS = ['deepseek-v4-pro', 'deepseek-v4-flash'] as const
+
 /** providerLabel 服务商标签文案。 */
 export function providerLabel(provider: string, t: (key: string) => string): string {
   switch (provider) {
@@ -60,7 +62,7 @@ function providerHint(provider: string, t: (key: string) => string): string {
 function modelPlaceholder(provider: string): string {
   switch (provider) {
     case 'deepseek':
-      return 'deepseek-chat / deepseek-reasoner'
+      return 'deepseek-v4-pro'
     case 'minimax':
       return 'MiniMax-M2.5 / MiniMax-M3'
     case 'bailian':
@@ -68,6 +70,13 @@ function modelPlaceholder(provider: string): string {
     default:
       return 'model-id'
   }
+}
+
+/** deepseekModelValue 规范化 DeepSeek 模型选择值。 */
+function deepseekModelValue(modelName: string): string {
+  return (DEEPSEEK_MODELS as readonly string[]).includes(modelName)
+    ? modelName
+    : DEEPSEEK_MODELS[0]
 }
 
 async function copyText(text: string) {
@@ -175,12 +184,26 @@ export function AgentConfigView({
         placeholder={hasKey ? t('agent.apiKeyKeep') : t('agent.apiKeyPlaceholder')}
       />
       <label className="wn-label">{t('agent.model')}</label>
-      <input
-        className="wn-input"
-        value={modelName}
-        onChange={(e) => setModelName(e.target.value)}
-        placeholder={modelPlaceholder(provider)}
-      />
+      {provider === 'deepseek' ? (
+        <select
+          className="wn-select"
+          value={deepseekModelValue(modelName)}
+          onChange={(e) => setModelName(e.target.value)}
+        >
+          {DEEPSEEK_MODELS.map((id) => (
+            <option key={id} value={id}>
+              {id}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          className="wn-input"
+          value={modelName}
+          onChange={(e) => setModelName(e.target.value)}
+          placeholder={modelPlaceholder(provider)}
+        />
+      )}
       <p className="agent-settings-hint">{providerHint(provider, t)}</p>
       <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" disabled={saving} onClick={onSave}>
         {saving ? t('common.saving') : t('agent.saveConfig')}
@@ -248,10 +271,12 @@ export function buildAPIConfigSave(
   modelName: string,
   provider: string,
 ) {
+  const resolvedModel =
+    provider === 'deepseek' ? deepseekModelValue(modelName.trim()) : modelName.trim()
   return model.AgentAPIConfigSaveDO.createFrom({
     apiBase: apiBase.trim(),
     apiKey: apiKey.trim(),
-    model: modelName.trim(),
+    model: resolvedModel,
     provider,
   })
 }

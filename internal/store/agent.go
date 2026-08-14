@@ -31,6 +31,9 @@ func (s *Store) GetAgentSettings() model.AgentSettingsDO {
 		modelName = BailianDefaultModel
 	}
 	provider = detectProvider(base, provider)
+	if provider == AgentProviderDeepSeek {
+		modelName = NormalizeDeepSeekModel(modelName)
+	}
 	masked := ""
 	if key != "" {
 		if len(key) <= 4 {
@@ -99,6 +102,14 @@ func (s *Store) SaveAgentAPIConfig(in model.AgentAPIConfigSaveDO) error {
 	if strings.TrimSpace(in.Model) == "" {
 		return errno.New(errno.CodeInvalidArg, "请填写模型名称", "")
 	}
+	provider := strings.TrimSpace(in.Provider)
+	if provider == "" {
+		provider = detectProvider(base, "")
+	}
+	modelName := strings.TrimSpace(in.Model)
+	if provider == AgentProviderDeepSeek {
+		modelName = NormalizeDeepSeekModel(modelName)
+	}
 	if err := s.SetAppSetting(AgentKeyAPIBase, base); err != nil {
 		return err
 	}
@@ -107,11 +118,11 @@ func (s *Store) SaveAgentAPIConfig(in model.AgentAPIConfigSaveDO) error {
 			return err
 		}
 	}
-	if err := s.SetAppSetting(AgentKeyModel, strings.TrimSpace(in.Model)); err != nil {
+	if err := s.SetAppSetting(AgentKeyModel, modelName); err != nil {
 		return err
 	}
-	if in.Provider != "" {
-		if err := s.SetAppSetting(AgentKeyProvider, in.Provider); err != nil {
+	if provider != "" {
+		if err := s.SetAppSetting(AgentKeyProvider, provider); err != nil {
 			return err
 		}
 	}

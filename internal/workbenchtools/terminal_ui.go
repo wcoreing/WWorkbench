@@ -74,7 +74,7 @@ func resolveSSHHost(d *Deps, hostID, hostOrName string) (*model.SSHHostDO, []mod
 	}
 }
 
-// toolOpenTerminal 打开终端并可选注入命令（UI 联动 terminal.open）。
+// toolOpenTerminal 打开终端并可选注入命令（UI 联动 terminal_open）。
 func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	var in openTerminalArgs
 	if err := json.Unmarshal(raw, &in); err != nil {

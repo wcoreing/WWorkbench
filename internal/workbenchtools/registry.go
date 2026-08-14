@@ -63,9 +63,13 @@ func (r *Registry) Deps() *Deps {
 	return r.deps
 }
 
-// toolAliases 兼容旧工具名（已统一到 workbench.Cap*）。
+// toolAliases 兼容旧工具名。
 var toolAliases = map[string]string{
-	"open_terminal": workbench.CapOpenTerminal,
+	"open_terminal":             workbench.CapOpenTerminal,
+	"terminal.open":             workbench.CapOpenTerminal,
+	"terminal.exec":             workbench.CapTerminalExec,
+	"database.open":             workbench.CapDatabaseOpen,
+	"notebook.append_content":   workbench.CapNotebookAppend,
 }
 
 // Invoke 调用指定工具。
@@ -175,7 +179,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapOpenTerminal,
-		Description: "打开本机或 SSH 终端并可选注入命令（用户在终端面板查看，不返回输出）。需要直接拿到命令结果时用 terminal.exec。",
+		Description: "打开本机或 SSH 终端并可选注入命令（用户在终端面板查看，不返回输出）。需要直接拿到命令结果时用 terminal_exec。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -254,7 +258,7 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolExecuteSQL,
 	})
 	r.add(ToolDef{
-		Name:        "notebook.append_content",
+		Name:        workbench.CapNotebookAppend,
 		Description: "将 Markdown 内容写入笔记本：新建笔记或追加到 appendToNoteId。巡检/总结后应调用此工具留存报告。",
 		Parameters: map[string]interface{}{
 			"type": "object",

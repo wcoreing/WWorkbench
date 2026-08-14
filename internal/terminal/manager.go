@@ -10,7 +10,6 @@ import (
 	"WWorkbench/internal/tunnel"
 
 	"github.com/google/uuid"
-	"github.com/creack/pty"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -203,13 +202,10 @@ func (m *Manager) Resize(sessionID string, cols, rows int) error {
 		rows = 24
 	}
 	if s.Kind == kindLocal {
-		if s.localPTY == nil {
+		if s.localPty == nil {
 			return errno.New(errno.CodeSessionClosed, "终端已关闭", sessionID)
 		}
-		return pty.Setsize(s.localPTY, &pty.Winsize{
-			Rows: uint16(rows),
-			Cols: uint16(cols),
-		})
+		return s.localPty.Resize(cols, rows)
 	}
 	if s.Kind == kindDocker {
 		if s.dockerExec == nil || s.dockerMgr == nil {

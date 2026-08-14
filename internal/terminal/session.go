@@ -2,11 +2,10 @@ package terminal
 
 import (
 	"io"
-	"os"
-	"os/exec"
 
 	"WWorkbench/internal/docker"
 
+	gopty "github.com/aymanbagabas/go-pty"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -27,8 +26,8 @@ type Session struct {
 	stdin      io.Writer
 	client     *ssh.Client
 	sshSess    *ssh.Session
-	localCmd   *exec.Cmd
-	localPTY   *os.File
+	localCmd   *gopty.Cmd
+	localPty   gopty.Pty
 	dockerExec *docker.ExecSession
 	dockerMgr  *docker.Manager
 }
@@ -44,8 +43,9 @@ func (s *Session) cleanup() {
 	if s.localCmd != nil && s.localCmd.Process != nil {
 		_ = s.localCmd.Process.Kill()
 	}
-	if s.localPTY != nil {
-		_ = s.localPTY.Close()
+	if s.localPty != nil {
+		_ = s.localPty.Close()
+		s.localPty = nil
 	}
 	if s.dockerExec != nil {
 		s.dockerExec.Close()

@@ -7,6 +7,7 @@ import (
 	"WWorkbench/internal/agentcap"
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/workbench"
 )
 
 // normalizeAgentAPIBase 规范化 LLM API 根地址。
@@ -37,7 +38,21 @@ const BailianDefaultModel = "qwen-plus"
 const DeepSeekAPIBase = "https://api.deepseek.com/v1"
 
 // DeepSeekDefaultModel DeepSeek 默认模型。
-const DeepSeekDefaultModel = "deepseek-chat"
+const DeepSeekDefaultModel = "deepseek-v4-pro"
+
+// DeepSeekModels DeepSeek 可选模型。
+var DeepSeekModels = []string{"deepseek-v4-pro", "deepseek-v4-flash"}
+
+// NormalizeDeepSeekModel 将 DeepSeek 模型规范为可选列表中的值。
+func NormalizeDeepSeekModel(model string) string {
+	m := strings.TrimSpace(model)
+	for _, id := range DeepSeekModels {
+		if m == id {
+			return m
+		}
+	}
+	return DeepSeekDefaultModel
+}
 
 // MiniMaxAPIBase MiniMax 国内站 OpenAI 兼容地址。
 const MiniMaxAPIBase = "https://api.minimaxi.com/v1"
@@ -77,10 +92,17 @@ func (s *Store) GetToolPermissions() map[string]bool {
 		return agentcap.DefaultPermissions()
 	}
 	def := agentcap.DefaultPermissions()
+	legacy := map[string]string{
+		"open_terminal":           workbench.CapOpenTerminal,
+		"terminal.open":           workbench.CapOpenTerminal,
+		"terminal.exec":           workbench.CapTerminalExec,
+		"database.open":           workbench.CapDatabaseOpen,
+		"notebook.append_content": workbench.CapNotebookAppend,
+	}
 	for name, on := range m {
-		if name == "open_terminal" {
-			if _, ok := m["terminal.open"]; !ok {
-				def["terminal.open"] = on
+		if mapped, ok := legacy[name]; ok {
+			if _, exists := m[mapped]; !exists {
+				def[mapped] = on
 			}
 			continue
 		}

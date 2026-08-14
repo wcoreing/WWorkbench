@@ -2,7 +2,6 @@ package terminal
 
 import (
 	"os"
-	"os/exec"
 	"os/user"
 	"runtime"
 
@@ -10,7 +9,7 @@ import (
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
 
-	"github.com/creack/pty"
+	gopty "github.com/aymanbagabas/go-pty"
 	"github.com/google/uuid"
 )
 
@@ -22,23 +21,29 @@ func (m *Manager) OpenLocal(cols, rows int) (*model.TerminalSessionInfoDO, error
 	if rows <= 0 {
 		rows = 24
 	}
+
+	ptmx, err := gopty.New()
+	if err != nil {
+		return nil, errno.Wrap(errno.CodeConnFailed, "启动本机 Shell 失败", err)
+	}
+	if err := ptmx.Resize(cols, rows); err != nil {
+		_ = ptmx.Close()
+		return nil, errno.Wrap(errno.CodeConnFailed, "设置终端尺寸失败", err)
+	}
+
 	shell := defaultShell()
-	var cmd *exec.Cmd
+	var cmd *gopty.Cmd
 	if runtime.GOOS != "windows" {
-		cmd = exec.Command(shell, "-lc", environment.LocalTerminalInitScript(shell))
+		cmd = ptmx.Command(shell, "-lc", environment.LocalTerminalInitScript(shell))
 	} else {
-		cmd = exec.Command(shell)
+		cmd = ptmx.Command(shell)
 	}
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
 		cmd.Dir = home
 	}
-
-	ptyFile, err := pty.StartWithSize(cmd, &pty.Winsize{
-		Rows: uint16(rows),
-		Cols: uint16(cols),
-	})
-	if err != nil {
+	if err := cmd.Start(); err != nil {
+		_ = ptmx.Close()
 		return nil, errno.Wrap(errno.CodeConnFailed, "启动本机 Shell 失败", err)
 	}
 
@@ -47,11 +52,11 @@ func (m *Manager) OpenLocal(cols, rows int) (*model.TerminalSessionInfoDO, error
 		ID:       sid,
 		Kind:     kindLocal,
 		Title:    localTitle(),
-		stdin:    ptyFile,
+		stdin:    ptmx,
 		localCmd: cmd,
-		localPTY: ptyFile,
+		localPty: ptmx,
 	}
-	m.registerSession(ts, ptyFile, func() { m.finish(sid) })
+	m.registerSession(ts, ptmx, func() { m.finish(sid) })
 
 	return &model.TerminalSessionInfoDO{
 		SessionID: sid,

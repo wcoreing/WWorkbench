@@ -17,7 +17,7 @@ interface Props {
   threadId: string
   autoMentions: AgentMention[]
   threadMentions: AgentMention[]
-  onSend: (text: string, mentions: AgentMention[]) => void
+  onSend: (text: string, mentions: AgentMention[]) => void | Promise<void>
   onStop: () => void
 }
 
@@ -186,13 +186,22 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
     )
   }, [autoMentions, mentions])
 
+  const flushSend = (text: string, nextMentions: AgentMention[]) => {
+    void Promise.resolve(onSend(text, nextMentions))
+      .then(() => {
+        setInput('')
+        setMentions([])
+        setMenuOpen(false)
+      })
+      .catch(() => {
+        /* 发送失败保留输入，错误由上层展示 */
+      })
+  }
+
   const send = () => {
     const text = input.trim()
     if (!text || busy) return
-    onSend(text, mergeMentions(mentions, threadMentions))
-    setInput('')
-    setMentions([])
-    setMenuOpen(false)
+    flushSend(text, mergeMentions(mentions, threadMentions))
   }
 
   useEffect(() => {
@@ -340,9 +349,7 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
                     ? t('agent.runbookPromptContainer')
                     : t('agent.runbookPromptDocker')
                   : t('agent.runbookPrompt')
-              onSend(prompt, mergeMentions(mentions, threadMentions))
-              setInput('')
-              setMenuOpen(false)
+              flushSend(prompt, mergeMentions(mentions, threadMentions))
             }}
           >
             {t('agent.runbook')}

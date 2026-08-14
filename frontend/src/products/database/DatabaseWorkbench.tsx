@@ -344,7 +344,7 @@ export function DatabaseWorkbench() {
     [activeConnectionId, connect, setStatusMessage, t],
   )
 
-  /** onDatabaseCommand 处理 database.open 命令。 */
+  /** onDatabaseCommand 处理 database_open 命令。 */
   const onDatabaseCommand = useCallback(
     (cmd: { payload: Record<string, unknown> }) => {
       const connectionId = payloadStr(cmd.payload, 'connectionId')

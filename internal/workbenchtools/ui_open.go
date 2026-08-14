@@ -14,12 +14,12 @@ type databaseOpenArgs struct {
 	ConnectionDraft map[string]interface{} `json:"connectionDraft"`
 }
 
-// toolTerminalOpen 打开终端（UI 联动 terminal.open）。
+// toolTerminalOpen 打开终端（UI 联动 terminal_open）。
 func toolTerminalOpen(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	return toolOpenTerminal(ctx, d, raw)
 }
 
-// toolDatabaseOpen 打开数据库工作台并可选填入 SQL（UI 联动 database.open）。
+// toolDatabaseOpen 打开数据库工作台并可选填入 SQL（UI 联动 database_open）。
 func toolDatabaseOpen(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	var in databaseOpenArgs
 	if err := json.Unmarshal(raw, &in); err != nil {

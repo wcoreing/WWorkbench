@@ -41,11 +41,11 @@ export const en: MessageTree = {
     threadMentions: 'Bound in this chat',
     runbook: 'Runbook',
     runbookPrompt:
-      'Run a read-only health check on the bound SSH host: use terminal.exec for uptime, free -h, df -h, summarize memory/disk/load, then save a Markdown report with notebook.append_content.',
+      'Run a read-only health check on the bound SSH host: use terminal_exec for uptime, free -h, df -h, summarize memory/disk/load, then save a Markdown report with notebook_append_content.',
     runbookPromptDocker:
-      'Run a read-only Docker check on the bound context: list_containers, get_container_logs for key/unhealthy containers, fetch_logs if needed; summarize and save via notebook.append_content.',
+      'Run a read-only Docker check on the bound context: list_containers, get_container_logs for key/unhealthy containers, fetch_logs if needed; summarize and save via notebook_append_content.',
     runbookPromptContainer:
-      'Run a read-only check on the bound container host: terminal.exec (that hostId) for uptime/df/free, optionally list_containers / get_container_logs; summarize and notebook.append_content.',
+      'Run a read-only check on the bound container host: terminal_exec (that hostId) for uptime/df/free, optionally list_containers / get_container_logs; summarize and notebook_append_content.',
     saveToNotebook: 'Save to notebook',
     savedToNotebook: 'Saved to notebook',
     appendedToNotebook: 'Appended to current note',
@@ -121,7 +121,7 @@ export const en: MessageTree = {
     bailianHint: 'Bailian: use DashScope API key; models e.g. qwen-plus, qwen-turbo.',
     deepseekPreset: 'DeepSeek',
     deepseekPresetApplied: 'DeepSeek endpoint applied; save your API key',
-    deepseekHint: 'DeepSeek: create a key at platform.deepseek.com; models e.g. deepseek-chat, deepseek-reasoner.',
+    deepseekHint: 'DeepSeek: create a key at platform.deepseek.com; default deepseek-v4-pro, or deepseek-v4-flash.',
     minimaxPreset: 'MiniMax',
     minimaxPresetApplied: 'MiniMax endpoint applied; save your API key',
     minimaxHint: 'MiniMax: China api.minimaxi.com; international api.minimax.io/v1. Models e.g. MiniMax-M2.5, MiniMax-M3.',
@@ -133,6 +133,7 @@ export const en: MessageTree = {
     testConnection: 'Test connection',
     testing: 'Testing…',
     needApiKey: 'Enter API key first',
+    sendFailed: 'Failed to send',
     resize: 'Drag to resize',
     mcpTitle: 'MCP HTTP',
     mcpEnabled: 'Enable MCP HTTP (for Cursor and other clients)',
