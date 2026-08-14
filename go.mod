@@ -14,7 +14,7 @@ require (
 	github.com/pkg/sftp v1.13.10
 	github.com/redis/go-redis/v9 v9.20.0
 	github.com/wailsapp/wails/v2 v2.12.0
-	github.com/wcoreing/ningharness v0.0.0-00010101000000-000000000000
+	github.com/wcoreing/ningharness v0.0.0-20260814133634-d4b29b201457
 	github.com/xuri/excelize/v2 v2.10.1
 	golang.org/x/crypto v0.51.0
 	modernc.org/sqlite v1.54.0
@@ -136,5 +136,3 @@ require (
 )
 
 // replace github.com/wailsapp/wails/v2 v2.12.0 => /Users/weining/go/pkg/mod
-
-replace github.com/wcoreing/ningharness => ../ningharness
