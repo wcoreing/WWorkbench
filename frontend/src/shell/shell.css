@@ -9,6 +9,26 @@
   zoom: var(--ui-zoom, 1);
 }
 
+/* 终端产品：外壳透明，仅终端工作区半透明透出桌面 */
+.workbench-shell.is-terminal-glass {
+  background: transparent;
+}
+
+.workbench-shell.is-terminal-glass .workbench-content,
+.workbench-shell.is-terminal-glass .product-view-host,
+.workbench-shell.is-terminal-glass .terminal-workbench,
+.workbench-shell.is-terminal-glass .terminal-workbench .product-body,
+.workbench-shell.is-terminal-glass .terminal-workbench .app-main,
+.workbench-shell.is-terminal-glass .terminal-pane-wrap,
+.workbench-shell.is-terminal-glass .terminal-split-node,
+.workbench-shell.is-terminal-glass .terminal-split-pane {
+  background: transparent;
+}
+
+.workbench-shell.is-terminal-glass .terminal-workspace.workspace {
+  background: transparent;
+}
+
 .workbench-body {
   display: flex;
   flex: 1;

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"log"
 
@@ -26,6 +27,8 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/options/mac"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
 //go:embed all:frontend/dist
@@ -76,9 +79,21 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		BackgroundColour: &options.RGBA{R: 30, G: 30, B: 30, A: 1},
-		OnStartup:        api.Startup,
-		OnShutdown:       api.Shutdown,
+		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
+		Mac: &mac.Options{
+			// 只要透明 WebView；不要 WindowIsTranslucent（会铺暗色 vibrancy，看起来像死黑）
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  false,
+		},
+		Windows: &windows.Options{
+			WebviewIsTransparent: true,
+			WindowIsTranslucent:  true,
+		},
+		OnStartup: api.Startup,
+		OnDomReady: func(ctx context.Context) {
+			makeWindowTransparent()
+		},
+		OnShutdown: api.Shutdown,
 		Bind: []interface{}{
 			api,
 		},

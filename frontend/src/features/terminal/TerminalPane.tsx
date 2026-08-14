@@ -12,11 +12,13 @@ interface Props {
   opacity: number
 }
 
-/** 根据透明度生成终端背景色。 */
+/** 终端背景：不透明度越低越能透出桌面（仅终端区）。 */
 export function terminalBackground(opacity: number): string {
-  const a = Math.min(1, Math.max(0.4, opacity))
-  return `rgba(12, 12, 14, ${a.toFixed(3)})`
+  const a = Math.min(1, Math.max(0.15, opacity))
+  return `rgba(0, 0, 0, ${a.toFixed(3)})`
 }
+
+const XTERM_CLEAR_BG = '#00000000'
 
 /** 在容器可见且有尺寸时调整 xterm，避免 hidden/销毁后报错。 */
 function safeFit(fit: FitAddon, term: Terminal, el: HTMLElement): boolean {
@@ -47,7 +49,8 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
       fontFamily: 'ui-monospace, SF Mono, Menlo, Consolas, monospace',
       allowTransparency: true,
       theme: {
-        background: terminalBackground(opacity),
+        // 画布透明，由宿主 div 承担半透明底，避免双层 alpha 叠死
+        background: XTERM_CLEAR_BG,
         foreground: '#d4d4dc',
         cursor: '#d4d4dc',
       },
@@ -109,11 +112,14 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
     if (!el || !term) return
     const bg = terminalBackground(opacity)
     el.style.backgroundColor = bg
-    term.options.theme = {
-      ...term.options.theme,
-      background: bg,
+    // 保持画布透明，只改宿主底色
+    if (term.options.theme?.background !== XTERM_CLEAR_BG) {
+      term.options.theme = {
+        ...term.options.theme,
+        background: XTERM_CLEAR_BG,
+      }
+      term.refresh(0, term.rows - 1)
     }
-    term.refresh(0, term.rows - 1)
   }, [opacity])
 
   useEffect(() => {

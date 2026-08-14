@@ -86,7 +86,7 @@ export function AppShell() {
   }
 
   return (
-    <div className="workbench-shell">
+    <div className={`workbench-shell${activeProduct === 'terminal' ? ' is-terminal-glass' : ''}`}>
       <ShellChrome agentOpen={agentOpen} onToggleAgent={toggleAgent} />
       <div className={`workbench-body${agentOpen ? ' agent-open' : ''}`}>
         <ProductRail />

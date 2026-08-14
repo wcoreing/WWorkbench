@@ -50,7 +50,7 @@ function parsePreferences(settings: Record<string, string>): AppPreferences {
     theme,
     locale,
     activeProduct,
-    terminalOpacity: Number.isFinite(opacity) ? Math.min(1, Math.max(0.4, opacity)) : 0.92,
+    terminalOpacity: Number.isFinite(opacity) ? Math.min(1, Math.max(0.15, opacity)) : 0.92,
     uiFontSize: Number.isFinite(fontRaw) ? clampUiFontSize(fontRaw) : DEFAULT_UI_FONT_SIZE,
     lastConnectionId: settings[APP_SETTING_KEYS.lastConnectionId] || null,
     lastDockerContextId: settings[APP_SETTING_KEYS.lastDockerContextId] || null,

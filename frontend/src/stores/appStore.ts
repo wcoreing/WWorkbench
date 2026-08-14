@@ -141,7 +141,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setActiveTabId: (activeTabId) => set({ activeTabId }),
   setStatusMessage: (statusMessage) => set({ statusMessage }),
   setTerminalOpacity: (terminalOpacity) => {
-    const v = Math.min(1, Math.max(0.4, terminalOpacity))
+    const v = Math.min(1, Math.max(0.15, terminalOpacity))
     set({ terminalOpacity: v })
     void saveAppSetting(APP_SETTING_KEYS.terminalOpacity, String(v))
   },

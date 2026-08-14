@@ -737,7 +737,7 @@ export function TerminalWorkbench() {
           <span>{t('terminal.opacity')}</span>
           <input
             type="range"
-            min={40}
+            min={15}
             max={100}
             value={Math.round(terminalOpacity * 100)}
             onChange={(e) => setTerminalOpacity(Number(e.target.value) / 100)}
@@ -904,12 +904,12 @@ export function TerminalWorkbench() {
               ))}
             </div>
           </div>
-          <div
-            className="workspace terminal-workspace"
-            style={{ backgroundColor: terminalBackground(terminalOpacity) }}
-          >
+          <div className="workspace terminal-workspace">
             {tabs.length === 0 && (
-              <div className="pane-empty terminal-connect-empty">
+              <div
+                className="pane-empty terminal-connect-empty"
+                style={{ backgroundColor: terminalBackground(terminalOpacity) }}
+              >
                 <span>{t('terminal.emptyWorkspace')}</span>
               </div>
             )}

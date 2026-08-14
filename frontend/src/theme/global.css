@@ -20,7 +20,8 @@ body,
   font-family: var(--font-sans);
   font-size: 12px;
   line-height: 1.45;
-  background: var(--color-bg);
+  /* 窗口本身透明；非终端产品由 .workbench-shell 铺实底 */
+  background: transparent;
   color: var(--color-text);
 }
 

@@ -671,7 +671,7 @@ export const en: MessageTree = {
     splitColTitle: 'Split horizontally (stacked)',
     closeSplitTitle: 'Close current split',
     opacity: 'Opacity',
-    opacityTitle: 'Terminal background opacity',
+    opacityTitle: 'Terminal background opacity (terminal area only)',
     sessionCount: '{count} sessions',
     emptyWorkspace: 'Open a local terminal or select an SSH host',
     ctxNotebook: 'Add to notebook',
