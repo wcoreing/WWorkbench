@@ -1250,7 +1250,7 @@
   width: 22px;
   height: 22px;
   border-radius: 5px;
-  object-fit: cover;
+  object-fit: contain;
   flex-shrink: 0;
 }
 
