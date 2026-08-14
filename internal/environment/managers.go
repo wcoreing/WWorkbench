@@ -222,18 +222,74 @@ func installBrewManager(emit func(string)) error {
 }
 
 // installSdkmanManager 安装 sdkman（Java 无 brew formula，保留官方脚本）。
+// macOS 自带 Bash 3.2，而 sdkman 安装脚本要求 Bash ≥4，须先用 Homebrew bash。
 func installSdkmanManager(emit func(string)) error {
 	if hasSdkman() {
 		emit("sdkman 已存在，跳过")
 		return nil
 	}
-	emit("下载并安装 sdkman…")
-	_, err := runLoginShellStream(
-		`curl -fsSL https://get.sdkman.io | bash`,
-		15*time.Minute,
-		emit,
-	)
-	return err
+	bash, err := ensureBash4(emit)
+	if err != nil {
+		return err
+	}
+	emit("下载并安装 sdkman（使用 " + bash + "）…")
+	script := `set -euo pipefail
+tmp="$(mktemp -t sdkman-install.XXXXXX)"
+trap 'rm -f "$tmp"' EXIT
+curl -fsSL https://get.sdkman.io -o "$tmp"
+"` + shellQuotePath(bash) + `" "$tmp"`
+	_, err = runLoginShellStream(script, 15*time.Minute, emit)
+	if err != nil {
+		emit("若仍失败，可在终端执行: brew install bash && curl -fsSL https://get.sdkman.io | $(brew --prefix)/bin/bash")
+		return err
+	}
+	if !hasSdkman() {
+		return errno.New(errno.CodeConnFailed, "sdkman 安装脚本已执行，但未检测到 ~/.sdkman；请检查终端日志或代理", "")
+	}
+	return nil
+}
+
+// ensureBash4 返回 Bash ≥4 路径；缺失时尝试 brew install bash。
+func ensureBash4(emit func(string)) (string, error) {
+	if p := modernBashPath(); p != "" {
+		return p, nil
+	}
+	if !hasBrew() {
+		return "", errno.New(errno.CodeInvalidArg,
+			"sdkman 需要 Bash 4+（macOS 自带为 3.2）。请先安装 Homebrew，再执行: brew install bash", "")
+	}
+	emit("sdkman 需要 Bash 4+，正在 brew install bash…")
+	_, err := runLoginShellStream(`brew install bash`, 20*time.Minute, emit)
+	if err != nil {
+		return "", errno.Wrap(errno.CodeConnFailed,
+			"brew install bash 失败（请检查 Homebrew 目录权限，或终端执行: brew install bash）", err)
+	}
+	if p := modernBashPath(); p != "" {
+		return p, nil
+	}
+	return "", errno.New(errno.CodeConnFailed,
+		"已尝试 brew install bash，仍未找到 Bash 4+（预期路径: /opt/homebrew/bin/bash 或 /usr/local/bin/bash）", "")
+}
+
+// modernBashPath 返回已安装的 Bash ≥4 可执行文件。
+func modernBashPath() string {
+	for _, p := range []string{"/opt/homebrew/bin/bash", "/usr/local/bin/bash"} {
+		if !fileExists(p) {
+			continue
+		}
+		out := strings.TrimSpace(runLoginShellOK(`"` + shellQuotePath(p) + `" -c 'echo ${BASH_VERSINFO[0]}'`))
+		major := 0
+		for _, c := range out {
+			if c < '0' || c > '9' {
+				break
+			}
+			major = major*10 + int(c-'0')
+		}
+		if major >= 4 {
+			return p
+		}
+	}
+	return ""
 }
 
 // shellProfilePath 返回当前用户 shell 配置文件路径。
