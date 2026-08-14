@@ -164,6 +164,12 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 		result = workbenchtools.ExecuteSQLConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
 	case "execute_http":
 		result = workbenchtools.ExecuteHTTPConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
+	case "start_container":
+		result = workbenchtools.StartContainerConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
+	case "stop_container":
+		result = workbenchtools.StopContainerConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
+	case "remove_container":
+		result = workbenchtools.RemoveContainerConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
 	default:
 		result = r.harness.CallTool(r.appCtx, p.ToolName, json.RawMessage(p.ArgsJSON))
 	}
@@ -232,8 +238,13 @@ func (r *Runner) ListMessages(threadID string) []model.AgentMessageDO {
 		if !history.IsUIRole(m) {
 			continue
 		}
+		content := history.ContentForUI(m.Content)
+		// 兼容旧 ningharness：确认续跑曾落盘 "(context)" 占位。
+		if m.Role == "user" && (content == "" || content == "(context)") {
+			continue
+		}
 		out = append(out, model.AgentMessageDO{
-			Role: m.Role, Content: history.ContentForUI(m.Content), Seq: m.Seq,
+			Role: m.Role, Content: content, Seq: m.Seq,
 		})
 	}
 	return out
@@ -397,12 +408,12 @@ func (r *Runner) systemPrompt() string {
 1. 每轮用户消息可能带有「本轮工作台现状」前馈（含界面焦点、中栏标签、@ 绑定与当前连接）；用户说「这个 / 这张表 / 这个库 / 这个主机 / 这个请求」时优先指界面焦点，不要空猜；优先使用其中的 ID，不要编造。
 2. 用户问「有哪些连接/链接」时，必须同时调用 list_connections（数据库）与 list_ssh_hosts（SSH），分开展示。
 3. 查看远程资源：优先 terminal_exec（只读诊断如 uptime、free -h、df -h）；交互式输出用 terminal_open。
-4. terminal_exec 禁止管道/重定向/rm 等危险命令；删容器等变更须用 Docker 相关能力并经用户确认。
+4. terminal_exec 禁止管道/重定向与危险命令；容器启停/删除必须用 start_container / stop_container / remove_container（会弹确认），禁止 docker rm/start/stop 走 terminal_exec。
 5. 查库：database_open 或 open_database_session + execute_sql；默认 readonly=true。
 6. 禁止 DROP DATABASE；不要输出或猜测密码。
 7. 需要图表时用 echarts 围栏代码块（合法 ECharts option JSON）。
 8. 巡检/报告：收集数据后可用 notebook_append_content 存档。
-9. Docker：先 list_docker_contexts 再 list_containers；日志用 list_log_sources / fetch_logs；HTTP 用 list_http_requests / execute_http。
+9. Docker：先 list_docker_contexts 再 list_containers；变更用 start/stop/remove_container；日志用 list_log_sources / fetch_logs 或 get_container_logs；HTTP 用 list_http_requests / execute_http。
 10. 本轮工具返回已在上下文中，直接基于其内容作答；不要为本轮结果调用 recall_resource。跨轮或历史被挤出窗口后，用 recall_resource（resource#N / resource_id）取回全文；可用 search_session / get_task_summary 定位。
 11. 需要用户拍板（选库/选操作/可选下一步）时：在回复末尾挂 fenced 代码块，语言标记 agent-choice（或 desk-choice），JSON 示例：
 {"n":1,"mode":"single","prompt":"可选下一步","options":[{"key":"a","label":"列出表"},{"key":"b","label":"查慢查询"}]}

@@ -86,7 +86,7 @@ func Gather(ctx model.AgentContextDO) string {
 			}
 		}
 	}
-	b.WriteString("- terminal_exec 仅允许只读诊断命令；删除容器等请用对应 Docker 能力并经确认。\n")
+	b.WriteString("- 容器启停/删除用 start_container / stop_container / remove_container（会确认）；terminal_exec 仅只读诊断。\n")
 	out := b.String()
 	if utf8.RuneCountInString(out) > maxSnapshotRunes {
 		r := []rune(out)

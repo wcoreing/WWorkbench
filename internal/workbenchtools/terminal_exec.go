@@ -37,6 +37,19 @@ func validateExecCommand(command string) error {
 		return errno.New(errno.CodeInvalidArg, "命令不允许重定向", "")
 	}
 	lower := strings.ToLower(command)
+	// Docker 生命周期走专用工具，避免「docker rm」被泛化 rm 黑名单误伤且无引导。
+	if strings.HasPrefix(lower, "docker ") {
+		rest := strings.TrimSpace(lower[len("docker "):])
+		switch {
+		case strings.HasPrefix(rest, "rm "), strings.HasPrefix(rest, "rmi "),
+			strings.HasPrefix(rest, "stop "), strings.HasPrefix(rest, "kill "),
+			strings.HasPrefix(rest, "start "), strings.HasPrefix(rest, "restart "),
+			strings.HasPrefix(rest, "run "):
+			return errno.New(errno.CodeInvalidArg,
+				"容器启停/删除请用 start_container / stop_container / remove_container（会弹确认），勿经 terminal_exec",
+				command)
+		}
+	}
 	for _, banned := range []string{
 		"rm ", "rm\t", "dd ", "mkfs", "shutdown", "reboot", "poweroff",
 		"chmod ", "chown ", "kill ", "pkill ", "systemctl ",

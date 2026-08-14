@@ -113,6 +113,21 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "start_container", Label: "启动容器", Risk: RiskWrite,
+			Description: "启动已存在容器；执行前需用户确认",
+			NeedsConfirm: true, DefaultEnabled: true,
+		},
+		{
+			Name: "stop_container", Label: "停止容器", Risk: RiskWrite,
+			Description: "停止运行中容器；执行前需用户确认",
+			NeedsConfirm: true, DefaultEnabled: true,
+		},
+		{
+			Name: "remove_container", Label: "删除容器", Risk: RiskWrite,
+			Description: "强制删除容器；执行前需用户确认（勿用 terminal_exec docker rm）",
+			NeedsConfirm: true, DefaultEnabled: true,
+		},
+		{
 			Name: "list_log_sources", Label: "列出日志源", Risk: RiskRead,
 			Description: "已保存的本机/SSH/Docker/Compose 日志源",
 			DefaultEnabled: true,
@@ -150,4 +165,4 @@ func DefaultPermissions() map[string]bool {
 }
 
 // UnavailableNote 尚未接入 Agent 的系统能力说明。
-const UnavailableNote = "SFTP、环境管理尚未完全接入 AI；Docker、日志、HTTP API（GET 直执/写入需确认）与笔记本写入已可用。"
+const UnavailableNote = "SFTP、环境管理尚未完全接入 AI；Docker（含启停/删除容器需确认）、日志、HTTP API 与笔记本写入已可用。"

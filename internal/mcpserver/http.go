@@ -17,12 +17,13 @@ import (
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
 // ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.51.80"
+const ServerVersion = "0.51.88"
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明。
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本等）。
 - 参数=schema 顶层字段（勿再包 {"arguments":…}）。
 - 写操作可能返回含 ww_confirm 的文本；需在 WWorkbench 侧栏确认，外置客户端本期不弹确认框。
+- 容器启停/删除用 start_container / stop_container / remove_container，勿用 terminal_exec 跑 docker rm/start/stop。
 - 工具受「AI 能力权限」开关约束；关闭的能力会拒绝调用。
 - Cursor 请配置本端点 /mcp/workbench（非 /mcp）。`
 

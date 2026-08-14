@@ -9,7 +9,7 @@
   zoom: var(--ui-zoom, 1);
 }
 
-/* 终端产品：外壳透明，仅终端工作区半透明透出桌面 */
+/* 终端产品：窗口可透桌面；仅 xterm 画布半透明，顶栏/侧栏/标签条保持实底 */
 .workbench-shell.is-terminal-glass {
   background: transparent;
 }
@@ -27,6 +27,18 @@
 
 .workbench-shell.is-terminal-glass .terminal-workspace.workspace {
   background: transparent;
+}
+
+.workbench-shell.is-terminal-glass .terminal-workbench .product-toolbar {
+  background: var(--color-toolbar);
+}
+
+.workbench-shell.is-terminal-glass .terminal-workbench .app-sidebar {
+  background: var(--color-sidebar);
+}
+
+.workbench-shell.is-terminal-glass .terminal-workbench .editor-chrome {
+  background: var(--color-tab-bar);
 }
 
 .workbench-body {
@@ -813,6 +825,13 @@
   gap: 8px;
   margin-bottom: 6px;
   font-size: 11px;
+  color: var(--text-muted, #888);
+}
+
+.agent-confirm-detail-label {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--text-muted, #888);
 }
 
@@ -1719,8 +1738,9 @@
   flex-shrink: 0;
   height: 22px;
   padding: 0 4px;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  /* 叠在 leaf 的 terminalBackground 上；勿用近乎透明底（glass 下会透桌面） */
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .terminal-split-leaf-close {

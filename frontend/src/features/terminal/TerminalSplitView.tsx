@@ -1,6 +1,6 @@
 import type { PaneLayout } from './terminalLayout'
 import { countLeaves, setSplitRatio } from './terminalLayout'
-import { TerminalPane } from './TerminalPane'
+import { TerminalPane, terminalBackground } from './TerminalPane'
 
 interface Props {
   layout: PaneLayout
@@ -32,6 +32,7 @@ export function TerminalSplitView({
     return (
       <div
         className={`terminal-split-leaf ${layout.paneId === activePaneId ? 'focused' : ''}`}
+        style={{ backgroundColor: terminalBackground(opacity) }}
         onMouseDown={() => onSelectPane(layout.paneId)}
       >
         {closable && (

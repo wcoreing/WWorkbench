@@ -14,6 +14,13 @@ interface HttpPreview {
   body?: string
 }
 
+interface DockerPreview {
+  action?: string
+  contextId?: string
+  containerId?: string
+  command?: string
+}
+
 /** parseRecordPreview 将 preview 解析为键值对象。 */
 function parseRecordPreview(raw: unknown): Record<string, unknown> | null {
   if (!raw || typeof raw !== 'object') return null
@@ -26,7 +33,9 @@ interface Props {
   onReject: () => void
 }
 
-/** AgentConfirmPanel 工具执行前确认（SQL / HTTP 等预览）。 */
+const DOCKER_MUTATE_TOOLS = new Set(['start_container', 'stop_container', 'remove_container'])
+
+/** AgentConfirmPanel 工具执行前确认（SQL / HTTP / Docker 等预览）。 */
 export function AgentConfirmPanel({ pending, onApprove, onReject }: Props) {
   const { t } = useI18n()
   const rec = parseRecordPreview(pending.preview)
@@ -49,6 +58,25 @@ export function AgentConfirmPanel({ pending, onApprove, onReject }: Props) {
           body: String(rec.body ?? ''),
         }
       : null
+
+  const dockerPreview: DockerPreview | null =
+    DOCKER_MUTATE_TOOLS.has(pending.tool) && rec
+      ? {
+          action: String(rec.action ?? ''),
+          contextId: String(rec.contextId ?? ''),
+          containerId: String(rec.containerId ?? ''),
+          command: String(rec.command ?? ''),
+        }
+      : null
+
+  const dockerActionLabel =
+    dockerPreview?.action === 'start'
+      ? t('agent.confirmDockerStart')
+      : dockerPreview?.action === 'stop'
+        ? t('agent.confirmDockerStop')
+        : dockerPreview?.action === 'remove'
+          ? t('agent.confirmDockerRemove')
+          : pending.tool
 
   return (
     <div className="agent-confirm">
@@ -76,6 +104,29 @@ export function AgentConfirmPanel({ pending, onApprove, onReject }: Props) {
           </div>
           {httpPreview.body?.trim() && (
             <pre className="agent-confirm-sql">{httpPreview.body}</pre>
+          )}
+        </div>
+      )}
+      {dockerPreview && (
+        <div className="agent-confirm-detail">
+          <div className="agent-confirm-detail-meta">
+            <span className="agent-confirm-badge">{dockerActionLabel}</span>
+            {dockerPreview.contextId && (
+              <span>
+                {t('agent.confirmDockerContext')}: {dockerPreview.contextId}
+              </span>
+            )}
+            {dockerPreview.containerId && (
+              <span>
+                {t('agent.confirmDockerContainer')}: {dockerPreview.containerId}
+              </span>
+            )}
+          </div>
+          {dockerPreview.command && (
+            <>
+              <div className="agent-confirm-detail-label">{t('agent.confirmPendingCommand')}</div>
+              <pre className="agent-confirm-sql">{dockerPreview.command}</pre>
+            </>
           )}
         </div>
       )}

@@ -305,6 +305,45 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolGetContainerLogs,
 	})
 	r.add(ToolDef{
+		Name:        "start_container",
+		Description: "启动已存在的容器（需用户确认）。勿用 terminal_exec 执行 docker start。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"contextId":   map[string]interface{}{"type": "string", "description": "Docker 上下文 ID，默认 local"},
+				"containerId": map[string]interface{}{"type": "string", "description": "容器名称或 ID"},
+			},
+			"required": []interface{}{"containerId"},
+		},
+		Handler: toolStartContainer,
+	})
+	r.add(ToolDef{
+		Name:        "stop_container",
+		Description: "停止运行中的容器（需用户确认）。勿用 terminal_exec 执行 docker stop。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"contextId":   map[string]interface{}{"type": "string"},
+				"containerId": map[string]interface{}{"type": "string"},
+			},
+			"required": []interface{}{"containerId"},
+		},
+		Handler: toolStopContainer,
+	})
+	r.add(ToolDef{
+		Name:        "remove_container",
+		Description: "删除容器（force，需用户确认）。勿用 terminal_exec 执行 docker rm。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"contextId":   map[string]interface{}{"type": "string"},
+				"containerId": map[string]interface{}{"type": "string"},
+			},
+			"required": []interface{}{"containerId"},
+		},
+		Handler: toolRemoveContainer,
+	})
+	r.add(ToolDef{
 		Name:        "list_log_sources",
 		Description: "列出已保存的日志源（本机文件、SSH 文件、Docker 容器、Compose）。",
 		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
