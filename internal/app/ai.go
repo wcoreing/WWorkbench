@@ -32,6 +32,7 @@ func (s *Service) wireAgentRunner() {
 		UIActions: workbenchtools.NewUIActionBus(emit),
 	}
 	reg := workbenchtools.NewRegistry(deps)
+	s.toolsRegistry = reg
 
 	var host *harness.Host
 	dataDir, err := store.DataDir()
@@ -52,6 +53,9 @@ func (s *Service) wireAgentRunner() {
 		}
 	}
 	s.agentRunner = agent.NewRunner(s.store, reg, host, s.ctx, emit)
+	if err := s.applyMCPFromSettings(); err != nil {
+		log.Printf("mcp: start failed: %v", err)
+	}
 }
 
 // GetAgentSettings 获取 Agent 配置。

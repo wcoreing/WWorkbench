@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"os"
+	"sync"
 
 	"WWorkbench/internal/agent"
 	"WWorkbench/internal/conn"
@@ -11,6 +12,7 @@ import (
 	dockersvc "WWorkbench/internal/docker"
 	"WWorkbench/internal/environment"
 	"WWorkbench/internal/harness"
+	"WWorkbench/internal/mcpserver"
 	"WWorkbench/internal/meta"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/notebook"
@@ -20,30 +22,35 @@ import (
 	sftpsvc "WWorkbench/internal/sftp"
 	"WWorkbench/internal/store"
 	"WWorkbench/internal/terminal"
+	"WWorkbench/internal/workbenchtools"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // Service Wails 绑定服务。
 type Service struct {
-	ctx       context.Context
-	version   string
-	store     *store.Store
-	conns     *conn.Service
-	sshHosts  *terminal.HostService
-	terminals *terminal.Manager
-	forwards  *portforward.Manager
-	sftp      *sftpsvc.Manager
-	docker    *dockersvc.Manager
-	env       *environment.Manager
-	notebook  *notebook.Service
-	sessions  *session.Manager
-	meta      *meta.Service
-	queries   *query.Service
-	table     *data.Service
-	logFollow   *logFollowManager
-	agentRunner *agent.Runner
-	harnessHost *harness.Host
+	ctx           context.Context
+	version       string
+	store         *store.Store
+	conns         *conn.Service
+	sshHosts      *terminal.HostService
+	terminals     *terminal.Manager
+	forwards      *portforward.Manager
+	sftp          *sftpsvc.Manager
+	docker        *dockersvc.Manager
+	env           *environment.Manager
+	notebook      *notebook.Service
+	sessions      *session.Manager
+	meta          *meta.Service
+	queries       *query.Service
+	table         *data.Service
+	logFollow     *logFollowManager
+	agentRunner   *agent.Runner
+	harnessHost   *harness.Host
+	toolsRegistry *workbenchtools.Registry
+	mcpHTTP       *mcpserver.HTTPService
+	mcpMu         sync.Mutex
+	mcpLastErr    string
 }
 
 // NewService 创建应用服务。
@@ -100,6 +107,9 @@ func (s *Service) Shutdown(ctx context.Context) {
 	s.terminals.CloseAll()
 	s.forwards.CloseAll()
 	s.sftp.CloseAll()
+	s.mcpMu.Lock()
+	_ = s.stopMCPLocked()
+	s.mcpMu.Unlock()
 	if s.harnessHost != nil {
 		_ = s.harnessHost.Close()
 		s.harnessHost = nil

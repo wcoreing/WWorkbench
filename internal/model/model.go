@@ -765,6 +765,24 @@ type AgentSettingsSaveDO struct {
 	ToolPermissionsJSON string `json:"toolPermissionsJson"`
 }
 
+// MCPStatusDO MCP HTTP 运行时状态（给设置页展示）。
+type MCPStatusDO struct {
+	Enabled      bool   `json:"enabled"`
+	Configured   bool   `json:"configured"` // 设置里是否开启
+	Addr         string `json:"addr"`
+	ListenAddr   string `json:"listenAddr"`
+	MCPURL       string `json:"mcpUrl"`
+	WorkbenchURL string `json:"workbenchUrl"`
+	HealthURL    string `json:"healthUrl"`
+	Error        string `json:"error,omitempty"`
+}
+
+// MCPConfigSaveDO 保存 MCP 开关与监听地址。
+type MCPConfigSaveDO struct {
+	Enabled bool   `json:"enabled"`
+	Addr    string `json:"addr"`
+}
+
 // AgentMentionDO 用户通过 @ 选中的资源（SSH 主机或数据库连接）。
 type AgentMentionDO struct {
 	Kind  string `json:"kind"`

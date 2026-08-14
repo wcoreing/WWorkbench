@@ -127,6 +127,8 @@ export function GetDockerComposeDirectory(arg1:string):Promise<app.ApiResult_str
 
 export function GetEnvScanPath():Promise<app.ApiResult_string_>;
 
+export function GetMCPStatus():Promise<app.ApiResult_WWorkbench_internal_model_MCPStatusDO_>;
+
 export function GetNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_NoteDO_>;
 
 export function GetNotebookUI():Promise<app.ApiResult_WWorkbench_internal_model_NotebookUIDO_>;
@@ -276,6 +278,8 @@ export function SaveHTTPFolder(arg1:model.HTTPFolderDO):Promise<app.ApiResult_WW
 export function SaveHTTPRequest(arg1:model.HTTPSavedRequestDO):Promise<app.ApiResult_WWorkbench_internal_model_HTTPSavedRequestDO_>;
 
 export function SaveLogSource(arg1:model.LogSourceDO):Promise<app.ApiResult_WWorkbench_internal_model_LogSourceDO_>;
+
+export function SaveMCPConfig(arg1:model.MCPConfigSaveDO):Promise<app.ApiResult_WWorkbench_internal_model_MCPStatusDO_>;
 
 export function SaveNote(arg1:model.NoteDO):Promise<app.ApiResult_WWorkbench_internal_model_NoteDO_>;
 

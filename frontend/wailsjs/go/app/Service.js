@@ -250,6 +250,10 @@ export function GetEnvScanPath() {
   return window['go']['app']['Service']['GetEnvScanPath']();
 }
 
+export function GetMCPStatus() {
+  return window['go']['app']['Service']['GetMCPStatus']();
+}
+
 export function GetNote(arg1) {
   return window['go']['app']['Service']['GetNote'](arg1);
 }
@@ -548,6 +552,10 @@ export function SaveHTTPRequest(arg1) {
 
 export function SaveLogSource(arg1) {
   return window['go']['app']['Service']['SaveLogSource'](arg1);
+}
+
+export function SaveMCPConfig(arg1) {
+  return window['go']['app']['Service']['SaveMCPConfig'](arg1);
 }
 
 export function SaveNote(arg1) {

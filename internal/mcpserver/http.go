@@ -1,0 +1,101 @@
+package mcpserver
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
+
+	"WWorkbench/internal/workbenchtools"
+
+	"github.com/mark3labs/mcp-go/server"
+	"github.com/wcoreing/ningharness/toolgateway"
+)
+
+// DefaultHTTPAddr WWorkbench MCP 默认监听（避开 ningharness 51020 / agentdesk 50423）。
+const DefaultHTTPAddr = "127.0.0.1:51021"
+
+// ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
+const ServerVersion = "0.51.79"
+
+// WorkbenchMCPInstructions /mcp/workbench 驾驭说明。
+const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本等）。
+- 参数=schema 顶层字段（勿再包 {"arguments":…}）。
+- 写操作可能返回含 ww_confirm 的文本；需在 WWorkbench 侧栏确认，外置客户端本期不弹确认框。
+- 工具受「AI 能力权限」开关约束；关闭的能力会拒绝调用。
+- Cursor 请配置本端点 /mcp/workbench（非 /mcp）。`
+
+// HTTPService 包装 ningharness MCP HTTP，并暴露 workbench URL。
+type HTTPService struct {
+	*toolgateway.HTTPService
+}
+
+// WorkbenchEndpointURL 产品工具面 URL。
+func (s *HTTPService) WorkbenchEndpointURL() string {
+	if s == nil || s.HTTPService == nil {
+		return ""
+	}
+	return strings.TrimSuffix(s.EndpointURL(), "/mcp") + "/mcp/workbench"
+}
+
+// StartHTTP 启动 MCP HTTP：/mcp 核工具 + /mcp/workbench 工作台工具。
+func StartHTTP(addr string, gw *toolgateway.Gateway, reg *workbenchtools.Registry) (*HTTPService, error) {
+	if gw == nil {
+		return nil, fmt.Errorf("nil gateway")
+	}
+	if reg == nil {
+		return nil, fmt.Errorf("nil registry")
+	}
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		addr = strings.TrimSpace(os.Getenv("WWORKBENCH_MCP_ADDR"))
+	}
+	if addr == "" {
+		addr = DefaultHTTPAddr
+	}
+	base, err := toolgateway.StartHTTP(toolgateway.HTTPConfig{
+		Addr:         addr,
+		ServerName:   "wworkbench",
+		Version:      ServerVersion,
+		Instructions: "ningharness core tools hosted by WWorkbench",
+		HealthName:   "wworkbench",
+		ExtraRoutes: func(mux *http.ServeMux, _ *toolgateway.Gateway) {
+			wbHTTP := server.NewStreamableHTTPServer(
+				NewWorkbenchMCPServer(gw, reg),
+				server.WithEndpointPath("/mcp/workbench"),
+			)
+			mux.Handle("/mcp/workbench", workbenchHTTPCORS(wbHTTP))
+		},
+	}, gw)
+	if err != nil {
+		return nil, err
+	}
+	return &HTTPService{HTTPService: base}, nil
+}
+
+func workbenchHTTPCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := strings.TrimSpace(r.Header.Get("Origin"))
+		if origin == "" {
+			origin = "*"
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, Mcp-Session-Id")
+		w.Header().Set("Vary", "Origin")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// Stop 关闭 MCP HTTP。
+func (s *HTTPService) Stop(ctx context.Context) error {
+	if s == nil || s.HTTPService == nil {
+		return nil
+	}
+	return s.HTTPService.Stop(ctx)
+}

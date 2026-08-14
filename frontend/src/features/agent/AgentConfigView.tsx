@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from 'react'
 import { useI18n } from '../../i18n'
 import { api } from '../../api/client'
 import { model } from '../../../wailsjs/go/models'
@@ -69,7 +70,16 @@ function modelPlaceholder(provider: string): string {
   }
 }
 
-/** AgentConfigView AI 连接设置（API / 模型）。 */
+async function copyText(text: string) {
+  if (!text) return
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    /* ignore */
+  }
+}
+
+/** AgentConfigView AI 连接设置（API / 模型 / MCP）。 */
 export function AgentConfigView({
   apiBase,
   setApiBase,
@@ -87,6 +97,52 @@ export function AgentConfigView({
   onSave,
 }: AgentConfigViewProps) {
   const { t } = useI18n()
+  const [mcpEnabled, setMcpEnabled] = useState(true)
+  const [mcpAddr, setMcpAddr] = useState('')
+  const [mcpStatus, setMcpStatus] = useState<model.MCPStatusDO | null>(null)
+  const [mcpSaving, setMcpSaving] = useState(false)
+  const [mcpError, setMcpError] = useState('')
+  const [copied, setCopied] = useState('')
+
+  const refreshMCP = useCallback(async () => {
+    const st = await api.getMCPStatus()
+    setMcpStatus(st)
+    setMcpEnabled(st.configured)
+    setMcpAddr(st.addr || '')
+    if (st.error) setMcpError(st.error)
+    else setMcpError('')
+  }, [])
+
+  useEffect(() => {
+    void refreshMCP().catch((e) => setMcpError((e as Error).message))
+  }, [refreshMCP])
+
+  const saveMCP = async () => {
+    setMcpSaving(true)
+    setMcpError('')
+    try {
+      const st = await api.saveMCPConfig(
+        model.MCPConfigSaveDO.createFrom({
+          enabled: mcpEnabled,
+          addr: mcpAddr.trim(),
+        }),
+      )
+      setMcpStatus(st)
+      setMcpEnabled(st.configured)
+      setMcpAddr(st.addr || '')
+      if (st.error) setMcpError(st.error)
+    } catch (e) {
+      setMcpError((e as Error).message)
+    } finally {
+      setMcpSaving(false)
+    }
+  }
+
+  const onCopy = async (kind: string, text: string) => {
+    await copyText(text)
+    setCopied(kind)
+    window.setTimeout(() => setCopied(''), 1500)
+  }
 
   return (
     <div className="agent-subview agent-config-view">
@@ -128,6 +184,58 @@ export function AgentConfigView({
       <p className="agent-settings-hint">{providerHint(provider, t)}</p>
       <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" disabled={saving} onClick={onSave}>
         {saving ? t('common.saving') : t('agent.saveConfig')}
+      </button>
+
+      <p className="agent-subview-title agent-mcp-title">{t('agent.mcpTitle')}</p>
+      {mcpError && <p className="agent-settings-error">{mcpError}</p>}
+      <label className="agent-check-row">
+        <input type="checkbox" checked={mcpEnabled} onChange={(e) => setMcpEnabled(e.target.checked)} />
+        <span>{t('agent.mcpEnabled')}</span>
+      </label>
+      <label className="wn-label">{t('agent.mcpAddr')}</label>
+      <input
+        className="wn-input"
+        value={mcpAddr}
+        onChange={(e) => setMcpAddr(e.target.value)}
+        placeholder="127.0.0.1:51021"
+      />
+      <p className="agent-settings-hint">{t('agent.mcpHint')}</p>
+      {mcpStatus?.workbenchUrl && (
+        <div className="agent-mcp-urls">
+          <div className="agent-mcp-url-row">
+            <span className="agent-mcp-url-label">{t('agent.mcpWorkbenchUrl')}</span>
+            <code className="agent-mcp-url">{mcpStatus.workbenchUrl}</code>
+            <button
+              type="button"
+              className="wn-btn wn-btn-xs wn-btn-ghost"
+              onClick={() => void onCopy('wb', mcpStatus.workbenchUrl)}
+            >
+              {copied === 'wb' ? t('agent.mcpCopied') : t('common.copy')}
+            </button>
+          </div>
+          {mcpStatus.mcpUrl && (
+            <div className="agent-mcp-url-row">
+              <span className="agent-mcp-url-label">{t('agent.mcpCoreUrl')}</span>
+              <code className="agent-mcp-url">{mcpStatus.mcpUrl}</code>
+              <button
+                type="button"
+                className="wn-btn wn-btn-xs wn-btn-ghost"
+                onClick={() => void onCopy('core', mcpStatus.mcpUrl)}
+              >
+                {copied === 'core' ? t('agent.mcpCopied') : t('common.copy')}
+              </button>
+            </div>
+          )}
+          {mcpStatus.listenAddr && (
+            <p className="agent-settings-hint">
+              {t('agent.mcpListen')}: {mcpStatus.listenAddr}
+              {mcpStatus.enabled ? ` · ${t('agent.mcpRunning')}` : ` · ${t('agent.mcpStopped')}`}
+            </p>
+          )}
+        </div>
+      )}
+      <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" disabled={mcpSaving} onClick={() => void saveMCP()}>
+        {mcpSaving ? t('common.saving') : t('agent.mcpSave')}
       </button>
     </div>
   )
