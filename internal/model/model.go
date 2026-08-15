@@ -325,6 +325,17 @@ type SftpProgressDO struct {
 	State     string `json:"state"`
 }
 
+// SQLExportProgressDO 数据库 SQL 导出进度。
+type SQLExportProgressDO struct {
+	TaskID   string `json:"taskId"`
+	Database string `json:"database"`
+	Table    string `json:"table"`
+	Done     int    `json:"done"`
+	Total    int    `json:"total"`
+	State    string `json:"state"` // running | done | error | cancelled
+	Message  string `json:"message"`
+}
+
 // SftpBookmarkDO SFTP 路径书签。
 type SftpBookmarkDO struct {
 	ID        string `json:"id"`

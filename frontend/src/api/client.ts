@@ -87,6 +87,9 @@ import {
   ExecuteSQLFile,
   CreateDatabase,
   ExportTableInsertSQL,
+  ExportTableSQL,
+  ExportDatabaseSQL,
+  CancelSQLExport,
   EnsureSSHHostFromConnection,
   ListDockerContexts,
   SaveDockerContext,
@@ -534,6 +537,11 @@ export const api = {
     unwrap(() => CreateDatabase(sessionId, name, charset, collation)),
   exportTableInsertSQL: async (sessionId: string, database: string, table: string, maxRows: number) =>
     (await unwrap(() => ExportTableInsertSQL(sessionId, database, table, maxRows))).path,
+  exportTableSQL: async (sessionId: string, database: string, table: string, taskId: string, maxRows: number) =>
+    (await unwrap(() => ExportTableSQL(sessionId, database, table, taskId, maxRows))).path,
+  exportDatabaseSQL: async (sessionId: string, database: string, taskId: string, maxRows: number) =>
+    (await unwrap(() => ExportDatabaseSQL(sessionId, database, taskId, maxRows))).path,
+  cancelSQLExport: (taskId: string) => unwrap(() => CancelSQLExport(taskId)),
   ensureSSHHostFromConnection: async (connectionId: string) => unwrap(() => EnsureSSHHostFromConnection(connectionId)),
   listDockerContexts: async () => asArray(await unwrap(() => ListDockerContexts())),
   saveDockerContext: (ctx: model.DockerContextDO) => unwrap(() => SaveDockerContext(ctx)),

@@ -20,6 +20,7 @@ const (
 	CodeReadOnlyTable Code = "READ_ONLY_TABLE"
 	CodeStoreFailed   Code = "STORE_FAILED"
 	CodeSSHHostUnknown Code = "SSH_HOST_UNKNOWN"
+	CodeCancelled      Code = "CANCELLED"
 )
 
 // AppError 统一业务错误。

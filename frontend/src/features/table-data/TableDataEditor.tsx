@@ -6,6 +6,7 @@ import { ExportFieldsDialog } from '../export/ExportFieldsDialog'
 import { CellViewerDialog, type CellViewerTarget } from '../cell-viewer/CellViewerDialog'
 import { isLikelyLargeCell } from '../cell-viewer/formatCellValue'
 import { pressProps } from '../../components/compat'
+import { useSQLExport } from '../export/useSQLExport'
 import {
   ACTIONS_COL_WIDTH,
   INDEX_COL_WIDTH,
@@ -43,6 +44,7 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const sqlExport = useSQLExport(setSuccess)
   const [filterOpen, setFilterOpen] = useState(false)
   const [filters, setFilters] = useState<TableFilter[]>(defaultFilters())
   const [sorts, setSorts] = useState<TableSort[]>([])
@@ -344,19 +346,25 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
             <button
               type="button"
               className="wn-btn wn-btn-tool"
-              disabled={loading}
+              disabled={loading || sqlExport.exporting}
               {...pressProps(
                 () => {
-                  void (async () => {
-                    const path = await api.exportTableInsertSQL(sessionId, database, table, 1000)
-                    if (path) setSuccess(`已导出 ${path}`)
-                  })()
+                  void sqlExport.exportTableSQL(sessionId, database, table, {
+                    exporting: '正在导出 SQL…',
+                    exported: (path) => `已导出 ${path}`,
+                    cancelled: '已取消导出',
+                  })
                 },
-                { disabled: loading },
+                { disabled: loading || sqlExport.exporting },
               )}
             >
               导出 SQL
             </button>
+            {sqlExport.exporting && (
+              <button type="button" className="wn-btn wn-btn-tool" {...pressProps(() => sqlExport.cancel())}>
+                取消导出
+              </button>
+            )}
             {excelExport && (
               <button
                 type="button"

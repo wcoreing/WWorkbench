@@ -1500,6 +1500,40 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   white-space: nowrap;
 }
 
+.db-export-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 360px;
+  margin-right: 8px;
+}
+
+.db-export-progress-track {
+  width: 72px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.db-export-progress-fill {
+  height: 100%;
+  background: var(--accent, #5b8def);
+  border-radius: inherit;
+  transition: width 0.2s ease;
+}
+
+.db-export-progress-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
 .product-toolbar-status .status-dot {
   width: 6px;
   height: 6px;

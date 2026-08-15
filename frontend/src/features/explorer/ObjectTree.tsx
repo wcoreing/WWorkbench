@@ -32,7 +32,8 @@ interface Props {
   onDesignTable: (database: string, table: string) => void
   onTruncateTable: (database: string, table: string) => void
   onDropTable: (database: string, table: string) => void
-  onExportInsert: (database: string, table: string) => void
+  onExportTableSQL: (database: string, table: string) => void
+  onExportDatabaseSQL?: (database: string) => void
   onImportSQL?: (database: string) => void
   onCreateDatabase?: () => void
   /** canCreateTable 库节点右键「新建表」。 */
@@ -58,7 +59,8 @@ export function ObjectTree({
   onDesignTable,
   onTruncateTable,
   onDropTable,
-  onExportInsert,
+  onExportTableSQL,
+  onExportDatabaseSQL,
   onImportSQL,
   onCreateDatabase,
   canCreateTable = false,
@@ -471,6 +473,18 @@ export function ObjectTree({
               {t('objectTree.importSql')}
             </button>
           )}
+          {onExportDatabaseSQL && menu.node.nodeType === 'database' && menu.node.database && (
+            <button
+              type="button"
+              className="wn-context-item"
+              {...pressProps(() => {
+                onExportDatabaseSQL(menu.node.database!)
+                setMenu(null)
+              })}
+            >
+              {t('objectTree.exportDatabaseSql')}
+            </button>
+          )}
           {(menu.node.nodeType === 'table' || menu.node.nodeType === 'view') && (
             <>
           <button
@@ -524,11 +538,11 @@ export function ObjectTree({
               type="button"
               className="wn-context-item"
               {...pressProps(() => {
-                if (menu.node.database && menu.node.table) onExportInsert(menu.node.database, menu.node.table)
+                if (menu.node.database && menu.node.table) onExportTableSQL(menu.node.database, menu.node.table)
                 setMenu(null)
               })}
             >
-              {t('objectTree.exportInsert')}
+              {t('objectTree.exportTableSql')}
             </button>
           )}
           {!isRedis && menu.node.nodeType === 'table' && (

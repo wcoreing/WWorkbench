@@ -46,6 +46,10 @@ export function CancelSFTPTask(arg1) {
   return window['go']['app']['Service']['CancelSFTPTask'](arg1);
 }
 
+export function CancelSQLExport(arg1) {
+  return window['go']['app']['Service']['CancelSQLExport'](arg1);
+}
+
 export function CheckSFTPDownloadConflict(arg1, arg2, arg3) {
   return window['go']['app']['Service']['CheckSFTPDownloadConflict'](arg1, arg2, arg3);
 }
@@ -186,6 +190,10 @@ export function ExportConnectionsToFile(arg1) {
   return window['go']['app']['Service']['ExportConnectionsToFile'](arg1);
 }
 
+export function ExportDatabaseSQL(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['Service']['ExportDatabaseSQL'](arg1, arg2, arg3, arg4);
+}
+
 export function ExportExcel(arg1) {
   return window['go']['app']['Service']['ExportExcel'](arg1);
 }
@@ -200,6 +208,10 @@ export function ExportTableExcel(arg1, arg2, arg3, arg4, arg5, arg6) {
 
 export function ExportTableInsertSQL(arg1, arg2, arg3, arg4) {
   return window['go']['app']['Service']['ExportTableInsertSQL'](arg1, arg2, arg3, arg4);
+}
+
+export function ExportTableSQL(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['app']['Service']['ExportTableSQL'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function FetchLogSource(arg1, arg2) {

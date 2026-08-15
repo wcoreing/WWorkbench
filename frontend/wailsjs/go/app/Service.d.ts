@@ -25,6 +25,8 @@ export function BatchDeleteHTTP(arg1:Array<string>,arg2:Array<string>):Promise<a
 
 export function CancelSFTPTask(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function CancelSQLExport(arg1:string):Promise<app.ApiResult_bool_>;
+
 export function CheckSFTPDownloadConflict(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferConflictDO_>;
 
 export function CheckSFTPUploadConflict(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferConflictDO_>;
@@ -95,6 +97,8 @@ export function ExportCSV(arg1:app.ExportCSVRequest):Promise<app.ApiResult_WWork
 
 export function ExportConnectionsToFile(arg1:boolean):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
+export function ExportDatabaseSQL(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
+
 export function ExportExcel(arg1:app.ExportExcelRequest):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
 export function ExportNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
@@ -102,6 +106,8 @@ export function ExportNote(arg1:string):Promise<app.ApiResult_WWorkbench_interna
 export function ExportTableExcel(arg1:string,arg2:string,arg3:string,arg4:model.TableDataQueryDO,arg5:number,arg6:Array<string>):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
 export function ExportTableInsertSQL(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
+
+export function ExportTableSQL(arg1:string,arg2:string,arg3:string,arg4:string,arg5:number):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
 export function FetchLogSource(arg1:string,arg2:number):Promise<app.ApiResult_WWorkbench_internal_model_LogFetchResultDO_>;
 

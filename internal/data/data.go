@@ -61,8 +61,11 @@ func (s *Service) ExportTableInsertSQL(ctx context.Context, sessionID, database,
 	if database == "" || table == "" {
 		return "", errno.New(errno.CodeInvalidArg, "数据库和表名不能为空", "")
 	}
-	if maxRows <= 0 || maxRows > 10000 {
-		maxRows = 1000
+	if maxRows <= 0 {
+		maxRows = 100000
+	}
+	if maxRows > 100000 {
+		maxRows = 100000
 	}
 	sess, err := s.sessions.Get(sessionID)
 	if err != nil {
@@ -72,5 +75,10 @@ func (s *Service) ExportTableInsertSQL(ctx context.Context, sessionID, database,
 	if err != nil {
 		return "", err
 	}
-	return ad.ExportTableInsertSQL(ctx, sess.DB, database, table, maxRows)
+	db, release, err := s.sessions.DBForDatabase(ctx, sessionID, database)
+	if err != nil {
+		return "", err
+	}
+	defer release()
+	return ad.ExportTableInsertSQL(ctx, db, database, table, maxRows)
 }

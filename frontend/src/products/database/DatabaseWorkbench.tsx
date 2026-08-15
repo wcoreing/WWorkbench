@@ -6,13 +6,12 @@ import { ContextMenu } from '../../components/ContextMenu'
 import { ProductLayout, PaneCollapseButton, ResizeHandle, SidebarColumns, SidebarStack, usePaneCollapse, useResizable } from '../../components/layout'
 import { loadSizeMap, rememberScalarSize, recallScalarSize, type CollapsedMap } from '../../components/layout/layoutStorage'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
-import { IconDisconnect, IconDownload, IconEdit, IconExplain, IconFolder, IconImportSql, IconNotebook, IconPlay, IconPlus, IconRefresh, IconSql, IconTerminal, IconTrash, IconUpload } from '../../components/Icons'
+import { IconDisconnect, IconDownload, IconEdit, IconExplain, IconFolder, IconImportSql, IconNotebook, IconPlay, IconPlus, IconRefresh, IconSql, IconTerminal, IconTrash } from '../../components/Icons'
 import { Select, pressProps, useDismissOverlays } from '../../components/compat'
 
 import { ConnectionModal } from '../../features/connection/ConnectionModal'
 import { DdlEditor } from '../../features/ddl/DdlEditor'
 import { ObjectTree } from '../../features/explorer/ObjectTree'
-import { DatabaseListPanel } from '../../features/explorer/DatabaseListPanel'
 import { CreateDatabaseDialog } from '../../features/database/CreateDatabaseDialog'
 import { ResultPanel } from '../../features/sql-editor/ResultPanel'
 import { SqlEditor, type SqlEditorHandle } from '../../features/sql-editor/SqlEditor'
@@ -31,6 +30,7 @@ import { useI18n } from '../../i18n'
 import { defaultUntitledSql, localizeWorkTabTitle } from '../../i18n/databaseTabTitle'
 import { queryPageToExport } from '../../utils/queryCsv'
 import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
+import { useSQLExport } from '../../features/export/useSQLExport'
 
 type SqlResult = QueryPage | ExecuteResult | SQLBatchResult
 
@@ -70,6 +70,7 @@ export function DatabaseWorkbench() {
     activeProduct,
   } = useAppStore()
   const { t } = useI18n()
+  const sqlExport = useSQLExport(setStatusMessage)
 
   const sqlEditorRef = useRef<SqlEditorHandle>(null)
   const pendingSql = useRef<{ sql: string; run: boolean } | null>(null)
@@ -77,10 +78,21 @@ export function DatabaseWorkbench() {
   const [editingConn, setEditingConn] = useState<Connection | null>(null)
   const [connCtxMenu, setConnCtxMenu] = useState<{ x: number; y: number; conn: Connection } | null>(null)
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
+  const exportMenuRef = useRef<HTMLDivElement>(null)
   useDismissOverlays(() => {
     setConnCtxMenu(null)
     setTabCtxMenu(null)
+    setExportMenuOpen(false)
   })
+  useEffect(() => {
+    if (!exportMenuOpen) return
+    const close = (e: PointerEvent) => {
+      if (!exportMenuRef.current?.contains(e.target as Node)) setExportMenuOpen(false)
+    }
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
+  }, [exportMenuOpen])
   const [sqlResult, setSqlResult] = useState<SqlResult | null>(null)
   const { size: resultHeight, onResizeStart: onResultResizeStart } = useResizable({
     axis: 'y',
@@ -268,18 +280,6 @@ export function DatabaseWorkbench() {
   }, [connectionList, t])
   const activeTab = tabs.find((t) => t.id === activeTabId)
   const tabsRef = useScrollActiveTabIntoView(activeTabId)
-  const databaseNames = useMemo(() => treeNodes.map((n) => n.label), [treeNodes])
-  const invalidTabDatabase = useMemo(() => {
-    if (!activeTab || activeTab.kind !== 'table' && activeTab.kind !== 'design') return ''
-    if (!activeTab.database) return ''
-    if (databaseNames.length === 0) return ''
-    return databaseNames.includes(activeTab.database) ? '' : activeTab.database
-  }, [activeTab, databaseNames])
-  // 未选库时仅挡 SQL 工作区；打开表/设计时由 openTableTab 切库，避免「先点库再开表」两步。
-  const showDatabasePicker = Boolean(
-    session &&
-      ((!session.database && (!activeTab || activeTab.kind === 'sql')) || invalidTabDatabase)
-  )
 
   /** applySqlResult 处理 SQL 执行返回值。 */
   const applySqlResult = useCallback((res: unknown, sql: string) => {
@@ -740,13 +740,31 @@ export function DatabaseWorkbench() {
     if (ok) closeTabsForTable(database, table)
   }
 
-  const exportTableInsert = async (database: string, table: string) => {
+  const exportTableSQL = async (database: string, table: string) => {
     if (!session) return
+    setExportMenuOpen(false)
     try {
-      const path = await api.exportTableInsertSQL(session.sessionId, database, table, 5000)
-      if (path) setStatusMessage(t('database.exported', { path }))
-    } catch (e) {
-      setStatusMessage((e as Error).message)
+      await sqlExport.exportTableSQL(session.sessionId, database, table, {
+        exporting: t('database.exportingSql'),
+        exported: (path) => t('database.exported', { path }),
+        cancelled: t('database.exportCancelled'),
+      })
+    } catch {
+      /* 状态已由 hook 写入 */
+    }
+  }
+
+  const exportDatabaseSQL = async (database: string) => {
+    if (!session || !database) return
+    setExportMenuOpen(false)
+    try {
+      await sqlExport.exportDatabaseSQL(session.sessionId, database, {
+        exporting: t('database.exportingSql'),
+        exported: (path) => t('database.exported', { path }),
+        cancelled: t('database.exportCancelled'),
+      })
+    } catch {
+      /* 状态已由 hook 写入 */
     }
   }
 
@@ -884,19 +902,6 @@ export function DatabaseWorkbench() {
     }
   }
 
-  const exportConnections = async () => {
-    const path = await api.exportConnectionsToFile(false)
-    if (path) setStatusMessage(t('database.exportedConnections', { path }))
-  }
-
-  const importConnections = async () => {
-    const count = await api.importConnectionsFromFile()
-    if (count > 0) {
-      await refreshConnections()
-      setStatusMessage(t('database.importedConnections', { count }))
-    }
-  }
-
   /** openLinkedProduct 从当前数据库连接跳转到终端或 SFTP。 */
   const openLinkedProduct = async (action: 'terminal' | 'sftp') => {
     if (!session) return
@@ -988,6 +993,46 @@ export function DatabaseWorkbench() {
             <IconImportSql size={13} />
             <span>{t('database.importSql')}</span>
           </button>
+          <div className="shell-locale-menu" ref={exportMenuRef}>
+            <button
+              type="button"
+              className="wn-btn wn-btn-chrome"
+              disabled={!session || isRedis || sqlExport.exporting}
+              title={t('database.exportSqlHint')}
+              aria-haspopup="menu"
+              aria-expanded={exportMenuOpen}
+              {...pressProps(() => setExportMenuOpen((v) => !v), { disabled: !session || isRedis || sqlExport.exporting })}
+            >
+              <IconDownload size={13} />
+              <span>{t('database.exportSql')}</span>
+            </button>
+            {exportMenuOpen && (
+              <div className="shell-locale-dropdown" role="menu" style={{ left: 0, right: 'auto', minWidth: 168 }}>
+                <button
+                  type="button"
+                  className="shell-locale-item"
+                  disabled={!session?.database}
+                  {...pressProps(() => {
+                    if (session?.database) void exportDatabaseSQL(session.database)
+                  }, { disabled: !session?.database })}
+                >
+                  {t('database.exportCurrentDb')}
+                </button>
+                <button
+                  type="button"
+                  className="shell-locale-item"
+                  disabled={!(activeTab?.kind === 'table' && activeTab.database && activeTab.table)}
+                  {...pressProps(() => {
+                    if (activeTab?.kind === 'table' && activeTab.database && activeTab.table) {
+                      void exportTableSQL(activeTab.database, activeTab.table)
+                    }
+                  }, { disabled: !(activeTab?.kind === 'table' && activeTab.database && activeTab.table) })}
+                >
+                  {t('database.exportCurrentTable')}
+                </button>
+              </div>
+            )}
+          </div>
           <button
             type="button"
             className="wn-btn wn-btn-chrome"
@@ -1045,6 +1090,38 @@ export function DatabaseWorkbench() {
           )}
         </nav>
         <span className="chrome-spacer" />
+        {sqlExport.progress && sqlExport.progress.state === 'running' && (
+          <div className="db-export-progress" title={sqlExport.progress.message}>
+            <div className="db-export-progress-track">
+              <div
+                className="db-export-progress-fill"
+                style={{
+                  width: `${
+                    sqlExport.progress.total > 0
+                      ? Math.min(100, Math.round((sqlExport.progress.done / sqlExport.progress.total) * 100))
+                      : 8
+                  }%`,
+                }}
+              />
+            </div>
+            <span className="db-export-progress-label">
+              {sqlExport.progress.total > 0
+                ? t('database.exportProgress', {
+                    current: sqlExport.progress.done,
+                    total: sqlExport.progress.total,
+                    name: sqlExport.progress.table || sqlExport.progress.database || sqlExport.progress.message,
+                  })
+                : t('database.exportingSql')}
+            </span>
+            <button
+              type="button"
+              className="wn-btn wn-btn-chrome wn-btn-sm"
+              {...pressProps(() => sqlExport.cancel())}
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        )}
         <div className="product-toolbar-status" title={connLabel}>
           <span className={`status-dot ${session ? 'online' : ''}`} />
           <span>{connLabel}</span>
@@ -1095,12 +1172,6 @@ export function DatabaseWorkbench() {
                               />
                               <span className="sidebar-header-title">{t('database.connections')}</span>
                               <div className="sidebar-header-actions">
-                                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" title={t('database.import')} {...pressProps(() => void importConnections())}>
-                                  <IconUpload size={14} />
-                                </button>
-                                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" title={t('database.export')} {...pressProps(() => void exportConnections())}>
-                                  <IconDownload size={14} />
-                                </button>
                                 <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" title={t('database.newConnection')} {...pressProps(() => openConnModal())}>
                                   <IconPlus size={14} />
                                 </button>
@@ -1218,7 +1289,8 @@ export function DatabaseWorkbench() {
                                   onDesignTable={openDesignTableTab}
                                   onTruncateTable={truncateTable}
                                   onDropTable={dropTable}
-                                  onExportInsert={exportTableInsert}
+                                  onExportTableSQL={exportTableSQL}
+                                  onExportDatabaseSQL={exportDatabaseSQL}
                                   onImportSQL={(db) => void runSqlFile(db)}
                                   onCreateDatabase={canCreateDatabase ? () => setCreateDbOpen(true) : undefined}
                                 />
@@ -1314,16 +1386,6 @@ export function DatabaseWorkbench() {
           </div>
 
           <div className="workspace">
-            {showDatabasePicker ? (
-              <DatabaseListPanel
-                databases={treeNodes}
-                invalidDatabase={invalidTabDatabase || undefined}
-                onSelect={(db) => void selectDatabase(db)}
-                onCreateDatabase={canCreateDatabase ? () => setCreateDbOpen(true) : undefined}
-                onImportSQL={!isRedis ? () => void runSqlFile() : undefined}
-              />
-            ) : (
-              <>
             {!activeTab && (
               <div className="pane-empty">
                 <span>{t('database.emptyWorkspace')}</span>
@@ -1442,8 +1504,6 @@ export function DatabaseWorkbench() {
               <div className="pane-empty">
                 <span>{t('database.connectFirst')}</span>
               </div>
-            )}
-              </>
             )}
           </div>
         </main>

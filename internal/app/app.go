@@ -53,6 +53,8 @@ type Service struct {
 	mcpHTTP       *mcpserver.HTTPService
 	mcpMu         sync.Mutex
 	mcpLastErr    string
+	sqlExportMu   sync.Mutex
+	sqlExportCancels map[string]context.CancelFunc
 }
 
 // NewService 创建应用服务。
@@ -73,20 +75,21 @@ func NewService(
 	table *data.Service,
 ) *Service {
 	svc := &Service{
-		version:   version,
-		store:     st,
-		conns:     conns,
-		sshHosts:  sshHosts,
-		terminals: terminals,
-		forwards:  forwardMgr,
-		sftp:      sftpMgr,
-		docker:    dockerMgr,
-		env:       envMgr,
-		notebook:  notebookSvc,
-		sessions:  sessions,
-		meta:      meta,
-		queries:   queries,
-		table:     table,
+		version:          version,
+		store:            st,
+		conns:            conns,
+		sshHosts:         sshHosts,
+		terminals:        terminals,
+		forwards:         forwardMgr,
+		sftp:             sftpMgr,
+		docker:           dockerMgr,
+		env:              envMgr,
+		notebook:         notebookSvc,
+		sessions:         sessions,
+		meta:             meta,
+		queries:          queries,
+		table:            table,
+		sqlExportCancels: make(map[string]context.CancelFunc),
 	}
 	svc.logFollow = newLogFollowManager(svc)
 	return svc
