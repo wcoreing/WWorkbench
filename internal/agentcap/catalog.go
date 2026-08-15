@@ -148,8 +148,13 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "save_http_request", Label: "保存 HTTP 请求资产", Risk: RiskWrite,
+			Description: "写入可复现的请求模板并刷新界面；调试应先 save 再 execute",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "execute_http", Label: "执行 HTTP 请求", Risk: RiskWrite,
-			Description: "GET/HEAD 只读执行；变更类方法需用户确认",
+			Description: "优先 requestId；GET/HEAD 直执；变更类方法需用户确认",
 			NeedsConfirm: true, DefaultEnabled: true,
 		},
 	}
@@ -165,4 +170,4 @@ func DefaultPermissions() map[string]bool {
 }
 
 // UnavailableNote 尚未接入 Agent 的系统能力说明。
-const UnavailableNote = "SFTP、环境管理尚未完全接入 AI；Docker（含启停/删除容器需确认）、日志、HTTP API 与笔记本写入已可用。"
+const UnavailableNote = "SFTP、环境管理尚未完全接入 AI；Docker（启停/删除需确认）、HTTP（save 落资产 + execute）、日志与笔记本写入已可用。资产变更经 workbench-changed 雷达刷新界面。"

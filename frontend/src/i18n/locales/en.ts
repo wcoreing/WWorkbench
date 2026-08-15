@@ -68,7 +68,7 @@ export const en: MessageTree = {
     draftDocker: 'Analyze this container status, resources, and log troubleshooting tips.',
     draftContainer: 'Check processes, disk, and load inside this container and summarize.',
     draftLogs: 'Use fetch_logs on this log source; find errors and suggest fixes.',
-    draftHttp: 'Use execute_http to call this API (GET runs directly); analyze the response.',
+    draftHttp: 'First save_http_request to persist the API as a workbench asset, then execute_http(requestId); analyze the response.',
     confirmDatabase: 'Database',
     confirmSqlWrite: 'Write SQL',
     confirmPendingCommand: 'Command to run',

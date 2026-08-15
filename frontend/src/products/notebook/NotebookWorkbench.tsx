@@ -23,6 +23,7 @@ import { buildNotebookSurface, briefList } from '../../stores/agentSurface'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
+import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { bindPointerAction, bindPointerActionWithEvent } from '../../utils/pointerAction'
 
 function toNoteDO(note: Note): model.NoteDO {
@@ -227,6 +228,41 @@ export function NotebookWorkbench() {
     },
     [openNotes, markNoteSaved],
   )
+
+  useEffect(() => {
+    const apply = async (evt: WorkbenchChangedEvent) => {
+      if (evt.domain !== 'notebook.note') return
+      await refreshSummaries()
+      const noteId = evt.ids[0]
+      if (evt.reveal && noteId && evt.op !== 'delete') {
+        await openNoteById(noteId)
+        useAppStore.getState().setStatusMessage(
+          evt.label ? `已落笔记本资产：${evt.label}` : `已打开笔记 ${noteId}`,
+        )
+      } else if (evt.op === 'delete' && noteId) {
+        setOpenTabIds((prev) => prev.filter((id) => id !== noteId))
+        setOpenNotes((prev) => {
+          const next = { ...prev }
+          delete next[noteId]
+          return next
+        })
+        setActiveTabId((cur) => (cur === noteId ? null : cur))
+      } else if (noteId && openNotes[noteId] && evt.op !== 'delete') {
+        try {
+          const note = (await api.getNote(noteId)) as Note
+          markNoteSaved(note)
+          setOpenNotes((prev) => ({ ...prev, [noteId]: note }))
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    const pending = takePendingWorkbenchChanged('notebook.')
+    if (pending) void apply(pending)
+    return subscribeWorkbenchChanged((evt) => {
+      void apply(evt)
+    })
+  }, [refreshSummaries, openNoteById, openNotes, markNoteSaved])
 
   useEffect(() => {
     if (!notebookFocusNoteId || loading) return

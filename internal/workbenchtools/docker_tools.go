@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	dockersvc "WWorkbench/internal/docker"
+	"WWorkbench/internal/workbench"
 
 	"github.com/google/uuid"
 )
@@ -196,6 +197,13 @@ func runContainerMutate(ctx context.Context, d *Deps, argsJSON, action string) T
 	}
 	if err != nil {
 		return Fail(err.Error())
+	}
+	op := workbench.RadarOpUpdate
+	if action == "remove" {
+		op = workbench.RadarOpDelete
+	}
+	if d.Radar != nil {
+		d.Radar.EmitDockerContainer(op, ctxID, cid, "agent-docker-"+action, action+" "+cid, true)
 	}
 	return OKData(map[string]interface{}{
 		"ok": true, "action": action, "contextId": ctxID, "containerId": cid,

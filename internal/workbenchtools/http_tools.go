@@ -5,11 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"WWorkbench/internal/httpclient"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/store"
+	"WWorkbench/internal/workbench"
 
 	"github.com/google/uuid"
 )
@@ -21,6 +23,20 @@ type httpExecuteArgs struct {
 	Body      string `json:"body"`
 	EnvID     string `json:"envId"`
 	TimeoutMs int    `json:"timeoutMs"`
+}
+
+type saveHTTPRequestArgs struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Method      string `json:"method"`
+	URL         string `json:"url"`
+	Body        string `json:"body"`
+	FolderID    string `json:"folderId"`
+	Notes       string `json:"notes"`
+	HeadersJSON string `json:"headersJson"`
+	ParamsJSON  string `json:"paramsJson"`
+	CookiesJSON string `json:"cookiesJson"`
+	Reveal      *bool  `json:"reveal"`
 }
 
 const maxHTTPBodyForAgent = 8000
@@ -91,6 +107,78 @@ func toolListHTTPEnvironments(ctx context.Context, d *Deps, _ json.RawMessage) T
 		return Fail(err.Error())
 	}
 	return OKData(list)
+}
+
+// toolSaveHTTPRequest 保存 HTTP 请求模板为工作台资产，并广播雷达刷新 UI。
+func toolSaveHTTPRequest(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
+	var in saveHTTPRequestArgs
+	if err := json.Unmarshal(raw, &in); err != nil {
+		return Fail("参数无效")
+	}
+	u := strings.TrimSpace(in.URL)
+	if u == "" {
+		return Fail("请填写 url")
+	}
+	method := strings.ToUpper(strings.TrimSpace(in.Method))
+	if method == "" {
+		method = http.MethodGet
+	}
+	name := strings.TrimSpace(in.Name)
+	if name == "" {
+		name = deriveHTTPRequestName(method, u)
+	}
+	op := workbench.RadarOpUpdate
+	id := strings.TrimSpace(in.ID)
+	if id == "" {
+		op = workbench.RadarOpCreate
+	}
+	saved, err := d.Store.SaveHTTPRequest(model.HTTPSavedRequestDO{
+		ID:          id,
+		FolderID:    strings.TrimSpace(in.FolderID),
+		Name:        name,
+		Method:      method,
+		URL:         u,
+		Body:        in.Body,
+		Notes:       strings.TrimSpace(in.Notes),
+		HeadersJSON: defaultJSONArray(in.HeadersJSON),
+		ParamsJSON:  defaultJSONArray(in.ParamsJSON),
+		CookiesJSON: defaultJSONArray(in.CookiesJSON),
+	})
+	if err != nil {
+		return Fail(err.Error())
+	}
+	reveal := true
+	if in.Reveal != nil {
+		reveal = *in.Reveal
+	}
+	label := saved.Method + " " + saved.Name
+	if d.Radar != nil {
+		d.Radar.EmitHTTPRequest(op, saved.ID, "agent-http-save", label, reveal)
+	}
+	return OKData(map[string]interface{}{
+		"ok": true, "op": op, "id": saved.ID, "name": saved.Name,
+		"method": saved.Method, "url": saved.URL,
+		"note": "已写入 HTTP 资产；界面将刷新并可聚焦该请求。后续请用 requestId 调用 execute_http。",
+	})
+}
+
+func defaultJSONArray(s string) string {
+	if strings.TrimSpace(s) == "" {
+		return "[]"
+	}
+	return s
+}
+
+func deriveHTTPRequestName(method, rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Host == "" {
+		return method + " " + truncate(rawURL, 40)
+	}
+	path := u.Path
+	if path == "" || path == "/" {
+		return method + " " + u.Host
+	}
+	return method + " " + u.Host + path
 }
 
 // toolExecuteHTTP 执行 HTTP 请求（GET/HEAD 直接执行；其它方法需用户确认）。

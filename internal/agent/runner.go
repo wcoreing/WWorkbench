@@ -413,7 +413,8 @@ func (r *Runner) systemPrompt() string {
 6. 禁止 DROP DATABASE；不要输出或猜测密码。
 7. 需要图表时用 echarts 围栏代码块（合法 ECharts option JSON）。
 8. 巡检/报告：收集数据后可用 notebook_append_content 存档。
-9. Docker：先 list_docker_contexts 再 list_containers；变更用 start/stop/remove_container；日志用 list_log_sources / fetch_logs 或 get_container_logs；HTTP 用 list_http_requests / execute_http。
+9. Docker：先 list_docker_contexts 再 list_containers；变更用 start/stop/remove_container；日志用 list_log_sources / fetch_logs 或 get_container_logs。
+9b. HTTP：工作台是资产容器——调试接口应先 save_http_request（树可见），再用 execute_http(requestId=…)。禁止只临时候 URL 打完就结束；笔记本是报告旁路，主资产是 HTTP 树。
 10. 本轮工具返回已在上下文中，直接基于其内容作答；不要为本轮结果调用 recall_resource。跨轮或历史被挤出窗口后，用 recall_resource（resource#N / resource_id）取回全文；可用 search_session / get_task_summary 定位。
 11. 需要用户拍板（选库/选操作/可选下一步）时：在回复末尾挂 fenced 代码块，语言标记 agent-choice（或 desk-choice），JSON 示例：
 {"n":1,"mode":"single","prompt":"可选下一步","options":[{"key":"a","label":"列出表"},{"key":"b","label":"查慢查询"}]}

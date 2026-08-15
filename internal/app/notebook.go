@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/workbench"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -73,9 +74,16 @@ func (s *Service) GetNote(id string) ApiResult[model.NoteDO] {
 
 // SaveNote 保存笔记。
 func (s *Service) SaveNote(n model.NoteDO) ApiResult[model.NoteDO] {
+	op := workbench.RadarOpUpdate
+	if strings.TrimSpace(n.ID) == "" {
+		op = workbench.RadarOpCreate
+	}
 	out, err := s.notebook.SaveNote(n)
 	if err != nil {
 		return ErrResult[model.NoteDO](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitNotebookNote(op, out.ID, "ui-notebook-save", out.Title, false)
 	}
 	return OkResult(*out)
 }
@@ -84,6 +92,9 @@ func (s *Service) SaveNote(n model.NoteDO) ApiResult[model.NoteDO] {
 func (s *Service) DeleteNote(id string) ApiResult[bool] {
 	if err := s.notebook.DeleteNote(id); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitNotebookNote(workbench.RadarOpDelete, id, "ui-notebook-delete", "", false)
 	}
 	return OkResult(true)
 }

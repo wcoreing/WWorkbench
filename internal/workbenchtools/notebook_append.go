@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/workbench"
 
 	"github.com/google/uuid"
 )
@@ -17,6 +18,7 @@ type notebookAppendArgs struct {
 	SSHHostID      string `json:"sshHostId"`
 	ConnectionID   string `json:"connectionId"`
 	AppendToNoteID string `json:"appendToNoteId"`
+	Reveal         *bool  `json:"reveal"`
 }
 
 // toolNotebookAppend 创建或追加 Markdown 笔记。
@@ -36,6 +38,10 @@ func toolNotebookAppend(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 	if title == "" {
 		title = "AI 巡检 " + time.Now().Format("2006-01-02 15:04")
 	}
+	reveal := true
+	if in.Reveal != nil {
+		reveal = *in.Reveal
+	}
 
 	if id := strings.TrimSpace(in.AppendToNoteID); id != "" {
 		n, err := d.Notebook.GetNote(id)
@@ -50,6 +56,9 @@ func toolNotebookAppend(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 		saved, err := d.Notebook.SaveNote(*n)
 		if err != nil {
 			return Fail(err.Error())
+		}
+		if d.Radar != nil {
+			d.Radar.EmitNotebookNote(workbench.RadarOpUpdate, saved.ID, "agent-notebook-append", saved.Title, reveal)
 		}
 		return OKData(map[string]interface{}{
 			"noteId": saved.ID, "title": saved.Title, "appended": true,
@@ -66,6 +75,9 @@ func toolNotebookAppend(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 	saved, err := d.Notebook.SaveNote(n)
 	if err != nil {
 		return Fail(err.Error())
+	}
+	if d.Radar != nil {
+		d.Radar.EmitNotebookNote(workbench.RadarOpCreate, saved.ID, "agent-notebook-create", saved.Title, reveal)
 	}
 	return OKData(map[string]interface{}{
 		"noteId": saved.ID, "title": saved.Title, "created": true,

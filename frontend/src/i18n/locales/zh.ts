@@ -68,7 +68,7 @@ export const zh: MessageTree = {
     draftDocker: '分析这个容器的运行状态、资源占用和日志排查建议。',
     draftContainer: '帮我检查这个容器里的进程、磁盘与关键负载，并给出简要结论。',
     draftLogs: '请用 fetch_logs 分析该日志源中的错误、异常与排查建议，必要时结合 list_log_sources。',
-    draftHttp: '请用 execute_http 调试该 API（GET 可直接执行）；分析响应并给出改进建议。',
+    draftHttp: '请先 save_http_request 把该 API 落成工作台资产，再用 execute_http(requestId) 调试；分析响应并给出改进建议。',
     confirmDatabase: '数据库',
     confirmSqlWrite: '写入 SQL',
     confirmPendingCommand: '待执行命令',

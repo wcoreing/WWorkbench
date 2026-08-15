@@ -87,6 +87,7 @@ func Gather(ctx model.AgentContextDO) string {
 		}
 	}
 	b.WriteString("- 容器启停/删除用 start_container / stop_container / remove_container（会确认）；terminal_exec 仅只读诊断。\n")
+	b.WriteString("- HTTP：先 save_http_request 落资产，再 execute_http(requestId)；勿只临时候 URL。\n")
 	out := b.String()
 	if utf8.RuneCountInString(out) > maxSnapshotRunes {
 		r := []rune(out)

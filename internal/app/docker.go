@@ -7,6 +7,7 @@ import (
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/session"
 	"WWorkbench/internal/store"
+	"WWorkbench/internal/workbench"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -87,6 +88,9 @@ func (s *Service) StartContainer(contextID, containerID string) ApiResult[bool] 
 	if err := s.docker.StartContainer(ctx, contextID, containerID); err != nil {
 		return ErrResult[bool](err)
 	}
+	if s.radar != nil {
+		s.radar.EmitDockerContainer(workbench.RadarOpUpdate, contextID, containerID, "ui-docker-start", "start "+containerID, false)
+	}
 	return OkResult(true)
 }
 
@@ -96,6 +100,9 @@ func (s *Service) StopContainer(contextID, containerID string) ApiResult[bool] {
 	defer cancel()
 	if err := s.docker.StopContainer(ctx, contextID, containerID); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitDockerContainer(workbench.RadarOpUpdate, contextID, containerID, "ui-docker-stop", "stop "+containerID, false)
 	}
 	return OkResult(true)
 }
@@ -107,6 +114,9 @@ func (s *Service) RestartContainer(contextID, containerID string) ApiResult[bool
 	if err := s.docker.RestartContainer(ctx, contextID, containerID); err != nil {
 		return ErrResult[bool](err)
 	}
+	if s.radar != nil {
+		s.radar.EmitDockerContainer(workbench.RadarOpUpdate, contextID, containerID, "ui-docker-restart", "restart "+containerID, false)
+	}
 	return OkResult(true)
 }
 
@@ -116,6 +126,9 @@ func (s *Service) RemoveContainer(contextID, containerID string) ApiResult[bool]
 	defer cancel()
 	if err := s.docker.RemoveContainer(ctx, contextID, containerID); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitDockerContainer(workbench.RadarOpDelete, contextID, containerID, "ui-docker-remove", "remove "+containerID, false)
 	}
 	return OkResult(true)
 }

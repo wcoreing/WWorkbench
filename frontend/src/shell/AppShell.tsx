@@ -15,6 +15,7 @@ import { ShellChrome } from './ShellChrome'
 import { StatusBar } from './StatusBar'
 import { AgentPanel } from '../features/agent/AgentPanel'
 import { subscribeAgentUiActions } from '../features/agent/agentUiActions'
+import { startWorkbenchRadar } from '../workbench/workbenchRadar'
 import { useAgentStore } from '../stores/agentStore'
 import { ConfirmHost } from '../components/ConfirmHost'
 import { useI18n } from '../i18n'
@@ -66,6 +67,7 @@ export function AppShell() {
   }, [])
 
   useEffect(() => subscribeAgentUiActions(), [])
+  useEffect(() => startWorkbenchRadar(), [])
 
   useEffect(() => {
     setMountedProducts((prev) => {

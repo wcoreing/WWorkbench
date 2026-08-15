@@ -20,6 +20,8 @@ func (s *Service) wireAgentRunner() {
 	emit := func(event string, payload map[string]interface{}) {
 		runtime.EventsEmit(s.ctx, event, payload)
 	}
+	radar := workbenchtools.NewRadarBus(emit)
+	s.radar = radar
 	deps := &workbenchtools.Deps{
 		Conns:     s.conns,
 		SSHHosts:  s.sshHosts,
@@ -30,6 +32,7 @@ func (s *Service) wireAgentRunner() {
 		Notebook:  s.notebook,
 		Docker:    s.docker,
 		UIActions: workbenchtools.NewUIActionBus(emit),
+		Radar:     radar,
 	}
 	reg := workbenchtools.NewRegistry(deps)
 	s.toolsRegistry = reg

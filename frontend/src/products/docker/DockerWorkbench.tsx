@@ -13,6 +13,7 @@ import { openAgentDraft, mentionSSH } from '../../features/agent/openAgentDraft'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
+import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { APP_SETTING_KEYS, saveAppSetting } from '../../stores/appPreferences'
 import {
   loadDockerWorkspace,
@@ -392,6 +393,29 @@ export function DockerWorkbench() {
     if (!activeContextId) return
     void refreshData()
   }, [activeContextId, view])
+
+  useEffect(() => {
+    const apply = async (evt: WorkbenchChangedEvent) => {
+      if (evt.domain !== 'docker.container') return
+      const contextId = evt.ids[0]
+      const containerId = evt.ids[1] || evt.ids[0]
+      if (contextId && contextId !== activeContextId && evt.ids.length > 1) {
+        setActiveContextId(contextId)
+      }
+      await refreshData()
+      if (evt.reveal && containerId && evt.op !== 'delete') {
+        setSelectedId(containerId)
+        useAppStore.getState().setStatusMessage(
+          evt.label ? `Docker 已更新：${evt.label}` : `容器已更新 ${containerId}`,
+        )
+      }
+    }
+    const pending = takePendingWorkbenchChanged('docker.')
+    if (pending) void apply(pending)
+    return subscribeWorkbenchChanged((evt) => {
+      void apply(evt)
+    })
+  }, [activeContextId, refreshData])
 
   useEffect(() => {
     setContainerPage(1)

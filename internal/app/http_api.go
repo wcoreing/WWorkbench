@@ -6,6 +6,7 @@ import (
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/httpclient"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/workbench"
 )
 
 // ListHTTPRequests 列出已保存 HTTP 请求。
@@ -40,9 +41,16 @@ func (s *Service) SaveHTTPRequest(r model.HTTPSavedRequestDO) ApiResult[model.HT
 	if r.CookiesJSON == "" {
 		r.CookiesJSON = "[]"
 	}
+	op := workbench.RadarOpUpdate
+	if strings.TrimSpace(r.ID) == "" {
+		op = workbench.RadarOpCreate
+	}
 	saved, err := s.store.SaveHTTPRequest(r)
 	if err != nil {
 		return ErrResult[model.HTTPSavedRequestDO](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitHTTPRequest(op, saved.ID, "ui-http-save", saved.Method+" "+saved.Name, false)
 	}
 	return OkResult(saved)
 }
@@ -55,6 +63,9 @@ func (s *Service) MoveHTTPRequestToFolder(id, folderID string) ApiResult[bool] {
 	if err := s.store.MoveHTTPRequestToFolder(id, folderID); err != nil {
 		return ErrResult[bool](err)
 	}
+	if s.radar != nil {
+		s.radar.EmitHTTPRequest(workbench.RadarOpUpdate, id, "ui-http-move", "", false)
+	}
 	return OkResult(true)
 }
 
@@ -62,6 +73,9 @@ func (s *Service) MoveHTTPRequestToFolder(id, folderID string) ApiResult[bool] {
 func (s *Service) DeleteHTTPRequest(id string) ApiResult[bool] {
 	if err := s.store.DeleteHTTPRequest(id); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitHTTPRequest(workbench.RadarOpDelete, id, "ui-http-delete", "", false)
 	}
 	return OkResult(true)
 }

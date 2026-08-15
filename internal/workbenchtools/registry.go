@@ -375,8 +375,30 @@ func (r *Registry) registerBuiltins() {
 		Handler:     toolListHTTPEnvironments,
 	})
 	r.add(ToolDef{
+		Name:        "save_http_request",
+		Description: "将 HTTP 请求保存为工作台资产（树中可见、可复现）。调试新接口应先 save 再 execute_http(requestId=…)。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"id":          map[string]interface{}{"type": "string", "description": "已有请求 ID（更新时填写）"},
+				"name":        map[string]interface{}{"type": "string", "description": "显示名称，可省略则按 URL 生成"},
+				"method":      map[string]interface{}{"type": "string"},
+				"url":         map[string]interface{}{"type": "string"},
+				"body":        map[string]interface{}{"type": "string"},
+				"folderId":    map[string]interface{}{"type": "string"},
+				"notes":       map[string]interface{}{"type": "string"},
+				"headersJson": map[string]interface{}{"type": "string", "description": "KV JSON 数组字符串"},
+				"paramsJson":  map[string]interface{}{"type": "string"},
+				"cookiesJson": map[string]interface{}{"type": "string"},
+				"reveal":      map[string]interface{}{"type": "boolean", "description": "是否聚焦该请求，默认 true"},
+			},
+			"required": []interface{}{"url"},
+		},
+		Handler: toolSaveHTTPRequest,
+	})
+	r.add(ToolDef{
 		Name:        "execute_http",
-		Description: "执行 HTTP 请求。GET/HEAD 直接执行；POST/PUT/PATCH/DELETE 等需用户确认。可用 requestId 引用已保存模板。",
+		Description: "执行 HTTP 请求。优先 requestId 引用已保存资产；临时 URL 仅用于探路，探通后应 save_http_request。GET/HEAD 直接执行；写方法需确认。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{

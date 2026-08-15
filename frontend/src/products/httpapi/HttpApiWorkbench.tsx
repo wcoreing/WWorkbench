@@ -7,6 +7,7 @@ import { openAgentDraft, mentionHttpRequest } from '../../features/agent/openAge
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildHttpApiSurface, briefList } from '../../stores/agentSurface'
+import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import {
   loadHttpApiWorkspace,
   scheduleHttpApiWorkspacePersist,
@@ -266,6 +267,40 @@ export function HttpApiWorkbench() {
     fullUrl,
     setAgentSurface,
   ])
+
+  useEffect(() => {
+    const apply = async (evt: WorkbenchChangedEvent) => {
+      if (!evt.domain.startsWith('http.')) return
+      if (evt.domain === 'http.env') {
+        await refreshEnvs()
+        return
+      }
+      if (evt.domain === 'http.folder') {
+        await refreshFolders()
+        await refreshList()
+        return
+      }
+      const list = await refreshList()
+      await refreshFolders()
+      const revealId = evt.reveal ? evt.ids[0] : ''
+      if (revealId) {
+        const item = list.find((x) => x.id === revealId)
+        if (item) {
+          setActiveId(item.id)
+          loadEditor(item)
+        }
+        const tip = evt.label || revealId
+        useAppStore.getState().setStatusMessage(
+          evt.op === 'delete' ? `资产已删除：${tip}` : `已落 HTTP 资产：${tip}`,
+        )
+      }
+    }
+    const pending = takePendingWorkbenchChanged('http.')
+    if (pending) void apply(pending)
+    return subscribeWorkbenchChanged((evt) => {
+      void apply(evt)
+    })
+  }, [refreshList, refreshEnvs, refreshFolders, loadEditor])
 
   const buildExecuteReq = useCallback(
     () =>

@@ -48,6 +48,7 @@ type Service struct {
 	agentRunner   *agent.Runner
 	harnessHost   *harness.Host
 	toolsRegistry *workbenchtools.Registry
+	radar         *workbenchtools.RadarBus
 	mcpHTTP       *mcpserver.HTTPService
 	mcpMu         sync.Mutex
 	mcpLastErr    string

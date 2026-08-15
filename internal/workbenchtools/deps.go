@@ -22,4 +22,5 @@ type Deps struct {
 	Notebook  *notebook.Service
 	Docker    *dockersvc.Manager
 	UIActions *UIActionBus
+	Radar     *RadarBus
 }
