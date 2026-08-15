@@ -4,13 +4,21 @@ package workbench
 
 const RadarEventName = "workbench-changed"
 
-// 资产域。
+// 资产域（凡工作台树/列表可见、可复现的实体）。
 const (
 	RadarDomainHTTPRequest     = "http.request"
 	RadarDomainHTTPEnv         = "http.env"
 	RadarDomainHTTPFolder      = "http.folder"
 	RadarDomainNotebookNote    = "notebook.note"
+	RadarDomainNotebookGroup   = "notebook.group"
 	RadarDomainDockerContainer = "docker.container"
+	RadarDomainDockerContext   = "docker.context"
+	RadarDomainSSHHost         = "ssh.host"
+	RadarDomainConnection      = "database.connection"
+	RadarDomainLogSource       = "logs.source"
+	RadarDomainEnvPreset       = "environment.preset"
+	RadarDomainSFTPBookmark    = "sftp.bookmark"
+	RadarDomainSSHForward      = "ssh.forward"
 )
 
 // 变更操作。

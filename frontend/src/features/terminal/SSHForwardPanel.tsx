@@ -5,7 +5,9 @@ import type { SSHForwardActive, SSHForwardPreset, SSHHost } from '../../api/type
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconPlus } from '../../components/Icons'
 import { useI18n } from '../../i18n'
+import { useAppStore } from '../../stores/appStore'
 import { model } from '../../../wailsjs/go/models'
+import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { SSHForwardModal } from './SSHForwardModal'
 import { useSSHTrustConfirm } from './useSSHTrustConfirm'
 
@@ -39,6 +41,22 @@ export function SSHForwardPanel({ hosts, onStatus }: Props) {
     void refresh()
     const timer = setInterval(() => void refresh(), 5000)
     return () => clearInterval(timer)
+  }, [refresh])
+
+  useEffect(() => {
+    const apply = async (evt: WorkbenchChangedEvent) => {
+      if (evt.domain !== 'ssh.forward') return
+      await refresh()
+      if (evt.label) {
+        useAppStore.getState().setStatusMessage(
+          evt.op === 'delete' ? `端口转发已删除：${evt.label}` : `端口转发已更新：${evt.label}`,
+        )
+      }
+    }
+    for (const evt of takePendingWorkbenchChanged('ssh.forward')) void apply(evt)
+    return subscribeWorkbenchChanged((evt) => {
+      void apply(evt)
+    })
   }, [refresh])
 
   const startPreset = async (preset: SSHForwardPreset) => {

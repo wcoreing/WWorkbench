@@ -6,6 +6,7 @@ import (
 	"WWorkbench/internal/session"
 	"WWorkbench/internal/terminal"
 	"WWorkbench/internal/tunnel"
+	"WWorkbench/internal/workbench"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -126,11 +127,18 @@ func (s *Service) GetSSHHost(id string) ApiResult[model.SSHHostDO] {
 
 // SaveSSHHost 保存 SSH 主机。
 func (s *Service) SaveSSHHost(h model.SSHHostDO) ApiResult[model.SSHHostDO] {
+	op := workbench.RadarOpUpdate
+	if h.ID == "" {
+		op = workbench.RadarOpCreate
+	}
 	out, err := s.sshHosts.Save(h)
 	if err != nil {
 		return ErrResult[model.SSHHostDO](err)
 	}
 	terminal.StripSecrets(out)
+	if s.radar != nil {
+		s.radar.EmitSSHHost(op, out.ID, "ui-ssh-save", out.Name, false)
+	}
 	return OkResult(*out)
 }
 
@@ -138,6 +146,9 @@ func (s *Service) SaveSSHHost(h model.SSHHostDO) ApiResult[model.SSHHostDO] {
 func (s *Service) DeleteSSHHost(id string) ApiResult[bool] {
 	if err := s.sshHosts.Delete(id); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitSSHHost(workbench.RadarOpDelete, id, "ui-ssh-delete", "", false)
 	}
 	return OkResult(true)
 }

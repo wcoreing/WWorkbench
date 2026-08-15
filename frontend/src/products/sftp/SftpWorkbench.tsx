@@ -13,6 +13,7 @@ import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/ag
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
+import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { restoreSftpTab } from '../../features/sftp/restoreSftpWorkspace'
 import {
   loadSftpWorkspace,
@@ -132,6 +133,32 @@ export function SftpWorkbench() {
       setStatusMessage((e as Error).message)
     }
   }, [activeTab?.hostId, setStatusMessage])
+
+  useEffect(() => {
+    const apply = async (evt: WorkbenchChangedEvent) => {
+      if (evt.domain === 'ssh.host') {
+        await refreshHosts()
+        if (evt.label) {
+          useAppStore.getState().setStatusMessage(
+            evt.op === 'delete' ? `SSH 主机已删除：${evt.label}` : `SSH 主机已更新：${evt.label}`,
+          )
+        }
+        return
+      }
+      if (evt.domain !== 'sftp.bookmark') return
+      await loadBookmarks()
+      if (evt.label) {
+        useAppStore.getState().setStatusMessage(
+          evt.op === 'delete' ? `书签已删除：${evt.label}` : `书签已更新：${evt.label}`,
+        )
+      }
+    }
+    for (const evt of takePendingWorkbenchChanged('ssh.host')) void apply(evt)
+    for (const evt of takePendingWorkbenchChanged('sftp.')) void apply(evt)
+    return subscribeWorkbenchChanged((evt) => {
+      void apply(evt)
+    })
+  }, [refreshHosts, loadBookmarks])
 
   useEffect(() => {
     if (workspaceRestored.current) {

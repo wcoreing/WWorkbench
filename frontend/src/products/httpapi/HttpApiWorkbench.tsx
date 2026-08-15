@@ -296,7 +296,7 @@ export function HttpApiWorkbench() {
       }
     }
     const pending = takePendingWorkbenchChanged('http.')
-    if (pending) void apply(pending)
+    for (const evt of pending) void apply(evt)
     return subscribeWorkbenchChanged((evt) => {
       void apply(evt)
     })

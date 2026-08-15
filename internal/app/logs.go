@@ -8,7 +8,9 @@ import (
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/logs"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/workbench"
 
+	"github.com/google/uuid"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -29,12 +31,20 @@ func (s *Service) SaveLogSource(src model.LogSourceDO) ApiResult[model.LogSource
 	if err := validateLogSource(src); err != nil {
 		return ErrResult[model.LogSourceDO](err)
 	}
+	op := workbench.RadarOpUpdate
+	if strings.TrimSpace(src.ID) == "" {
+		op = workbench.RadarOpCreate
+		src.ID = uuid.NewString()
+	}
 	if err := s.store.SaveLogSource(src); err != nil {
 		return ErrResult[model.LogSourceDO](err)
 	}
 	saved, err := s.store.GetLogSource(src.ID)
 	if err != nil {
 		return ErrResult[model.LogSourceDO](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitLogSource(op, saved.ID, "ui-log-save", saved.Name, false)
 	}
 	return OkResult(*saved)
 }
@@ -43,6 +53,9 @@ func (s *Service) SaveLogSource(src model.LogSourceDO) ApiResult[model.LogSource
 func (s *Service) DeleteLogSource(id string) ApiResult[bool] {
 	if err := s.store.DeleteLogSource(id); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitLogSource(workbench.RadarOpDelete, id, "ui-log-delete", "", false)
 	}
 	return OkResult(true)
 }

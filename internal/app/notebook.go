@@ -24,9 +24,16 @@ func (s *Service) ListNotebookGroups() ApiResult[[]model.NotebookGroupDO] {
 
 // SaveNotebookGroup 保存笔记本分组。
 func (s *Service) SaveNotebookGroup(g model.NotebookGroupDO) ApiResult[model.NotebookGroupDO] {
+	op := workbench.RadarOpUpdate
+	if strings.TrimSpace(g.ID) == "" {
+		op = workbench.RadarOpCreate
+	}
 	out, err := s.notebook.SaveGroup(g)
 	if err != nil {
 		return ErrResult[model.NotebookGroupDO](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitNotebookGroup(op, out.ID, "ui-notebook-group-save", out.Name, false)
 	}
 	return OkResult(*out)
 }
@@ -35,6 +42,9 @@ func (s *Service) SaveNotebookGroup(g model.NotebookGroupDO) ApiResult[model.Not
 func (s *Service) DeleteNotebookGroup(id string) ApiResult[bool] {
 	if err := s.notebook.DeleteGroup(id); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitNotebookGroup(workbench.RadarOpDelete, id, "ui-notebook-group-delete", "", false)
 	}
 	return OkResult(true)
 }

@@ -3,6 +3,7 @@ package app
 import (
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/session"
+	"WWorkbench/internal/workbench"
 )
 
 // ListSSHForwardPresets 列出端口转发预设。
@@ -16,9 +17,16 @@ func (s *Service) ListSSHForwardPresets() ApiResult[[]model.SSHForwardPresetDO] 
 
 // SaveSSHForwardPreset 保存端口转发预设。
 func (s *Service) SaveSSHForwardPreset(p model.SSHForwardPresetDO) ApiResult[model.SSHForwardPresetDO] {
+	op := workbench.RadarOpUpdate
+	if p.ID == "" {
+		op = workbench.RadarOpCreate
+	}
 	out, err := s.forwards.SavePreset(p)
 	if err != nil {
 		return ErrResult[model.SSHForwardPresetDO](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitSSHForward(op, out.ID, "ui-ssh-forward-save", out.Name, false)
 	}
 	return OkResult(*out)
 }
@@ -27,6 +35,9 @@ func (s *Service) SaveSSHForwardPreset(p model.SSHForwardPresetDO) ApiResult[mod
 func (s *Service) DeleteSSHForwardPreset(id string) ApiResult[bool] {
 	if err := s.forwards.DeletePreset(id); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitSSHForward(workbench.RadarOpDelete, id, "ui-ssh-forward-delete", "", false)
 	}
 	return OkResult(true)
 }

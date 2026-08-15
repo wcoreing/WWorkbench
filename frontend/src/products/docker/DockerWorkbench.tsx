@@ -396,6 +396,19 @@ export function DockerWorkbench() {
 
   useEffect(() => {
     const apply = async (evt: WorkbenchChangedEvent) => {
+      if (evt.domain === 'docker.context') {
+        await refreshContexts()
+        const id = evt.ids[0]
+        if (evt.reveal && id && evt.op !== 'delete') {
+          setActiveContextId(id)
+        }
+        if (evt.label) {
+          useAppStore.getState().setStatusMessage(
+            evt.op === 'delete' ? `Docker 上下文已删除：${evt.label}` : `Docker 上下文已更新：${evt.label}`,
+          )
+        }
+        return
+      }
       if (evt.domain !== 'docker.container') return
       const contextId = evt.ids[0]
       const containerId = evt.ids[1] || evt.ids[0]
@@ -411,11 +424,11 @@ export function DockerWorkbench() {
       }
     }
     const pending = takePendingWorkbenchChanged('docker.')
-    if (pending) void apply(pending)
+    for (const evt of pending) void apply(evt)
     return subscribeWorkbenchChanged((evt) => {
       void apply(evt)
     })
-  }, [activeContextId, refreshData])
+  }, [activeContextId, refreshData, refreshContexts])
 
   useEffect(() => {
     setContainerPage(1)

@@ -6,6 +6,7 @@ import (
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/tunnel"
+	"WWorkbench/internal/workbench"
 
 	"github.com/google/uuid"
 )
@@ -64,6 +65,10 @@ func (s *Service) EnsureSSHHostFromConnection(connectionID string) ApiResult[mod
 	conn.SSHHostID = host.ID
 	if err := s.store.SaveConnection(*conn); err != nil {
 		return ErrResult[model.SSHHostDO](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitSSHHost(workbench.RadarOpCreate, host.ID, "ui-ssh-from-conn", host.Name, false)
+		s.radar.EmitConnection(workbench.RadarOpUpdate, conn.ID, "ui-db-link-ssh", conn.Name, false)
 	}
 	return OkResult(host)
 }

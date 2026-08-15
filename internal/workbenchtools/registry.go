@@ -65,11 +65,11 @@ func (r *Registry) Deps() *Deps {
 
 // toolAliases 兼容旧工具名。
 var toolAliases = map[string]string{
-	"open_terminal":             workbench.CapOpenTerminal,
-	"terminal.open":             workbench.CapOpenTerminal,
-	"terminal.exec":             workbench.CapTerminalExec,
-	"database.open":             workbench.CapDatabaseOpen,
-	"notebook.append_content":   workbench.CapNotebookAppend,
+	"open_terminal":           workbench.CapOpenTerminal,
+	"terminal.open":           workbench.CapOpenTerminal,
+	"terminal.exec":           workbench.CapTerminalExec,
+	"database.open":           workbench.CapDatabaseOpen,
+	"notebook.append_content": workbench.CapNotebookAppend,
 }
 
 // Invoke 调用指定工具。
@@ -114,16 +114,82 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolGetWorkbenchContext,
 	})
 	r.add(ToolDef{
+		Name:        "list_ssh_hosts",
+		Description: "列出已保存的 SSH 主机（不含密码）。用户问「链接/连接」时应与 list_connections 一并使用。",
+		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
+		Handler:     toolListSSHHosts,
+	})
+	r.add(ToolDef{
+		Name:        "save_ssh_host",
+		Description: "将 SSH 主机保存为工作台资产（终端/SFTP 树可见）。需 keyPath 或 password；优先 keyPath。落盘后用 hostId 打开终端。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"id":       map[string]interface{}{"type": "string", "description": "已有主机 ID（更新时填写）"},
+				"name":     map[string]interface{}{"type": "string"},
+				"host":     map[string]interface{}{"type": "string"},
+				"port":     map[string]interface{}{"type": "integer", "description": "默认 22"},
+				"user":     map[string]interface{}{"type": "string"},
+				"password": map[string]interface{}{"type": "string", "description": "可选；勿在对用户回复中复述"},
+				"keyPath":  map[string]interface{}{"type": "string", "description": "私钥路径，推荐 ~/.ssh/id_ed25519"},
+				"reveal":   map[string]interface{}{"type": "boolean", "description": "是否聚焦该主机，默认 true"},
+			},
+			"required": []interface{}{"host", "user"},
+		},
+		Handler: toolSaveSSHHost,
+	})
+	r.add(ToolDef{
+		Name:        "list_ssh_forward_presets",
+		Description: "列出已保存的 SSH 本地端口转发预设。",
+		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
+		Handler:     toolListSSHForwardPresets,
+	})
+	r.add(ToolDef{
+		Name:        "save_ssh_forward",
+		Description: "将本地→远端端口转发保存为终端资产（侧栏可见）。需 sshHostId；localPort=0 表示启动时自动分配。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"id":         map[string]interface{}{"type": "string"},
+				"name":       map[string]interface{}{"type": "string"},
+				"sshHostId":  map[string]interface{}{"type": "string"},
+				"localPort":  map[string]interface{}{"type": "integer", "description": "本机监听端口，0=自动"},
+				"remoteHost": map[string]interface{}{"type": "string", "description": "经 SSH 可达的远端主机，常为 127.0.0.1"},
+				"remotePort": map[string]interface{}{"type": "integer"},
+				"reveal":     map[string]interface{}{"type": "boolean", "description": "默认 true"},
+			},
+			"required": []interface{}{"name", "sshHostId", "remoteHost", "remotePort"},
+		},
+		Handler: toolSaveSSHForwardPreset,
+	})
+	r.add(ToolDef{
 		Name:        "list_connections",
 		Description: "列出已保存的数据库连接（不含密码）。",
 		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
 		Handler:     toolListConnections,
 	})
 	r.add(ToolDef{
-		Name:        "list_ssh_hosts",
-		Description: "列出已保存的 SSH 主机（不含密码）。用户问「链接/连接」时应与 list_connections 一并使用。",
-		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
-		Handler:     toolListSSHHosts,
+		Name:        "save_connection",
+		Description: "将数据库连接保存为工作台资产（连接树可见）。密码可空（用户稍后在 UI 补全）。落盘后用 connectionId 打开会话。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"id":         map[string]interface{}{"type": "string"},
+				"name":       map[string]interface{}{"type": "string"},
+				"group":      map[string]interface{}{"type": "string"},
+				"dbType":     map[string]interface{}{"type": "string", "description": "mysql / postgresql / redis / sqlite"},
+				"host":       map[string]interface{}{"type": "string", "description": "主机；sqlite 为文件路径"},
+				"port":       map[string]interface{}{"type": "integer"},
+				"user":       map[string]interface{}{"type": "string"},
+				"password":   map[string]interface{}{"type": "string", "description": "可选；勿在对用户回复中复述"},
+				"database":   map[string]interface{}{"type": "string"},
+				"sshEnabled": map[string]interface{}{"type": "boolean"},
+				"sshHostId":  map[string]interface{}{"type": "string", "description": "经 SSH 隧道时填 list_ssh_hosts 的 id"},
+				"reveal":     map[string]interface{}{"type": "boolean", "description": "默认 true"},
+			},
+			"required": []interface{}{"dbType", "host"},
+		},
+		Handler: toolSaveConnection,
 	})
 	r.add(ToolDef{
 		Name:        "open_database_session",
@@ -280,6 +346,21 @@ func (r *Registry) registerBuiltins() {
 		Handler:     toolListDockerContexts,
 	})
 	r.add(ToolDef{
+		Name:        "save_docker_context",
+		Description: "将 SSH 远端 Docker 保存为工作台上下文资产。需已有 sshHostId；落盘后用 contextId 调 list_containers。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"id":        map[string]interface{}{"type": "string"},
+				"name":      map[string]interface{}{"type": "string"},
+				"sshHostId": map[string]interface{}{"type": "string"},
+				"reveal":    map[string]interface{}{"type": "boolean", "description": "默认 true"},
+			},
+			"required": []interface{}{"sshHostId"},
+		},
+		Handler: toolSaveDockerContext,
+	})
+	r.add(ToolDef{
 		Name:        "list_containers",
 		Description: "列出指定 Docker 上下文下的容器（只读）。contextId 省略或为 local 表示本机。",
 		Parameters: map[string]interface{}{
@@ -350,8 +431,30 @@ func (r *Registry) registerBuiltins() {
 		Handler:     toolListLogSources,
 	})
 	r.add(ToolDef{
+		Name:        "save_log_source",
+		Description: "将日志源保存为工作台资产（日志中心可见）。应先 save 再 fetch_logs(logSourceId=…)，勿只临时候路径读完就结束。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"id":              map[string]interface{}{"type": "string"},
+				"name":            map[string]interface{}{"type": "string"},
+				"sourceType":      map[string]interface{}{"type": "string", "description": "local_file / ssh_file / docker / compose"},
+				"path":            map[string]interface{}{"type": "string"},
+				"sshHostId":       map[string]interface{}{"type": "string"},
+				"dockerContextId": map[string]interface{}{"type": "string"},
+				"containerId":     map[string]interface{}{"type": "string"},
+				"composeDir":      map[string]interface{}{"type": "string"},
+				"composeService":  map[string]interface{}{"type": "string"},
+				"tailLines":       map[string]interface{}{"type": "integer"},
+				"reveal":          map[string]interface{}{"type": "boolean", "description": "默认 true"},
+			},
+			"required": []interface{}{"name", "sourceType"},
+		},
+		Handler: toolSaveLogSource,
+	})
+	r.add(ToolDef{
 		Name:        "fetch_logs",
-		Description: "按 logSourceId 拉取日志尾部（只读）。需先用 list_log_sources 获取 ID。",
+		Description: "按 logSourceId 拉取日志尾部（只读）。优先引用已保存资产；新源应先 save_log_source。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -373,6 +476,21 @@ func (r *Registry) registerBuiltins() {
 		Description: "列出 HTTP 环境变量预设（用于 {{var}} 替换）。",
 		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
 		Handler:     toolListHTTPEnvironments,
+	})
+	r.add(ToolDef{
+		Name:        "save_http_environment",
+		Description: "保存 HTTP 环境变量预设（varsJson 对象）。与 save_http_request 配套，execute_http 传 envId。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"id":       map[string]interface{}{"type": "string"},
+				"name":     map[string]interface{}{"type": "string"},
+				"varsJson": map[string]interface{}{"type": "string", "description": "如 {\"baseUrl\":\"https://api.example.com\"}"},
+				"reveal":   map[string]interface{}{"type": "boolean", "description": "默认 true"},
+			},
+			"required": []interface{}{"name"},
+		},
+		Handler: toolSaveHTTPEnvironment,
 	})
 	r.add(ToolDef{
 		Name:        "save_http_request",

@@ -8,6 +8,7 @@ import (
 	"WWorkbench/internal/httpclient"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/store"
+	"WWorkbench/internal/workbench"
 )
 
 // ListHTTPEnvironments 列出 HTTP 环境变量预设。
@@ -33,12 +34,19 @@ func (s *Service) SaveHTTPEnvironment(e model.HTTPEnvironmentDO) ApiResult[model
 	if !json.Valid([]byte(e.VarsJSON)) {
 		return ErrResult[model.HTTPEnvironmentDO](errno.New(errno.CodeInvalidArg, "环境变量 JSON 格式无效", ""))
 	}
+	op := workbench.RadarOpUpdate
+	if strings.TrimSpace(e.ID) == "" {
+		op = workbench.RadarOpCreate
+	}
 	if err := s.store.SaveHTTPEnvironment(&e); err != nil {
 		return ErrResult[model.HTTPEnvironmentDO](err)
 	}
 	saved, err := s.store.GetHTTPEnvironment(e.ID)
 	if err != nil {
 		return ErrResult[model.HTTPEnvironmentDO](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitHTTPEnv(op, saved.ID, "ui-http-env-save", saved.Name, false)
 	}
 	return OkResult(*saved)
 }
@@ -47,6 +55,9 @@ func (s *Service) SaveHTTPEnvironment(e model.HTTPEnvironmentDO) ApiResult[model
 func (s *Service) DeleteHTTPEnvironment(id string) ApiResult[bool] {
 	if err := s.store.DeleteHTTPEnvironment(id); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitHTTPEnv(workbench.RadarOpDelete, id, "ui-http-env-delete", "", false)
 	}
 	return OkResult(true)
 }

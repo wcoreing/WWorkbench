@@ -18,8 +18,8 @@ type Listener = (evt: WorkbenchChangedEvent) => void
 const listeners = new Set<Listener>()
 let started = false
 let unsubRuntime: (() => void) | undefined
-/** 最近一次变更：产品尚未挂载时由工作台 mount 后 take。 */
-let pending: WorkbenchChangedEvent | null = null
+/** 按 domain 暂存最近变更：产品尚未挂载时由工作台 mount 后 drain。 */
+const pendingByDomain = new Map<string, WorkbenchChangedEvent>()
 
 function normalize(raw: Record<string, unknown>): WorkbenchChangedEvent {
   const idsRaw = raw.ids
@@ -43,12 +43,15 @@ export function subscribeWorkbenchChanged(fn: Listener): () => void {
   }
 }
 
-/** takePendingWorkbenchChanged 取出匹配域的 pending（mount 时补消化）。 */
-export function takePendingWorkbenchChanged(domainPrefix: string): WorkbenchChangedEvent | null {
-  if (!pending || !pending.domain.startsWith(domainPrefix)) return null
-  const evt = pending
-  pending = null
-  return evt
+/** takePendingWorkbenchChanged 取出匹配域前缀的全部 pending（mount 时补消化）。 */
+export function takePendingWorkbenchChanged(domainPrefix: string): WorkbenchChangedEvent[] {
+  const out: WorkbenchChangedEvent[] = []
+  for (const [domain, evt] of pendingByDomain) {
+    if (!domain.startsWith(domainPrefix)) continue
+    pendingByDomain.delete(domain)
+    out.push(evt)
+  }
+  return out
 }
 
 /** startWorkbenchRadar 全局启动一次 Wails 事件桥。 */
@@ -60,7 +63,7 @@ export function startWorkbenchRadar(): () => void {
   unsubRuntime = EventsOn('workbench-changed', (raw: Record<string, unknown>) => {
     const evt = normalize(raw || {})
     if (!evt.domain) return
-    pending = evt
+    pendingByDomain.set(evt.domain, evt)
     if (evt.reveal && evt.product) {
       useAppStore.getState().setActiveProduct(evt.product as ProductId)
     }
@@ -77,6 +80,6 @@ export function startWorkbenchRadar(): () => void {
     unsubRuntime = undefined
     started = false
     listeners.clear()
-    pending = null
+    pendingByDomain.clear()
   }
 }

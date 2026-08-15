@@ -3,6 +3,7 @@ package app
 import (
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/store"
+	"WWorkbench/internal/workbench"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -79,12 +80,19 @@ func (s *Service) ListEnvPresets() ApiResult[[]model.EnvPresetDO] {
 
 // SaveEnvPreset 保存环境预设。
 func (s *Service) SaveEnvPreset(p model.EnvPresetDO) ApiResult[model.EnvPresetDO] {
+	op := workbench.RadarOpUpdate
+	if _, err := s.store.GetEnvPreset(p.ID); err != nil {
+		op = workbench.RadarOpCreate
+	}
 	if err := s.store.SaveEnvPreset(p); err != nil {
 		return ErrResult[model.EnvPresetDO](err)
 	}
 	out, err := s.store.GetEnvPreset(p.ID)
 	if err != nil {
 		return ErrResult[model.EnvPresetDO](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitEnvPreset(op, out.ID, "ui-env-preset-save", out.Name, false)
 	}
 	return OkResult(*out)
 }
@@ -93,6 +101,9 @@ func (s *Service) SaveEnvPreset(p model.EnvPresetDO) ApiResult[model.EnvPresetDO
 func (s *Service) DeleteEnvPreset(id string) ApiResult[bool] {
 	if err := s.store.DeleteEnvPreset(id); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitEnvPreset(workbench.RadarOpDelete, id, "ui-env-preset-delete", "", false)
 	}
 	return OkResult(true)
 }
@@ -106,6 +117,9 @@ func (s *Service) ApplyEnvPreset(id string) ApiResult[model.EnvApplyResultDO] {
 	preset.Active = true
 	if err := s.store.SaveEnvPreset(*preset); err != nil {
 		return ErrResult[model.EnvApplyResultDO](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitEnvPreset(workbench.RadarOpUpdate, preset.ID, "ui-env-preset-apply", preset.Name, false)
 	}
 	warnings := s.env.ApplyPreset(*preset)
 	return OkResult(model.EnvApplyResultDO{Warnings: warnings})

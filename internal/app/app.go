@@ -22,6 +22,7 @@ import (
 	sftpsvc "WWorkbench/internal/sftp"
 	"WWorkbench/internal/store"
 	"WWorkbench/internal/terminal"
+	"WWorkbench/internal/workbench"
 	"WWorkbench/internal/workbenchtools"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -148,11 +149,18 @@ func (s *Service) GetConnection(id string) ApiResult[model.ConnectionDO] {
 
 // SaveConnection 保存连接。
 func (s *Service) SaveConnection(c model.ConnectionDO) ApiResult[model.ConnectionDO] {
+	op := workbench.RadarOpUpdate
+	if c.ID == "" {
+		op = workbench.RadarOpCreate
+	}
 	out, err := s.conns.Save(c)
 	if err != nil {
 		return ErrResult[model.ConnectionDO](err)
 	}
 	conn.StripSecrets(out)
+	if s.radar != nil {
+		s.radar.EmitConnection(op, out.ID, "ui-db-save", out.Name, false)
+	}
 	return OkResult(*out)
 }
 
@@ -160,6 +168,9 @@ func (s *Service) SaveConnection(c model.ConnectionDO) ApiResult[model.Connectio
 func (s *Service) DeleteConnection(id string) ApiResult[bool] {
 	if err := s.conns.Delete(id); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitConnection(workbench.RadarOpDelete, id, "ui-db-delete", "", false)
 	}
 	return OkResult(true)
 }

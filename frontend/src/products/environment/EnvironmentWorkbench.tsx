@@ -8,6 +8,7 @@ import { EnvVersionModal } from '../../features/environment/EnvVersionModal'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildEnvironmentSurface, briefList } from '../../stores/agentSurface'
+import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 
 const RUNTIME_META: Record<RuntimeLang, { label: string; color: string }> = {
   node: { label: 'Node.js', color: '#3c873a' },
@@ -86,6 +87,22 @@ export function EnvironmentWorkbench() {
   useEffect(() => {
     void refreshAll()
   }, [refreshAll])
+
+  useEffect(() => {
+    const apply = async (evt: WorkbenchChangedEvent) => {
+      if (evt.domain !== 'environment.preset') return
+      await refreshPresets()
+      if (evt.label) {
+        useAppStore.getState().setStatusMessage(
+          evt.op === 'delete' ? `环境预设已删除：${evt.label}` : `环境预设已更新：${evt.label}`,
+        )
+      }
+    }
+    for (const evt of takePendingWorkbenchChanged('environment.')) void apply(evt)
+    return subscribeWorkbenchChanged((evt) => {
+      void apply(evt)
+    })
+  }, [refreshPresets])
 
   /** loadVersions 加载某语言版本列表（默认读缓存，force 时强制请求）。 */
   const loadVersions = useCallback(

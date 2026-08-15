@@ -231,7 +231,16 @@ export function NotebookWorkbench() {
 
   useEffect(() => {
     const apply = async (evt: WorkbenchChangedEvent) => {
-      if (evt.domain !== 'notebook.note') return
+      if (evt.domain !== 'notebook.note' && evt.domain !== 'notebook.group') return
+      if (evt.domain === 'notebook.group') {
+        await refreshAll()
+        if (evt.label) {
+          useAppStore.getState().setStatusMessage(
+            evt.op === 'delete' ? `分组已删除：${evt.label}` : `分组已更新：${evt.label}`,
+          )
+        }
+        return
+      }
       await refreshSummaries()
       const noteId = evt.ids[0]
       if (evt.reveal && noteId && evt.op !== 'delete') {
@@ -258,11 +267,11 @@ export function NotebookWorkbench() {
       }
     }
     const pending = takePendingWorkbenchChanged('notebook.')
-    if (pending) void apply(pending)
+    for (const evt of pending) void apply(evt)
     return subscribeWorkbenchChanged((evt) => {
       void apply(evt)
     })
-  }, [refreshSummaries, openNoteById, openNotes, markNoteSaved])
+  }, [refreshSummaries, refreshAll, openNoteById, openNotes, markNoteSaved])
 
   useEffect(() => {
     if (!notebookFocusNoteId || loading) return

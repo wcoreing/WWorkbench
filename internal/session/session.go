@@ -15,8 +15,8 @@ import (
 
 	"database/sql"
 
-	goredis "github.com/redis/go-redis/v9"
 	"github.com/google/uuid"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 // Session 数据库会话。
@@ -256,6 +256,40 @@ func (m *Manager) SwitchDatabase(ctx context.Context, sessionID, database string
 		_ = old.Close()
 	}
 	return &model.SessionInfoDO{SessionID: s.ID, ConnectionID: s.ConnectionID, Database: database}, nil
+}
+
+// DBForDatabase 返回访问指定库的 *sql.DB。
+// PostgreSQL 跨库时打开临时连接，调用方必须执行 release；同库或其它引擎返回会话连接且 release 为空操作。
+func (m *Manager) DBForDatabase(ctx context.Context, sessionID, database string) (*sql.DB, func(), error) {
+	s, err := m.Get(sessionID)
+	if err != nil {
+		return nil, nil, err
+	}
+	database = strings.TrimSpace(database)
+	noop := func() {}
+	if database == "" || database == s.Database || s.DbType != "postgresql" {
+		return s.DB, noop, nil
+	}
+	conn, err := m.store.GetConnection(s.ConnectionID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := tunnel.ResolveConnection(m.store, conn); err != nil {
+		return nil, nil, err
+	}
+	ad, err := m.registry.Get(s.DbType)
+	if err != nil {
+		return nil, nil, err
+	}
+	cfg := model.ConnectionConfigDO{
+		DbType: s.DbType, Host: conn.Host, Port: conn.Port, User: conn.User,
+		Password: conn.Password, Database: database, Charset: conn.Charset,
+	}
+	db, err := ad.Open(ctx, cfg, s.Tunnel)
+	if err != nil {
+		return nil, nil, err
+	}
+	return db, func() { _ = db.Close() }, nil
 }
 
 // WithTimeout 返回带超时的上下文。

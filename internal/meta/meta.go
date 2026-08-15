@@ -67,7 +67,12 @@ func (s *Service) ListDatabaseObjects(ctx context.Context, sessionID, database s
 	if err != nil {
 		return nil, err
 	}
-	return listDatabaseObjectNodes(ctx, ad, sess.DB, sessionID, database)
+	db, release, err := s.sessions.DBForDatabase(ctx, sessionID, database)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	return listDatabaseObjectNodes(ctx, ad, db, sessionID, database)
 }
 
 // listDatabaseObjectNodes 构建库内表/视图节点。
@@ -141,7 +146,12 @@ func (s *Service) ListColumns(ctx context.Context, sessionID, database, table st
 	if err != nil {
 		return nil, err
 	}
-	return ad.ListColumns(ctx, sess.DB, database, table)
+	db, release, err := s.sessions.DBForDatabase(ctx, sessionID, database)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	return ad.ListColumns(ctx, db, database, table)
 }
 
 // ListIndexes 列出表索引。
@@ -157,7 +167,12 @@ func (s *Service) ListIndexes(ctx context.Context, sessionID, database, table st
 	if err != nil {
 		return nil, err
 	}
-	return ad.ListIndexes(ctx, sess.DB, database, table)
+	db, release, err := s.sessions.DBForDatabase(ctx, sessionID, database)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
+	return ad.ListIndexes(ctx, db, database, table)
 }
 
 // GetTableDDL 获取表 DDL。
@@ -173,5 +188,10 @@ func (s *Service) GetTableDDL(ctx context.Context, sessionID, database, table st
 	if err != nil {
 		return "", err
 	}
-	return ad.GetTableDDL(ctx, sess.DB, database, table)
+	db, release, err := s.sessions.DBForDatabase(ctx, sessionID, database)
+	if err != nil {
+		return "", err
+	}
+	defer release()
+	return ad.GetTableDDL(ctx, db, database, table)
 }

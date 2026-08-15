@@ -8,6 +8,7 @@ import (
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/session"
 	sftpsvc "WWorkbench/internal/sftp"
+	"WWorkbench/internal/workbench"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -207,6 +208,10 @@ func (s *Service) ListSFTPBookmarks(side, hostID string) ApiResult[[]model.SftpB
 
 // SaveSFTPBookmark 保存 SFTP 路径书签。
 func (s *Service) SaveSFTPBookmark(b model.SftpBookmarkDO) ApiResult[model.SftpBookmarkDO] {
+	op := workbench.RadarOpUpdate
+	if b.ID == "" {
+		op = workbench.RadarOpCreate
+	}
 	if b.Name == "" {
 		b.Name = path.Base(strings.TrimSuffix(b.Path, "/"))
 		if b.Name == "" || b.Name == "." {
@@ -217,6 +222,9 @@ func (s *Service) SaveSFTPBookmark(b model.SftpBookmarkDO) ApiResult[model.SftpB
 	if err != nil {
 		return ErrResult[model.SftpBookmarkDO](err)
 	}
+	if s.radar != nil {
+		s.radar.EmitSFTPBookmark(op, out.ID, "ui-sftp-bookmark-save", out.Name, false)
+	}
 	return OkResult(*out)
 }
 
@@ -224,6 +232,9 @@ func (s *Service) SaveSFTPBookmark(b model.SftpBookmarkDO) ApiResult[model.SftpB
 func (s *Service) DeleteSFTPBookmark(id string) ApiResult[bool] {
 	if err := s.store.DeleteSFTPBookmark(id); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitSFTPBookmark(workbench.RadarOpDelete, id, "ui-sftp-bookmark-delete", "", false)
 	}
 	return OkResult(true)
 }

@@ -18,6 +18,7 @@ import { buildDatabaseSurface } from '../../stores/agentSurface'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadBool, payloadStr } from '../../workbench/commandPayload'
+import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import type { ConnectionDraft } from '../../stores/appStore'
 import { APP_SETTING_KEYS, saveAppSetting } from '../../stores/appPreferences'
 import { openAgentDraft, mentionDatabase } from '../../features/agent/openAgentDraft'
@@ -87,7 +88,7 @@ export function DatabaseWorkbench() {
   const restoredConnection = useRef(false)
 
   useEffect(() => {
-    refreshConnections()
+    void refreshConnections()
   }, [])
 
   useEffect(() => {
@@ -126,7 +127,7 @@ export function DatabaseWorkbench() {
     return () => window.removeEventListener('click', close)
   }, [tabCtxMenu])
 
-  const refreshConnections = async () => {
+  const refreshConnections = useCallback(async () => {
     try {
       const list = await api.listConnections()
       setConnections(list)
@@ -135,7 +136,23 @@ export function DatabaseWorkbench() {
       setConnections([])
       setStatusMessage((e as Error).message)
     }
-  }
+  }, [setStatusMessage])
+
+  useEffect(() => {
+    const apply = async (evt: WorkbenchChangedEvent) => {
+      if (evt.domain !== 'database.connection') return
+      await refreshConnections()
+      if (evt.label) {
+        useAppStore.getState().setStatusMessage(
+          evt.op === 'delete' ? `连接已删除：${evt.label}` : `连接已更新：${evt.label}`,
+        )
+      }
+    }
+    for (const evt of takePendingWorkbenchChanged('database.')) void apply(evt)
+    return subscribeWorkbenchChanged((evt) => {
+      void apply(evt)
+    })
+  }, [refreshConnections])
 
   /** reloadObjectTree 重拉库列表并失效 ObjectTree 懒加载缓存。 */
   const reloadObjectTree = async (sessionId: string) => {
@@ -406,6 +423,7 @@ export function DatabaseWorkbench() {
       try {
         const info = await api.setDatabase(session.sessionId, database)
         setSession(info)
+        setTreeRefreshNonce((n) => n + 1)
         setStatusMessage(t('database.databaseSelected', { name: database }))
       } catch (e) {
         setStatusMessage((e as Error).message)

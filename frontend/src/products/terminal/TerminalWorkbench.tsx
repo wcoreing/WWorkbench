@@ -13,6 +13,7 @@ import { buildTerminalSurface } from '../../stores/agentSurface'
 import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadBool, payloadStr } from '../../workbench/commandPayload'
+import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import {
   loadTerminalWorkspace,
   scheduleTerminalWorkspacePersist,
@@ -156,6 +157,22 @@ export function TerminalWorkbench() {
       }
     })()
   }, [refreshHosts, setStatusMessage, confirmTrust, t])
+
+  useEffect(() => {
+    const apply = async (evt: WorkbenchChangedEvent) => {
+      if (evt.domain !== 'ssh.host') return
+      await refreshHosts()
+      if (evt.label) {
+        useAppStore.getState().setStatusMessage(
+          evt.op === 'delete' ? `SSH 主机已删除：${evt.label}` : `SSH 主机已更新：${evt.label}`,
+        )
+      }
+    }
+    for (const evt of takePendingWorkbenchChanged('ssh.host')) void apply(evt)
+    return subscribeWorkbenchChanged((evt) => {
+      void apply(evt)
+    })
+  }, [refreshHosts])
 
   useEffect(() => {
     if (activeProduct !== 'terminal') {

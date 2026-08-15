@@ -9,6 +9,7 @@ import { useAppStore } from '../../stores/appStore'
 import { buildLogsSurface, briefList } from '../../stores/agentSurface'
 import { subscribeLogsChunks } from '../../api/logsEvents'
 import { loadLogsWorkspace, scheduleLogsWorkspacePersist } from '../../stores/logsWorkspacePersist'
+import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { model } from '../../../wailsjs/go/models'
 
 const SOURCE_TYPES: LogSourceType[] = ['local_file', 'ssh_file', 'docker', 'compose']
@@ -159,6 +160,34 @@ export function LogCenterWorkbench() {
       loadEditor(list.find((x) => x.id === id) ?? null)
     })()
   }, [refreshList, loadEditor])
+
+  useEffect(() => {
+    const apply = async (evt: WorkbenchChangedEvent) => {
+      if (evt.domain !== 'logs.source') return
+      const list = await refreshList()
+      const id = evt.ids[0]
+      if (evt.op === 'delete' && id && activeId === id) {
+        const next = list[0] ?? null
+        setActiveId(next?.id ?? '')
+        loadEditor(next)
+      } else if (evt.reveal && id && evt.op !== 'delete') {
+        const item = list.find((x) => x.id === id) ?? null
+        if (item) {
+          setActiveId(id)
+          loadEditor(item)
+        }
+      }
+      if (evt.label) {
+        useAppStore.getState().setStatusMessage(
+          evt.op === 'delete' ? `日志源已删除：${evt.label}` : `日志源已更新：${evt.label}`,
+        )
+      }
+    }
+    for (const evt of takePendingWorkbenchChanged('logs.')) void apply(evt)
+    return subscribeWorkbenchChanged((evt) => {
+      void apply(evt)
+    })
+  }, [refreshList, loadEditor, activeId])
 
   useEffect(() => {
     scheduleLogsWorkspacePersist({ version: 1, activeId })

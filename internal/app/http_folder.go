@@ -5,6 +5,7 @@ import (
 
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/workbench"
 )
 
 // ListHTTPFolders 列出 HTTP 接口目录。
@@ -24,9 +25,16 @@ func (s *Service) SaveHTTPFolder(f model.HTTPFolderDO) ApiResult[model.HTTPFolde
 	if strings.TrimSpace(f.Name) == "" {
 		return ErrResult[model.HTTPFolderDO](errno.New(errno.CodeInvalidArg, "请填写目录名称", ""))
 	}
+	op := workbench.RadarOpUpdate
+	if strings.TrimSpace(f.ID) == "" {
+		op = workbench.RadarOpCreate
+	}
 	saved, err := s.store.SaveHTTPFolder(f)
 	if err != nil {
 		return ErrResult[model.HTTPFolderDO](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitHTTPFolder(op, saved.ID, "ui-http-folder-save", saved.Name, false)
 	}
 	return OkResult(saved)
 }
@@ -48,6 +56,14 @@ func (s *Service) BatchDeleteHTTP(folderIDs, requestIDs []string) ApiResult[bool
 	}
 	if err := s.store.BatchDeleteHTTP(folderIDs, requestIDs); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		for _, id := range folderIDs {
+			s.radar.EmitHTTPFolder(workbench.RadarOpDelete, id, "ui-http-folder-delete", "", false)
+		}
+		for _, id := range requestIDs {
+			s.radar.EmitHTTPRequest(workbench.RadarOpDelete, id, "ui-http-delete", "", false)
+		}
 	}
 	return OkResult(true)
 }

@@ -28,9 +28,16 @@ func (s *Service) ListDockerContexts() ApiResult[[]model.DockerContextDO] {
 
 // SaveDockerContext 保存 SSH Docker 上下文。
 func (s *Service) SaveDockerContext(c model.DockerContextDO) ApiResult[model.DockerContextDO] {
+	op := workbench.RadarOpUpdate
+	if c.ID == "" {
+		op = workbench.RadarOpCreate
+	}
 	out, err := s.docker.SaveContext(c)
 	if err != nil {
 		return ErrResult[model.DockerContextDO](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitDockerContext(op, out.ID, "ui-docker-ctx-save", out.Name, false)
 	}
 	return OkResult(*out)
 }
@@ -39,6 +46,9 @@ func (s *Service) SaveDockerContext(c model.DockerContextDO) ApiResult[model.Doc
 func (s *Service) DeleteDockerContext(id string) ApiResult[bool] {
 	if err := s.docker.DeleteContext(id); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitDockerContext(workbench.RadarOpDelete, id, "ui-docker-ctx-delete", "", false)
 	}
 	return OkResult(true)
 }
