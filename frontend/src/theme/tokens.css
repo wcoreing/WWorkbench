@@ -41,12 +41,30 @@
   --shadow-sm: none;
   --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
   --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.12);
+
+  /* 间距语言：全站只准用这 4 档（Chrome 紧、内容略松） */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --chrome-pad-x: var(--space-2);
+  --chrome-gap: var(--space-1);
+  --content-pad: var(--space-3);
+  --section-gap: 0px;
+
+  /* 图标三档 */
+  --icon-sm: 14px;
+  --icon-md: 18px;
+  --icon-rail: 22px;
+
   --sidebar-width: 220px;
   --product-rail-width: 52px;
   --chrome-height: 36px;
+  --toolbar-height: 32px;
   --tab-height: 28px;
   --statusbar-height: 22px;
   --control-height: 26px;
+  --control-height-chrome: 24px;
 }
 
 [data-theme='dark'] {

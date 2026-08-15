@@ -1,3 +1,5 @@
+import { pressProps } from '../../components/compat'
+
 interface Props {
   canUpload: boolean
   canDownload: boolean
@@ -26,7 +28,7 @@ export function SftpTransferRail({
           className="sftp-transfer-btn upload"
           title={localHint ? `上传：${localHint}` : '将左侧选中项加入上传队列'}
           disabled={!canUpload}
-          onClick={onUpload}
+          {...pressProps(onUpload, { disabled: !canUpload })}
         >
           <span className="sftp-transfer-arrow">→</span>
           <span className="sftp-transfer-text">上传</span>
@@ -37,7 +39,7 @@ export function SftpTransferRail({
           className="sftp-transfer-btn download"
           title={remoteHint ? `下载：${remoteHint}` : '将右侧选中项加入下载队列'}
           disabled={!canDownload}
-          onClick={onDownload}
+          {...pressProps(onDownload, { disabled: !canDownload })}
         >
           <span className="sftp-transfer-arrow">←</span>
           <span className="sftp-transfer-text">下载</span>

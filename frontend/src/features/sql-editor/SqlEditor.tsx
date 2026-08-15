@@ -62,7 +62,7 @@ export const SqlEditor = forwardRef<SqlEditorHandle, Props>(function SqlEditor(
   }, [sql, tabId])
 
   return (
-    <div className="sql-editor-wrap">
+    <div className="sql-editor-wrap" data-ww-focus-hog="">
       <div ref={editorHostRef} className="sql-editor-host">
         <Editor
           key={tabId}

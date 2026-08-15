@@ -12,6 +12,7 @@ import type { AppLocale } from '../i18n/types'
 import { applyDocumentLocale, READY_MESSAGES, translate } from '../i18n'
 import { applyUiFontSize, DEFAULT_UI_FONT_SIZE, type UiFontSize } from '../shell/uiFontSize'
 import { emptyAgentSurface, type AgentSurface } from './agentSurface'
+import { dismissOverlays } from '../components/compat/dismissOverlays'
 
 export type { WorkTab } from './workTab'
 export type { AgentSurface } from './agentSurface'
@@ -125,7 +126,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     void saveAppSetting(APP_SETTING_KEYS.locale, locale)
   },
   setActiveProduct: (activeProduct) => {
+    const prev = get().activeProduct
     set({ activeProduct })
+    if (prev !== activeProduct) {
+      dismissOverlays()
+      // 隐藏产品线内的焦点（xterm/input）会抢下一次点击
+      requestAnimationFrame(() => {
+        const ae = document.activeElement as HTMLElement | null
+        if (ae?.closest?.('.product-view-host[hidden]')) {
+          ae.blur()
+        }
+      })
+    }
     void saveAppSetting(APP_SETTING_KEYS.activeProduct, activeProduct)
   },
   setConnections: (connections) => set({ connections }),

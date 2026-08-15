@@ -1,0 +1,366 @@
+/* 统一可拖布局
+ *
+ * 分隔线语言（唯一入口）：
+ * - 区域边界只由 ResizeHandle / PaneGutter / 收起轨绘制
+ * - 常态：1px var(--color-border) 始终可见
+ * - 悬停/拖动：同几何位置变为 var(--accent)
+ * - 禁止 pane 内容再用 border 充当分栏线（stack/columns 内已清零）
+ */
+
+.wn-product-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 侧栏|主区的线由中间 ResizeHandle 负责，避免双边框 */
+.wn-product-layout > .wn-product-sidebar {
+  border-right: none;
+}
+
+.wn-product-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.wn-product-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.wn-resize-handle {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+
+.wn-resize-handle-x {
+  width: 5px;
+  margin: 0 -2px;
+  cursor: col-resize;
+}
+
+.wn-resize-handle-y {
+  height: 5px;
+  margin: -2px 0;
+  cursor: row-resize;
+}
+
+.wn-resize-handle-x::after,
+.wn-resize-handle-y::after {
+  content: '';
+  position: absolute;
+  background: var(--color-border);
+  opacity: 1;
+  transition: background 0.15s;
+  pointer-events: none;
+}
+
+.wn-resize-handle-x::after {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+}
+
+.wn-resize-handle-y::after {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.wn-resize-handle:hover::after,
+body.is-col-resizing .wn-resize-handle-x::after,
+body.is-row-resizing .wn-resize-handle-y::after {
+  background: var(--accent);
+}
+
+.wn-sidebar-stack {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.wn-sidebar-stack-chunk {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.wn-sidebar-stack-chunk:has(.is-flex) {
+  flex: 1;
+  min-height: 0;
+}
+
+.wn-sidebar-stack-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.wn-sidebar-stack-pane.is-flex {
+  flex: 1;
+  min-height: 72px;
+}
+
+.wn-sidebar-stack-pane.is-flex > .wn-sidebar-columns {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 布局托管的 pane：内容不得自绘分栏线 */
+.wn-sidebar-stack-pane .sidebar-section,
+.wn-sidebar-columns-pane .sidebar-section {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  border: none;
+  max-height: none;
+}
+
+.wn-sidebar-stack-pane .sidebar-body.connections-body,
+.wn-sidebar-columns-pane .sidebar-body.connections-body {
+  max-height: none;
+  flex: 1;
+}
+
+.wn-sidebar-columns {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  height: 100%;
+}
+
+.wn-sidebar-columns-chunk {
+  display: flex;
+  flex-direction: row;
+  min-width: 0;
+  min-height: 0;
+}
+
+.wn-sidebar-columns-chunk:has(.is-flex) {
+  flex: 1;
+  min-width: 0;
+}
+
+.wn-sidebar-columns-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.wn-sidebar-columns-pane.is-flex {
+  flex: 1;
+  min-width: 120px;
+}
+
+body.is-row-resizing,
+body.is-col-resizing {
+  cursor: inherit;
+}
+
+/* 分栏沟槽：折叠 + 拖拽同层；分隔线由 gutter 统一绘制 */
+.wn-pane-gutter {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+.wn-pane-gutter-x {
+  flex-direction: column;
+  width: 5px;
+  margin: 0 -2px;
+}
+
+.wn-pane-gutter-y {
+  flex-direction: row;
+  height: 5px;
+  margin: -2px 0;
+}
+
+.wn-pane-gutter-x::before,
+.wn-pane-gutter-y::before {
+  content: '';
+  position: absolute;
+  background: var(--color-border);
+  pointer-events: none;
+  transition: background 0.15s;
+}
+
+.wn-pane-gutter-x::before {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+}
+
+.wn-pane-gutter-y::before {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.wn-pane-gutter:hover::before,
+body.is-col-resizing .wn-pane-gutter-x::before,
+body.is-row-resizing .wn-pane-gutter-y::before {
+  background: var(--accent);
+}
+
+/* gutter 已画线，内嵌 handle 常态隐藏，避免双线 */
+.wn-pane-gutter .wn-resize-handle-x::after,
+.wn-pane-gutter .wn-resize-handle-y::after {
+  opacity: 0;
+}
+
+.wn-pane-gutter .wn-resize-handle-x,
+.wn-pane-gutter .wn-resize-handle-y {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+/* 收起轨：带短标题的展开入口，替代随意塞在沟槽里的小三角 */
+.wn-collapse-rail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  position: relative;
+}
+
+.wn-collapse-rail-x {
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 0;
+}
+
+.wn-collapse-rail-y {
+  flex-direction: row;
+  gap: 8px;
+  padding: 0 12px;
+}
+
+.wn-collapse-rail-x::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 1px;
+  background: var(--color-border);
+  pointer-events: none;
+}
+
+.wn-collapse-rail-y::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--color-border);
+  pointer-events: none;
+}
+
+.wn-collapse-rail:hover {
+  background: var(--color-tree-hover, rgba(0, 0, 0, 0.06));
+  color: var(--color-text-secondary, #555);
+}
+
+.wn-pane-collapse-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.wn-pane-collapse-btn:hover {
+  background: var(--color-tree-hover, rgba(0, 0, 0, 0.06));
+  color: var(--color-text-secondary, #555);
+}
+
+.wn-collapse-chevron.is-x.is-expanded {
+  transform: rotate(135deg);
+}
+
+.wn-collapse-chevron.is-y.is-expanded {
+  transform: rotate(-135deg);
+}
+
+.wn-collapse-rail-label {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  user-select: none;
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.wn-collapse-rail-x .wn-collapse-rail-label {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.wn-collapse-chevron.is-x.is-collapsed {
+  transform: rotate(-45deg);
+}
+
+.wn-collapse-chevron.is-y.is-collapsed {
+  transform: rotate(45deg);
+}
+
+.wn-sidebar-columns-pane.is-collapsed-rail,
+.wn-sidebar-stack-pane.is-collapsed-rail {
+  display: flex;
+  padding: 0;
+}
+
+.wn-sidebar-columns-chunk.is-collapsed,
+.wn-sidebar-stack-chunk.is-collapsed {
+  flex: 0 0 auto;
+}

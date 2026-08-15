@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../api/client'
 import type { ComposeService } from '../../api/types'
+import { pressProps } from '../../components/compat'
 import { useI18n } from '../../i18n'
 
 interface Props {
@@ -104,7 +105,12 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
   return (
     <div className="docker-compose-panel">
       <div className="docker-compose-toolbar">
-        <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void pickDir()} disabled={acting}>
+        <button
+          type="button"
+          className="wn-btn wn-btn-sm wn-btn-tool"
+          disabled={acting}
+          {...pressProps(() => void pickDir(), { disabled: acting })}
+        >
           {t('docker.composePickDirBtn')}
         </button>
         <span className="docker-compose-path" title={projectDir}>
@@ -115,7 +121,10 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
           type="button"
           className="wn-btn wn-btn-sm wn-btn-primary"
           disabled={!dockerReady || acting || !projectDir}
-          onClick={() => void runAction(t('docker.composeStarting'), () => api.composeUp(contextId, projectDir))}
+          {...pressProps(
+            () => void runAction(t('docker.composeStarting'), () => api.composeUp(contextId, projectDir)),
+            { disabled: !dockerReady || acting || !projectDir },
+          )}
         >
           {t('docker.composeUp')}
         </button>
@@ -123,7 +132,10 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
           type="button"
           className="wn-btn wn-btn-sm wn-btn-tool"
           disabled={!dockerReady || acting || !projectDir}
-          onClick={() => void runAction(t('docker.composeStopping'), () => api.composeDown(contextId, projectDir))}
+          {...pressProps(
+            () => void runAction(t('docker.composeStopping'), () => api.composeDown(contextId, projectDir)),
+            { disabled: !dockerReady || acting || !projectDir },
+          )}
         >
           {t('docker.composeDown')}
         </button>
@@ -131,7 +143,10 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
           type="button"
           className="wn-btn wn-btn-sm wn-btn-tool"
           disabled={!dockerReady || acting || !projectDir}
-          onClick={() => void runAction(t('docker.composePulling'), () => api.composePull(contextId, projectDir))}
+          {...pressProps(
+            () => void runAction(t('docker.composePulling'), () => api.composePull(contextId, projectDir)),
+            { disabled: !dockerReady || acting || !projectDir },
+          )}
         >
           {t('docker.composePull')}
         </button>
@@ -139,7 +154,9 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
           type="button"
           className="wn-btn wn-btn-sm wn-btn-tool"
           disabled={!dockerReady || loading || acting || !projectDir}
-          onClick={() => void refreshServices()}
+          {...pressProps(() => void refreshServices(), {
+            disabled: !dockerReady || loading || acting || !projectDir,
+          })}
         >
           {t('common.refresh')}
         </button>
@@ -169,7 +186,7 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
                   <tr
                     key={s.name || s.service}
                     className={`docker-row ${selectedService === s.service ? 'active' : ''}`}
-                    onClick={() => setSelectedService(s.service)}
+                    {...pressProps(() => setSelectedService(s.service))}
                   >
                     <td>{s.service || s.name}</td>
                     <td className="docker-col-image">{s.image || '—'}</td>
@@ -180,12 +197,14 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
                         type="button"
                         className="wn-btn wn-btn-xs wn-btn-ghost"
                         disabled={acting}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          void runAction(t('docker.composeRestarting', { name: s.service }), () =>
-                            api.composeRestart(contextId, projectDir, s.service),
-                          )
-                        }}
+                        {...pressProps(
+                          () => {
+                            void runAction(t('docker.composeRestarting', { name: s.service }), () =>
+                              api.composeRestart(contextId, projectDir, s.service),
+                            )
+                          },
+                          { disabled: acting, stop: true },
+                        )}
                       >
                         {t('docker.restart')}
                       </button>

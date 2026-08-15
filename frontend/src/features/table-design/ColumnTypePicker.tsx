@@ -1,3 +1,4 @@
+import { Select } from '../../components/compat'
 import {
   columnTypeOptionsByCategory,
   formatColumnTypeSQL,
@@ -20,22 +21,16 @@ export function ColumnTypePicker({ typeId, length, precision, scale, onChange }:
 
   return (
     <div className="column-type-picker">
-      <select
-        className="wn-select column-type-select"
+      <Select
+        className="column-type-select"
         value={typeId}
-        onChange={(e) => onChange({ typeId: e.target.value })}
         title={preview}
-      >
-        {columnTypeOptionsByCategory().map((g) => (
-          <optgroup key={g.category} label={g.category}>
-            {g.options.map((opt) => (
-              <option key={opt.id} value={opt.id}>
-                {opt.label}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
+        options={columnTypeOptionsByCategory().map((g) => ({
+          label: g.category,
+          options: g.options.map((opt) => ({ value: opt.id, label: opt.label })),
+        }))}
+        onChange={(v) => onChange({ typeId: v })}
+      />
       {def?.length && (
         <input
           type="number"

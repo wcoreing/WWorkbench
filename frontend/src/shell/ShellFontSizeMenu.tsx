@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { IconFontSize } from '../components/Icons'
+import { pressProps, useDismissOverlays } from '../components/compat'
 import { useI18n } from '../i18n'
 import { useAppStore } from '../stores/appStore'
 import { DEFAULT_UI_FONT_SIZE, UI_FONT_SIZES } from './uiFontSize'
@@ -11,14 +12,15 @@ export function ShellFontSizeMenu() {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  useDismissOverlays(() => setOpen(false))
 
   useEffect(() => {
     if (!open) return
-    const close = (e: MouseEvent) => {
+    const close = (e: PointerEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
     }
-    window.addEventListener('mousedown', close)
-    return () => window.removeEventListener('mousedown', close)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
   }, [open])
 
   return (
@@ -29,7 +31,7 @@ export function ShellFontSizeMenu() {
         title={t('shell.fontSize')}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        {...pressProps(() => setOpen((v) => !v))}
       >
         <IconFontSize size={13} />
       </button>
@@ -42,10 +44,10 @@ export function ShellFontSizeMenu() {
               role="menuitemradio"
               aria-checked={uiFontSize === size}
               className={`shell-locale-item${uiFontSize === size ? ' active' : ''}`}
-              onClick={() => {
+              {...pressProps(() => {
                 setUiFontSize(size)
                 setOpen(false)
-              }}
+              })}
             >
               <span className="shell-fontsize-label" style={{ fontSize: size }}>
                 {size}px

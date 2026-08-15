@@ -5,6 +5,7 @@ import { CellViewerDialog, type CellViewerTarget } from '../cell-viewer/CellView
 import { isLikelyLargeCell } from '../cell-viewer/formatCellValue'
 import { ResizableTh, WnGrid, dataColParts, useColumnWidths } from '../grid/columnResize'
 import '../../components/ui.css'
+import { pressProps } from '../../components/compat'
 
 interface Props {
   result: QueryPage | ExecuteResult | SQLBatchResult | null
@@ -132,12 +133,12 @@ function QueryResultView({
             </>
           )}
           {onExportExcel && (
-            <button type="button" className="wn-btn wn-btn-tool wn-btn-accent" onClick={() => setExportDlg('excel')}>
+            <button type="button" className="wn-btn wn-btn-tool wn-btn-accent" {...pressProps(() => setExportDlg('excel'))}>
               导出 Excel
             </button>
           )}
           {onExport && (
-            <button type="button" className="wn-btn wn-btn-tool" onClick={() => setExportDlg('csv')}>
+            <button type="button" className="wn-btn wn-btn-tool" {...pressProps(() => setExportDlg('csv'))}>
               导出 CSV
             </button>
           )}

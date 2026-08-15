@@ -3,6 +3,7 @@ import type { AppLocale } from '../i18n/types'
 import { useI18n } from '../i18n'
 import { IconGlobe } from '../components/Icons'
 import { useAppStore } from '../stores/appStore'
+import { pressProps, useDismissOverlays } from '../components/compat'
 
 const LOCALE_OPTIONS: Array<{ id: AppLocale; labelKey: string }> = [
   { id: 'zh', labelKey: 'shell.langZh' },
@@ -15,14 +16,15 @@ export function ShellLocaleMenu() {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  useDismissOverlays(() => setOpen(false))
 
   useEffect(() => {
     if (!open) return
-    const close = (e: MouseEvent) => {
+    const close = (e: PointerEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false)
     }
-    window.addEventListener('mousedown', close)
-    return () => window.removeEventListener('mousedown', close)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
   }, [open])
 
   return (
@@ -33,7 +35,7 @@ export function ShellLocaleMenu() {
         title={t('shell.language')}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        {...pressProps(() => setOpen((v) => !v))}
       >
         <IconGlobe size={13} />
       </button>
@@ -46,10 +48,10 @@ export function ShellLocaleMenu() {
               role="menuitemradio"
               aria-checked={locale === opt.id}
               className={`shell-locale-item${locale === opt.id ? ' active' : ''}`}
-              onClick={() => {
+              {...pressProps(() => {
                 setLocale(opt.id)
                 setOpen(false)
-              }}
+              })}
             >
               {t(opt.labelKey)}
             </button>

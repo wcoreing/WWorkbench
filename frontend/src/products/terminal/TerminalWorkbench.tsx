@@ -4,6 +4,8 @@ import { shellHostAsSSH } from '../../api/types'
 import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { ContextMenu } from '../../components/ContextMenu'
+import { ProductLayout } from '../../components/layout'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { IconDocker, IconLaptop, IconPlus, IconRefresh, IconServer, IconTerminal } from '../../components/Icons'
 import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
@@ -14,6 +16,7 @@ import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadBool, payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
+import { pressProps, useDismissOverlays } from '../../components/compat'
 import {
   loadTerminalWorkspace,
   scheduleTerminalWorkspacePersist,
@@ -22,12 +25,10 @@ import {
 import { restoreTerminalTab } from '../../features/terminal/restoreTerminalWorkspace'
 import { SSHHostModal } from '../../features/terminal/SSHHostModal'
 import { useSSHTrustConfirm } from '../../features/terminal/useSSHTrustConfirm'
-import { SSHForwardPanel } from '../../features/terminal/SSHForwardPanel'
-import { LocalPortsPanel } from '../../features/terminal/LocalPortsPanel'
+import { LocalPortsDialog } from '../../features/terminal/LocalPortsPanel'
 import { TerminalSplitView } from '../../features/terminal/TerminalSplitView'
 import { TerminalTabStatusPane } from '../../features/terminal/TerminalTabStatusPane'
 import { focusTerminalSession } from '../../features/terminal/terminalFocus'
-import { bindPointerAction } from '../../utils/pointerAction'
 import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 import { terminalBackground } from '../../features/terminal/TerminalPane'
 import {
@@ -58,6 +59,8 @@ interface TerminalTab {
   connectState: 'connecting' | 'ready' | 'failed'
   connectError?: string
   connectHost?: ShellHost
+  /** 最近一次被激活（用于侧栏单击回到最近窗口） */
+  focusedAt?: number
 }
 
 /** isLiveSessionId 是否为已建立的后端会话。 */
@@ -77,16 +80,24 @@ export function TerminalWorkbench() {
   const [tabs, setTabs] = useState<TerminalTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [hostModalOpen, setHostModalOpen] = useState(false)
+  const [localPortsOpen, setLocalPortsOpen] = useState(false)
   const [editingHost, setEditingHost] = useState<SSHHost | null>(null)
   const [reconnectingTabId, setReconnectingTabId] = useState<string | null>(null)
   const [splitting, setSplitting] = useState(false)
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; host: ShellHost } | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<
+    { x: number; y: number; host: ShellHost | 'local' } | null
+  >(null)
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
   const [deleteHostConfirm, setDeleteHostConfirm] = useState<ShellHost | null>(null)
   const workspaceRestored = useRef(false)
   const tabsRef = useRef<TerminalTab[]>([])
   const prevProductRef = useRef(activeProduct)
   tabsRef.current = tabs
+
+  useDismissOverlays(() => {
+    setCtxMenu(null)
+    setTabCtxMenu(null)
+  })
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
   const tabStripRef = useScrollActiveTabIntoView(activeTabId)
@@ -198,15 +209,15 @@ export function TerminalWorkbench() {
   useEffect(() => {
     if (!ctxMenu) return
     const close = () => setCtxMenu(null)
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
   }, [ctxMenu])
 
   useEffect(() => {
     if (!tabCtxMenu) return
     const close = () => setTabCtxMenu(null)
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
   }, [tabCtxMenu])
 
   useEffect(() => {
@@ -218,6 +229,9 @@ export function TerminalWorkbench() {
     setTabCtxMenu(null)
     setCtxMenu(null)
     setActiveTabId(tabId)
+    setTabs((prev) =>
+      prev.map((t) => (t.id === tabId ? { ...t, focusedAt: Date.now() } : t)),
+    )
     const tab = tabsRef.current.find((t) => t.id === tabId)
     if (tab?.connectState === 'ready') {
       const sid = firstSessionId(tab.layout)
@@ -246,6 +260,7 @@ export function TerminalWorkbench() {
       layout: createLeaf(info.sessionId, paneId),
       activePaneId: paneId,
       connectState: 'ready',
+      focusedAt: Date.now(),
     }
     setTabs((prev) => [...prev, tab])
     setActiveTabId(tabId)
@@ -270,6 +285,7 @@ export function TerminalWorkbench() {
       activePaneId: paneId,
       connectState: 'connecting',
       connectHost: opts.host,
+      focusedAt: Date.now(),
     }
     setTabs((prev) => [...prev, tab])
     setActiveTabId(tabId)
@@ -291,6 +307,7 @@ export function TerminalWorkbench() {
               connectState: 'ready' as const,
               connectError: undefined,
               connectHost: undefined,
+              focusedAt: Date.now(),
             }
           : t,
       )
@@ -503,17 +520,47 @@ export function TerminalWorkbench() {
     }
   }
 
-  /** reconnectHost 重连已有标签，无标签则新建连接。 */
-  const reconnectHost = async (host: ShellHost) => {
+  /** pickRecentTab 在同类标签里选最近聚焦的一个。 */
+  const pickRecentTab = (related: TerminalTab[]): TerminalTab | null => {
+    if (related.length === 0) return null
+    let recent = related[0]
+    for (const cur of related) {
+      if ((cur.focusedAt ?? 0) >= (recent.focusedAt ?? 0)) recent = cur
+    }
+    return recent
+  }
+
+  /** openRecentLocalWindow 单击本机：回到最近本机窗口；没有则新建。 */
+  const openRecentLocalWindow = async () => {
+    const recent = pickRecentTab(tabs.filter((t) => t.kind === 'local'))
+    if (recent) {
+      selectTab(recent.id)
+      return
+    }
+    await connectLocal()
+  }
+
+  /** openRecentHostWindow 单击：回到该主机最近窗口；没有则新建连接。 */
+  const openRecentHostWindow = async (host: ShellHost) => {
     if (host.kind === 'docker' && host.running === false) {
       setStatusMessage(t('terminal.containerStoppedHint', { name: host.name }))
       return
     }
-    const related = tabs.filter((t) => (t.kind === 'ssh' || t.kind === 'docker') && t.hostId === host.id)
-    const target =
-      related.find((t) => t.id === activeTabId) ?? related[related.length - 1]
-    if (target) {
-      await reconnectTab(target.id)
+    const related = tabs.filter(
+      (t) => (t.kind === 'ssh' || t.kind === 'docker') && t.hostId === host.id,
+    )
+    const recent = pickRecentTab(related)
+    if (recent) {
+      selectTab(recent.id)
+      return
+    }
+    await connectHost(host)
+  }
+
+  /** newHostConnection 右键：始终新建一条连接会话。 */
+  const newHostConnection = async (host: ShellHost) => {
+    if (host.kind === 'docker' && host.running === false) {
+      setStatusMessage(t('terminal.containerStoppedHint', { name: host.name }))
       return
     }
     await connectHost(host)
@@ -711,13 +758,13 @@ export function TerminalWorkbench() {
           <button
             type="button"
             className="wn-btn wn-btn-chrome wn-btn-run"
-            onClick={() => void connectLocal()}
+            {...pressProps(() => void connectLocal())}
           >
             <IconLaptop size={13} />
             <span>{t('terminal.localTerminal')}</span>
           </button>
           <span className="chrome-vrule" />
-          <button type="button" className="wn-btn wn-btn-chrome" onClick={() => openHostModal()}>
+          <button type="button" className="wn-btn wn-btn-chrome" {...pressProps(() => openHostModal())}>
             <IconPlus size={13} />
             <span>{t('terminal.sshHosts')}</span>
           </button>
@@ -729,7 +776,9 @@ export function TerminalWorkbench() {
                 className="wn-btn wn-btn-chrome"
                 title={t('terminal.reconnect')}
                 disabled={Boolean(reconnectingTabId) || splitting}
-                onClick={() => void reconnectTab(activeTab.id)}
+                {...pressProps(() => void reconnectTab(activeTab.id), {
+                  disabled: Boolean(reconnectingTabId) || splitting,
+                })}
               >
                 <IconRefresh size={13} />
                 <span>{t('terminal.reconnect')}</span>
@@ -739,7 +788,9 @@ export function TerminalWorkbench() {
                 className="wn-btn wn-btn-chrome"
                 title={t('terminal.splitRowTitle')}
                 disabled={splitting || activePaneCount >= MAX_PANES}
-                onClick={() => splitActivePane('row')}
+                {...pressProps(() => splitActivePane('row'), {
+                  disabled: splitting || activePaneCount >= MAX_PANES,
+                })}
               >
                 <span className="terminal-toolbar-glyph">▥</span>
                 <span>{t('terminal.splitRow')}</span>
@@ -749,7 +800,9 @@ export function TerminalWorkbench() {
                 className="wn-btn wn-btn-chrome"
                 title={t('terminal.splitColTitle')}
                 disabled={splitting || activePaneCount >= MAX_PANES}
-                onClick={() => splitActivePane('col')}
+                {...pressProps(() => splitActivePane('col'), {
+                  disabled: splitting || activePaneCount >= MAX_PANES,
+                })}
               >
                 <span className="terminal-toolbar-glyph">▤</span>
                 <span>{t('terminal.splitCol')}</span>
@@ -759,7 +812,7 @@ export function TerminalWorkbench() {
                 className="wn-btn wn-btn-chrome"
                 title={t('terminal.closeSplitTitle')}
                 disabled={activePaneCount <= 1}
-                onClick={closeActivePane}
+                {...pressProps(closeActivePane, { disabled: activePaneCount <= 1 })}
               >
                 <span>{t('terminal.closeSplit')}</span>
               </button>
@@ -784,128 +837,141 @@ export function TerminalWorkbench() {
         </span>
       </div>
 
-      <div className="product-body">
-        <aside className="app-sidebar terminal-sidebar">
-          <section className="sidebar-section connections">
-            <div className="sidebar-header">
-              <span>{t('terminal.localSection')}</span>
-            </div>
-            <div className="sidebar-body connections-body">
-              <ul className="conn-list">
-                <li
-                  className={`conn-item ${localItemActive() ? 'active' : ''} ${localTabCount > 0 ? 'connected' : ''}`}
-                  onClick={() => void connectLocal()}
-                  onDoubleClick={() => void connectLocal()}
-                >
-                  <IconLaptop size={14} className="mock-icon" />
-                  <div className="conn-meta">
-                    <span className="conn-name">{t('terminal.localShell')}</span>
-                    <span className="conn-host">{t('terminal.localMeta')}</span>
-                  </div>
-                </li>
-              </ul>
-            </div>
-          </section>
-
-          <section className="sidebar-section">
-            <div className="sidebar-header">
-              <span>{t('terminal.sshHosts')}</span>
-              <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => openHostModal()} title={t('common.new')}>
-                <IconPlus size={14} />
-              </button>
-            </div>
-            <div className="sidebar-body">
-              {sshHosts.length === 0 ? (
-                <div className="empty-hint">{t('terminal.emptyHosts')}</div>
-              ) : (
-                <ul className="conn-list">
-                  {sshHosts.map((h) => (
-                    <li
-                      key={h.id}
-                      className={`conn-item ${hostItemActive(h.id) ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
-                      onClick={() => void connectHost({ ...h, kind: 'ssh' })}
-                      onDoubleClick={() => void connectHost({ ...h, kind: 'ssh' })}
-                      onContextMenu={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        setCtxMenu({ x: e.clientX, y: e.clientY, host: { ...h, kind: 'ssh' } })
-                      }}
-                    >
-                      <IconServer size={14} className="mock-icon" />
-                      <div className="conn-meta">
-                        <span className="conn-name">{h.name}</span>
-                        <span className="conn-host">
-                          {h.user}@{h.host}:{h.port}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="empty-hint mock-hint">{t('terminal.sshHint')}</div>
-            </div>
-          </section>
-
-          {dockerHosts.length > 0 && (
-            <section className="sidebar-section">
+      <ProductLayout
+        storageKey="terminal_sidebar_width"
+        resizeTitle={t('common.resizeWidth')}
+        sidebarClassName="terminal-sidebar"
+        sidebar={
+          <>
+            <section className="sidebar-section connections">
               <div className="sidebar-header">
-                <span>{t('terminal.dockerHosts')}</span>
-                {dockerHosts.some((h) => h.running === false) && (
-                  <button
-                    type="button"
-                    className="wn-btn wn-btn-ghost wn-btn-sm"
-                    title={t('terminal.pruneStopped')}
-                    onClick={() => {
-                      void (async () => {
-                        try {
-                          const n = await api.pruneStoppedDockerHosts()
-                          await refreshHosts()
-                          setStatusMessage(
-                            n > 0 ? t('terminal.prunedStopped', { count: n }) : t('terminal.pruneStoppedNone')
-                          )
-                        } catch (e) {
-                          setStatusMessage((e as Error).message)
-                        }
-                      })()
+                <span>{t('terminal.localSection')}</span>
+              </div>
+              <div className="sidebar-body connections-body">
+                <ul className="conn-list">
+                  <li
+                    className={`conn-item ${localItemActive() ? 'active' : ''} ${localTabCount > 0 ? 'connected' : ''}`}
+                    {...pressProps(() => void openRecentLocalWindow())}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setCtxMenu({ x: e.clientX, y: e.clientY, host: 'local' })
                     }}
                   >
-                    {t('terminal.pruneStopped')}
-                  </button>
-                )}
-              </div>
-              <div className="sidebar-body">
-                <ul className="conn-list">
-                  {dockerHosts.map((h) => (
-                    <li
-                      key={h.id}
-                      className={`conn-item ${hostItemActive(h.id) ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
-                      onClick={() => void connectHost(h)}
-                      onDoubleClick={() => void connectHost(h)}
-                      onContextMenu={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        setCtxMenu({ x: e.clientX, y: e.clientY, host: h })
-                      }}
-                    >
-                      <IconDocker size={14} className="mock-icon" />
-                      <div className="conn-meta">
-                        <span className="conn-name">{h.name}</span>
-                        <span className="conn-host">
-                          {h.running === false
-                            ? t('terminal.containerStopped')
-                            : h.image || h.containerId?.slice(0, 12) || 'container'}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
+                    <IconLaptop size={14} className="mock-icon" />
+                    <div className="conn-meta">
+                      <span className="conn-name">{t('terminal.localShell')}</span>
+                      <span className="conn-host" title={t('terminal.localMeta')}>
+                        {t('terminal.localMeta')}
+                      </span>
+                    </div>
+                  </li>
                 </ul>
               </div>
             </section>
-          )}
 
-          <LocalPortsPanel onStatus={setStatusMessage} />
-          <SSHForwardPanel hosts={sshHosts} onStatus={setStatusMessage} />
-        </aside>
+            <section className="sidebar-section">
+              <div className="sidebar-header">
+                <span>{t('terminal.sshHosts')}</span>
+                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" {...pressProps(() => openHostModal())} title={t('common.new')}>
+                  <IconPlus size={14} />
+                </button>
+              </div>
+              <div className="sidebar-body">
+                {sshHosts.length === 0 ? (
+                  <div className="empty-hint">{t('terminal.emptyHosts')}</div>
+                ) : (
+                  <ul className="conn-list">
+                    {sshHosts.map((h) => {
+                      const hostLine = `${h.user}@${h.host}:${h.port}`
+                      return (
+                        <li
+                          key={h.id}
+                          className={`conn-item ${hostItemActive(h.id) ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
+                          {...pressProps(() => void openRecentHostWindow({ ...h, kind: 'ssh' }))}
+                          onContextMenu={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setCtxMenu({ x: e.clientX, y: e.clientY, host: { ...h, kind: 'ssh' } })
+                          }}
+                        >
+                          <IconServer size={14} className="mock-icon" />
+                          <div className="conn-meta">
+                            <span className="conn-name">{h.name}</span>
+                            <span className="conn-host" title={hostLine}>
+                              {hostLine}
+                            </span>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </div>
+            </section>
+
+            {dockerHosts.length > 0 && (
+              <section className="sidebar-section">
+                <div className="sidebar-header">
+                  <span>{t('terminal.dockerHosts')}</span>
+                  {dockerHosts.some((h) => h.running === false) && (
+                    <button
+                      type="button"
+                      className="wn-btn wn-btn-ghost wn-btn-sm"
+                      title={t('terminal.pruneStopped')}
+                      {...pressProps(() => {
+                        void (async () => {
+                          try {
+                            const n = await api.pruneStoppedDockerHosts()
+                            await refreshHosts()
+                            setStatusMessage(
+                              n > 0 ? t('terminal.prunedStopped', { count: n }) : t('terminal.pruneStoppedNone')
+                            )
+                          } catch (e) {
+                            setStatusMessage((e as Error).message)
+                          }
+                        })()
+                      })}
+                    >
+                      {t('terminal.pruneStopped')}
+                    </button>
+                  )}
+                </div>
+                <div className="sidebar-body">
+                  <ul className="conn-list">
+                    {dockerHosts.map((h) => {
+                      const hostLine =
+                        h.running === false
+                          ? t('terminal.containerStopped')
+                          : h.image || h.containerId?.slice(0, 12) || 'container'
+                      return (
+                        <li
+                          key={h.id}
+                          className={`conn-item ${hostItemActive(h.id) ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
+                          {...pressProps(() => void openRecentHostWindow(h))}
+                          onContextMenu={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setCtxMenu({ x: e.clientX, y: e.clientY, host: h })
+                          }}
+                        >
+                          <IconDocker size={14} className="mock-icon" />
+                          <div className="conn-meta">
+                            <span className="conn-name">{h.name}</span>
+                            <span className="conn-host" title={hostLine}>
+                              {hostLine}
+                            </span>
+                          </div>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              </section>
+            )}
+          </>
+        }
+      >
 
         <main className="app-main">
           <div className="editor-chrome">
@@ -916,7 +982,7 @@ export function TerminalWorkbench() {
                   type="button"
                   data-tab-id={t.id}
                   className={`wn-tab wn-tab-terminal wn-tab-${t.kind} ${t.id === activeTabId ? 'active' : ''} ${t.connectState !== 'ready' ? `wn-tab-${t.connectState}` : ''}`}
-                  {...bindPointerAction(() => selectTab(t.id))}
+                  {...pressProps(() => selectTab(t.id))}
                   onContextMenu={(e) => openTabContextMenu(e, t.id, setTabCtxMenu, setActiveTabId)}
                 >
                   {t.kind === 'local' ? <IconLaptop size={12} /> : t.kind === 'docker' ? <IconDocker size={12} /> : <IconTerminal size={12} />}
@@ -928,10 +994,7 @@ export function TerminalWorkbench() {
                   )}
                   <span
                     className="wn-tab-close"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      closeTab(t.id)
-                    }}
+                    {...pressProps(() => closeTab(t.id), { stop: true })}
                   >
                     ×
                   </span>
@@ -986,7 +1049,7 @@ export function TerminalWorkbench() {
             ))}
           </div>
         </main>
-      </div>
+      </ProductLayout>
 
       <SSHHostModal
         open={hostModalOpen}
@@ -1006,17 +1069,48 @@ export function TerminalWorkbench() {
           onCloseAll={() => void closeAllTabs()}
         />
       )}
-      {ctxMenu && (
-        <div
-          className="wn-context-menu"
-          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+      {ctxMenu && ctxMenu.host === 'local' && (
+        <ContextMenu
+          key={`host-local-${ctxMenu.x}-${ctxMenu.y}`}
+          x={ctxMenu.x}
+          y={ctxMenu.y}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
+              setCtxMenu(null)
+              void connectLocal()
+            })}
+          >
+            {t('terminal.newSession')}
+          </button>
+          <button
+            type="button"
+            className="wn-context-item"
+            {...pressProps(() => {
+              setCtxMenu(null)
+              setLocalPortsOpen(true)
+            })}
+          >
+            {t('localPort.title')}
+          </button>
+        </ContextMenu>
+      )}
+      {ctxMenu && ctxMenu.host !== 'local' && (
+        <ContextMenu
+          key={`host-${ctxMenu.host.id}-${ctxMenu.x}-${ctxMenu.y}`}
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="wn-context-item"
+            {...pressProps(() => {
               const host = ctxMenu.host
+              if (host === 'local') return
               setCtxMenu(null)
               if (host.kind === 'docker') {
                 openAgentDraft({
@@ -1031,28 +1125,41 @@ export function TerminalWorkbench() {
                 mentions: [mentionSSH(ssh)],
                 message: t('agent.draftSSH'),
               })
-            }}
+            })}
           >
             {t('agent.sendToAgent')}
           </button>
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               const host = ctxMenu.host
+              if (host === 'local') return
               setCtxMenu(null)
-              void reconnectHost(host)
-            }}
+              void newHostConnection(host)
+            })}
           >
-            {t('terminal.reconnect')}
+            {t('terminal.newSession')}
           </button>
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               setCtxMenu(null)
-              openProductLink({ action: 'notebook', hostId: ctxMenu.host.id })
-            }}
+              setLocalPortsOpen(true)
+            })}
+          >
+            {t('localPort.title')}
+          </button>
+          <button
+            type="button"
+            className="wn-context-item"
+            {...pressProps(() => {
+              const host = ctxMenu.host
+              if (host === 'local') return
+              setCtxMenu(null)
+              openProductLink({ action: 'notebook', hostId: host.id })
+            })}
           >
             {t('terminal.ctxNotebook')}
           </button>
@@ -1060,10 +1167,12 @@ export function TerminalWorkbench() {
             <button
               type="button"
               className="wn-context-item"
-              onClick={() => {
+              {...pressProps(() => {
+                const host = ctxMenu.host
+                if (host === 'local') return
                 setCtxMenu(null)
-                openProductLink({ action: 'docker-context', hostId: ctxMenu.host.id })
-              }}
+                openProductLink({ action: 'docker-context', hostId: host.id })
+              })}
             >
               {t('terminal.ctxDocker')}
             </button>
@@ -1071,10 +1180,12 @@ export function TerminalWorkbench() {
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
+              const host = ctxMenu.host
+              if (host === 'local') return
               setCtxMenu(null)
-              openProductLink({ action: 'sftp', hostId: ctxMenu.host.id })
-            }}
+              openProductLink({ action: 'sftp', hostId: host.id })
+            })}
           >
             {t('terminal.ctxSftp')}
           </button>
@@ -1082,11 +1193,13 @@ export function TerminalWorkbench() {
             <button
               type="button"
               className="wn-context-item"
-              onClick={() => {
-                const ssh = shellHostAsSSH(ctxMenu.host)
+              {...pressProps(() => {
+                const host = ctxMenu.host
+                if (host === 'local') return
+                const ssh = shellHostAsSSH(host)
                 setCtxMenu(null)
                 if (ssh) openHostModal(ssh)
-              }}
+              })}
             >
               {t('common.edit')}
             </button>
@@ -1094,13 +1207,22 @@ export function TerminalWorkbench() {
           <button
             type="button"
             className="wn-context-item danger"
-            onClick={() => deleteHost(ctxMenu.host)}
+            {...pressProps(() => {
+              const host = ctxMenu.host
+              if (host === 'local') return
+              deleteHost(host)
+            })}
           >
             {ctxMenu.host.kind === 'docker' ? t('terminal.removeDockerHost') : t('common.delete')}
           </button>
-        </div>
+        </ContextMenu>
       )}
       {trustDialog}
+      <LocalPortsDialog
+        open={localPortsOpen}
+        onClose={() => setLocalPortsOpen(false)}
+        onStatus={setStatusMessage}
+      />
       <ConfirmDialog
         open={deleteHostConfirm != null}
         title={

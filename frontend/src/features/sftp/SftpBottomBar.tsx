@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { pressProps } from '../../components/compat'
 import { useI18n } from '../../i18n'
 import { formatBytes } from './sftpUtils'
 import type { TransferTask } from './useSftpTransferQueue'
@@ -126,7 +127,7 @@ export function SftpBottomBar({ tasks, onCancel, onClearFinished }: Props) {
         )}
         <span className="sftp-bottom-bar-spacer" />
         {hasFinished && onClearFinished && (
-          <button type="button" className="wn-btn wn-btn-sm sftp-transfer-clear" onClick={onClearFinished}>
+          <button type="button" className="wn-btn wn-btn-sm sftp-transfer-clear" {...pressProps(onClearFinished)}>
             {t('sftp.clearFinished')}
           </button>
         )}
@@ -192,7 +193,7 @@ function TransferRow({ task, onCancel }: RowProps) {
         {meta}
       </span>
       {canCancel && onCancel && (
-        <button type="button" className="sftp-transfer-cancel" onClick={() => onCancel(task.id)}>
+        <button type="button" className="sftp-transfer-cancel" {...pressProps(() => onCancel(task.id))}>
           {t('common.cancel')}
         </button>
       )}

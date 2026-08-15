@@ -4,6 +4,7 @@ import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
 import { model } from '../../../wailsjs/go/models'
 import '../../components/ui.css'
+import { Select, pressProps } from '../../components/compat'
 
 interface DockerContextModalProps {
   open: boolean
@@ -64,10 +65,11 @@ export function DockerContextModal({ open, hosts, initialHostId, onClose, onSave
   }
 
   return (
-    <div className="wn-modal-backdrop" onClick={onClose}>
+    <div className="wn-modal-backdrop" {...pressProps(onClose)}>
       <div
         className="wn-modal wn-modal-compact"
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-labelledby="docker-context-modal-title"
       >
@@ -90,18 +92,15 @@ export function DockerContextModal({ open, hosts, initialHostId, onClose, onSave
                 <label className="wn-label" htmlFor="docker-ctx-host">
                   {t('docker.contextModal.sshHost')}
                 </label>
-                <select
+                <Select
                   id="docker-ctx-host"
-                  className="wn-select"
                   value={hostId}
-                  onChange={(e) => setHostId(e.target.value)}
-                >
-                  {hosts.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.name} ({h.user}@{h.host})
-                    </option>
-                  ))}
-                </select>
+                  options={hosts.map((h) => ({
+                    value: h.id,
+                    label: `${h.name} (${h.user}@${h.host})`,
+                  }))}
+                  onChange={setHostId}
+                />
               </div>
               <div className="wn-field">
                 <label className="wn-label" htmlFor="docker-ctx-name">
@@ -121,13 +120,13 @@ export function DockerContextModal({ open, hosts, initialHostId, onClose, onSave
         </div>
 
         <footer className="wn-modal-footer">
-          <button type="button" className="wn-btn wn-btn-tool" onClick={onClose} disabled={saving}>
+          <button type="button" className="wn-btn wn-btn-tool" {...pressProps(onClose, { disabled: saving })} disabled={saving}>
             {t('common.cancel')}
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-primary"
-            onClick={() => void submit()}
+            {...pressProps(() => void submit(), { disabled: saving || hosts.length === 0 })}
             disabled={saving || hosts.length === 0}
           >
             {saving ? t('docker.contextModal.saving') : t('common.save')}

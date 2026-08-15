@@ -1,209 +1,79 @@
-/** 内联 SVG 图标（无第三方图标库） */
+/** 应用图标统一入口：全部走 iconRegistry + assets/icons PNG */
 
-type IconProps = { size?: number; className?: string }
+import type { ImgHTMLAttributes } from 'react'
+import { ICON_SRC, type IconName } from './iconRegistry'
+import './icons.css'
 
-const base = (size: number) => ({ width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const })
+export type { IconName } from './iconRegistry'
+export type IconProps = { size?: number; className?: string }
 
-export function IconPlus({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  )
+type NamedIconProps = IconProps & { name: IconName }
+
+/** 通用图标：按注册表名称取图 */
+export function Icon({ name, size = 16, className }: NamedIconProps) {
+  const imgProps: ImgHTMLAttributes<HTMLImageElement> = {
+    src: ICON_SRC[name],
+    width: size,
+    height: size,
+    alt: '',
+    draggable: false,
+    className: ['wn-raster-icon', className].filter(Boolean).join(' '),
+    style: { width: size, height: size },
+  }
+  return <img {...imgProps} />
 }
 
-export function IconEdit({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-      <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-    </svg>
-  )
+function named(name: IconName) {
+  return function NamedIcon({ size = 16, className }: IconProps) {
+    return <Icon name={name} size={size} className={className} />
+  }
 }
 
-/** 刷新图标 */
-export function IconRefresh({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-      <path d="M21 3v6h-6" />
-    </svg>
-  )
-}
-
-export function IconPlay({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none" />
-    </svg>
-  )
-}
-
-export function IconSql({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <ellipse cx="12" cy="5" rx="9" ry="3" />
-      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-      <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
-    </svg>
-  )
-}
-
-export function IconDisconnect({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
-      <line x1="12" y1="2" x2="12" y2="12" />
-    </svg>
-  )
-}
-
-export function IconMoon({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-    </svg>
-  )
-}
-
-export function IconSun({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <circle cx="12" cy="12" r="5" />
-      <line x1="12" y1="1" x2="12" y2="3" />
-      <line x1="12" y1="21" x2="12" y2="23" />
-      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-      <line x1="1" y1="12" x2="3" y2="12" />
-      <line x1="21" y1="12" x2="23" y2="12" />
-    </svg>
-  )
-}
-
-export function IconFontSize({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className} aria-hidden>
-      <path d="M3 12.5L6.2 3.5h1.6L11 12.5H9.4l-.7-2H4.3l-.7 2H3zm1.7-3.3h2.6L6.1 5.2h-.2L4.7 9.2zM12.2 12.5V7.8h1.3v4.7h-1.3zm.65-5.9a.85.85 0 1 1 0-1.7.85.85 0 0 1 0 1.7z" fill="currentColor" />
-    </svg>
-  )
-}
-
-export function IconGlobe({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <circle cx="12" cy="12" r="10" />
-      <line x1="2" y1="12" x2="22" y2="12" />
-      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-    </svg>
-  )
-}
-
-export function IconDatabase({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <ellipse cx="12" cy="5" rx="9" ry="3" />
-      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
-      <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
-    </svg>
-  )
-}
-
-export function IconTerminal({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <polyline points="4 17 10 11 4 5" />
-      <line x1="12" y1="19" x2="20" y2="19" />
-    </svg>
-  )
-}
-
-export function IconFolder({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-    </svg>
-  )
-}
-
-export function IconLayers({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <polygon points="12 2 2 7 12 12 22 7 12 2" />
-      <polyline points="2 17 12 22 22 17" />
-      <polyline points="2 12 12 17 22 12" />
-    </svg>
-  )
-}
-
-export function IconServer({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
-      <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
-      <line x1="6" y1="6" x2="6.01" y2="6" />
-      <line x1="6" y1="18" x2="6.01" y2="18" />
-    </svg>
-  )
-}
-
-/** Docker 容器图标 */
-export function IconDocker({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <path d="M22 12H2" />
-      <path d="M6 12V8H4v4" />
-      <path d="M10 12V6H8v6" />
-      <path d="M14 12V4h-2v8" />
-      <path d="M18 12V8h-2v4" />
-      <path d="M6 16h12a2 2 0 0 1 2 2v2H4v-2a2 2 0 0 1 2-2z" />
-    </svg>
-  )
-}
-
-/** 本机图标 */
-export function IconLaptop({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <rect x="3" y="4" width="18" height="12" rx="2" ry="2" />
-      <path d="M2 20h20" />
-    </svg>
-  )
-}
-
-/** 日志中心图标 */
-export function IconLogs({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="8" y1="13" x2="16" y2="13" />
-      <line x1="8" y1="17" x2="16" y2="17" />
-      <line x1="8" y1="9" x2="10" y2="9" />
-    </svg>
-  )
-}
-
-/** HTTP API 图标 */
-export function IconHttp({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <circle cx="12" cy="12" r="10" />
-      <path d="M2 12h20" />
-      <path d="M12 2v20" />
-      <path d="m7 7 3 3" />
-      <path d="m14 17 3-3" />
-    </svg>
-  )
-}
-
-/** 笔记本图标 */
-export function IconNotebook({ size = 16, className }: IconProps) {
-  return (
-    <svg {...base(size)} className={className}>
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-      <line x1="8" y1="7" x2="16" y2="7" />
-      <line x1="8" y1="11" x2="14" y2="11" />
-    </svg>
-  )
-}
+export const IconPlus = named('plus')
+export const IconEdit = named('edit')
+export const IconRefresh = named('refresh')
+export const IconPlay = named('play')
+export const IconStop = named('stop')
+export const IconSql = named('sql')
+export const IconDisconnect = named('disconnect')
+export const IconMoon = named('moon')
+export const IconSun = named('sun')
+export const IconFontSize = named('fontsize')
+export const IconGlobe = named('globe')
+export const IconDatabase = named('database')
+export const IconDbSystem = named('dbsystem')
+export const IconTerminal = named('terminal')
+export const IconSSH = named('ssh')
+export const IconFolder = named('folder')
+export const IconLayers = named('layers')
+export const IconServer = named('server')
+export const IconDocker = named('docker')
+export const IconLaptop = named('laptop')
+export const IconLogs = named('logs')
+export const IconHttp = named('http')
+export const IconNotebook = named('notebook')
+export const IconSearch = named('search')
+export const IconCopy = named('copy')
+export const IconUpload = named('upload')
+export const IconDownload = named('download')
+export const IconTrash = named('trash')
+export const IconSave = named('save')
+export const IconSettings = named('settings')
+export const IconAgent = named('agent')
+export const IconTable = named('table')
+export const IconView = named('view')
+export const IconColumn = named('column')
+export const IconIndex = named('index')
+export const IconPrimaryKey = named('primarykey')
+export const IconForeignKey = named('foreignkey')
+export const IconTrigger = named('trigger')
+export const IconCheckConstraint = named('checkconstraint')
+export const IconProcedure = named('procedure')
+export const IconSchema = named('schema')
+export const IconExplain = named('explain')
+export const IconImportSql = named('importsql')
+export const IconFunction = named('function')
+export const IconCompare = named('compare')
+export const IconConnect = named('connect')
+export const IconForward = named('forward')
+export const IconPort = named('port')

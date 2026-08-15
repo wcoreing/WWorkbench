@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react'
 import { useI18n } from '../i18n'
-import { ModalPortal } from './ModalPortal'
+import { ModalPortal, pressProps } from './compat'
 import './ui.css'
 
 interface ConfirmDialogProps {
@@ -8,6 +9,7 @@ interface ConfirmDialogProps {
   message?: string
   confirmLabel?: string
   danger?: boolean
+  children?: ReactNode
   onConfirm: () => void
   onCancel: () => void
 }
@@ -19,6 +21,7 @@ export function ConfirmDialog({
   message,
   confirmLabel,
   danger = false,
+  children,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -29,10 +32,14 @@ export function ConfirmDialog({
 
   return (
     <ModalPortal>
-    <div className="wn-modal-backdrop wn-modal-backdrop-top ssh-trust-backdrop" onClick={onCancel}>
+    <div
+      className="wn-modal-backdrop wn-modal-backdrop-top ssh-trust-backdrop"
+      {...pressProps(onCancel)}
+    >
       <div
         className="wn-modal wn-modal-compact ssh-trust-dialog"
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-labelledby="confirm-dialog-title"
       >
@@ -42,14 +49,15 @@ export function ConfirmDialog({
           </h2>
           {message && <p className="wn-modal-desc">{message}</p>}
         </header>
+        {children ? <div className="wn-modal-body">{children}</div> : null}
         <footer className="wn-modal-footer">
-          <button type="button" className="wn-btn wn-btn-tool" onClick={onCancel}>
+          <button type="button" className="wn-btn wn-btn-tool" {...pressProps(onCancel)}>
             {t('common.cancel')}
           </button>
           <button
             type="button"
             className={`wn-btn wn-btn-sm ${danger ? 'wn-btn-danger' : 'wn-btn-primary'}`}
-            onClick={onConfirm}
+            {...pressProps(onConfirm)}
           >
             {okLabel}
           </button>

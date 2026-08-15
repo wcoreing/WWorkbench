@@ -1,4 +1,5 @@
 @import './tokens.css';
+@import './spacing.css';
 
 *,
 *::before,
@@ -50,17 +51,17 @@ button {
   display: flex;
   align-items: center;
   height: var(--chrome-height);
-  padding: 0 10px 0 12px;
+  padding: 0 var(--chrome-pad-x);
   background: var(--color-chrome);
   border-bottom: 1px solid var(--color-border);
-  gap: 6px;
+  gap: var(--chrome-gap);
   flex-shrink: 0;
 }
 
 .chrome-brand {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 
@@ -107,10 +108,10 @@ button {
 .chrome-status {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--chrome-gap);
   max-width: 280px;
   min-width: 0;
-  padding: 0 8px;
+  padding: 0 var(--chrome-pad-x);
   font-size: 11px;
   color: var(--color-text-muted);
 }
@@ -160,9 +161,10 @@ button {
   min-height: 0;
 }
 
+/* 仅用于未走 SidebarStack 的旧式纵向堆叠；布局托管分栏请勿依赖这些边框 */
 .sidebar-section.connections {
   flex-shrink: 0;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .sidebar-section.objects {
@@ -173,23 +175,32 @@ button {
 .sidebar-section.history {
   flex-shrink: 0;
   max-height: 108px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--color-border);
 }
 
 .sidebar-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px 4px;
+  gap: 4px;
+  padding: var(--space-2) var(--chrome-pad-x) var(--space-1);
   font-size: 11px;
   font-weight: 500;
   color: var(--color-text-muted);
 }
 
+.sidebar-header-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sidebar-body {
   flex: 1;
   overflow: auto;
-  padding: 2px 6px 6px;
+  padding: 0 var(--space-2) var(--space-2);
 }
 
 .sidebar-body.connections-body {
@@ -199,7 +210,7 @@ button {
 
 .sidebar-body .empty-hint {
   text-align: left;
-  padding: 8px 6px;
+  padding: var(--space-2);
   font-size: 11px;
   line-height: 1.5;
 }
@@ -234,8 +245,8 @@ button {
 .query-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 10px;
+  gap: var(--chrome-gap);
+  padding: 0 var(--content-pad);
   border-left: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
   font-size: 11px;
@@ -249,9 +260,9 @@ button {
 
 .query-bar .wn-select {
   min-width: 120px;
-  height: 24px;
+  height: var(--control-height-chrome);
   font-size: 11px;
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   background: var(--color-surface);
 }
 
@@ -277,16 +288,16 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
+  gap: var(--space-3);
   height: 100%;
-  padding: 24px;
+  padding: var(--space-4);
   background: var(--color-bg);
   color: var(--color-text);
 }
 
 .app-error-fallback pre {
   max-width: 90%;
-  padding: 12px;
+  padding: var(--space-3);
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
@@ -307,14 +318,14 @@ button {
 .bottom-panel-tabs {
   display: flex;
   gap: 0;
-  padding: 0 6px;
+  padding: 0 var(--space-1);
   background: var(--color-surface-2);
   border-bottom: 1px solid var(--color-border-subtle);
-  min-height: 26px;
+  min-height: var(--control-height);
 }
 
 .bottom-panel-tab {
-  padding: 4px 10px;
+  padding: var(--space-1) var(--space-2);
   font-size: 11px;
   font-weight: 500;
   border: none;
@@ -380,7 +391,7 @@ button {
   align-items: center;
   justify-content: space-between;
   height: var(--statusbar-height);
-  padding: 0 10px;
+  padding: 0 var(--chrome-pad-x);
   font-size: 10px;
   color: var(--color-text-muted);
   background: var(--color-chrome);
@@ -391,7 +402,7 @@ button {
 .app-statusbar .status-left {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--chrome-gap);
   max-width: 70%;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -399,7 +410,7 @@ button {
 }
 
 .empty-hint {
-  padding: 12px 10px;
+  padding: var(--space-3) var(--space-2);
   font-size: 11px;
   color: var(--color-text-muted);
   line-height: 1.5;
@@ -411,23 +422,23 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 28px 16px;
+  padding: var(--space-4) var(--space-4);
   color: var(--color-text-muted);
   text-align: center;
-  gap: 6px;
+  gap: var(--chrome-gap);
   font-size: 11px;
 }
 
 .empty-state .empty-icon {
   font-size: 24px;
   opacity: 0.25;
-  margin-bottom: 4px;
+  margin-bottom: var(--space-1);
 }
 
 .ddl-view {
   flex: 1;
   margin: 0;
-  padding: 10px 12px;
+  padding: var(--space-2) var(--content-pad);
   overflow: auto;
   font-family: var(--font-mono);
   font-size: 11px;

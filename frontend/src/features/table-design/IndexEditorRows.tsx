@@ -1,6 +1,7 @@
 import { activeColumns, type TableColumnDraft } from './tableColumnDraft'
 import type { IndexDraft } from './tableIndexDraft'
 import '../../components/ui.css'
+import { pressProps } from '../../components/compat'
 
 interface Props {
   indexes: IndexDraft[]
@@ -40,12 +41,12 @@ export function IndexEditorRows({ indexes, columns, onChange }: Props) {
   }
 
   return (
-    <>
+    <div className="create-table-grid">
       <div className="index-cols-head">
         <span>索引名</span>
         <span>列（逗号分隔，顺序即联合索引顺序）</span>
-        <span>唯一</span>
-        <span />
+        <span className="col-flag-head">唯一</span>
+        <span className="col-action-head" />
       </div>
       {visible.map((idx) => (
         <div key={idx.id} className={`index-col-row ${idx.status === 'new' ? 'col-is-new' : ''}`}>
@@ -67,17 +68,24 @@ export function IndexEditorRows({ indexes, columns, onChange }: Props) {
               <option key={n} value={n} />
             ))}
           </datalist>
-          <input
-            type="checkbox"
-            checked={idx.unique}
-            onChange={(e) => updateIdx(idx.id, { unique: e.target.checked })}
-            title="唯一索引"
-          />
-          <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => removeIdx(idx)}>
+          <label className="col-flag">
+            <input
+              type="checkbox"
+              checked={idx.unique}
+              onChange={(e) => updateIdx(idx.id, { unique: e.target.checked })}
+              title="唯一索引"
+            />
+          </label>
+          <button
+            type="button"
+            className="wn-btn wn-btn-icon wn-btn-sm col-row-remove"
+            {...pressProps(() => removeIdx(idx))}
+            title="删除索引"
+          >
             −
           </button>
         </div>
       ))}
-    </>
+    </div>
   )
 }

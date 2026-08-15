@@ -4,6 +4,7 @@ import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
 import { model } from '../../../wailsjs/go/models'
 import '../../components/ui.css'
+import { Select, pressProps } from '../../components/compat'
 
 interface DockerRunModalProps {
   open: boolean
@@ -211,10 +212,11 @@ export function DockerRunModal({ open, contextId, image, onClose, onCreated }: D
   const busy = loading || submitting
 
   return (
-    <div className="wn-modal-backdrop" onClick={onClose}>
+    <div className="wn-modal-backdrop" {...pressProps(onClose)}>
       <div
         className="wn-modal docker-run-modal"
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-labelledby="docker-run-modal-title"
       >
@@ -275,15 +277,16 @@ export function DockerRunModal({ open, contextId, image, onClose, onCreated }: D
                         onChange={(e) => updatePort(index, { containerPort: e.target.value })}
                         disabled={busy}
                       />
-                      <select
-                        className="wn-select docker-run-port-proto"
+                      <Select
+                        className="docker-run-port-proto"
                         value={row.protocol}
-                        onChange={(e) => updatePort(index, { protocol: e.target.value })}
                         disabled={busy}
-                      >
-                        <option value="tcp">tcp</option>
-                        <option value="udp">udp</option>
-                      </select>
+                        options={[
+                          { value: 'tcp', label: 'tcp' },
+                          { value: 'udp', label: 'udp' },
+                        ]}
+                        onChange={(v) => updatePort(index, { protocol: v })}
+                      />
                       <button
                         type="button"
                         className="wn-btn wn-btn-tool wn-btn-sm docker-run-row-remove"
@@ -378,19 +381,16 @@ export function DockerRunModal({ open, contextId, image, onClose, onCreated }: D
                   <label className="wn-label" htmlFor="docker-run-restart">
                     {t('docker.runModal.restart')}
                   </label>
-                  <select
+                  <Select
                     id="docker-run-restart"
-                    className="wn-select"
                     value={restart}
-                    onChange={(e) => setRestart(e.target.value)}
                     disabled={busy}
-                  >
-                    {restartOptions.map((opt) => (
-                      <option key={opt.value || 'none'} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={restartOptions.map((opt) => ({
+                      value: opt.value,
+                      label: opt.label,
+                    }))}
+                    onChange={setRestart}
+                  />
                 </div>
                 <label className="docker-run-checkbox">
                   <input
@@ -408,13 +408,18 @@ export function DockerRunModal({ open, contextId, image, onClose, onCreated }: D
         </div>
 
         <footer className="wn-modal-footer">
-          <button type="button" className="wn-btn wn-btn-tool" onClick={onClose} disabled={submitting}>
+          <button
+            type="button"
+            className="wn-btn wn-btn-tool"
+            {...pressProps(onClose, { disabled: submitting })}
+            disabled={submitting}
+          >
             {t('common.cancel')}
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-primary"
-            onClick={() => void submit()}
+            {...pressProps(() => void submit(), { disabled: busy || !tag })}
             disabled={busy || !tag}
           >
             {submitting ? t('docker.runModal.creating') : t('docker.runModal.submit')}

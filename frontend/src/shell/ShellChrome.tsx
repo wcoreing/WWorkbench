@@ -1,3 +1,4 @@
+import { chromeProps, pressProps } from '../components/compat'
 import { IconMoon, IconSun } from '../components/Icons'
 import { useI18n, useLocalizedProduct } from '../i18n'
 import { useAppStore } from '../stores/appStore'
@@ -18,7 +19,7 @@ export function ShellChrome({
   const product = useLocalizedProduct(activeProduct)
 
   return (
-    <header className="shell-chrome">
+    <header className="shell-chrome" {...chromeProps()}>
       <div className="chrome-brand">
         <img className="logo-mark-img" src={appMark} alt="" width={22} height={22} />
         <span className="logo-text">WWorkbench</span>
@@ -33,8 +34,8 @@ export function ShellChrome({
         <button
           type="button"
           className={`wn-btn wn-btn-chrome wn-btn-sm${agentOpen ? ' active' : ''}`}
-          onClick={onToggleAgent}
           title={agentOpen ? t('agent.collapsePanel') : t('agent.openPanel')}
+          {...pressProps(() => onToggleAgent())}
         >
           AI
         </button>
@@ -44,8 +45,8 @@ export function ShellChrome({
       <button
         type="button"
         className="wn-btn wn-btn-chrome wn-btn-icon-only"
-        onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
         title={t('shell.switchTheme')}
+        {...pressProps(() => setTheme(theme === 'dark' ? 'light' : 'dark'))}
       >
         {theme === 'dark' ? <IconSun size={13} /> : <IconMoon size={13} />}
       </button>

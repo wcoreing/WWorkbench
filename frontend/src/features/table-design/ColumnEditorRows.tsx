@@ -2,6 +2,7 @@ import { ColumnTypePicker } from './ColumnTypePicker'
 import { applyColumnPatch, type DefaultValueKind, type TableColumnDraft } from './tableColumnDraft'
 import { isIntegerColumnType } from './mysqlColumnTypes'
 import '../../components/ui.css'
+import { Select, pressProps } from '../../components/compat'
 
 interface Props {
   columns: TableColumnDraft[]
@@ -37,16 +38,16 @@ export function ColumnEditorRows({ columns, onChange, allowRemoveLast }: Props) 
   }
 
   return (
-    <>
+    <div className="create-table-grid">
       <div className="create-table-cols-head">
         <span>列名</span>
         <span>类型</span>
-        <span>空</span>
-        <span>PK</span>
-        <span>增</span>
+        <span className="col-flag-head">空</span>
+        <span className="col-flag-head">PK</span>
+        <span className="col-flag-head">增</span>
         <span>默认值</span>
         <span>注释</span>
-        <span />
+        <span className="col-action-head" />
       </div>
       {visible.map((col) => {
         const canAutoInc = isIntegerColumnType(col.typeId)
@@ -67,40 +68,45 @@ export function ColumnEditorRows({ columns, onChange, allowRemoveLast }: Props) 
               scale={col.scale}
               onChange={(patch) => updateColType(col.id, patch)}
             />
-            <input
-              type="checkbox"
-              checked={col.nullable}
-              onChange={(e) => updateCol(col.id, { nullable: e.target.checked })}
-              title="允许 NULL"
-            />
-            <input
-              type="checkbox"
-              checked={col.primaryKey}
-              onChange={(e) => updateCol(col.id, { primaryKey: e.target.checked })}
-              title="主键"
-            />
-            <input
-              type="checkbox"
-              checked={col.autoIncrement}
-              disabled={!canAutoInc}
-              onChange={(e) => updateCol(col.id, { autoIncrement: e.target.checked })}
-              title={canAutoInc ? '自增' : '仅整数类型可自增'}
-            />
+            <label className="col-flag">
+              <input
+                type="checkbox"
+                checked={col.nullable}
+                onChange={(e) => updateCol(col.id, { nullable: e.target.checked })}
+                title="允许 NULL"
+              />
+            </label>
+            <label className="col-flag">
+              <input
+                type="checkbox"
+                checked={col.primaryKey}
+                onChange={(e) => updateCol(col.id, { primaryKey: e.target.checked })}
+                title="主键"
+              />
+            </label>
+            <label className="col-flag">
+              <input
+                type="checkbox"
+                checked={col.autoIncrement}
+                disabled={!canAutoInc}
+                onChange={(e) => updateCol(col.id, { autoIncrement: e.target.checked })}
+                title={canAutoInc ? '自增' : '仅整数类型可自增'}
+              />
+            </label>
             <div className="col-default-cell">
-              <select
-                className="wn-select wn-select-xs"
+              <Select
+                className="wn-select-xs"
                 value={col.defaultKind}
                 disabled={defaultDisabled}
-                onChange={(e) =>
-                  updateCol(col.id, { defaultKind: e.target.value as DefaultValueKind })
-                }
                 title="默认值类型"
-              >
-                <option value="none">无</option>
-                <option value="null">NULL</option>
-                <option value="literal">字面量</option>
-                <option value="current_timestamp">CURRENT_TIMESTAMP</option>
-              </select>
+                options={[
+                  { value: 'none', label: '无' },
+                  { value: 'null', label: 'NULL' },
+                  { value: 'literal', label: '字面量' },
+                  { value: 'current_timestamp', label: 'CURRENT_TIMESTAMP' },
+                ]}
+                onChange={(v) => updateCol(col.id, { defaultKind: v as DefaultValueKind })}
+              />
               {col.defaultKind === 'literal' && !defaultDisabled && (
                 <input
                   className="wn-input wn-input-xs"
@@ -117,12 +123,17 @@ export function ColumnEditorRows({ columns, onChange, allowRemoveLast }: Props) 
               placeholder="注释"
               title="COMMENT"
             />
-            <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => removeCol(col)}>
+            <button
+              type="button"
+              className="wn-btn wn-btn-icon wn-btn-sm col-row-remove"
+              {...pressProps(() => removeCol(col))}
+              title="删除字段"
+            >
               −
             </button>
           </div>
         )
       })}
-    </>
+    </div>
   )
 }

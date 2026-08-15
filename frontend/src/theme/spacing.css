@@ -1,0 +1,27 @@
+/* 间距工具类：仅映射 token，禁止再发明数值 */
+
+.wn-pad-1 { padding: var(--space-1); }
+.wn-pad-2 { padding: var(--space-2); }
+.wn-pad-3 { padding: var(--space-3); }
+.wn-pad-4 { padding: var(--space-4); }
+
+.wn-px-chrome { padding-left: var(--chrome-pad-x); padding-right: var(--chrome-pad-x); }
+.wn-pad-content { padding: var(--content-pad); }
+
+.wn-gap-1 { gap: var(--space-1); }
+.wn-gap-2 { gap: var(--space-2); }
+.wn-gap-3 { gap: var(--space-3); }
+.wn-gap-4 { gap: var(--space-4); }
+
+.wn-stack {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.wn-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}

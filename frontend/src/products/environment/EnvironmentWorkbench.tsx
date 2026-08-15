@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { EnvPreset, ProjectEnvHint, RuntimeInfo, RuntimeLang, RuntimeVersion } from '../../api/types'
 import { IconLayers, IconPlus } from '../../components/Icons'
+import { ProductLayout } from '../../components/layout'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { EnvPresetModal } from '../../features/environment/EnvPresetModal'
 import { EnvVersionModal } from '../../features/environment/EnvVersionModal'
@@ -9,6 +10,7 @@ import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildEnvironmentSurface, briefList } from '../../stores/agentSurface'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
+import { pressProps } from '../../components/compat'
 
 const RUNTIME_META: Record<RuntimeLang, { label: string; color: string }> = {
   node: { label: 'Node.js', color: '#3c873a' },
@@ -215,18 +217,26 @@ export function EnvironmentWorkbench() {
     <div className="product-workbench toolchain-workbench">
       <div className="product-toolbar">
         <nav className="product-actions">
-          <button type="button" className="wn-btn wn-btn-chrome" onClick={() => setPresetModal(null)}>
+          <button type="button" className="wn-btn wn-btn-chrome" {...pressProps(() => setPresetModal(null))}>
             <IconPlus size={13} />
             <span>{t('environment.newPreset')}</span>
           </button>
-          <button type="button" className="wn-btn wn-btn-chrome" onClick={() => void pickScanDir()} disabled={loading}>
+          <button
+            type="button"
+            className="wn-btn wn-btn-chrome"
+            disabled={loading}
+            {...pressProps(() => void pickScanDir(), { disabled: loading })}
+          >
             {t('environment.pickScanDir')}
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-chrome"
-            onClick={() => scanPath && void api.scanEnvProjects(scanPath).then(setProjects)}
             disabled={loading || !scanPath}
+            {...pressProps(
+              () => scanPath && void api.scanEnvProjects(scanPath).then(setProjects),
+              { disabled: loading || !scanPath },
+            )}
           >
             {t('environment.rescan')}
           </button>
@@ -237,16 +247,20 @@ export function EnvironmentWorkbench() {
         </span>
       </div>
 
-      <div className="product-body">
-        <aside className="app-sidebar toolchain-sidebar">
+      <ProductLayout
+        storageKey="environment_sidebar_width"
+        resizeTitle={t('common.resizeWidth')}
+        sidebarClassName="toolchain-sidebar"
+        sidebar={
+          <>
           <section className="sidebar-section">
             <div className="sidebar-header">
               <span>{t('environment.presets')}</span>
               <button
                 type="button"
                 className="wn-btn wn-btn-icon wn-btn-sm"
-                onClick={() => setPresetModal(null)}
                 title={t('common.new')}
+                {...pressProps(() => setPresetModal(null))}
               >
                 <IconPlus size={14} />
               </button>
@@ -260,7 +274,7 @@ export function EnvironmentWorkbench() {
                     <li
                       key={p.id}
                       className={`toolchain-preset-item ${p.active ? 'active' : ''}`}
-                      onClick={() => void applyPreset(p)}
+                      {...pressProps(() => void applyPreset(p))}
                       onContextMenu={(e) => {
                         e.preventDefault()
                         setPresetModal(p)
@@ -279,7 +293,9 @@ export function EnvironmentWorkbench() {
               )}
             </div>
           </section>
-        </aside>
+        </>
+        }
+      >
 
         <main className="toolchain-main">
           <section className="toolchain-section">
@@ -304,7 +320,7 @@ export function EnvironmentWorkbench() {
                       <button
                         type="button"
                         className="wn-btn wn-btn-sm wn-btn-ghost"
-                        onClick={() => openSwitch(lang)}
+                        {...pressProps(() => openSwitch(lang))}
                       >
                         {t('environment.manage')}
                       </button>
@@ -330,13 +346,13 @@ export function EnvironmentWorkbench() {
               <header className="toolchain-section-header compact">
                 <h3>{t('environment.presetTitle', { name: activePreset.name })}</h3>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => setPresetModal(activePreset)}>
+                  <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => setPresetModal(activePreset))}>
                     {t('common.edit')}
                   </button>
-                  <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => setDeletePreset(activePreset)}>
+                  <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => setDeletePreset(activePreset))}>
                     {t('common.delete')}
                   </button>
-                  <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" onClick={() => void applyPreset(activePreset)}>
+                  <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" {...pressProps(() => void applyPreset(activePreset))}>
                     {t('environment.applyPreset')}
                   </button>
                 </div>
@@ -405,7 +421,7 @@ export function EnvironmentWorkbench() {
                         .map(([k, v]) => `${k} ${v}`)
                         .join(' · ') || '—'}
                     </div>
-                    <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" onClick={() => void alignProject(proj)}>
+                    <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" {...pressProps(() => void alignProject(proj))}>
                       {t('environment.alignProject')}
                     </button>
                   </article>
@@ -414,7 +430,7 @@ export function EnvironmentWorkbench() {
             )}
           </section>
         </main>
-      </div>
+      </ProductLayout>
 
       <EnvPresetModal
         open={presetModal !== undefined}

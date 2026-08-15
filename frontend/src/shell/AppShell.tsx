@@ -18,6 +18,7 @@ import { subscribeAgentUiActions } from '../features/agent/agentUiActions'
 import { startWorkbenchRadar } from '../workbench/workbenchRadar'
 import { useAgentStore } from '../stores/agentStore'
 import { ConfirmHost } from '../components/ConfirmHost'
+import { installFocusGate } from '../components/compat'
 import { useI18n } from '../i18n'
 import './shell.css'
 
@@ -68,6 +69,7 @@ export function AppShell() {
 
   useEffect(() => subscribeAgentUiActions(), [])
   useEffect(() => startWorkbenchRadar(), [])
+  useEffect(() => installFocusGate(), [])
 
   useEffect(() => {
     setMountedProducts((prev) => {

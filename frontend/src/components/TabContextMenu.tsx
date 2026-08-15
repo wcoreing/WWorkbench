@@ -1,5 +1,7 @@
 import type { MouseEvent as ReactMouseEvent } from 'react'
+import { ContextMenu } from './ContextMenu'
 import { useI18n } from '../i18n'
+import { pressProps } from './compat'
 
 export type TabContextMenuState = { x: number; y: number; tabId: string }
 
@@ -26,57 +28,41 @@ export function TabContextMenu({
   onDismiss,
 }: Props) {
   const { t } = useI18n()
+  const act = (fn: () => void) => {
+    onDismiss()
+    fn()
+  }
   return (
-    <div
-      className="wn-context-menu"
-      style={{ left: menu.x, top: menu.y }}
+    <ContextMenu
+      key={`tab-${menu.tabId}-${menu.x}-${menu.y}`}
+      x={menu.x}
+      y={menu.y}
       onClick={(e) => e.stopPropagation()}
     >
       {onReconnect && (
         <button
           type="button"
           className="wn-context-item"
-          onClick={() => {
-            onDismiss()
-            onReconnect()
-          }}
+          {...pressProps(() => act(onReconnect))}
         >
           {t('terminal.reconnect')}
         </button>
       )}
-      <button
-        type="button"
-        className="wn-context-item"
-        onClick={() => {
-          onDismiss()
-          onClose()
-        }}
-      >
+      <button type="button" className="wn-context-item" {...pressProps(() => act(onClose))}>
         {t('common.close')}
       </button>
       <button
         type="button"
         className="wn-context-item"
         disabled={disableCloseOthers}
-        onClick={() => {
-          if (disableCloseOthers) return
-          onDismiss()
-          onCloseOthers()
-        }}
+        {...pressProps(() => act(onCloseOthers), { disabled: disableCloseOthers })}
       >
         {t('common.closeOthers')}
       </button>
-      <button
-        type="button"
-        className="wn-context-item"
-        onClick={() => {
-          onDismiss()
-          onCloseAll()
-        }}
-      >
+      <button type="button" className="wn-context-item" {...pressProps(() => act(onCloseAll))}>
         {t('common.closeAll')}
       </button>
-    </div>
+    </ContextMenu>
   )
 }
 

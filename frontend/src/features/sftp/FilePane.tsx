@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FileEntry, SftpBookmark } from '../../api/types'
 import { IconFolder, IconRefresh } from '../../components/Icons'
+import { pressProps } from '../../components/compat'
 import {
   SFTP_DRAG_THRESHOLD,
   SFTP_INTERNAL_DROP_EVENT,
@@ -84,8 +85,8 @@ export function FilePane({
   useEffect(() => {
     if (!bookmarkOpen) return
     const close = () => setBookmarkOpen(false)
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
   }, [bookmarkOpen])
 
   useEffect(() => {
@@ -218,13 +219,18 @@ export function FilePane({
             type="button"
             className="wn-btn wn-btn-icon wn-btn-sm"
             title={refreshTitle}
-            onClick={() => onRefresh()}
+            {...pressProps(() => onRefresh())}
           >
             <IconRefresh size={13} />
           </button>
         )}
         {onAddBookmark && (
-          <button type="button" className="wn-btn wn-btn-icon wn-btn-sm sftp-bookmark-add" title="收藏当前路径" onClick={onAddBookmark}>
+          <button
+            type="button"
+            className="wn-btn wn-btn-icon wn-btn-sm sftp-bookmark-add"
+            title="收藏当前路径"
+            {...pressProps(onAddBookmark)}
+          >
             ★
           </button>
         )}
@@ -234,22 +240,34 @@ export function FilePane({
               type="button"
               className="wn-btn wn-btn-icon wn-btn-sm"
               title="路径书签"
-              onClick={(e) => {
+              {...pressProps((e) => {
                 e.stopPropagation()
                 setBookmarkOpen((v) => !v)
-              }}
+              })}
             >
               ▾
             </button>
             {bookmarkOpen && (
-              <div className="sftp-bookmark-dropdown" onClick={(e) => e.stopPropagation()}>
+              <div className="sftp-bookmark-dropdown" onPointerDown={(e) => e.stopPropagation()}>
                 {bookmarks.map((b) => (
                   <div key={b.id} className="sftp-bookmark-item">
-                    <button type="button" className="sftp-bookmark-link" onClick={() => { setBookmarkOpen(false); onBookmarkNavigate(b.path) }}>
+                    <button
+                      type="button"
+                      className="sftp-bookmark-link"
+                      {...pressProps(() => {
+                        setBookmarkOpen(false)
+                        onBookmarkNavigate(b.path)
+                      })}
+                    >
                       {b.name}
                     </button>
                     {onDeleteBookmark && (
-                      <button type="button" className="sftp-bookmark-del" title="删除书签" onClick={() => onDeleteBookmark(b.id)}>
+                      <button
+                        type="button"
+                        className="sftp-bookmark-del"
+                        title="删除书签"
+                        {...pressProps(() => onDeleteBookmark(b.id))}
+                      >
                         ×
                       </button>
                     )}

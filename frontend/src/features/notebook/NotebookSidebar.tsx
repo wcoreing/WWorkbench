@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { NoteLanguage, NoteSummary, NotebookGroup } from '../../api/types'
 import { IconNotebook, IconPlus } from '../../components/Icons'
+import { ContextMenu } from '../../components/ContextMenu'
 import { useI18n } from '../../i18n'
+import { pressProps } from '../../components/compat'
 import {
   NOTEBOOK_DRAG_MIME,
   NOTEBOOK_ROOT_ID,
@@ -76,8 +78,8 @@ export function NotebookSidebar({
       setNoteMenu(null)
       setGroupMenu(null)
     }
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
   }, [noteMenu, groupMenu])
 
   const sortedGroups = useMemo(() => orderedGroups(groups), [groups])
@@ -244,7 +246,8 @@ export function NotebookSidebar({
                     className="notebook-group-toggle"
                     onClick={() => onToggleGroup(NOTEBOOK_ROOT_ID)}
                   >
-                    {rootCollapsed ? '▸' : '▾'} {t('notebook.rootGroup')}
+                    <span className={`tree-chevron${rootCollapsed ? '' : ' is-open'}`} aria-hidden />
+                    {t('notebook.rootGroup')}
                   </button>
                   <button
                     type="button"
@@ -319,7 +322,8 @@ export function NotebookSidebar({
                   }}
                 >
                   <button type="button" className="notebook-group-toggle" onClick={() => onToggleGroup(g.id)}>
-                    {collapsed ? '▸' : '▾'} {g.name}
+                    <span className={`tree-chevron${collapsed ? '' : ' is-open'}`} aria-hidden />
+                    {g.name}
                   </button>
                   <span
                     className="notebook-group-drag-handle"
@@ -386,19 +390,19 @@ export function NotebookSidebar({
       )}
 
       {noteMenu && (
-        <div
-          className="wn-context-menu"
-          style={{ left: noteMenu.x, top: noteMenu.y }}
+        <ContextMenu
+          x={noteMenu.x}
+          y={noteMenu.y}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               const { note } = noteMenu
               setNoteMenu(null)
               onOpenNote(note.id)
-            }}
+            })}
           >
             {t('notebook.ctxOpen')}
           </button>
@@ -433,57 +437,57 @@ export function NotebookSidebar({
           <button
             type="button"
             className="wn-context-item wn-context-item-danger"
-            onClick={() => {
+            {...pressProps(() => {
               const { note } = noteMenu
               setNoteMenu(null)
               onDeleteNote(note.id, note.title)
-            }}
+            })}
           >
             {t('notebook.ctxDeleteNote')}
           </button>
-        </div>
+        </ContextMenu>
       )}
 
       {groupMenu && (
-        <div
-          className="wn-context-menu"
-          style={{ left: groupMenu.x, top: groupMenu.y }}
+        <ContextMenu
+          x={groupMenu.x}
+          y={groupMenu.y}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               const { group } = groupMenu
               setGroupMenu(null)
               onEditGroup(group)
-            }}
+            })}
           >
             {t('notebook.ctxRenameGroup')}
           </button>
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               const { group } = groupMenu
               setGroupMenu(null)
               onCreateNoteInGroup(group.id)
-            }}
+            })}
           >
             {t('notebook.newInGroup')}
           </button>
           <button
             type="button"
             className="wn-context-item wn-context-item-danger"
-            onClick={() => {
+            {...pressProps(() => {
               const { group } = groupMenu
               setGroupMenu(null)
               onDeleteGroup(group.id, group.name)
-            }}
+            })}
           >
             {t('notebook.deleteGroup')}
           </button>
-        </div>
+        </ContextMenu>
       )}
     </aside>
   )

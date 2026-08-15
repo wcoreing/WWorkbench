@@ -2,8 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { Connection, ExecuteResult, IndexMeta, QueryHistory, QueryPage, SQLBatchResult, SessionInfo } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { ContextMenu } from '../../components/ContextMenu'
+import { ProductLayout, PaneCollapseButton, ResizeHandle, SidebarColumns, SidebarStack, usePaneCollapse, useResizable } from '../../components/layout'
+import { loadSizeMap, rememberScalarSize, recallScalarSize, type CollapsedMap } from '../../components/layout/layoutStorage'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
-import { IconDisconnect, IconEdit, IconPlay, IconPlus, IconRefresh, IconSql } from '../../components/Icons'
+import { IconDisconnect, IconDownload, IconEdit, IconExplain, IconFolder, IconImportSql, IconNotebook, IconPlay, IconPlus, IconRefresh, IconSql, IconTerminal, IconTrash, IconUpload } from '../../components/Icons'
+import { Select, pressProps, useDismissOverlays } from '../../components/compat'
+
 import { ConnectionModal } from '../../features/connection/ConnectionModal'
 import { DdlEditor } from '../../features/ddl/DdlEditor'
 import { ObjectTree } from '../../features/explorer/ObjectTree'
@@ -25,7 +30,6 @@ import { openAgentDraft, mentionDatabase } from '../../features/agent/openAgentD
 import { useI18n } from '../../i18n'
 import { defaultUntitledSql, localizeWorkTabTitle } from '../../i18n/databaseTabTitle'
 import { queryPageToExport } from '../../utils/queryCsv'
-import { bindPointerAction, bindPointerActionWithEvent } from '../../utils/pointerAction'
 import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 
 type SqlResult = QueryPage | ExecuteResult | SQLBatchResult
@@ -73,8 +77,19 @@ export function DatabaseWorkbench() {
   const [editingConn, setEditingConn] = useState<Connection | null>(null)
   const [connCtxMenu, setConnCtxMenu] = useState<{ x: number; y: number; conn: Connection } | null>(null)
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
+  useDismissOverlays(() => {
+    setConnCtxMenu(null)
+    setTabCtxMenu(null)
+  })
   const [sqlResult, setSqlResult] = useState<SqlResult | null>(null)
-  const [resultHeight, setResultHeight] = useState(220)
+  const { size: resultHeight, onResizeStart: onResultResizeStart } = useResizable({
+    axis: 'y',
+    storageKey: 'database_result_height',
+    defaultSize: 220,
+    min: 120,
+    max: 560,
+    invert: true,
+  })
   const [bottomTab, setBottomTab] = useState<'result' | 'message'>('result')
   const [history, setHistory] = useState<QueryHistory[]>([])
   const [lastQuery, setLastQuery] = useState<{ sql: string; page: QueryPage } | null>(null)
@@ -87,6 +102,64 @@ export function DatabaseWorkbench() {
   const [deleteConnTarget, setDeleteConnTarget] = useState<Connection | null>(null)
   const [createDbOpen, setCreateDbOpen] = useState(false)
   const restoredConnection = useRef(false)
+  const DB_SIDEBAR_WIDTH_KEY = 'database_sidebar_width'
+  const DB_SIDEBAR_EXPANDED_KEY = 'database_sidebar_width__expanded'
+  const DB_COLUMNS_KEY = 'database_sidebar_columns'
+  const {
+    size: databaseSidebarWidth,
+    setSizeAndSave: setDatabaseSidebarWidth,
+    onResizeStart: onDatabaseSidebarResizeStart,
+  } = useResizable({
+    axis: 'x',
+    storageKey: DB_SIDEBAR_WIDTH_KEY,
+    defaultSize: 400,
+    min: 200,
+    max: 720,
+  })
+  const {
+    collapsed: explorerCollapsed,
+    setCollapsed: setExplorerCollapsed,
+  } = usePaneCollapse(DB_COLUMNS_KEY)
+
+  /** 收起连接栏时同步缩小外层侧栏，把宽度还给主编辑区 */
+  const applyExplorerCollapsed = useCallback(
+    (next: CollapsedMap) => {
+      const was = Boolean(explorerCollapsed.connections)
+      const now = Boolean(next.connections)
+      if (was !== now) {
+        const colSizes = loadSizeMap(DB_COLUMNS_KEY)
+        const connW = Math.min(320, Math.max(120, colSizes.connections ?? 168))
+        const freed = Math.max(0, connW - 32)
+        if (now) {
+          rememberScalarSize(DB_SIDEBAR_EXPANDED_KEY, databaseSidebarWidth)
+          setDatabaseSidebarWidth(databaseSidebarWidth - freed)
+        } else {
+          setDatabaseSidebarWidth(
+            recallScalarSize(
+              DB_SIDEBAR_EXPANDED_KEY,
+              databaseSidebarWidth + freed,
+              320,
+              720,
+            ),
+          )
+        }
+      }
+      setExplorerCollapsed(next)
+    },
+    [
+      databaseSidebarWidth,
+      explorerCollapsed.connections,
+      setDatabaseSidebarWidth,
+      setExplorerCollapsed,
+    ],
+  )
+
+  const toggleConnectionsPane = useCallback(() => {
+    applyExplorerCollapsed({
+      ...explorerCollapsed,
+      connections: !explorerCollapsed.connections,
+    })
+  }, [applyExplorerCollapsed, explorerCollapsed])
 
   useEffect(() => {
     void refreshConnections()
@@ -117,15 +190,15 @@ export function DatabaseWorkbench() {
   useEffect(() => {
     if (!connCtxMenu) return
     const close = () => setConnCtxMenu(null)
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
   }, [connCtxMenu])
 
   useEffect(() => {
     if (!tabCtxMenu) return
     const close = () => setTabCtxMenu(null)
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
   }, [tabCtxMenu])
 
   const refreshConnections = useCallback(async () => {
@@ -858,39 +931,39 @@ export function DatabaseWorkbench() {
     <div className="product-workbench database-workbench">
       <div className="product-toolbar">
         <nav className="product-actions">
-          <button type="button" className="wn-btn wn-btn-chrome" onClick={() => openConnModal()} title={t('database.newConnection')}>
+          <button type="button" className="wn-btn wn-btn-chrome" title={t('database.newConnection')} {...pressProps(() => openConnModal())}>
             <IconPlus size={13} />
             <span>{t('database.connection')}</span>
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-chrome"
-            onClick={() => activeConn && openConnModal(activeConn)}
             disabled={!activeConn}
             title={t('database.editConnection')}
+            {...pressProps(() => activeConn && openConnModal(activeConn), { disabled: !activeConn })}
           >
             <IconEdit size={13} />
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-chrome wn-btn-danger"
-            onClick={() => activeConn && setDeleteConnTarget(activeConn)}
             disabled={!activeConn}
             title={t('database.deleteConnection')}
+            {...pressProps(() => activeConn && setDeleteConnTarget(activeConn), { disabled: !activeConn })}
           >
-            ×
+            <IconTrash size={13} />
           </button>
           <span className="chrome-vrule" />
-          <button type="button" className="wn-btn wn-btn-chrome" onClick={newSqlTab} title={t('database.newQuery')}>
+          <button type="button" className="wn-btn wn-btn-chrome" title={t('database.newQuery')} {...pressProps(newSqlTab)}>
             <IconSql size={13} />
             <span>{t('database.newQuery')}</span>
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-chrome wn-btn-run"
-            onClick={runSql}
             disabled={!session || activeTab?.kind !== 'sql'}
             title={t('database.runTitle')}
+            {...pressProps(runSql, { disabled: !session || activeTab?.kind !== 'sql' })}
           >
             <IconPlay size={12} />
             <span>{t('database.run')}</span>
@@ -898,31 +971,39 @@ export function DatabaseWorkbench() {
           <button
             type="button"
             className="wn-btn wn-btn-chrome"
-            onClick={runExplain}
             disabled={!session || activeTab?.kind !== 'sql'}
             title={t('database.explain')}
+            {...pressProps(runExplain, { disabled: !session || activeTab?.kind !== 'sql' })}
           >
+            <IconExplain size={13} />
             <span>EXPLAIN</span>
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-chrome"
-            onClick={() => void runSqlFile()}
             disabled={!session || isRedis}
             title={t('database.importSqlHint')}
+            {...pressProps(() => void runSqlFile(), { disabled: !session || isRedis })}
           >
+            <IconImportSql size={13} />
             <span>{t('database.importSql')}</span>
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-chrome"
-            onClick={() => void reconnect()}
             disabled={!session}
             title={t('database.reconnect')}
+            {...pressProps(() => void reconnect(), { disabled: !session })}
           >
             <IconRefresh size={13} />
           </button>
-          <button type="button" className="wn-btn wn-btn-chrome" onClick={disconnect} disabled={!session} title={t('database.disconnect')}>
+          <button
+            type="button"
+            className="wn-btn wn-btn-chrome"
+            disabled={!session}
+            title={t('database.disconnect')}
+            {...pressProps(disconnect, { disabled: !session })}
+          >
             <IconDisconnect size={13} />
           </button>
           {session && (
@@ -931,9 +1012,10 @@ export function DatabaseWorkbench() {
               <button
                 type="button"
                 className="wn-btn wn-btn-chrome"
-                onClick={openNotebookFromConnection}
                 title={t('database.saveNotebook')}
+                {...pressProps(openNotebookFromConnection)}
               >
+                <IconNotebook size={13} />
                 <span>{t('database.notebook')}</span>
               </button>
             </>
@@ -944,17 +1026,19 @@ export function DatabaseWorkbench() {
               <button
                 type="button"
                 className="wn-btn wn-btn-chrome"
-                onClick={() => void openLinkedProduct('terminal')}
                 title={t('database.sshTerminal')}
+                {...pressProps(() => void openLinkedProduct('terminal'))}
               >
+                <IconTerminal size={13} />
                 <span>{t('database.sshTerminal')}</span>
               </button>
               <button
                 type="button"
                 className="wn-btn wn-btn-chrome"
-                onClick={() => void openLinkedProduct('sftp')}
                 title={t('database.sftp')}
+                {...pressProps(() => void openLinkedProduct('sftp'))}
               >
+                <IconFolder size={13} />
                 <span>{t('database.sftp')}</span>
               </button>
             </>
@@ -967,166 +1051,226 @@ export function DatabaseWorkbench() {
         </div>
       </div>
 
-      <div className="product-body">
-        <aside className="app-sidebar">
-          <section className="sidebar-section connections">
-            <div className="sidebar-header">
-              <span>{t('database.connections')}</span>
-              <div className="sidebar-header-actions">
-                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => void importConnections()} title={t('database.import')}>
-                  ↓
-                </button>
-                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => void exportConnections()} title={t('database.export')}>
-                  ↑
-                </button>
-                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => openConnModal()} title={t('database.newConnection')}>
-                  <IconPlus size={14} />
-                </button>
-              </div>
-            </div>
-            <div className="sidebar-body connections-body">
-              {connectionList.length === 0 ? (
-                <div className="empty-hint">{t('database.emptyConnectionsGeneric')}</div>
-              ) : (
-                groupedConnections.map(([group, list]) => (
-                  <div key={group} className="conn-group">
-                    <div className="conn-group-title">{group}</div>
-                    <ul className="conn-list">
-                      {list.map((c) => (
-                        <li
-                          key={c.id}
-                          className={`conn-item ${activeConnectionId === c.id ? 'active' : ''} ${session?.connectionId === c.id ? 'connected' : ''}`}
-                          onClick={() => connect(c.id)}
-                          onDoubleClick={() => void reconnect(c.id)}
-                          onContextMenu={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            setConnCtxMenu({ x: e.clientX, y: e.clientY, conn: c })
-                          }}
-                          title={
-                            session?.connectionId === c.id
-                              ? t('database.reconnectHint')
-                              : undefined
-                          }
-                        >
-                          <span className="conn-dot" />
-                          <div className="conn-meta">
-                            <span className="conn-name">
-                              {c.name}
-                              {c.sshEnabled && <span className="conn-ssh-tag">SSH</span>}
-                            </span>
-                            <span className="conn-host">
-                              <span className="conn-db-type">{c.dbType}</span>
-                              {c.sshEnabled && c.sshHost ? `${c.sshHost} → ` : ''}
-                              {c.host}:{c.port}
-                            </span>
+      <ProductLayout
+        storageKey={DB_SIDEBAR_WIDTH_KEY}
+        resizeTitle={t('common.resizeWidth')}
+        defaultWidth={400}
+        minWidth={200}
+        maxWidth={720}
+        width={databaseSidebarWidth}
+        onResizeStart={onDatabaseSidebarResizeStart}
+        sidebar={
+          <SidebarStack
+            storageKey="database_sidebar_stack"
+            resizeTitle={t('common.resizeHeight')}
+            sections={[
+              {
+                id: 'explorer',
+                flex: true,
+                content: (
+                  <SidebarColumns
+                    storageKey={DB_COLUMNS_KEY}
+                    resizeTitle={t('common.resizeWidth')}
+                    collapseTitle={t('common.collapsePane')}
+                    expandTitle={t('common.expandPane')}
+                    className="database-explorer-columns"
+                    collapsed={explorerCollapsed}
+                    onCollapsedChange={applyExplorerCollapsed}
+                    sections={[
+                      {
+                        id: 'connections',
+                        defaultSize: 168,
+                        min: 120,
+                        max: 320,
+                        collapsible: true,
+                        railLabel: t('database.connectionsRail'),
+                        collapseLabel: t('common.collapsePane'),
+                        expandLabel: t('database.expandConnections'),
+                        content: (
+                          <section className="sidebar-section connections">
+                            <div className="sidebar-header">
+                              <PaneCollapseButton
+                                title={t('database.collapseConnections')}
+                                onToggle={toggleConnectionsPane}
+                              />
+                              <span className="sidebar-header-title">{t('database.connections')}</span>
+                              <div className="sidebar-header-actions">
+                                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" title={t('database.import')} {...pressProps(() => void importConnections())}>
+                                  <IconUpload size={14} />
+                                </button>
+                                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" title={t('database.export')} {...pressProps(() => void exportConnections())}>
+                                  <IconDownload size={14} />
+                                </button>
+                                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" title={t('database.newConnection')} {...pressProps(() => openConnModal())}>
+                                  <IconPlus size={14} />
+                                </button>
+                              </div>
+                            </div>
+                            <div className="sidebar-body connections-body">
+                              {connectionList.length === 0 ? (
+                                <div className="empty-hint">{t('database.emptyConnectionsGeneric')}</div>
+                              ) : (
+                                groupedConnections.map(([group, list]) => (
+                                  <div key={group} className="conn-group">
+                                    <div className="conn-group-title">{group}</div>
+                                    <ul className="conn-list">
+                                      {list.map((c) => (
+                                        <li
+                                          key={c.id}
+                                          className={`conn-item ${activeConnectionId === c.id ? 'active' : ''} ${session?.connectionId === c.id ? 'connected' : ''}`}
+                                          {...pressProps(() => connect(c.id))}
+                                          onDoubleClick={() => void reconnect(c.id)}
+                                          onContextMenu={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            setConnCtxMenu({ x: e.clientX, y: e.clientY, conn: c })
+                                          }}
+                                          title={
+                                            session?.connectionId === c.id
+                                              ? t('database.reconnectHint')
+                                              : undefined
+                                          }
+                                        >
+                                          <span className="conn-dot" />
+                                          <div className="conn-meta">
+                                            <span className="conn-name">
+                                              {c.name}
+                                              {c.sshEnabled && <span className="conn-ssh-tag">SSH</span>}
+                                            </span>
+                                            <span className="conn-host">
+                                              <span className="conn-db-type">{c.dbType}</span>
+                                              {c.sshEnabled && c.sshHost ? `${c.sshHost} → ` : ''}
+                                              {c.host}:{c.port}
+                                            </span>
+                                          </div>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </section>
+                        ),
+                      },
+                      {
+                        id: 'objects',
+                        flex: true,
+                        content: (
+                          <section className="sidebar-section objects">
+                            <div className="sidebar-header">
+                              <span>{t('database.objectBrowser')}</span>
+                              <div className="sidebar-header-actions">
+                                {canCreateDatabase && session && (
+                                  <button
+                                    type="button"
+                                    className="wn-btn wn-btn-icon wn-btn-sm"
+                                    title={t('database.createDatabase')}
+                                    {...pressProps(() => setCreateDbOpen(true))}
+                                  >
+                                    <IconPlus size={14} />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  className="wn-btn wn-btn-icon wn-btn-sm"
+                                  disabled={!session}
+                                  title={t('common.refresh')}
+                                  {...pressProps(() => void refreshObjectTree(), { disabled: !session })}
+                                >
+                                  <IconRefresh size={14} />
+                                </button>
+                              </div>
+                            </div>
+                            {session && (
+                              <div className="sidebar-filter">
+                                <input
+                                  className="wn-input wn-input-sm"
+                                  placeholder={t('database.filterPlaceholder')}
+                                  value={treeFilter}
+                                  onChange={(e) => setTreeFilter(e.target.value)}
+                                />
+                              </div>
+                            )}
+                            <div className="sidebar-body">
+                              {session ? (
+                                <ObjectTree
+                                  sessionId={session.sessionId}
+                                  nodes={treeNodes}
+                                  filter={treeFilter}
+                                  selectedDatabase={session.database || undefined}
+                                  selectedTable={
+                                    activeTab?.kind === 'table'
+                                      ? activeTab.table
+                                      : activeTab?.kind === 'design'
+                                        ? activeTab.table
+                                        : undefined
+                                  }
+                                  refreshNonce={treeRefreshNonce}
+                                  canCreateTable={canCreateTable}
+                                  canDesignTable={canDesignTable}
+                                  isRedis={isRedis}
+                                  onTableDoubleClick={openTableTab}
+                                  onDatabaseSelect={(db) => void selectDatabase(db)}
+                                  onShowDDL={showDDL}
+                                  onShowIndexes={showIndexes}
+                                  onNewTable={openCreateTableTab}
+                                  onDesignTable={openDesignTableTab}
+                                  onTruncateTable={truncateTable}
+                                  onDropTable={dropTable}
+                                  onExportInsert={exportTableInsert}
+                                  onImportSQL={(db) => void runSqlFile(db)}
+                                  onCreateDatabase={canCreateDatabase ? () => setCreateDbOpen(true) : undefined}
+                                />
+                              ) : (
+                                <div className="empty-hint">{t('database.connectToBrowse')}</div>
+                              )}
+                            </div>
+                          </section>
+                        ),
+                      },
+                    ]}
+                  />
+                ),
+              },
+              {
+                id: 'history',
+                defaultSize: 120,
+                min: 72,
+                max: 320,
+                content: (
+                  <section className="sidebar-section history">
+                    <div className="sidebar-header">
+                      <span>{t('database.queryHistory')}</span>
+                    </div>
+                    <div className="sidebar-body">
+                      {history.length === 0 ? (
+                        <div className="empty-hint" style={{ padding: '12px 8px' }}>
+                          {t('database.noHistory')}
+                        </div>
+                      ) : (
+                        history.map((h) => (
+                          <div
+                            key={h.id}
+                            className={`history-item ${h.success ? '' : 'failed'}`}
+                            title={h.sql}
+                            {...pressProps(() =>
+                              addTab({ id: `sql-h-${h.id}`, kind: 'sql', title: t('database.historyQuery'), sql: h.sql }),
+                            )}
+                          >
+                            {h.sql.slice(0, 50)}
+                            {h.sql.length > 50 ? '…' : ''}
                           </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section className="sidebar-section objects">
-            <div className="sidebar-header">
-              <span>{t('database.objectBrowser')}</span>
-              <div className="sidebar-header-actions">
-                {canCreateDatabase && session && (
-                  <button
-                    type="button"
-                    className="wn-btn wn-btn-icon wn-btn-sm"
-                    onClick={() => setCreateDbOpen(true)}
-                    title={t('database.createDatabase')}
-                  >
-                    +
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="wn-btn wn-btn-icon wn-btn-sm"
-                  onClick={() => void refreshObjectTree()}
-                  disabled={!session}
-                  title={t('common.refresh')}
-                >
-                  ↻
-                </button>
-              </div>
-            </div>
-            {session && (
-              <div className="sidebar-filter">
-                <input
-                  className="wn-input wn-input-sm"
-                  placeholder={t('database.filterPlaceholder')}
-                  value={treeFilter}
-                  onChange={(e) => setTreeFilter(e.target.value)}
-                />
-              </div>
-            )}
-            <div className="sidebar-body">
-              {session ? (
-                <ObjectTree
-                  sessionId={session.sessionId}
-                  nodes={treeNodes}
-                  filter={treeFilter}
-                  selectedDatabase={session.database || undefined}
-                  selectedTable={
-                    activeTab?.kind === 'table'
-                      ? activeTab.table
-                      : activeTab?.kind === 'design'
-                        ? activeTab.table
-                        : undefined
-                  }
-                  refreshNonce={treeRefreshNonce}
-                  canCreateTable={canCreateTable}
-                  canDesignTable={canDesignTable}
-                  isRedis={isRedis}
-                  onTableDoubleClick={openTableTab}
-                  onDatabaseSelect={(db) => void selectDatabase(db)}
-                  onShowDDL={showDDL}
-                  onShowIndexes={showIndexes}
-                  onNewTable={openCreateTableTab}
-                  onDesignTable={openDesignTableTab}
-                  onTruncateTable={truncateTable}
-                  onDropTable={dropTable}
-                  onExportInsert={exportTableInsert}
-                  onImportSQL={(db) => void runSqlFile(db)}
-                  onCreateDatabase={canCreateDatabase ? () => setCreateDbOpen(true) : undefined}
-                />
-              ) : (
-                <div className="empty-hint">{t('database.connectToBrowse')}</div>
-              )}
-            </div>
-          </section>
-
-          <section className="sidebar-section history">
-            <div className="sidebar-header">
-              <span>{t('database.queryHistory')}</span>
-            </div>
-            <div className="sidebar-body">
-              {history.length === 0 ? (
-                <div className="empty-hint" style={{ padding: '12px 8px' }}>
-                  {t('database.noHistory')}
-                </div>
-              ) : (
-                history.map((h) => (
-                  <div
-                    key={h.id}
-                    className={`history-item ${h.success ? '' : 'failed'}`}
-                    title={h.sql}
-                    onClick={() => addTab({ id: `sql-h-${h.id}`, kind: 'sql', title: t('database.historyQuery'), sql: h.sql })}
-                  >
-                    {h.sql.slice(0, 50)}
-                    {h.sql.length > 50 ? '…' : ''}
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-        </aside>
-
+                        ))
+                      )}
+                    </div>
+                  </section>
+                ),
+              },
+            ]}
+          />
+        }
+      >
         <main className="app-main">
           <div className="editor-chrome">
             <div className="wn-tabs" ref={tabsRef}>
@@ -1136,41 +1280,35 @@ export function DatabaseWorkbench() {
                   type="button"
                   data-tab-id={tab.id}
                   className={`wn-tab wn-tab-${tab.kind} ${tab.id === activeTabId ? 'active' : ''}`}
-                  {...bindPointerAction(() => setActiveTabId(tab.id))}
+                  {...pressProps(() => setActiveTabId(tab.id))}
                   onContextMenu={(e) => openTabContextMenu(e, tab.id, setTabCtxMenu, setActiveTabId)}
                 >
                   <span className="tab-dot" />
                   <span className="tab-title">{localizeWorkTabTitle(tab.title, t)}</span>
                   <span
                     className="wn-tab-close"
-                    {...bindPointerActionWithEvent((e) => {
-                      e.stopPropagation()
-                      closeTab(tab.id)
-                    })}
+                    {...pressProps(() => closeTab(tab.id), { stop: true })}
                   >
                     ×
                   </span>
                 </button>
               ))}
-              <button type="button" className="wn-tab wn-tab-add" onClick={newSqlTab} title={t('database.newQuery')}>
+              <button type="button" className="wn-tab wn-tab-add" {...pressProps(newSqlTab)} title={t('database.newQuery')}>
                 +
               </button>
             </div>
             {session && (
               <div className="query-bar">
                 <label>{t('database.database')}</label>
-                <select
-                  className="wn-select"
+                <Select
                   value={session.database}
-                  onChange={async (e) => selectDatabase(e.target.value)}
-                >
-                  <option value="">{t('database.selectDatabase')}</option>
-                  {treeNodes.map((db) => (
-                    <option key={db.id} value={db.label}>
-                      {db.label}
-                    </option>
-                  ))}
-                </select>
+                  placeholder={t('database.selectDatabase')}
+                  options={[
+                    { value: '', label: t('database.selectDatabase') },
+                    ...treeNodes.map((db) => ({ value: db.label, label: db.label })),
+                  ]}
+                  onChange={(v) => void selectDatabase(v)}
+                />
               </div>
             )}
           </div>
@@ -1200,33 +1338,20 @@ export function DatabaseWorkbench() {
                   onChange={(sql) => updateSqlTab(activeTab.id, sql)}
                   onExecute={runSql}
                 />
-                <div
-                  className="resize-handle-h"
-                  onMouseDown={(e) => {
-                    const startY = e.clientY
-                    const startH = resultHeight
-                    const onMove = (ev: MouseEvent) => setResultHeight(Math.max(120, startH - (ev.clientY - startY)))
-                    const onUp = () => {
-                      window.removeEventListener('mousemove', onMove)
-                      window.removeEventListener('mouseup', onUp)
-                    }
-                    window.addEventListener('mousemove', onMove)
-                    window.addEventListener('mouseup', onUp)
-                  }}
-                />
+                <ResizeHandle axis="y" onMouseDown={onResultResizeStart} title={t('common.resizeHeight')} />
                 <div className="bottom-panel" style={{ height: resultHeight }}>
                   <div className="bottom-panel-tabs">
                     <button
                       type="button"
                       className={`bottom-panel-tab ${bottomTab === 'result' ? 'active' : ''}`}
-                      onClick={() => setBottomTab('result')}
+                      {...pressProps(() => setBottomTab('result'))}
                     >
                       {t('database.result')}
                     </button>
                     <button
                       type="button"
                       className={`bottom-panel-tab ${bottomTab === 'message' ? 'active' : ''}`}
-                      onClick={() => setBottomTab('message')}
+                      {...pressProps(() => setBottomTab('message'))}
                     >
                       {t('database.message')}
                     </button>
@@ -1322,7 +1447,7 @@ export function DatabaseWorkbench() {
             )}
           </div>
         </main>
-      </div>
+      </ProductLayout>
 
       {tabCtxMenu && (
         <TabContextMenu
@@ -1335,58 +1460,59 @@ export function DatabaseWorkbench() {
         />
       )}
       {connCtxMenu && (
-        <div
-          className="wn-context-menu"
-          style={{ left: connCtxMenu.x, top: connCtxMenu.y }}
+        <ContextMenu
+          key={`conn-${connCtxMenu.conn.id}-${connCtxMenu.x}-${connCtxMenu.y}`}
+          x={connCtxMenu.x}
+          y={connCtxMenu.y}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               const c = connCtxMenu.conn
               setConnCtxMenu(null)
               openAgentDraft({
                 mentions: [mentionDatabase(c)],
                 message: t('agent.draftDatabase'),
               })
-            }}
+            })}
           >
             {t('agent.sendToAgent')}
           </button>
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               const c = connCtxMenu.conn
               setConnCtxMenu(null)
               void reconnect(c.id)
-            }}
+            })}
           >
             {t('database.reconnect')}
           </button>
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               setConnCtxMenu(null)
               openConnModal(connCtxMenu.conn)
-            }}
+            })}
           >
             {t('common.edit')}
           </button>
           <button
             type="button"
             className="wn-context-item wn-context-item-danger"
-            onClick={() => {
+            {...pressProps(() => {
               const c = connCtxMenu.conn
               setConnCtxMenu(null)
               setDeleteConnTarget(c)
-            }}
+            })}
           >
             {t('common.delete')}
           </button>
-        </div>
+        </ContextMenu>
       )}
 
       <ConnectionModal

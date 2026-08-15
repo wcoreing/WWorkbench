@@ -1,4 +1,5 @@
 import type { ObjectTreeNode } from '../../api/types'
+import { Icon } from '../../components/Icons'
 import { useI18n } from '../../i18n'
 import { isMysqlSystemDatabase } from './mysqlSystemDb'
 import '../../components/ui.css'
@@ -61,7 +62,9 @@ export function DatabaseListPanel({
               className={`database-list-item${isMysqlSystemDatabase(db.label) ? ' system' : ''}`}
               onClick={() => db.database && onSelect(db.database)}
             >
-              <span className="database-list-icon">{isMysqlSystemDatabase(db.label) ? '⚙' : '◆'}</span>
+              <span className="database-list-icon">
+                <Icon name="database" size={18} />
+              </span>
               <span className="database-list-name">{db.label}</span>
               {isMysqlSystemDatabase(db.label) && (
                 <span className="database-list-tag">{t('database.systemDatabase')}</span>

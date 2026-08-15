@@ -10,6 +10,7 @@ import { NoteEditor, type NoteEditorHandle } from '../../features/notebook/NoteE
 import { NotebookGroupModal } from '../../features/notebook/NotebookGroupModal'
 import { NotebookSidebar } from '../../features/notebook/NotebookSidebar'
 import { buildNotebookLayout, moveNoteInTree, nextNoteSortOrder } from '../../features/notebook/notebookTree'
+import { Select, pressProps, useDismissOverlays } from '../../components/compat'
 import {
   buildConnectionTemplate,
   buildServerChecklistTemplate,
@@ -24,7 +25,6 @@ import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
-import { bindPointerAction, bindPointerActionWithEvent } from '../../utils/pointerAction'
 import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 
 function toNoteDO(note: Note): model.NoteDO {
@@ -87,6 +87,7 @@ export function NotebookWorkbench() {
   const [showPreview, setShowPreview] = useState(false)
   const [saveByNote, setSaveByNote] = useState<Record<string, 'saved' | 'dirty' | 'saving'>>({})
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
+  useDismissOverlays(() => setTabCtxMenu(null))
   const editorRef = useRef<NoteEditorHandle>(null)
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const noteSnapshots = useRef<Record<string, string>>({})
@@ -130,8 +131,8 @@ export function NotebookWorkbench() {
   useEffect(() => {
     if (!tabCtxMenu) return
     const close = () => setTabCtxMenu(null)
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
   }, [tabCtxMenu])
 
   const activeSaveStatus = activeTabId ? saveByNote[activeTabId] ?? 'saved' : 'saved'
@@ -676,28 +677,28 @@ export function NotebookWorkbench() {
     <div className="product-workbench notebook-workbench">
       <header className="product-toolbar">
         <div className="product-actions">
-          <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" onClick={() => void createNote()}>
+          <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" {...pressProps(() => void createNote())}>
             <IconPlus size={14} /> {t('notebook.newNote')}
           </button>
-          <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => setGroupModal(null)}>
+          <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => setGroupModal(null))}>
             {t('notebook.newGroup')}
           </button>
           {activeNote && (
             <>
-              <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={insertTemplate}>
+              <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(insertTemplate)}>
                 {t('notebook.insertTemplate')}
               </button>
-              <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void duplicateNote()}>
+              <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => void duplicateNote())}>
                 {t('notebook.duplicate')}
               </button>
-              <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void exportNote()}>
+              <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => void exportNote())}>
                 {t('notebook.export')}
               </button>
-              <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={runInTerminal}>
+              <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(runInTerminal)}>
                 <IconPlay size={14} /> {t('notebook.runTerminal')}
               </button>
               {activeNote.connectionId && (
-                <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => openDatabase(true)}>
+                <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => openDatabase(true))}>
                   <IconDatabase size={14} /> {t('notebook.openAndRun')}
                 </button>
               )}
@@ -705,7 +706,7 @@ export function NotebookWorkbench() {
                 <button
                   type="button"
                   className={`wn-btn wn-btn-sm wn-btn-tool ${showPreview ? 'active' : ''}`}
-                  onClick={() => setShowPreview((v) => !v)}
+                  {...pressProps(() => setShowPreview((v) => !v))}
                 >
                   {t('notebook.preview')}
                 </button>
@@ -713,7 +714,7 @@ export function NotebookWorkbench() {
               <button
                 type="button"
                 className="wn-btn wn-btn-sm wn-btn-tool wn-btn-danger"
-                onClick={() => setDeleteTarget({ kind: 'note', id: activeNote.id, title: activeNote.title })}
+                {...pressProps(() => setDeleteTarget({ kind: 'note', id: activeNote.id, title: activeNote.title }))}
               >
                 {t('common.delete')}
               </button>
@@ -760,16 +761,13 @@ export function NotebookWorkbench() {
                     type="button"
                     data-tab-id={id}
                     className={`wn-tab ${id === activeTabId ? 'active' : ''}`}
-                    {...bindPointerAction(() => setActiveTabId(id))}
+                    {...pressProps(() => setActiveTabId(id))}
                     onContextMenu={(e) => openTabContextMenu(e, id, setTabCtxMenu, setActiveTabId)}
                   >
                     <span className="tab-title">{note.title}</span>
                     <span
                       className="wn-tab-close"
-                      {...bindPointerActionWithEvent((e) => {
-                        e.stopPropagation()
-                        closeTab(id)
-                      })}
+                      {...pressProps(() => closeTab(id), { stop: true })}
                     >
                       ×
                     </span>
@@ -788,49 +786,44 @@ export function NotebookWorkbench() {
                   onChange={(e) => updateActiveNote({ title: e.target.value })}
                   placeholder={t('notebook.titlePlaceholder')}
                 />
-                <select
+                <Select
                   className="notebook-lang-select"
                   value={activeNote.groupId}
-                  onChange={(e) => updateActiveNote({ groupId: e.target.value })}
                   title={t('notebook.groupTitle')}
-                >
-                  <option value="">{t('notebook.rootGroup')}</option>
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-                <select
+                  options={[
+                    { value: '', label: t('notebook.rootGroup') },
+                    ...groups.map((g) => ({ value: g.id, label: g.name })),
+                  ]}
+                  onChange={(v) => updateActiveNote({ groupId: v })}
+                />
+                <Select
                   className="notebook-lang-select"
                   value={activeNote.language}
-                  onChange={(e) => updateActiveNote({ language: e.target.value as NoteLanguage })}
-                >
-                  {languages.map((l) => (
-                    <option key={l.id} value={l.id}>{l.label}</option>
-                  ))}
-                </select>
-                <select
+                  options={languages.map((l) => ({ value: l.id, label: l.label }))}
+                  onChange={(v) => updateActiveNote({ language: v as NoteLanguage })}
+                />
+                <Select
                   className="notebook-host-select"
                   value={activeNote.sshHostId}
-                  onChange={(e) => updateActiveNote({ sshHostId: e.target.value })}
-                >
-                  <option value="">{t('notebook.sshHost')}</option>
-                  {hosts.map((h) => (
-                    <option key={h.id} value={h.id}>
-                      {h.kind === 'docker' ? `[Docker] ${h.name}` : h.name}
-                    </option>
-                  ))}
-                </select>
-                <select
+                  options={[
+                    { value: '', label: t('notebook.sshHost') },
+                    ...hosts.map((h) => ({
+                      value: h.id,
+                      label: h.kind === 'docker' ? `[Docker] ${h.name}` : h.name,
+                    })),
+                  ]}
+                  onChange={(v) => updateActiveNote({ sshHostId: v })}
+                />
+                <Select
                   className="notebook-host-select"
                   value={activeNote.connectionId}
-                  onChange={(e) => onConnectionLinkChange(e.target.value)}
                   title={t('notebook.dbLinkHint')}
-                >
-                  <option value="">{t('notebook.dbConnection')}</option>
-                  {connections.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '', label: t('notebook.dbConnection') },
+                    ...connections.map((c) => ({ value: c.id, label: c.name })),
+                  ]}
+                  onChange={onConnectionLinkChange}
+                />
                 {activeNote.sshHostId && (
                   <span className="notebook-host-badge">
                     {hosts.find((h) => h.id === activeNote.sshHostId)?.kind === 'docker' ? (
@@ -846,7 +839,7 @@ export function NotebookWorkbench() {
                     className={`wn-btn wn-btn-sm ${activeSaveStatus === 'dirty' ? 'wn-btn-primary' : 'wn-btn-tool'}`}
                     disabled={activeSaveStatus === 'saving'}
                     title={t('notebook.saveShortcut')}
-                    onClick={() => void flushSaveActive()}
+                    {...pressProps(() => void flushSaveActive(), { disabled: activeSaveStatus === 'saving' })}
                   >
                     {activeSaveStatus === 'saving' ? t('notebook.saving') : t('notebook.save')}
                   </button>

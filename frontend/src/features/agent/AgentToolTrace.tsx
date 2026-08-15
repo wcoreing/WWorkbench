@@ -44,7 +44,9 @@ export function AgentToolTrace({ steps }: Props) {
           {running ? t('agent.traceRunning') : t('agent.traceTitle')}
         </span>
         <span className="agent-tool-trace-count">{steps.length}</span>
-        <span className="agent-tool-trace-chevron">{open ? '▾' : '▸'}</span>
+        <span className="agent-tool-trace-chevron" aria-hidden>
+          <span className={`tree-chevron${open ? ' is-open' : ''}`} />
+        </span>
       </button>
       {open && (
         <ol className="agent-tool-trace-list">

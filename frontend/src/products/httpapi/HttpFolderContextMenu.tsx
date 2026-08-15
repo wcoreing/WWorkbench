@@ -1,5 +1,7 @@
 import type { HTTPFolder } from '../../api/types'
+import { ContextMenu } from '../../components/ContextMenu'
 import { useI18n } from '../../i18n'
+import { pressProps } from '../../components/compat'
 
 export interface HttpFolderContextMenuState {
   x: number
@@ -34,27 +36,28 @@ export function HttpFolderContextMenu({
   }
 
   return (
-    <div
-      className="wn-context-menu"
-      style={{ left: menu.x, top: menu.y }}
+    <ContextMenu
+      key={`http-folder-${folder.id}-${menu.x}-${menu.y}`}
+      x={menu.x}
+      y={menu.y}
       onClick={(e) => e.stopPropagation()}
     >
-      <button type="button" className="wn-context-item" onClick={() => act(() => onNewSubfolder(folder))}>
+      <button type="button" className="wn-context-item" {...pressProps(() => act(() => onNewSubfolder(folder)))}>
         {t('httpapi.newSubfolder')}
       </button>
-      <button type="button" className="wn-context-item" onClick={() => act(() => onRename(folder))}>
+      <button type="button" className="wn-context-item" {...pressProps(() => act(() => onRename(folder)))}>
         {t('httpapi.renameFolder')}
       </button>
-      <button type="button" className="wn-context-item" onClick={() => act(() => onNewApi(folder.id))}>
+      <button type="button" className="wn-context-item" {...pressProps(() => act(() => onNewApi(folder.id)))}>
         {t('httpapi.newRequestInFolder')}
       </button>
       <button
         type="button"
         className="wn-context-item wn-context-item-danger"
-        onClick={() => act(() => onDelete(folder))}
+        {...pressProps(() => act(() => onDelete(folder)))}
       >
         {t('httpapi.deleteFolder')}
       </button>
-    </div>
+    </ContextMenu>
   )
 }

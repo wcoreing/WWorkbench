@@ -1,5 +1,6 @@
 import type { ColumnMeta, TableFilter, TableSort } from '../../api/types'
 import '../../components/ui.css'
+import { Select } from '../../components/compat'
 
 const OPERATORS = [
   { value: 'eq', label: '=' },
@@ -94,28 +95,17 @@ export function TableFilterPanel({
                     onChange={(e) => updateFilter(idx, { enabled: e.target.checked })}
                   />
                 </label>
-                <select
-                  className="wn-select"
+                <Select
                   value={f.column}
-                  onChange={(e) => updateFilter(idx, { column: e.target.value })}
-                >
-                  {columns.map((c) => (
-                    <option key={c.name} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="wn-select filter-op-select"
+                  options={columns.map((c) => ({ value: c.name, label: c.name }))}
+                  onChange={(v) => updateFilter(idx, { column: v })}
+                />
+                <Select
+                  className="filter-op-select"
                   value={f.operator}
-                  onChange={(e) => updateFilter(idx, { operator: e.target.value })}
-                >
-                  {OPERATORS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                  options={OPERATORS.map((o) => ({ value: o.value, label: o.label }))}
+                  onChange={(v) => updateFilter(idx, { operator: v })}
+                />
                 <input
                   className="wn-input"
                   value={f.value}
@@ -151,25 +141,20 @@ export function TableFilterPanel({
                 <div key={idx} className="filter-line">
                   <span className="filter-join filter-join-empty" />
                   <span className="filter-check filter-check-spacer" />
-                  <select
-                    className="wn-select"
+                  <Select
                     value={s.column}
-                    onChange={(e) => updateSort(idx, { column: e.target.value })}
-                  >
-                    {columns.map((c) => (
-                      <option key={c.name} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="wn-select filter-op-select"
+                    options={columns.map((c) => ({ value: c.name, label: c.name }))}
+                    onChange={(v) => updateSort(idx, { column: v })}
+                  />
+                  <Select
+                    className="filter-op-select"
                     value={s.ascending ? 'asc' : 'desc'}
-                    onChange={(e) => updateSort(idx, { ascending: e.target.value === 'asc' })}
-                  >
-                    <option value="asc">ASC</option>
-                    <option value="desc">DESC</option>
-                  </select>
+                    options={[
+                      { value: 'asc', label: 'ASC' },
+                      { value: 'desc', label: 'DESC' },
+                    ]}
+                    onChange={(v) => updateSort(idx, { ascending: v === 'asc' })}
+                  />
                   <span className="filter-line-fill" />
                   <button
                     type="button"

@@ -5,6 +5,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconPlus } from '../../components/Icons'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { ModalPortal, pressProps } from '../../components/compat'
 import {
   collectHttpTreeAll,
   collectHttpTreeSubtree,
@@ -13,7 +14,6 @@ import {
   resolveBatchDeletePlan,
   type HttpTreeNode,
 } from './httpapiTree'
-import { ModalPortal } from '../../components/ModalPortal'
 import { HttpFolderContextMenu, type HttpFolderContextMenuState } from './HttpFolderContextMenu'
 import { HttpFolderModal } from './HttpFolderModal'
 import { nodeEntryKey, buildSortedHttpApiTree } from './httpapiSort'
@@ -309,7 +309,7 @@ export function HttpApiSidebar({
                   toggle(node.id)
                 }}
               >
-                {open ? '▾' : '▸'}
+                <span className={`tree-chevron${open ? ' is-open' : ''}`} aria-hidden />
               </span>
               <input
                 type="checkbox"
@@ -320,7 +320,9 @@ export function HttpApiSidebar({
               />
             </>
           ) : (
-            <span className="httpapi-tree-chevron">{open ? '▾' : '▸'}</span>
+            <span className="httpapi-tree-chevron" aria-hidden>
+              <span className={`tree-chevron${open ? ' is-open' : ''}`} />
+            </span>
           )}
           <span className="httpapi-tree-folder-icon">📁</span>
           <span className="httpapi-tree-label">{node.name}</span>
@@ -363,15 +365,18 @@ export function HttpApiSidebar({
               type="button"
               className="wn-btn wn-btn-xs wn-btn-ghost httpapi-tree-action-btn"
               disabled={tree.length === 0}
-              onClick={() => {
-                const all = collectHttpTreeAll(tree)
-                const folderMap: Record<string, boolean> = {}
-                const apiMap: Record<string, boolean> = {}
-                for (const id of all.folderIds) folderMap[id] = true
-                for (const id of all.apiIds) apiMap[id] = true
-                setSelectedFolders(folderMap)
-                setSelectedApis(apiMap)
-              }}
+              {...pressProps(
+                () => {
+                  const all = collectHttpTreeAll(tree)
+                  const folderMap: Record<string, boolean> = {}
+                  const apiMap: Record<string, boolean> = {}
+                  for (const id of all.folderIds) folderMap[id] = true
+                  for (const id of all.apiIds) apiMap[id] = true
+                  setSelectedFolders(folderMap)
+                  setSelectedApis(apiMap)
+                },
+                { disabled: tree.length === 0 },
+              )}
             >
               {t('httpapi.batchSelectAll')}
             </button>
@@ -379,10 +384,13 @@ export function HttpApiSidebar({
               type="button"
               className="wn-btn wn-btn-xs wn-btn-ghost httpapi-tree-action-btn"
               disabled={selectionCount.total === 0}
-              onClick={() => {
-                setSelectedFolders({})
-                setSelectedApis({})
-              }}
+              {...pressProps(
+                () => {
+                  setSelectedFolders({})
+                  setSelectedApis({})
+                },
+                { disabled: selectionCount.total === 0 },
+              )}
             >
               {t('httpapi.batchClear')}
             </button>
@@ -390,17 +398,20 @@ export function HttpApiSidebar({
               type="button"
               className="wn-btn wn-btn-xs wn-btn-danger httpapi-tree-action-btn"
               disabled={selectionCount.total === 0 || deleting}
-              onClick={() => {
-                if (selectionCount.total === 0) {
-                  setStatusMessage(t('httpapi.batchNone'))
-                  return
-                }
-                setDeleteConfirmOpen(true)
-              }}
+              {...pressProps(
+                () => {
+                  if (selectionCount.total === 0) {
+                    setStatusMessage(t('httpapi.batchNone'))
+                    return
+                  }
+                  setDeleteConfirmOpen(true)
+                },
+                { disabled: selectionCount.total === 0 || deleting },
+              )}
             >
               {t('httpapi.batchDelete', { count: selectionCount.total })}
             </button>
-            <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost httpapi-tree-action-btn" onClick={exitBatchMode}>
+            <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost httpapi-tree-action-btn" {...pressProps(exitBatchMode)}>
               {t('httpapi.batchExit')}
             </button>
           </>
@@ -410,7 +421,7 @@ export function HttpApiSidebar({
               type="button"
               className="wn-btn wn-btn-xs wn-btn-ghost httpapi-tree-action-btn"
               title={t('httpapi.newFolder')}
-              onClick={() => openNewFolderModal('')}
+              {...pressProps(() => openNewFolderModal(''))}
             >
               {t('httpapi.newFolder')}
             </button>
@@ -418,7 +429,7 @@ export function HttpApiSidebar({
               type="button"
               className="wn-btn wn-btn-xs wn-btn-ghost httpapi-tree-action-btn"
               title={t('httpapi.newRequest')}
-              onClick={() => requestCreateApi('')}
+              {...pressProps(() => requestCreateApi(''))}
             >
               <IconPlus size={12} /> {t('httpapi.newRequest')}
             </button>
@@ -427,15 +438,18 @@ export function HttpApiSidebar({
               className="wn-btn wn-btn-xs wn-btn-ghost httpapi-tree-action-btn"
               title={t('httpapi.batch')}
               disabled={!canBatch}
-              onClick={() => {
-                if (!canBatch) {
-                  setStatusMessage(t('httpapi.batchEmpty'))
-                  return
-                }
-                setBatchMode(true)
-                setSelectedFolders({})
-                setSelectedApis({})
-              }}
+              {...pressProps(
+                () => {
+                  if (!canBatch) {
+                    setStatusMessage(t('httpapi.batchEmpty'))
+                    return
+                  }
+                  setBatchMode(true)
+                  setSelectedFolders({})
+                  setSelectedApis({})
+                },
+                { disabled: !canBatch },
+              )}
             >
               {t('httpapi.batch')}
             </button>

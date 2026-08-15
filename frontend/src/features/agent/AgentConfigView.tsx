@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useI18n } from '../../i18n'
 import { api } from '../../api/client'
 import { model } from '../../../wailsjs/go/models'
+import { Select } from '../../components/compat'
 
 export type AgentProviderId = 'bailian' | 'deepseek' | 'minimax' | string
 
@@ -185,17 +186,11 @@ export function AgentConfigView({
       />
       <label className="wn-label">{t('agent.model')}</label>
       {provider === 'deepseek' ? (
-        <select
-          className="wn-select"
+        <Select
           value={deepseekModelValue(modelName)}
-          onChange={(e) => setModelName(e.target.value)}
-        >
-          {DEEPSEEK_MODELS.map((id) => (
-            <option key={id} value={id}>
-              {id}
-            </option>
-          ))}
-        </select>
+          options={DEEPSEEK_MODELS.map((id) => ({ value: id, label: id }))}
+          onChange={setModelName}
+        />
       ) : (
         <input
           className="wn-input"

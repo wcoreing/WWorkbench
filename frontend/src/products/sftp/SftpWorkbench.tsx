@@ -15,6 +15,7 @@ import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { restoreSftpTab } from '../../features/sftp/restoreSftpWorkspace'
+import { pressProps, useDismissOverlays } from '../../components/compat'
 import {
   loadSftpWorkspace,
   scheduleSftpWorkspacePersist,
@@ -29,7 +30,6 @@ import { SftpBottomBar } from '../../features/sftp/SftpBottomBar'
 import { SftpTransferRail } from '../../features/sftp/SftpTransferRail'
 import { useFileSelection } from '../../features/sftp/useFileSelection'
 import { useSftpFileDrop } from '../../features/sftp/useSftpFileDrop'
-import { bindPointerAction, bindPointerActionWithEvent } from '../../utils/pointerAction'
 import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 import { useSftpTransferQueue } from '../../features/sftp/useSftpTransferQueue'
 import { useSftpConflictResolver } from '../../features/sftp/useSftpConflictResolver'
@@ -80,6 +80,12 @@ export function SftpWorkbench() {
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
   const [prompt, setPrompt] = useState<PromptState | null>(null)
   const workspaceRestored = useRef(false)
+
+  useDismissOverlays(() => {
+    setCtxMenu(null)
+    setPaneMenu(null)
+    setTabCtxMenu(null)
+  })
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
   const tabsRef = useScrollActiveTabIntoView(activeTabId)
@@ -207,8 +213,8 @@ export function SftpWorkbench() {
       setPaneMenu(null)
       setTabCtxMenu(null)
     }
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
   }, [ctxMenu, paneMenu, tabCtxMenu])
 
   const loadLocal = useCallback(async (path: string) => {
@@ -567,12 +573,17 @@ export function SftpWorkbench() {
     <div className="product-workbench sftp-workbench">
       <div className="product-toolbar">
         <nav className="product-actions">
-          <button type="button" className="wn-btn wn-btn-chrome" onClick={() => setHostModalOpen(true)}>
+          <button type="button" className="wn-btn wn-btn-chrome" {...pressProps(() => setHostModalOpen(true))}>
             <IconPlus size={13} />
             <span>{t('sftp.sshHosts')}</span>
           </button>
           <span className="chrome-vrule" />
-          <button type="button" className="wn-btn wn-btn-chrome" disabled={!activeTab || mutating} onClick={() => refreshActive().catch(() => {})}>
+          <button
+            type="button"
+            className="wn-btn wn-btn-chrome"
+            disabled={!activeTab || mutating}
+            {...pressProps(() => refreshActive().catch(() => {}), { disabled: !activeTab || mutating })}
+          >
             {t('common.refresh')}
           </button>
         </nav>
@@ -585,7 +596,7 @@ export function SftpWorkbench() {
           <section className="sidebar-section">
             <div className="sidebar-header">
               <span>{t('sftp.sshHosts')}</span>
-              <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" onClick={() => setHostModalOpen(true)}>
+              <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" {...pressProps(() => setHostModalOpen(true))}>
                 <IconPlus size={14} />
               </button>
             </div>
@@ -598,7 +609,7 @@ export function SftpWorkbench() {
                     <li
                       key={h.id}
                       className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
-                      onClick={() => connectHost(h)}
+                      {...pressProps(() => connectHost(h))}
                       onDoubleClick={() => connectHost(h)}
                       onContextMenu={(e) => {
                         e.preventDefault()
@@ -629,7 +640,7 @@ export function SftpWorkbench() {
                     type="button"
                     className="wn-btn wn-btn-ghost wn-btn-sm"
                     title={t('sftp.pruneStopped')}
-                    onClick={() => {
+                    {...pressProps(() => {
                       void (async () => {
                         try {
                           const n = await api.pruneStoppedDockerHosts()
@@ -641,7 +652,7 @@ export function SftpWorkbench() {
                           setStatusMessage((e as Error).message)
                         }
                       })()
-                    }}
+                    })}
                   >
                     {t('sftp.pruneStopped')}
                   </button>
@@ -653,7 +664,7 @@ export function SftpWorkbench() {
                     <li
                       key={h.id}
                       className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
-                      onClick={() => connectHost(h)}
+                      {...pressProps(() => connectHost(h))}
                       onDoubleClick={() => connectHost(h)}
                       onContextMenu={(e) => {
                         e.preventDefault()
@@ -688,17 +699,14 @@ export function SftpWorkbench() {
                     type="button"
                     data-tab-id={t.id}
                     className={`wn-tab wn-tab-terminal wn-tab-ssh ${t.id === activeTabId ? 'active' : ''}`}
-                    {...bindPointerAction(() => setActiveTabId(t.id))}
+                    {...pressProps(() => setActiveTabId(t.id))}
                     onContextMenu={(e) => openTabContextMenu(e, t.id, setTabCtxMenu, setActiveTabId)}
                   >
                     <IconServer size={12} />
                     <span className="tab-title">{t.title}</span>
                     <span
                       className="wn-tab-close"
-                      {...bindPointerActionWithEvent((e) => {
-                        e.stopPropagation()
-                        closeTab(t.id)
-                      })}
+                      {...pressProps(() => closeTab(t.id), { stop: true })}
                     >
                       ×
                     </span>
@@ -809,7 +817,7 @@ export function SftpWorkbench() {
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               const host = ctxMenu.host
               setCtxMenu(null)
               if (host.kind === 'docker') {
@@ -825,27 +833,27 @@ export function SftpWorkbench() {
                 mentions: [mentionSSH(ssh)],
                 message: t('agent.draftSSH'),
               })
-            }}
+            })}
           >
             {t('agent.sendToAgent')}
           </button>
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               setCtxMenu(null)
               openProductLink({ action: 'notebook', hostId: ctxMenu.host.id })
-            }}
+            })}
           >
             {t('sftp.ctxNotebook')}
           </button>
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               setCtxMenu(null)
               openProductLink({ action: 'terminal', hostId: ctxMenu.host.id })
-            }}
+            })}
           >
             {t('sftp.ctxTerminal')}
           </button>
@@ -853,14 +861,14 @@ export function SftpWorkbench() {
             <button
               type="button"
               className="wn-context-item"
-              onClick={() => {
+              {...pressProps(() => {
                 const ssh = shellHostAsSSH(ctxMenu.host)
                 setCtxMenu(null)
                 if (ssh) {
                   setEditingHost(ssh)
                   setHostModalOpen(true)
                 }
-              }}
+              })}
             >
               {t('common.edit')}
             </button>
@@ -868,7 +876,7 @@ export function SftpWorkbench() {
             <button
               type="button"
               className="wn-context-item danger"
-              onClick={() => {
+              {...pressProps(() => {
                 const host = ctxMenu.host
                 setCtxMenu(null)
                 void (async () => {
@@ -880,7 +888,7 @@ export function SftpWorkbench() {
                     setStatusMessage((e as Error).message)
                   }
                 })()
-              }}
+              })}
             >
               {t('sftp.removeDockerHost')}
             </button>
@@ -896,14 +904,14 @@ export function SftpWorkbench() {
           onClick={(e) => e.stopPropagation()}
         >
           {paneMenu.side === 'local' && localSel.selectedPaths.length > 0 && (
-            <button type="button" className="wn-context-item" onClick={uploadFromMenu}>
+            <button type="button" className="wn-context-item" {...pressProps(uploadFromMenu)}>
               {localSel.selectedPaths.length > 1
                 ? t('sftp.uploadRemoteN', { count: localSel.selectedPaths.length })
                 : t('sftp.uploadRemote')}
             </button>
           )}
           {paneMenu.side === 'remote' && remoteSel.selectedPaths.length > 0 && (
-            <button type="button" className="wn-context-item" onClick={downloadFromMenu}>
+            <button type="button" className="wn-context-item" {...pressProps(downloadFromMenu)}>
               {remoteSel.selectedPaths.length > 1
                 ? t('sftp.downloadLocalN', { count: remoteSel.selectedPaths.length })
                 : t('sftp.downloadLocal')}
@@ -913,7 +921,7 @@ export function SftpWorkbench() {
           (paneMenu.side === 'remote' && remoteSel.selectedPaths.length > 0) ? (
             <div className="wn-context-sep" />
           ) : null}
-          <button type="button" className="wn-context-item" onClick={() => { setPaneMenu(null); openMkdir(paneMenu.side) }}>
+          <button type="button" className="wn-context-item" {...pressProps(() => { setPaneMenu(null); openMkdir(paneMenu.side) })}>
             {t('sftp.newFolder')}
           </button>
           {paneMenu.entry && (
@@ -921,20 +929,20 @@ export function SftpWorkbench() {
               <button
                 type="button"
                 className="wn-context-item"
-                onClick={() => {
+                {...pressProps(() => {
                   setPaneMenu(null)
                   openRename(paneMenu.side, paneMenu.entry!)
-                }}
+                })}
               >
                 {t('sftp.rename')}
               </button>
               <button
                 type="button"
                 className="wn-context-item danger"
-                onClick={() => {
+                {...pressProps(() => {
                   setPaneMenu(null)
                   openDelete(paneMenu.side, paneMenu.entry!)
-                }}
+                })}
               >
                 {t('common.delete')}
               </button>

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api } from '../../api/client'
 import type { HTTPFolder, HTTPSavedRequest } from '../../api/types'
-import { ModalPortal } from '../../components/ModalPortal'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { nextHttpChildSortOrder } from './httpapiSort'
 import { model } from '../../../wailsjs/go/models'
+import { ModalPortal } from '../../components/compat'
 
 interface Props {
   open: boolean

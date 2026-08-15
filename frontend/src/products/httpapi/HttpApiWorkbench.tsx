@@ -3,11 +3,13 @@ import { api } from '../../api/client'
 import type { HTTPEnvironment, HTTPFolder, HTTPResponse, HTTPSavedRequest } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconPlay } from '../../components/Icons'
+import { ResizeHandle } from '../../components/layout'
 import { openAgentDraft, mentionHttpRequest } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildHttpApiSurface, briefList } from '../../stores/agentSurface'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
+import { Select, pressProps, useDismissOverlays } from '../../components/compat'
 import {
   loadHttpApiWorkspace,
   scheduleHttpApiWorkspacePersist,
@@ -94,6 +96,7 @@ export function HttpApiWorkbench() {
   const [deleteTarget, setDeleteTarget] = useState<HTTPSavedRequest | null>(null)
   const [ctxMenu, setCtxMenu] = useState<HttpApiContextMenuState | null>(null)
   const [envModalOpen, setEnvModalOpen] = useState(false)
+  useDismissOverlays(() => setCtxMenu(null))
   const [curlOpen, setCurlOpen] = useState(false)
   const [curlText, setCurlText] = useState('')
   const [history, setHistory] = useState<HttpHistoryEntry[]>(() => loadHttpHistory())
@@ -209,8 +212,8 @@ export function HttpApiWorkbench() {
       if (el?.closest('.wn-context-menu')) return
       setCtxMenu(null)
     }
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
   }, [])
 
   const markDirty = () => {
@@ -616,73 +619,74 @@ export function HttpApiWorkbench() {
             <div className="httpapi-run-actions">
               <label className="httpapi-env-quick">
                 <span className="httpapi-env-quick-label">{t('httpapi.activeEnv')}</span>
-                <select
+                <Select
                   className="wn-input wn-input-sm"
                   value={activeEnvId}
-                  onChange={(e) => setActiveEnvId(e.target.value)}
                   title={t('httpapi.envQuickHint')}
-                >
-                  <option value="">{t('httpapi.noEnv')}</option>
-                  {envs.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.name}
-                    </option>
-                  ))}
-                </select>
+                  options={[
+                    { value: '', label: t('httpapi.noEnv') },
+                    ...envs.map((e) => ({ value: e.id, label: e.name })),
+                  ]}
+                  onChange={setActiveEnvId}
+                />
               </label>
               <button
                 type="button"
                 className="httpapi-env-trigger"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setEnvModalOpen(true)
-                }}
                 title={t('httpapi.envManageHint')}
+                {...pressProps(() => setEnvModalOpen(true), { stop: true })}
               >
                 {t('httpapi.envManage')}
               </button>
-              <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" onClick={() => setHistoryOpen((v) => !v)}>
+              <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" {...pressProps(() => setHistoryOpen((v) => !v))}>
                 {t('httpapi.history')}
               </button>
-              <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" onClick={() => { setCurlText(''); setCurlOpen(true) }}>
+              <button
+                type="button"
+                className="wn-btn wn-btn-xs wn-btn-ghost"
+                {...pressProps(() => {
+                  setCurlText('')
+                  setCurlOpen(true)
+                })}
+              >
                 {t('httpapi.importCurl')}
               </button>
-              <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" onClick={exportCurl}>
+              <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" {...pressProps(exportCurl)}>
                 {t('httpapi.exportCurl')}
               </button>
             </div>
           </header>
 
           <div className="httpapi-url-bar">
-            <select
+            <Select
               className={`httpapi-method httpapi-method-${method.toLowerCase()}`}
               value={method}
-              onChange={(e) => { setMethod(e.target.value); markDirty() }}
-            >
-              {METHODS.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
+              options={METHODS.map((m) => ({ value: m, label: m }))}
+              onChange={(v) => {
+                setMethod(v)
+                markDirty()
+              }}
+            />
             <input
               className="wn-input httpapi-url-input"
               value={urlBase}
               onChange={(e) => { setUrlBase(e.target.value); markDirty() }}
               placeholder={t('httpapi.urlPlaceholder')}
             />
-            <button type="button" className="wn-btn wn-btn-sm httpapi-btn-stash" onClick={stash}>
+            <button type="button" className="wn-btn wn-btn-sm httpapi-btn-stash" {...pressProps(stash)}>
               {t('httpapi.stash')}
             </button>
-            <button type="button" className="wn-btn wn-btn-sm httpapi-btn-stash" onClick={loadStashToEditor}>
+            <button type="button" className="wn-btn wn-btn-sm httpapi-btn-stash" {...pressProps(loadStashToEditor)}>
               {t('httpapi.loadStash')}
             </button>
-            <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void save()}>
+            <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => void save())}>
               {t('httpapi.save')}
             </button>
             <button
               type="button"
               className="wn-btn wn-btn-sm httpapi-btn-send"
               disabled={sending}
-              onClick={() => void send()}
+              {...pressProps(() => void send(), { disabled: sending })}
             >
               <IconPlay size={14} /> {t('httpapi.send')}
             </button>
@@ -700,7 +704,7 @@ export function HttpApiWorkbench() {
                     key={tab}
                     type="button"
                     className={`httpapi-tab${reqTab === tab ? ' is-active' : ''}`}
-                    onClick={() => setReqTab(tab)}
+                    {...pressProps(() => setReqTab(tab))}
                   >
                     {t(`httpapi.tab.${tab}`)}
                   </button>
@@ -720,12 +724,15 @@ export function HttpApiWorkbench() {
                           type="button"
                           className={`httpapi-body-type-btn${bodyMode === mode ? ' is-active' : ''}`}
                           disabled={!methodAllowsBody(method) && mode !== 'none'}
-                          onClick={() => {
-                            setBodyMode(mode)
-                            if (mode === 'json' && body.trim()) setBody(prettyPrintBody(body))
-                            setHeaderRows(applyBodyModeHeaders(headerRows, mode))
-                            markDirty()
-                          }}
+                          {...pressProps(
+                            () => {
+                              setBodyMode(mode)
+                              if (mode === 'json' && body.trim()) setBody(prettyPrintBody(body))
+                              setHeaderRows(applyBodyModeHeaders(headerRows, mode))
+                              markDirty()
+                            },
+                            { disabled: !methodAllowsBody(method) && mode !== 'none' },
+                          )}
                         >
                           {t(`httpapi.bodyMode.${mode}`)}
                         </button>
@@ -755,14 +762,17 @@ export function HttpApiWorkbench() {
                 {reqTab === 'auth' && (
                   <div className="httpapi-auth-pane">
                     <label className="wn-label">{t('httpapi.authType')}</label>
-                    <select
-                      className="wn-input"
+                    <Select
                       value={authMode}
-                      onChange={(e) => { setAuthMode(e.target.value as HttpAuthMode); markDirty() }}
-                    >
-                      <option value="none">{t('httpapi.authNone')}</option>
-                      <option value="bearer">{t('httpapi.authBearer')}</option>
-                    </select>
+                      options={[
+                        { value: 'none', label: t('httpapi.authNone') },
+                        { value: 'bearer', label: t('httpapi.authBearer') },
+                      ]}
+                      onChange={(v) => {
+                        setAuthMode(v as HttpAuthMode)
+                        markDirty()
+                      }}
+                    />
                     {authMode === 'bearer' && (
                       <input
                         className="wn-input"
@@ -776,12 +786,7 @@ export function HttpApiWorkbench() {
               </div>
             </section>
 
-            <div
-              className="httpapi-splitter"
-              role="separator"
-              title={t('httpapi.resize')}
-              onMouseDown={onResizeStart}
-            />
+            <ResizeHandle axis="y" onMouseDown={onResizeStart} title={t('httpapi.resize')} className="httpapi-splitter" />
 
             <section className="httpapi-res-pane">
               <div className="httpapi-res-title-row">
@@ -804,7 +809,7 @@ export function HttpApiWorkbench() {
                     key={tab}
                     type="button"
                     className={`httpapi-tab${resTab === tab ? ' is-active' : ''}`}
-                    onClick={() => setResTab(tab)}
+                    {...pressProps(() => setResTab(tab))}
                   >
                     {t(`httpapi.resTab.${tab}`)}
                   </button>
@@ -834,15 +839,19 @@ export function HttpApiWorkbench() {
               </div>
               {resTab === 'body' && response?.body && (
                 <div className="httpapi-res-toolbar">
-                  <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" onClick={() => setPrettyResponse((p) => !p)}>
+                  <button
+                    type="button"
+                    className="wn-btn wn-btn-xs wn-btn-ghost"
+                    {...pressProps(() => setPrettyResponse((p) => !p))}
+                  >
                     {prettyResponse ? t('httpapi.rawView') : t('httpapi.prettyView')}
                   </button>
                   <button
                     type="button"
                     className="wn-btn wn-btn-xs wn-btn-ghost"
-                    onClick={() =>
-                      void navigator.clipboard.writeText(response.body).then(() => setStatusMessage(t('httpapi.copied')))
-                    }
+                    {...pressProps(() =>
+                      void navigator.clipboard.writeText(response.body).then(() => setStatusMessage(t('httpapi.copied'))),
+                    )}
                   >
                     {t('httpapi.copyBody')}
                   </button>
@@ -853,11 +862,14 @@ export function HttpApiWorkbench() {
 
           {historyOpen && (
             <>
-              <div className="httpapi-history-backdrop" onClick={() => setHistoryOpen(false)} />
-              <div className="httpapi-history-drawer" onClick={(e) => e.stopPropagation()}>
+              <div
+                className="httpapi-history-backdrop"
+                {...pressProps(() => setHistoryOpen(false))}
+              />
+              <div className="httpapi-history-drawer" onPointerDown={(e) => e.stopPropagation()}>
                 <div className="httpapi-history-drawer-head">
                   <span>{t('httpapi.recentHistory')}</span>
-                  <button type="button" className="wn-modal-close-btn" onClick={() => setHistoryOpen(false)}>
+                  <button type="button" className="wn-modal-close-btn" {...pressProps(() => setHistoryOpen(false))}>
                     ×
                   </button>
                 </div>
@@ -866,7 +878,7 @@ export function HttpApiWorkbench() {
                     <li className="empty-hint">{t('httpapi.noHistory')}</li>
                   ) : (
                     history.map((h) => (
-                      <li key={h.id} onClick={() => applyHistory(h)}>
+                      <li key={h.id} {...pressProps(() => applyHistory(h))}>
                         <span className={`httpapi-status-pill tone-${statusTone(h.statusCode)}`}>{h.statusCode || '—'}</span>
                         {h.method} {h.name || h.url}
                       </li>
@@ -891,15 +903,15 @@ export function HttpApiWorkbench() {
       />
 
       {curlOpen && (
-        <div className="wn-modal-backdrop" onClick={() => setCurlOpen(false)}>
-          <div className="wn-modal httpapi-curl-modal" onClick={(e) => e.stopPropagation()} role="dialog">
+        <div className="wn-modal-backdrop" {...pressProps(() => setCurlOpen(false))}>
+          <div className="wn-modal httpapi-curl-modal" onPointerDown={(e) => e.stopPropagation()} role="dialog">
             <header className="wn-modal-header wn-modal-header-bar">
               <h3 className="wn-modal-title">{t('httpapi.importCurl')}</h3>
               <button
                 type="button"
                 className="wn-modal-close-btn"
-                onClick={() => setCurlOpen(false)}
                 aria-label={t('common.cancel')}
+                {...pressProps(() => setCurlOpen(false))}
               >
                 ×
               </button>
@@ -914,10 +926,10 @@ export function HttpApiWorkbench() {
               />
             </div>
             <footer className="wn-modal-footer">
-              <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" onClick={() => setCurlOpen(false)}>
+              <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" {...pressProps(() => setCurlOpen(false))}>
                 {t('common.cancel')}
               </button>
-              <button type="button" className="wn-btn wn-btn-sm httpapi-btn-send" onClick={importCurl}>
+              <button type="button" className="wn-btn wn-btn-sm httpapi-btn-send" {...pressProps(importCurl)}>
                 {t('httpapi.curlApply')}
               </button>
             </footer>

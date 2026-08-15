@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Connection, SSHHost } from '../../api/types'
 import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
+import { ModalPortal, Select, pressProps } from '../../components/compat'
 import '../../components/ui.css'
 
 interface Props {
@@ -203,8 +204,15 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
   const selectedHost = sshHosts.find((h) => h.id === form.sshHostId)
 
   return (
-    <div className="wn-modal-backdrop" onClick={onClose}>
-      <div className="wn-modal wn-modal-compact" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="conn-modal-title">
+    <ModalPortal>
+    <div className="wn-modal-backdrop" {...pressProps(onClose)}>
+      <div
+        className="wn-modal wn-modal-compact"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="conn-modal-title"
+      >
         <header className="wn-modal-header">
           <div className="wn-modal-title-row">
             <h2 id="conn-modal-title" className="wn-modal-title">
@@ -248,18 +256,15 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
               <label className="wn-label" htmlFor="conn-dbtype">
                 {t('connection.dbType')}
               </label>
-              <select
+              <Select
                 id="conn-dbtype"
-                className="wn-input"
                 value={form.dbType || 'mysql'}
-                onChange={(e) => applyDbType(e.target.value as DbType)}
-              >
-                {DB_TYPE_OPTIONS.map((ty) => (
-                  <option key={ty} value={ty}>
-                    {t(`connection.dbType_${ty}`)}
-                  </option>
-                ))}
-              </select>
+                options={DB_TYPE_OPTIONS.map((ty) => ({
+                  value: ty,
+                  label: t(`connection.dbType_${ty}`),
+                }))}
+                onChange={(v) => applyDbType(v as DbType)}
+              />
             </div>
 
             {isSqlite ? (
@@ -381,19 +386,18 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
                       {sshHosts.length === 0 ? (
                         <p className="conn-ssh-hint">{t('connection.noSshHosts')}</p>
                       ) : (
-                        <select
+                        <Select
                           id="ssh-host-pick"
-                          className="wn-select"
                           value={form.sshHostId}
-                          onChange={(e) => update({ sshHostId: e.target.value })}
-                        >
-                          <option value="">{t('connection.pickHost')}</option>
-                          {sshHosts.map((h) => (
-                            <option key={h.id} value={h.id}>
-                              {h.name} · {h.user}@{h.host}:{h.port}
-                            </option>
-                          ))}
-                        </select>
+                          options={[
+                            { value: '', label: t('connection.pickHost') },
+                            ...sshHosts.map((h) => ({
+                              value: h.id,
+                              label: `${h.name} · ${h.user}@${h.host}:${h.port}`,
+                            })),
+                          ]}
+                          onChange={(v) => update({ sshHostId: v })}
+                        />
                       )}
                       {selectedHost && (
                         <p className="conn-ssh-hint">
@@ -485,17 +489,23 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
         </div>
 
         <footer className="wn-modal-footer">
-          <button type="button" className="wn-btn wn-btn-tool" onClick={onClose} disabled={busy}>
+          <button type="button" className="wn-btn wn-btn-tool" {...pressProps(onClose, { disabled: busy })} disabled={busy}>
             {t('common.cancel')}
           </button>
-          <button type="button" className="wn-btn wn-btn-tool" onClick={handleTest} disabled={busy}>
+          <button type="button" className="wn-btn wn-btn-tool" {...pressProps(handleTest, { disabled: busy })} disabled={busy}>
             {testing ? t('connection.testing') : t('connection.test')}
           </button>
-          <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" onClick={handleSave} disabled={busy}>
+          <button
+            type="button"
+            className="wn-btn wn-btn-sm wn-btn-primary"
+            {...pressProps(handleSave, { disabled: busy })}
+            disabled={busy}
+          >
             {saving ? t('connection.saving') : t('common.save')}
           </button>
         </footer>
       </div>
     </div>
+    </ModalPortal>
   )
 }

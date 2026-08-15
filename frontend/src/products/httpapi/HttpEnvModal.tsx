@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../api/client'
 import type { HTTPEnvironment } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
-import { ModalPortal } from '../../components/ModalPortal'
 import { IconPlus } from '../../components/Icons'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { formatEnvText, parseEnvText } from './httpUtils'
 import { model } from '../../../wailsjs/go/models'
+import { ModalPortal, Select } from '../../components/compat'
 
 interface Props {
   open: boolean
@@ -130,18 +130,15 @@ export function HttpEnvModal({ open, activeEnvId, onActiveEnvId, onClose, onSave
               <div className="httpapi-env-editor-actions">
                 <label className="wn-label httpapi-env-use-label">
                   {t('httpapi.activeEnv')}
-                  <select
+                  <Select
                     className="wn-input"
                     value={activeEnvId}
-                    onChange={(e) => onActiveEnvId(e.target.value)}
-                  >
-                    <option value="">{t('httpapi.noEnv')}</option>
-                    {envs.map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.name}
-                      </option>
-                    ))}
-                  </select>
+                    options={[
+                      { value: '', label: t('httpapi.noEnv') },
+                      ...envs.map((e) => ({ value: e.id, label: e.name })),
+                    ]}
+                    onChange={onActiveEnvId}
+                  />
                 </label>
                 <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" onClick={() => void saveEnv()}>
                   {t('httpapi.saveEnv')}

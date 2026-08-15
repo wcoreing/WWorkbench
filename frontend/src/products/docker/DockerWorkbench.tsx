@@ -3,6 +3,7 @@ import { api } from '../../api/client'
 import type { ContainerEnvVar, DockerContainer, DockerContext, DockerImage, SSHHost } from '../../api/types'
 import { IconDocker, IconPlus } from '../../components/Icons'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { ContextMenu } from '../../components/ContextMenu'
 import { DockerContextModal } from '../../features/docker/DockerContextModal'
 import { DockerComposePanel } from '../../features/docker/DockerComposePanel'
 import { DockerRunModal } from '../../features/docker/DockerRunModal'
@@ -15,6 +16,7 @@ import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { APP_SETTING_KEYS, saveAppSetting } from '../../stores/appPreferences'
+import { pressProps, useDismissOverlays } from '../../components/compat'
 import {
   loadDockerWorkspace,
   scheduleDockerWorkspacePersist,
@@ -93,10 +95,6 @@ interface DockerImageCellProps {
 /** DockerImageCell 镜像名单元格（截断 + 复制）。 */
 function DockerImageCell({ image, onCopied }: DockerImageCellProps) {
   const { t } = useI18n()
-  const copyImage = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    void navigator.clipboard.writeText(image).then(onCopied)
-  }
 
   return (
     <div className="docker-image-cell">
@@ -107,7 +105,12 @@ function DockerImageCell({ image, onCopied }: DockerImageCellProps) {
         type="button"
         className="docker-copy-btn"
         title={t('docker.copyTitle', { image })}
-        onClick={copyImage}
+        {...pressProps(
+          () => {
+            void navigator.clipboard.writeText(image).then(onCopied)
+          },
+          { stop: true },
+        )}
       >
         {t('common.copy')}
       </button>
@@ -147,7 +150,7 @@ function DockerListBar({
           type="button"
           className="wn-btn wn-btn-tool wn-btn-sm"
           disabled={loading || acting}
-          onClick={onRefresh}
+          {...pressProps(onRefresh, { disabled: loading || acting })}
         >
           {t('common.refresh')}
         </button>
@@ -164,7 +167,7 @@ function DockerListBar({
             type="button"
             className="wn-btn wn-btn-tool wn-btn-sm"
             disabled={!canPrev || loading}
-            onClick={() => onPageChange(page - 1)}
+            {...pressProps(() => onPageChange(page - 1), { disabled: !canPrev || loading })}
           >
             {t('common.prevPage')}
           </button>
@@ -172,7 +175,7 @@ function DockerListBar({
             type="button"
             className="wn-btn wn-btn-tool wn-btn-sm"
             disabled={!canNext || loading}
-            onClick={() => onPageChange(page + 1)}
+            {...pressProps(() => onPageChange(page + 1), { disabled: !canNext || loading })}
           >
             {t('common.nextPage')}
           </button>
@@ -229,6 +232,10 @@ export function DockerWorkbench() {
   const [runModalImage, setRunModalImage] = useState<string | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; container: DockerContainer } | null>(null)
   const [contextCtxMenu, setContextCtxMenu] = useState<{ x: number; y: number; context: DockerContext } | null>(null)
+  useDismissOverlays(() => {
+    setCtxMenu(null)
+    setContextCtxMenu(null)
+  })
   const [confirmState, setConfirmState] = useState<
     | { type: 'context'; ctx: DockerContext }
     | { type: 'container'; container: DockerContainer }
@@ -448,8 +455,8 @@ export function DockerWorkbench() {
       setCtxMenu(null)
       setContextCtxMenu(null)
     }
-    window.addEventListener('click', close)
-    return () => window.removeEventListener('click', close)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
   }, [ctxMenu, contextCtxMenu])
 
   const selectContainer = async (container: DockerContainer) => {
@@ -677,7 +684,7 @@ export function DockerWorkbench() {
   }, [confirmState, t])
 
   const localContextLabel = t('docker.localContext')
-  const stopRowClick = (e: React.MouseEvent) => e.stopPropagation()
+  const stopRowClick = (e: React.SyntheticEvent) => e.stopPropagation()
 
   return (
     <div className="product-workbench docker-workbench">
@@ -690,10 +697,10 @@ export function DockerWorkbench() {
                 type="button"
                 className="wn-btn wn-btn-icon wn-btn-sm"
                 title={t('docker.addRemote')}
-                onClick={() => {
+                {...pressProps(() => {
                   setContextModalHostId(undefined)
                   setContextModalOpen(true)
-                }}
+                })}
               >
                 <IconPlus size={14} />
               </button>
@@ -704,7 +711,7 @@ export function DockerWorkbench() {
                   <li
                     key={ctx.id}
                     className={`conn-item docker-context-item ${ctx.id === activeContextId ? 'active' : ''} ${ctx.connected ? 'connected' : ''}`}
-                    onClick={() => setActiveContextId(ctx.id)}
+                    {...pressProps(() => setActiveContextId(ctx.id))}
                     onContextMenu={(e) => {
                       if (!canDeleteDockerContext(ctx)) return
                       e.preventDefault()
@@ -722,10 +729,7 @@ export function DockerWorkbench() {
                         type="button"
                         className="wn-btn wn-btn-text-danger docker-context-item-del"
                         title={t('docker.deleteContext')}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          requestDeleteDockerContext(ctx)
-                        }}
+                        {...pressProps(() => requestDeleteDockerContext(ctx), { stop: true })}
                       >
                         {t('common.delete')}
                       </button>
@@ -737,7 +741,7 @@ export function DockerWorkbench() {
                 <button
                   type="button"
                   className="wn-btn wn-btn-tool wn-btn-sm docker-context-del"
-                  onClick={() => activeContext && requestDeleteDockerContext(activeContext)}
+                  {...pressProps(() => activeContext && requestDeleteDockerContext(activeContext))}
                 >
                   {t('docker.deleteCurrentContext')}
                 </button>
@@ -755,21 +759,21 @@ export function DockerWorkbench() {
               <button
                 type="button"
                 className={`docker-view-btn ${view === 'containers' ? 'active' : ''}`}
-                onClick={() => setView('containers')}
+                {...pressProps(() => setView('containers'))}
               >
                 {t('docker.viewContainers')}
               </button>
               <button
                 type="button"
                 className={`docker-view-btn ${view === 'images' ? 'active' : ''}`}
-                onClick={() => setView('images')}
+                {...pressProps(() => setView('images'))}
               >
                 {t('docker.viewImages')}
               </button>
               <button
                 type="button"
                 className={`docker-view-btn ${view === 'compose' ? 'active' : ''}`}
-                onClick={() => setView('compose')}
+                {...pressProps(() => setView('compose'))}
               >
                 {t('docker.compose')}
               </button>
@@ -814,8 +818,8 @@ export function DockerWorkbench() {
               <button
                 type="button"
                 className="wn-btn wn-btn-tool wn-btn-sm"
-                onClick={() => void refreshData()}
                 disabled={loading}
+                {...pressProps(() => void refreshData(), { disabled: loading })}
               >
                 {t('common.retry')}
               </button>
@@ -875,7 +879,9 @@ export function DockerWorkbench() {
                               type="button"
                               className="docker-act-btn accent"
                               disabled={acting || !dockerReady || primaryImageTag(img.tags) === ''}
-                              onClick={() => openRunModal(img)}
+                              {...pressProps(() => openRunModal(img), {
+                                disabled: acting || !dockerReady || primaryImageTag(img.tags) === '',
+                              })}
                             >
                               {t('common.run')}
                             </button>
@@ -934,7 +940,7 @@ export function DockerWorkbench() {
                           <tr
                             key={c.id}
                             className={`docker-row ${c.id === selectedId ? 'selected' : ''}`}
-                            onClick={() => void selectContainer(c)}
+                            {...pressProps(() => void selectContainer(c))}
                             onContextMenu={(e) => openContainerContextMenu(e, c)}
                           >
                             <td className="docker-name docker-ellipsis" title={c.name || c.shortId}>
@@ -953,7 +959,7 @@ export function DockerWorkbench() {
                               {c.ports}
                             </td>
                             <td className="docker-col-uptime">{formatUptime(c.state, c.createdAt)}</td>
-                            <td className="docker-col-actions" onClick={stopRowClick}>
+                            <td className="docker-col-actions" onPointerDown={stopRowClick}>
                               <div className="docker-row-actions">
                                 {!running && (
                                   <button
@@ -961,7 +967,10 @@ export function DockerWorkbench() {
                                     className="docker-act-btn"
                                     disabled={!dockerReady || acting}
                                     title={t('docker.start')}
-                                    onClick={() => void startContainer(c)}
+                                    {...pressProps(() => void startContainer(c), {
+                                      disabled: !dockerReady || acting,
+                                      stop: true,
+                                    })}
                                   >
                                     {t('docker.start')}
                                   </button>
@@ -973,7 +982,10 @@ export function DockerWorkbench() {
                                       className="docker-act-btn"
                                       disabled={!dockerReady || acting}
                                       title={t('docker.stop')}
-                                      onClick={() => void stopContainer(c)}
+                                      {...pressProps(() => void stopContainer(c), {
+                                        disabled: !dockerReady || acting,
+                                        stop: true,
+                                      })}
                                     >
                                       {t('docker.stop')}
                                     </button>
@@ -982,7 +994,10 @@ export function DockerWorkbench() {
                                       className="docker-act-btn"
                                       disabled={!dockerReady || acting}
                                       title={t('docker.restart')}
-                                      onClick={() => void restartContainer(c)}
+                                      {...pressProps(() => void restartContainer(c), {
+                                        disabled: !dockerReady || acting,
+                                        stop: true,
+                                      })}
                                     >
                                       {t('docker.restart')}
                                     </button>
@@ -991,7 +1006,10 @@ export function DockerWorkbench() {
                                       className="docker-act-btn"
                                       disabled={!dockerReady || acting}
                                       title={t('docker.shell')}
-                                      onClick={() => void openContainerShell(c)}
+                                      {...pressProps(() => void openContainerShell(c), {
+                                        disabled: !dockerReady || acting,
+                                        stop: true,
+                                      })}
                                     >
                                       {t('docker.shell')}
                                     </button>
@@ -1000,7 +1018,10 @@ export function DockerWorkbench() {
                                       className="docker-act-btn"
                                       disabled={!dockerReady || acting}
                                       title={t('docker.files')}
-                                      onClick={() => void openContainerFiles(c)}
+                                      {...pressProps(() => void openContainerFiles(c), {
+                                        disabled: !dockerReady || acting,
+                                        stop: true,
+                                      })}
                                     >
                                       {t('docker.files')}
                                     </button>
@@ -1012,7 +1033,10 @@ export function DockerWorkbench() {
                                     className="docker-act-btn accent"
                                     disabled={!dockerReady || acting}
                                     title={t('docker.openDatabase')}
-                                    onClick={() => void openDatabaseLink(c)}
+                                    {...pressProps(() => void openDatabaseLink(c), {
+                                      disabled: !dockerReady || acting,
+                                      stop: true,
+                                    })}
                                   >
                                     {t('docker.databaseShort')}
                                   </button>
@@ -1022,7 +1046,10 @@ export function DockerWorkbench() {
                                   className="docker-act-btn danger"
                                   disabled={!dockerReady || acting}
                                   title={t('common.delete')}
-                                  onClick={() => void removeContainer(c)}
+                                  {...pressProps(() => void removeContainer(c), {
+                                    disabled: !dockerReady || acting,
+                                    stop: true,
+                                  })}
                                 >
                                   {t('common.delete')}
                                 </button>
@@ -1042,14 +1069,14 @@ export function DockerWorkbench() {
                     <button
                       type="button"
                       className={`docker-detail-tab${detailTab === 'logs' ? ' is-active' : ''}`}
-                      onClick={() => setDetailTab('logs')}
+                      {...pressProps(() => setDetailTab('logs'))}
                     >
                       {t('docker.tabLogs')}
                     </button>
                     <button
                       type="button"
                       className={`docker-detail-tab${detailTab === 'env' ? ' is-active' : ''}`}
-                      onClick={() => setDetailTab('env')}
+                      {...pressProps(() => setDetailTab('env'))}
                     >
                       {t('docker.tabEnv')}
                     </button>
@@ -1059,8 +1086,8 @@ export function DockerWorkbench() {
                     <button
                       type="button"
                       className="wn-btn wn-btn-tool wn-btn-sm"
-                      onClick={() => void loadLogs(activeContextId, selected.id)}
                       disabled={acting}
+                      {...pressProps(() => void loadLogs(activeContextId, selected.id), { disabled: acting })}
                     >
                       {t('common.refresh')}
                     </button>
@@ -1069,8 +1096,10 @@ export function DockerWorkbench() {
                     <button
                       type="button"
                       className="wn-btn wn-btn-tool wn-btn-sm"
-                      onClick={() => void loadContainerEnv(activeContextId, selected.id)}
                       disabled={acting || envLoading}
+                      {...pressProps(() => void loadContainerEnv(activeContextId, selected.id), {
+                        disabled: acting || envLoading,
+                      })}
                     >
                       {t('common.refresh')}
                     </button>
@@ -1146,31 +1175,31 @@ export function DockerWorkbench() {
       />
 
       {contextCtxMenu && (
-        <div
-          className="wn-context-menu"
-          style={{ left: contextCtxMenu.x, top: contextCtxMenu.y }}
+        <ContextMenu
+          x={contextCtxMenu.x}
+          y={contextCtxMenu.y}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
             className="wn-context-item danger"
-            onClick={() => requestDeleteDockerContext(contextCtxMenu.context)}
+            {...pressProps(() => requestDeleteDockerContext(contextCtxMenu.context))}
           >
             {t('docker.ctxMenuDeleteContext')}
           </button>
-        </div>
+        </ContextMenu>
       )}
 
       {ctxMenu && (
-        <div
-          className="wn-context-menu"
-          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               const c = ctxMenu.container
               const hostId = activeContext?.sshHostId ?? ''
               const ssh = hostId ? sshHosts.find((h) => h.id === hostId) : undefined
@@ -1188,7 +1217,7 @@ export function DockerWorkbench() {
                 mentions,
                 message: `${t('agent.draftDocker')}\n\n容器: ${c.name}\n镜像: ${c.image}\n状态: ${c.status}`,
               })
-            }}
+            })}
           >
             {t('agent.sendToAgent')}
           </button>
@@ -1196,10 +1225,10 @@ export function DockerWorkbench() {
             <button
               type="button"
               className="wn-context-item"
-              onClick={() => {
+              {...pressProps(() => {
                 setCtxMenu(null)
                 void openDatabaseLink(ctxMenu.container)
-              }}
+              })}
             >
               {t('docker.openDatabase')}
             </button>
@@ -1209,20 +1238,20 @@ export function DockerWorkbench() {
               <button
                 type="button"
                 className="wn-context-item"
-                onClick={() => {
+                {...pressProps(() => {
                   setCtxMenu(null)
                   void openContainerShell(ctxMenu.container)
-                }}
+                })}
               >
                 {t('docker.ctxMenuOpenShell')}
               </button>
               <button
                 type="button"
                 className="wn-context-item"
-                onClick={() => {
+                {...pressProps(() => {
                   setCtxMenu(null)
                   void openContainerFiles(ctxMenu.container)
-                }}
+                })}
               >
                 {t('docker.ctxMenuOpenFiles')}
               </button>
@@ -1231,7 +1260,7 @@ export function DockerWorkbench() {
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               setCtxMenu(null)
               const c = ctxMenu.container
               const hostId = activeContext?.sshHostId ?? ''
@@ -1241,22 +1270,22 @@ export function DockerWorkbench() {
                 initialCommand: `# ${c.name}\n# ${c.image}\n# ${c.status}\n\n\`\`\`shell\ndocker logs -f ${c.name}\ndocker exec -it ${c.name} sh\n\`\`\`\n`,
               })
               setStatusMessage(t('docker.creatingNote'))
-            }}
+            })}
           >
             {t('docker.ctxMenuNotebook')}
           </button>
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               void navigator.clipboard.writeText(ctxMenu.container.image)
               setStatusMessage(t('docker.copiedImageName'))
               setCtxMenu(null)
-            }}
+            })}
           >
             {t('docker.ctxMenuCopyImage')}
           </button>
-        </div>
+        </ContextMenu>
       )}
     </div>
   )

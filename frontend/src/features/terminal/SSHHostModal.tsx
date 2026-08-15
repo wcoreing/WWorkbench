@@ -6,6 +6,7 @@ import { translate, useI18n } from '../../i18n'
 import type { AppLocale } from '../../i18n/types'
 import { useSSHTrustConfirm } from './useSSHTrustConfirm'
 import '../../components/ui.css'
+import { pressProps } from '../../components/compat'
 
 interface Props {
   open: boolean
@@ -126,10 +127,11 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
 
   return (
     <>
-      <div className="wn-modal-backdrop" onClick={onClose}>
+      <div className="wn-modal-backdrop" {...pressProps(onClose)}>
       <div
         className="wn-modal wn-modal-compact"
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         role="dialog"
         aria-labelledby="ssh-host-modal-title"
       >
@@ -237,13 +239,18 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
         </div>
 
         <footer className="wn-modal-footer">
-          <button type="button" className="wn-btn wn-btn-tool" onClick={onClose} disabled={busy}>
+          <button type="button" className="wn-btn wn-btn-tool" {...pressProps(onClose, { disabled: busy })} disabled={busy}>
             {t('common.cancel')}
           </button>
-          <button type="button" className="wn-btn wn-btn-tool" onClick={handleTest} disabled={busy}>
+          <button type="button" className="wn-btn wn-btn-tool" {...pressProps(handleTest, { disabled: busy })} disabled={busy}>
             {testing ? t('common.testing') : t('common.testConnection')}
           </button>
-          <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" onClick={handleSave} disabled={busy}>
+          <button
+            type="button"
+            className="wn-btn wn-btn-sm wn-btn-primary"
+            {...pressProps(handleSave, { disabled: busy })}
+            disabled={busy}
+          >
             {saving ? t('common.saving') : t('common.save')}
           </button>
         </footer>

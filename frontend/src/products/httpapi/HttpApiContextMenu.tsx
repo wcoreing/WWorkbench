@@ -1,5 +1,7 @@
 import type { HTTPFolder, HTTPSavedRequest } from '../../api/types'
+import { ContextMenu } from '../../components/ContextMenu'
 import { useI18n } from '../../i18n'
+import { pressProps } from '../../components/compat'
 
 export interface HttpApiContextMenuState {
   x: number
@@ -36,9 +38,10 @@ export function HttpApiContextMenu({
   }
 
   return (
-    <div
-      className="wn-context-menu"
-      style={{ left: menu.x, top: menu.y }}
+    <ContextMenu
+      key={`http-api-${item.id}-${menu.x}-${menu.y}`}
+      x={menu.x}
+      y={menu.y}
       onClick={(e) => e.stopPropagation()}
     >
       <div className="wn-context-submenu-label">{t('httpapi.moveToFolder')}</div>
@@ -46,7 +49,7 @@ export function HttpApiContextMenu({
         type="button"
         className="wn-context-item wn-context-item-indent"
         disabled={!item.folderId}
-        onClick={() => act(() => onMoveToFolder(item.id, ''))}
+        {...pressProps(() => act(() => onMoveToFolder(item.id, '')), { disabled: !item.folderId })}
       >
         {t('httpapi.moveToRoot')}
       </button>
@@ -56,24 +59,24 @@ export function HttpApiContextMenu({
           type="button"
           className="wn-context-item wn-context-item-indent"
           disabled={f.id === item.folderId}
-          onClick={() => act(() => onMoveToFolder(item.id, f.id))}
+          {...pressProps(() => act(() => onMoveToFolder(item.id, f.id)), { disabled: f.id === item.folderId })}
         >
           {f.name}
         </button>
       ))}
-      <button type="button" className="wn-context-item" onClick={() => act(() => onSendToAgent(item))}>
+      <button type="button" className="wn-context-item" {...pressProps(() => act(() => onSendToAgent(item)))}>
         {t('agent.sendToAgent')}
       </button>
-      <button type="button" className="wn-context-item" onClick={() => act(() => onDuplicate(item))}>
+      <button type="button" className="wn-context-item" {...pressProps(() => act(() => onDuplicate(item)))}>
         {t('httpapi.duplicate')}
       </button>
       <button
         type="button"
         className="wn-context-item wn-context-item-danger"
-        onClick={() => act(() => onDelete(item))}
+        {...pressProps(() => act(() => onDelete(item)))}
       >
         {t('common.delete')}
       </button>
-    </div>
+    </ContextMenu>
   )
 }

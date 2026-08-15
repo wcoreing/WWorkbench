@@ -47,7 +47,13 @@ export function ContextMenu({ x, y, children, className = 'wn-context-menu', onC
   }, [ax, y])
 
   return createPortal(
-    <div ref={ref} className={className} style={{ left: pos.x, top: pos.y }} onClick={onClick}>
+    <div
+      ref={ref}
+      className={className}
+      style={{ left: pos.x, top: pos.y }}
+      onClick={onClick}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
       {children}
     </div>,
     document.body

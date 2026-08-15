@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { DockerContainer, DockerContext, LogSource, LogSourceType, SSHHost } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { ContextMenu } from '../../components/ContextMenu'
 import { IconPlus, IconRefresh } from '../../components/Icons'
 import { openAgentDraft, mentionLogSource } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
@@ -11,6 +12,7 @@ import { subscribeLogsChunks } from '../../api/logsEvents'
 import { loadLogsWorkspace, scheduleLogsWorkspacePersist } from '../../stores/logsWorkspacePersist'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { model } from '../../../wailsjs/go/models'
+import { Select, pressProps, useDismissOverlays } from '../../components/compat'
 
 const SOURCE_TYPES: LogSourceType[] = ['local_file', 'ssh_file', 'docker', 'compose']
 
@@ -65,6 +67,7 @@ export function LogCenterWorkbench() {
   const followStreamId = useRef('')
   const [deleteTarget, setDeleteTarget] = useState<LogSource | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; item: LogSource } | null>(null)
+  useDismissOverlays(() => setCtxMenu(null))
   const [sshHosts, setSSHHosts] = useState<SSHHost[]>([])
   const [dockerContexts, setDockerContexts] = useState<DockerContext[]>([])
   const [containers, setContainers] = useState<DockerContainer[]>([])
@@ -357,18 +360,18 @@ export function LogCenterWorkbench() {
             type="button"
             className="wn-btn wn-btn-sm wn-btn-primary"
             disabled={loading || !fetchReady}
-            onClick={() => void refreshLogs()}
+            {...pressProps(() => void refreshLogs(), { disabled: loading || !fetchReady })}
           >
             <IconRefresh size={14} /> {t('logs.refresh')}
           </button>
-          <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void save()}>
+          <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => void save())}>
             {t('logs.save')}
           </button>
           {activeItem && (
             <button
               type="button"
               className="wn-btn wn-btn-sm wn-btn-tool"
-              onClick={() => sendToAgent(activeItem)}
+              {...pressProps(() => sendToAgent(activeItem))}
             >
               {t('agent.sendToAgent')}
             </button>
@@ -390,7 +393,7 @@ export function LogCenterWorkbench() {
           <section className="sidebar-section">
             <div className="sidebar-header">
               <span>{t('products.logs.label')}</span>
-              <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" title={t('logs.newSource')} onClick={createNew}>
+              <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" title={t('logs.newSource')} {...pressProps(createNew)}>
                 <IconPlus size={14} />
               </button>
             </div>
@@ -403,7 +406,7 @@ export function LogCenterWorkbench() {
                     <li
                       key={item.id}
                       className={`conn-item ${item.id === activeId ? 'active' : ''}`}
-                      onClick={() => selectItem(item)}
+                      {...pressProps(() => selectItem(item))}
                       onContextMenu={(e) => {
                         e.preventDefault()
                         setCtxMenu({ x: e.clientX, y: e.clientY, item })
@@ -442,20 +445,21 @@ export function LogCenterWorkbench() {
             </div>
             <div className="logs-row">
               <label className="wn-label">{t('logs.sourceType')}</label>
-              <select className="wn-input" value={sourceType} onChange={(e) => setSourceType(e.target.value as LogSourceType)}>
-                {SOURCE_TYPES.map((ty) => (
-                  <option key={ty} value={ty}>
-                    {t(TYPE_LABEL_KEYS[ty])}
-                  </option>
-                ))}
-              </select>
+              <Select
+                value={sourceType}
+                options={SOURCE_TYPES.map((ty) => ({
+                  value: ty,
+                  label: t(TYPE_LABEL_KEYS[ty]),
+                }))}
+                onChange={(v) => setSourceType(v as LogSourceType)}
+              />
             </div>
 
             {sourceType === 'local_file' && (
               <div className="logs-row logs-row-compose-dir">
                 <label className="wn-label">{t('logs.path')}</label>
                 <input className="wn-input" value={path} onChange={(e) => setPath(e.target.value)} placeholder={t('logs.pathPlaceholder')} />
-                <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void pickLogFile()}>
+                <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => void pickLogFile())}>
                   {t('logs.pickFile')}
                 </button>
               </div>
@@ -465,14 +469,17 @@ export function LogCenterWorkbench() {
               <>
                 <div className="logs-row">
                   <label className="wn-label">{t('logs.sshHost')}</label>
-                  <select className="wn-input" value={sshHostId} onChange={(e) => setSSHHostId(e.target.value)}>
-                    <option value="">{t('logs.selectHost')}</option>
-                    {sshHosts.map((h) => (
-                      <option key={h.id} value={h.id}>
-                        {h.name} ({h.host})
-                      </option>
-                    ))}
-                  </select>
+                  <Select
+                    value={sshHostId}
+                    options={[
+                      { value: '', label: t('logs.selectHost') },
+                      ...sshHosts.map((h) => ({
+                        value: h.id,
+                        label: `${h.name} (${h.host})`,
+                      })),
+                    ]}
+                    onChange={setSSHHostId}
+                  />
                 </div>
                 <div className="logs-row">
                   <label className="wn-label">{t('logs.path')}</label>
@@ -484,28 +491,31 @@ export function LogCenterWorkbench() {
             {(sourceType === 'docker' || sourceType === 'compose') && (
               <div className="logs-row">
                 <label className="wn-label">{t('logs.dockerContext')}</label>
-                <select className="wn-input" value={dockerContextId} onChange={(e) => setDockerContextId(e.target.value)}>
-                  <option value="">{t('logs.selectContext')}</option>
-                  {dockerContexts.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={dockerContextId}
+                  options={[
+                    { value: '', label: t('logs.selectContext') },
+                    ...dockerContexts.map((c) => ({ value: c.id, label: c.name })),
+                  ]}
+                  onChange={setDockerContextId}
+                />
               </div>
             )}
 
             {sourceType === 'docker' && (
               <div className="logs-row">
                 <label className="wn-label">{t('logs.container')}</label>
-                <select className="wn-input" value={containerId} onChange={(e) => setContainerId(e.target.value)}>
-                  <option value="">{t('logs.selectContainer')}</option>
-                  {containers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.image})
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  value={containerId}
+                  options={[
+                    { value: '', label: t('logs.selectContainer') },
+                    ...containers.map((c) => ({
+                      value: c.id,
+                      label: `${c.name} (${c.image})`,
+                    })),
+                  ]}
+                  onChange={setContainerId}
+                />
               </div>
             )}
 
@@ -519,7 +529,7 @@ export function LogCenterWorkbench() {
                     onChange={(e) => setComposeDir(e.target.value)}
                     placeholder={t('logs.composeDirPlaceholder')}
                   />
-                  <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" onClick={() => void pickComposeDir()}>
+                  <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => void pickComposeDir())}>
                     {t('logs.pickComposeDir')}
                   </button>
                 </div>
@@ -550,33 +560,33 @@ export function LogCenterWorkbench() {
       </div>
 
       {ctxMenu && (
-        <div
-          className="wn-context-menu"
-          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+        <ContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
           onClick={(e) => e.stopPropagation()}
         >
           <button
             type="button"
             className="wn-context-item"
-            onClick={() => {
+            {...pressProps(() => {
               const item = ctxMenu.item
               setCtxMenu(null)
               sendToAgent(item)
-            }}
+            })}
           >
             {t('agent.sendToAgent')}
           </button>
           <button
             type="button"
             className="wn-context-item wn-context-item-danger"
-            onClick={() => {
+            {...pressProps(() => {
               setDeleteTarget(ctxMenu.item)
               setCtxMenu(null)
-            }}
+            })}
           >
             {t('common.delete')}
           </button>
-        </div>
+        </ContextMenu>
       )}
 
       <ConfirmDialog

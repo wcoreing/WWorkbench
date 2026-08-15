@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import '../../components/ui.css'
+import { pressProps } from '../../components/compat'
 
 export type TableDesignTab = 'fields' | 'indexes' | 'sql'
 
@@ -50,7 +51,7 @@ export function TableDesignPanel({
           role="tab"
           className={`table-design-tab ${tab === 'fields' ? 'active' : ''}`}
           aria-selected={tab === 'fields'}
-          onClick={() => onTabChange('fields')}
+          {...pressProps(() => onTabChange('fields'))}
         >
           字段
           {fieldCount > 0 && <span className="table-design-tab-count">{fieldCount}</span>}
@@ -60,7 +61,7 @@ export function TableDesignPanel({
           role="tab"
           className={`table-design-tab ${tab === 'indexes' ? 'active' : ''}`}
           aria-selected={tab === 'indexes'}
-          onClick={() => onTabChange('indexes')}
+          {...pressProps(() => onTabChange('indexes'))}
         >
           索引
           {indexCount > 0 && <span className="table-design-tab-count">{indexCount}</span>}
@@ -70,7 +71,7 @@ export function TableDesignPanel({
           role="tab"
           className={`table-design-tab ${tab === 'sql' ? 'active' : ''}`}
           aria-selected={tab === 'sql'}
-          onClick={() => onTabChange('sql')}
+          {...pressProps(() => onTabChange('sql'))}
         >
           SQL 预览
         </button>

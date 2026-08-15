@@ -5,6 +5,7 @@ import { TableFilterPanel, defaultFilters } from './TableFilterPanel'
 import { ExportFieldsDialog } from '../export/ExportFieldsDialog'
 import { CellViewerDialog, type CellViewerTarget } from '../cell-viewer/CellViewerDialog'
 import { isLikelyLargeCell } from '../cell-viewer/formatCellValue'
+import { pressProps } from '../../components/compat'
 import {
   ACTIONS_COL_WIDTH,
   INDEX_COL_WIDTH,
@@ -337,17 +338,22 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
             >
               下一页
             </button>
-            <button type="button" className="wn-btn wn-btn-tool" onClick={load} disabled={loading}>
+            <button type="button" className="wn-btn wn-btn-tool" {...pressProps(load, { disabled: loading })} disabled={loading}>
               刷新
             </button>
             <button
               type="button"
               className="wn-btn wn-btn-tool"
               disabled={loading}
-              onClick={async () => {
-                const path = await api.exportTableInsertSQL(sessionId, database, table, 1000)
-                if (path) setSuccess(`已导出 ${path}`)
-              }}
+              {...pressProps(
+                () => {
+                  void (async () => {
+                    const path = await api.exportTableInsertSQL(sessionId, database, table, 1000)
+                    if (path) setSuccess(`已导出 ${path}`)
+                  })()
+                },
+                { disabled: loading },
+              )}
             >
               导出 SQL
             </button>
@@ -356,7 +362,9 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
                 type="button"
                 className="wn-btn wn-btn-tool wn-btn-accent"
                 disabled={loading || columnNames.length === 0}
-                onClick={() => setExcelExportOpen(true)}
+                {...pressProps(() => setExcelExportOpen(true), {
+                  disabled: loading || columnNames.length === 0,
+                })}
               >
                 导出 Excel
               </button>

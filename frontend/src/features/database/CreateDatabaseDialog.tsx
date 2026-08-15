@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useI18n } from '../../i18n'
-import { ModalPortal } from '../../components/ModalPortal'
 import '../../components/ui.css'
+import { ModalPortal } from '../../components/compat'
 
 interface Props {
   open: boolean

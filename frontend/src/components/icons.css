@@ -1,0 +1,16 @@
+/* Q 栅格图标：不随 currentColor 变色，保持主题无关 */
+
+.wn-raster-icon {
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: contain;
+  flex-shrink: 0;
+  pointer-events: none;
+  user-select: none;
+  image-rendering: auto;
+}
+
+.product-rail-btn .wn-raster-icon {
+  width: var(--icon-rail);
+  height: var(--icon-rail);
+}

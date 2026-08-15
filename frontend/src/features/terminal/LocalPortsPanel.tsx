@@ -4,20 +4,22 @@ import type { LocalPortProcess } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconRefresh } from '../../components/Icons'
 import { useI18n } from '../../i18n'
-import { bindPointerAction } from '../../utils/pointerAction'
+import { ModalPortal, pressProps } from '../../components/compat'
 
 const QUICK_PORTS = [3000, 5173, 5174, 8080, 8000, 5432, 3306, 6379]
 
 interface Props {
+  open: boolean
+  onClose: () => void
   onStatus: (msg: string) => void
 }
 
-/** LocalPortsPanel 本机端口占用查询与结束。 */
-export function LocalPortsPanel({ onStatus }: Props) {
+/** LocalPortsDialog 本机端口查询与结束（弹窗）。 */
+export function LocalPortsDialog({ open, onClose, onStatus }: Props) {
   const { t } = useI18n()
   const [portInput, setPortInput] = useState('')
   const [procs, setProcs] = useState<LocalPortProcess[]>([])
-  const [mode, setMode] = useState<'idle' | 'port' | 'listen'>('idle')
+  const [mode, setMode] = useState<'port' | 'listen'>('listen')
   const [loading, setLoading] = useState(false)
   const [force, setForce] = useState(false)
   const [killTarget, setKillTarget] = useState<{ port: number; procs: LocalPortProcess[] } | null>(null)
@@ -63,8 +65,14 @@ export function LocalPortsPanel({ onStatus }: Props) {
   }, [onStatus, t])
 
   useEffect(() => {
+    if (!open) {
+      setProcs([])
+      setMode('listen')
+      setPortInput('')
+      return
+    }
     void loadListening()
-  }, [loadListening])
+  }, [open, loadListening])
 
   const queryPort = () => {
     const port = Number(portInput.trim())
@@ -77,19 +85,21 @@ export function LocalPortsPanel({ onStatus }: Props) {
 
   const askKill = (port: number, items: LocalPortProcess[]) => {
     if (!items.length) return
+    setForce(false)
     setKillTarget({ port, procs: items })
   }
 
   const confirmKill = async () => {
     const target = killTarget
+    const useForce = force
     setKillTarget(null)
     if (!target) return
     setLoading(true)
     try {
-      const result = await api.killLocalPortProcesses(target.port, force)
+      const result = await api.killLocalPortProcesses(target.port, useForce)
       const names = result.killed.map((p) => p.name || `pid ${p.pid}`).join(', ')
       onStatus(
-        force
+        useForce
           ? t('localPort.killedForce', { port: target.port, names })
           : t('localPort.killed', { port: target.port, names }),
       )
@@ -105,125 +115,139 @@ export function LocalPortsPanel({ onStatus }: Props) {
     }
   }
 
-  const summary = (p: LocalPortProcess) => {
-    const cmd = p.command?.trim() || p.name
-    return cmd.length > 72 ? `${cmd.slice(0, 72)}…` : cmd
+  const rowTitle = (p: LocalPortProcess) => {
+    const parts = [p.command || p.name, `PID ${p.pid}`, p.user || '', p.address || ''].filter(Boolean)
+    return parts.join(' · ')
   }
+
+  if (!open) return null
 
   return (
     <>
-      <section className="sidebar-section local-port-section">
-        <div className="sidebar-header">
-          <span>{t('localPort.title')}</span>
-          <button
-            type="button"
-            className="wn-btn wn-btn-icon wn-btn-sm"
-            title={t('common.refresh')}
-            disabled={loading}
-            {...bindPointerAction(() => {
-              if (mode === 'port' && portInput.trim()) {
-                queryPort()
-                return
-              }
-              void loadListening()
-            })}
+      <ModalPortal>
+        <div className="wn-modal-backdrop wn-modal-backdrop-top" onClick={onClose}>
+          <div
+            className="wn-modal wn-modal-wide local-port-dialog"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="local-port-dialog-title"
           >
-            <IconRefresh size={14} />
-          </button>
-        </div>
-        <div className="sidebar-body">
-          <div className="local-port-query">
-            <input
-              className="wn-input wn-input-sm"
-              type="number"
-              min={1}
-              max={65535}
-              placeholder={t('localPort.portPlaceholder')}
-              value={portInput}
-              onChange={(e) => setPortInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') queryPort()
-              }}
-            />
-            <button
-              type="button"
-              className="wn-btn wn-btn-xs wn-btn-primary"
-              disabled={loading}
-              {...bindPointerAction(queryPort)}
-            >
-              {t('localPort.query')}
-            </button>
-          </div>
-          <div className="local-port-quick">
-            {QUICK_PORTS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                className="wn-btn wn-btn-xs wn-btn-ghost local-port-chip"
-                disabled={loading}
-                {...bindPointerAction(() => void loadByPort(p))}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-          <label className="local-port-force">
-            <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />
-            <span>{t('localPort.force')}</span>
-          </label>
-          <div className="ssh-forward-subhead">
-            {mode === 'port' && portInput
-              ? t('localPort.resultPort', { port: portInput })
-              : t('localPort.listening')}
-          </div>
-          {procs.length === 0 ? (
-            <div className="empty-hint">
-              {loading ? t('localPort.loading') : t('localPort.emptyHint')}
-            </div>
-          ) : (
-            <ul className="conn-list ssh-forward-list">
-              {procs.map((p) => (
-                <li key={`${p.pid}-${p.port}-${p.address}`} className="conn-item ssh-forward-item local-port-item">
-                  <div className="conn-meta">
-                    <span className="conn-name">
-                      :{p.port} · {p.name || `pid ${p.pid}`}
-                    </span>
-                    <span className="conn-host" title={p.command || p.address}>
-                      {summary(p)}
-                    </span>
-                    <span className="conn-host local-port-meta">
-                      PID {p.pid}
-                      {p.user ? ` · ${p.user}` : ''}
-                      {p.address ? ` · ${p.address}` : ''}
-                    </span>
-                  </div>
-                  <div className="ssh-forward-actions">
-                    <button
-                      type="button"
-                      className="wn-btn wn-btn-xs wn-btn-ghost"
-                      disabled={loading}
-                      {...bindPointerAction(() => askKill(p.port, [p]))}
+            <header className="wn-modal-header-bar">
+              <h2 id="local-port-dialog-title" className="wn-modal-title">
+                {t('localPort.title')}
+              </h2>
+              <div className="local-port-dialog-actions">
+                <button
+                  type="button"
+                  className="wn-btn wn-btn-icon wn-btn-sm"
+                  title={t('common.refresh')}
+                  disabled={loading}
+                  {...pressProps(() => {
+                    if (mode === 'port' && portInput.trim()) {
+                      queryPort()
+                      return
+                    }
+                    void loadListening()
+                  }, { disabled: loading })}
+                >
+                  <IconRefresh size={14} />
+                </button>
+                <button type="button" className="wn-modal-close-btn" {...pressProps(onClose)} aria-label={t('common.close')}>
+                  ×
+                </button>
+              </div>
+            </header>
+            <div className="wn-modal-body local-port-dialog-body">
+              <div className="local-port-query">
+                <input
+                  className="wn-input wn-input-sm"
+                  type="number"
+                  min={1}
+                  max={65535}
+                  placeholder={t('localPort.portPlaceholder')}
+                  value={portInput}
+                  onChange={(e) => setPortInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') queryPort()
+                  }}
+                />
+                <button
+                  type="button"
+                  className="wn-btn wn-btn-xs wn-btn-primary"
+                  disabled={loading}
+                  {...pressProps(queryPort, { disabled: loading })}
+                >
+                  {t('localPort.query')}
+                </button>
+                <button
+                  type="button"
+                  className="wn-btn wn-btn-xs wn-btn-ghost"
+                  disabled={loading}
+                  {...pressProps(() => void loadListening(), { disabled: loading })}
+                >
+                  {t('localPort.listening')}
+                </button>
+              </div>
+              <div className="local-port-quick">
+                {QUICK_PORTS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    className="wn-btn wn-btn-xs wn-btn-ghost local-port-chip"
+                    disabled={loading}
+                    {...pressProps(() => void loadByPort(p), { disabled: loading })}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+              <div className="ssh-forward-subhead">
+                {mode === 'port' && portInput
+                  ? t('localPort.resultPort', { port: portInput })
+                  : t('localPort.listening')}
+                {procs.length > 0 ? ` · ${procs.length}` : ''}
+              </div>
+              {procs.length === 0 ? (
+                <div className="empty-hint">
+                  {loading ? t('localPort.loading') : t('localPort.emptyHint')}
+                </div>
+              ) : (
+                <ul className="conn-list local-port-list local-port-dialog-list">
+                  {procs.map((p) => (
+                    <li
+                      key={`${p.pid}-${p.port}-${p.address}`}
+                      className="conn-item local-port-item"
+                      title={rowTitle(p)}
                     >
-                      {t('localPort.kill')}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-          {mode === 'port' && procs.length > 1 && (
-            <button
-              type="button"
-              className="wn-btn wn-btn-xs wn-btn-ghost local-port-kill-all"
-              disabled={loading}
-              {...bindPointerAction(() => askKill(Number(portInput), procs))}
-            >
-              {t('localPort.killAll', { port: portInput })}
-            </button>
-          )}
-          <div className="empty-hint mock-hint">{t('localPort.hint')}</div>
+                      <span className="local-port-num">:{p.port}</span>
+                      <span className="local-port-proc">{p.name || `pid ${p.pid}`}</span>
+                      <span className="local-port-cmd">{p.command || p.address || ''}</span>
+                      <button
+                        type="button"
+                        className="local-port-kill"
+                        disabled={loading}
+                        {...pressProps(() => askKill(p.port, [p]), { disabled: loading })}
+                      >
+                        {t('localPort.kill')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {mode === 'port' && procs.length > 1 && (
+                <button
+                  type="button"
+                  className="wn-btn wn-btn-xs wn-btn-ghost local-port-kill-all"
+                  disabled={loading}
+                  {...pressProps(() => askKill(Number(portInput), procs), { disabled: loading })}
+                >
+                  {t('localPort.killAll', { port: portInput })}
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-      </section>
+      </ModalPortal>
 
       <ConfirmDialog
         open={killTarget != null}
@@ -243,7 +267,12 @@ export function LocalPortsPanel({ onStatus }: Props) {
         danger
         onConfirm={() => void confirmKill()}
         onCancel={() => setKillTarget(null)}
-      />
+      >
+        <label className="local-port-force-dialog">
+          <input type="checkbox" checked={force} onChange={(e) => setForce(e.target.checked)} />
+          <span>{t('localPort.force')}</span>
+        </label>
+      </ConfirmDialog>
     </>
   )
 }

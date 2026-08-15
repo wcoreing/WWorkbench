@@ -6,6 +6,7 @@ import { ColumnEditorRows } from './ColumnEditorRows'
 import { IndexEditorRows } from './IndexEditorRows'
 import { TableDesignPanel, type TableDesignTab } from './TableDesignPanel'
 import type { TableDesignDraft } from './tableDesignDraft'
+import { pressProps } from '../../components/compat'
 import {
   activeColumns,
   buildAlterTableSQL,
@@ -267,14 +268,21 @@ export function TableDesignEditor({
 
   const toolbar = (
     <>
-      <button type="button" className="wn-btn wn-btn-tool" onClick={() => openAsDDL()} disabled={running || loading}>
+      <button
+        type="button"
+        className="wn-btn wn-btn-tool"
+        disabled={running || loading}
+        {...pressProps(() => openAsDDL(), { disabled: running || loading })}
+      >
         打开为 DDL
       </button>
       <button
         type="button"
         className="wn-btn wn-btn-tool wn-btn-accent"
-        onClick={() => void save()}
         disabled={running || loading || (!isCreate && !preview.trim())}
+        {...pressProps(() => void save(), {
+          disabled: running || loading || (!isCreate && !preview.trim()),
+        })}
       >
         {running ? '保存中…' : '保存'}
       </button>
@@ -315,7 +323,11 @@ export function TableDesignEditor({
       fieldsPane={
         <>
           <div className="table-design-toolbar">
-            <button type="button" className="wn-btn wn-btn-tool wn-btn-sm" onClick={() => setColumns((p) => [...p, newColumnDraft()])}>
+            <button
+              type="button"
+              className="wn-btn wn-btn-tool wn-btn-sm"
+              {...pressProps(() => setColumns((p) => [...p, newColumnDraft()]))}
+            >
               + 添加字段
             </button>
           </div>
@@ -325,7 +337,11 @@ export function TableDesignEditor({
       indexesPane={
         <>
           <div className="table-design-toolbar">
-            <button type="button" className="wn-btn wn-btn-tool wn-btn-sm" onClick={() => setIndexes((p) => [...p, newIndexDraft()])}>
+            <button
+              type="button"
+              className="wn-btn wn-btn-tool wn-btn-sm"
+              {...pressProps(() => setIndexes((p) => [...p, newIndexDraft()]))}
+            >
               + 添加索引
             </button>
           </div>

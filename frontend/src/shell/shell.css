@@ -37,6 +37,23 @@
   background: var(--color-sidebar);
 }
 
+/* 侧栏|主区拖拽缝：默认 handle 透明，glass 下会透桌面；铺实底并改用暗色分隔线 */
+.workbench-shell.is-terminal-glass .terminal-workbench .wn-resize-handle {
+  background: var(--color-sidebar);
+}
+
+.workbench-shell.is-terminal-glass .terminal-workbench .wn-resize-handle-x::after {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.workbench-shell.is-terminal-glass .terminal-workbench .wn-resize-handle:hover::after {
+  background: var(--accent);
+}
+
+body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-resize-handle-x::after {
+  background: var(--accent);
+}
+
 .workbench-shell.is-terminal-glass .terminal-workbench .editor-chrome {
   background: var(--color-tab-bar);
 }
@@ -1144,8 +1161,9 @@
 
 .agent-tool-trace-chevron {
   margin-left: auto;
-  opacity: 0.6;
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-text-muted);
 }
 
 .agent-tool-trace-list {
@@ -1251,17 +1269,17 @@
   display: flex;
   align-items: center;
   height: var(--chrome-height);
-  padding: 0 10px 0 12px;
+  padding: 0 var(--chrome-pad-x);
   background: var(--color-chrome);
   border-bottom: 1px solid var(--color-border);
-  gap: 6px;
+  gap: var(--chrome-gap);
   flex-shrink: 0;
 }
 
 .shell-chrome .chrome-brand {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 
@@ -1283,7 +1301,7 @@
 .chrome-product {
   display: flex;
   align-items: baseline;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
@@ -1375,14 +1393,16 @@
   flex-direction: column;
   background: var(--color-chrome);
   border-right: 1px solid var(--color-border);
-  padding: 6px 0;
+  padding: var(--space-2) 0;
+  position: relative;
+  z-index: 3;
 }
 
 .product-rail-main {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 0 6px;
+  gap: 0;
+  padding: 0;
 }
 
 .product-rail-btn {
@@ -1392,12 +1412,12 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  width: 40px;
-  height: 44px;
-  margin: 0 auto;
-  padding: 4px 0;
+  width: 100%;
+  height: 48px;
+  margin: 0;
+  padding: var(--space-1) 0;
   border: none;
-  border-radius: var(--radius);
+  border-radius: 0;
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
@@ -1417,9 +1437,9 @@
 .product-rail-btn.active::before {
   content: '';
   position: absolute;
-  left: -6px;
-  top: 8px;
-  bottom: 8px;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
   width: 2px;
   border-radius: 0 2px 2px 0;
   background: var(--accent);
@@ -1454,9 +1474,9 @@
 .product-toolbar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 8px;
+  gap: var(--chrome-gap);
+  height: var(--toolbar-height);
+  padding: 0 var(--chrome-pad-x);
   background: var(--color-toolbar);
   border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
@@ -1471,7 +1491,7 @@
 .product-toolbar-status {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--chrome-gap);
   font-size: 11px;
   color: var(--color-text-muted);
   max-width: 240px;
@@ -1765,6 +1785,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .terminal-xterm-host {
@@ -1773,6 +1794,12 @@
   width: 100%;
   padding: 4px 6px;
   box-sizing: border-box;
+  overflow: hidden;
+  /*
+   * 壳层 .workbench-shell 使用 CSS zoom 缩放整页；xterm 仍按未缩放坐标算选区，
+   * 会导致轻微移动鼠标就出现大块灰色「选中」。此处反缩放，字号在 TerminalPane 同步放大。
+   */
+  zoom: calc(1 / var(--ui-zoom, 1));
 }
 
 .terminal-xterm-host .xterm {
@@ -1937,21 +1964,39 @@
 
 .sftp-table {
   width: 100%;
+  table-layout: auto;
   border-collapse: collapse;
   font-size: 11px;
 }
 
 .sftp-table th {
   text-align: left;
-  padding: 6px 12px;
+  padding: var(--space-1) var(--space-3);
   font-weight: 500;
   color: var(--color-text-muted);
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .sftp-table td {
-  padding: 5px 12px;
+  padding: var(--space-1) var(--space-3);
   color: var(--color-text-secondary);
+}
+
+/* 名称占剩余宽度；大小/时间按内容自适应且不换行 */
+.sftp-table th:nth-child(1),
+.sftp-table td:nth-child(1) {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sftp-table th:nth-child(2),
+.sftp-table td:nth-child(2),
+.sftp-table th:nth-child(3),
+.sftp-table td:nth-child(3) {
+  width: 1%;
+  white-space: nowrap;
 }
 
 .sftp-row:hover td {
@@ -2249,8 +2294,9 @@ body.is-sftp-log-resizing * {
 }
 
 .sftp-icon-dir {
+  display: inline-block;
   vertical-align: -2px;
-  margin-right: 4px;
+  margin-right: var(--space-1);
   color: var(--accent);
 }
 
@@ -3110,8 +3156,7 @@ body.is-sftp-file-dragging * {
 }
 
 .ssh-forward-section .sidebar-body {
-  max-height: 280px;
-  overflow-y: auto;
+  overflow-y: visible;
 }
 
 .ssh-forward-subhead {
@@ -3120,31 +3165,127 @@ body.is-sftp-file-dragging * {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--color-text-muted);
-  padding: 8px 12px 4px;
+  padding: var(--space-2) var(--chrome-pad-x) var(--space-1);
 }
 
+.ssh-forward-list {
+  padding: 0 var(--space-1) var(--space-1);
+}
+
+.ssh-forward-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  cursor: default;
+}
+
+.ssh-forward-name {
+  flex-shrink: 0;
+  max-width: 38%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.ssh-forward-route {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.ssh-forward-act {
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+
+.ssh-forward-row:hover .ssh-forward-act,
+.ssh-forward-row:focus-within .ssh-forward-act {
+  opacity: 1;
+}
+
+.ssh-forward-act:hover:not(:disabled) {
+  color: var(--color-text);
+  background: var(--color-tree-hover);
+}
+
+.ssh-forward-act.primary:hover:not(:disabled) {
+  color: var(--accent);
+  background: var(--accent-muted);
+}
+
+.ssh-forward-act.danger:hover:not(:disabled) {
+  color: var(--color-danger, #c44);
+  background: color-mix(in srgb, var(--color-danger, #c44) 10%, transparent);
+}
+
+.ssh-forward-act:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* legacy column layout unused by new rows */
 .ssh-forward-item {
   flex-direction: column;
   align-items: stretch;
-  gap: 6px;
+  gap: var(--chrome-gap);
 }
 
 .ssh-forward-actions {
   display: flex;
-  gap: 6px;
-  padding: 0 8px 8px;
+  gap: var(--chrome-gap);
+  padding: 0 var(--space-2) var(--space-2);
 }
 
 .local-port-section .sidebar-body {
-  max-height: 320px;
-  overflow-y: auto;
+  overflow-y: visible;
+}
+
+.local-port-dialog {
+  max-height: min(720px, 86vh);
+  display: flex;
+  flex-direction: column;
+}
+
+.local-port-dialog-body {
+  min-height: 0;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.local-port-dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
 }
 
 .local-port-query {
   display: flex;
-  gap: 6px;
-  padding: 6px 10px 4px;
+  gap: var(--chrome-gap);
   align-items: center;
+  flex-shrink: 0;
 }
 
 .local-port-query .wn-input {
@@ -3155,30 +3296,125 @@ body.is-sftp-file-dragging * {
 .local-port-quick {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 2px 10px 6px;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
 .local-port-chip {
   font-variant-numeric: tabular-nums;
+  min-width: 0;
+  padding: 0 var(--space-1);
+  height: 20px;
 }
 
-.local-port-force {
+.local-port-force-dialog {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 12px 6px;
-  font-size: 11px;
-  color: var(--color-text-muted);
+  gap: var(--space-2);
+  font-size: 12px;
+  color: var(--color-text-secondary);
   user-select: none;
 }
 
-.local-port-meta {
-  opacity: 0.85;
+.local-port-list {
+  padding: 0;
+}
+
+.local-port-dialog-list {
+  flex: 1;
+  min-height: 160px;
+  max-height: 420px;
+  overflow: auto;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+
+.local-port-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  cursor: default;
+}
+
+.local-port-num {
+  flex-shrink: 0;
+  min-width: 3.25em;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+}
+
+.local-port-proc {
+  flex-shrink: 0;
+  max-width: 8em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.local-port-cmd {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.local-port-kill {
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+
+.local-port-item:hover .local-port-kill,
+.local-port-item:focus-within .local-port-kill {
+  opacity: 1;
+}
+
+.local-port-kill:hover:not(:disabled) {
+  color: var(--color-danger, #c44);
+  background: color-mix(in srgb, var(--color-danger, #c44) 10%, transparent);
+}
+
+.local-port-kill:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .local-port-kill-all {
-  margin: 4px 10px 0;
+  margin-top: var(--space-1);
+  align-self: flex-start;
+}
+
+.terminal-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
+
+.terminal-sidebar .conn-host {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .wn-field-hint {
@@ -3966,8 +4202,12 @@ body.httpapi-tree-dragging * {
 }
 
 .httpapi-tree-chevron {
-  width: 12px;
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
   color: var(--color-text-muted);
 }
 
@@ -4675,6 +4915,9 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
 
 .notebook-group-toggle {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   text-align: left;
   background: none;
   border: none;

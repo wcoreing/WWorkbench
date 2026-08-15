@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ModalPortal } from '../../components/ModalPortal'
 import { MarkdownPreview } from '../notebook/MarkdownPreview'
 import { CellRichValue } from './CellRichValue'
+import { ModalPortal, pressProps } from '../../components/compat'
 import {
   cellStats,
   containsMarkdown,
@@ -9,7 +9,6 @@ import {
   normalizeMarkdownSource,
   tryFormatJson,
 } from './formatCellValue'
-import { pressProps } from '../../utils/press'
 import '../../components/ui.css'
 
 export interface CellViewerTarget {

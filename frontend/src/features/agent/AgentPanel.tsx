@@ -12,6 +12,7 @@ import { AgentConfigView, saveAgentAPIConfig } from './AgentConfigView'
 import { AgentPermissionsView, saveAgentPermissions } from './AgentPermissionsView'
 import { AgentMessageContent } from './AgentMessageContent'
 import { useAgentPanelResize } from './useAgentPanelResize'
+import { ResizeHandle } from '../../components/layout'
 import { useAgentChatScroll } from './useAgentChatScroll'
 import { subscribeCommandResults } from './agentUiActions'
 import { AgentInputBar } from './AgentInputBar'
@@ -478,13 +479,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       aria-hidden={collapsed}
       aria-label={t('agent.title')}
     >
-      <div
-        className="agent-panel-resize"
-        role="separator"
-        aria-orientation="vertical"
-        title={t('agent.resize')}
-        onMouseDown={onResizeStart}
-      />
+      <ResizeHandle axis="x" onMouseDown={onResizeStart} title={t('agent.resize')} className="agent-panel-resize" />
       <header className="agent-panel-head">
         <span className="agent-panel-title">{t('agent.title')}</span>
         <div className="agent-panel-actions">

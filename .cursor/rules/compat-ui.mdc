@@ -1,0 +1,47 @@
+---
+description: WWorkbench Compat 平台交互层约定（press / Select / Modal / FocusGate）
+globs: frontend/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Compat 交互层
+
+Compat 修 Wails/WebView **兼容性**，不是视觉 UI 框架。长相可继续用 `wn-*` 或套 Ant / shadcn。
+
+## 进口
+
+```ts
+import { pressProps, Select, ModalPortal, installFocusGate, chromeProps, focusHogProps } from '../components/compat'
+```
+
+旧路径 `utils/press`、`components/Select`、`components/ModalPortal` 仅为兼容 re-export，新代码不要再用。
+
+## 硬契约
+
+1. **命令控件**（Tab、工具条、弹窗取消/保存、右键菜单项、树节点命令）→ 必须 `pressProps`，禁止裸 `onClick` 做切换与提交。
+2. **业务下拉** → 必须用 `Select`，或自绘弹出并接 `useOutsideDismiss`；禁止原生 `<select>`（系统层会吞第一次外点）。
+3. **弹层** → 用 `ModalPortal` 挂到 `document.body`；弹窗内容区对 backdrop 做 `onPointerDown` stopPropagation。
+4. **菜单/下拉的外点关闭** → 必须听 `pointerdown`（见 `useDismissOnPointerDown`），禁止 `click`/`mousedown`。
+   `pressProps` 会 `preventDefault(pointerdown)` 从而取消后续 mouse 事件；用 `click` 关菜单会导致「产品轨要点两次」。
+5. **切产品线** → `setActiveProduct` 会 `dismissOverlays()`；Select/菜单须 `useDismissOverlays` 订阅，避免隐藏页 portal 挡住产品轨。
+6. **焦点域（FocusGate）**：
+   - 抢焦内容（xterm / Monaco）→ `data-ww-focus-hog` 或 `focusHogProps()` / `registerFocusHog`
+   - 命令壳（产品轨、顶栏）→ `data-ww-chrome` 或 `chromeProps()`（浮层盖住时坐标转发）
+   - `AppShell` 已 `installFocusGate()`：内容区持焦时点到 **任意命令控件**（`button` / `.wn-select-trigger` / 产品轨等）先 blur，首击必达
+   - 查询栏 Select、工具条、Tab 都靠这条，不必再逐个标 chrome
+   - 不要再为产品轨单独写坐标 capture hack
+
+## 套其他 UI 框架
+
+```tsx
+// 外观用第三方，交互走 Compat
+<AntButton {...pressProps(onSave)}>保存</AntButton>
+<Select className="your-skin" value={v} options={opts} onChange={setV} />
+```
+
+## 不要做
+
+- 为每个业务再写一套 Select / press
+- 用全局事件 hack 去「修复」原生 select
+- 把颜色、布局、Form 引擎塞进 Compat
+- 在业务里重复实现「从终端失焦再点轨」逻辑（应走 FocusGate）
