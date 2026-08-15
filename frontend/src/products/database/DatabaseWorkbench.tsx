@@ -26,6 +26,7 @@ import { useI18n } from '../../i18n'
 import { defaultUntitledSql, localizeWorkTabTitle } from '../../i18n/databaseTabTitle'
 import { queryPageToExport } from '../../utils/queryCsv'
 import { bindPointerAction, bindPointerActionWithEvent } from '../../utils/pointerAction'
+import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 
 type SqlResult = QueryPage | ExecuteResult | SQLBatchResult
 
@@ -193,6 +194,7 @@ export function DatabaseWorkbench() {
     return [...map.entries()]
   }, [connectionList, t])
   const activeTab = tabs.find((t) => t.id === activeTabId)
+  const tabsRef = useScrollActiveTabIntoView(activeTabId)
   const databaseNames = useMemo(() => treeNodes.map((n) => n.label), [treeNodes])
   const invalidTabDatabase = useMemo(() => {
     if (!activeTab || activeTab.kind !== 'table' && activeTab.kind !== 'design') return ''
@@ -1127,11 +1129,12 @@ export function DatabaseWorkbench() {
 
         <main className="app-main">
           <div className="editor-chrome">
-            <div className="wn-tabs">
+            <div className="wn-tabs" ref={tabsRef}>
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
+                  data-tab-id={tab.id}
                   className={`wn-tab wn-tab-${tab.kind} ${tab.id === activeTabId ? 'active' : ''}`}
                   {...bindPointerAction(() => setActiveTabId(tab.id))}
                   onContextMenu={(e) => openTabContextMenu(e, tab.id, setTabCtxMenu, setActiveTabId)}

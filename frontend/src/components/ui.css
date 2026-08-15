@@ -1019,6 +1019,8 @@
   padding: 0 4px;
   overflow-x: auto;
   flex-shrink: 0;
+  scroll-padding-inline: 12px;
+  scrollbar-width: thin;
 }
 
 .wn-tab {

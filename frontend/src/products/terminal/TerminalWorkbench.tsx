@@ -28,6 +28,7 @@ import { TerminalSplitView } from '../../features/terminal/TerminalSplitView'
 import { TerminalTabStatusPane } from '../../features/terminal/TerminalTabStatusPane'
 import { focusTerminalSession } from '../../features/terminal/terminalFocus'
 import { bindPointerAction } from '../../utils/pointerAction'
+import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 import { terminalBackground } from '../../features/terminal/TerminalPane'
 import {
   closePane,
@@ -88,6 +89,7 @@ export function TerminalWorkbench() {
   tabsRef.current = tabs
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
+  const tabStripRef = useScrollActiveTabIntoView(activeTabId)
   const activePaneCount = activeTab ? countLeaves(activeTab.layout) : 0
 
   useEffect(() => {
@@ -907,11 +909,12 @@ export function TerminalWorkbench() {
 
         <main className="app-main">
           <div className="editor-chrome">
-            <div className="wn-tabs">
+            <div className="wn-tabs" ref={tabStripRef}>
               {tabs.map((t) => (
                 <button
                   key={t.id}
                   type="button"
+                  data-tab-id={t.id}
                   className={`wn-tab wn-tab-terminal wn-tab-${t.kind} ${t.id === activeTabId ? 'active' : ''} ${t.connectState !== 'ready' ? `wn-tab-${t.connectState}` : ''}`}
                   {...bindPointerAction(() => selectTab(t.id))}
                   onContextMenu={(e) => openTabContextMenu(e, t.id, setTabCtxMenu, setActiveTabId)}

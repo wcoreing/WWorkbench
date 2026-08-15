@@ -25,6 +25,7 @@ import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { bindPointerAction, bindPointerActionWithEvent } from '../../utils/pointerAction'
+import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 
 function toNoteDO(note: Note): model.NoteDO {
   return model.NoteDO.createFrom({
@@ -93,6 +94,7 @@ export function NotebookWorkbench() {
   const booted = useRef(false)
 
   const activeNote = activeTabId ? openNotes[activeTabId] ?? null : null
+  const tabsRef = useScrollActiveTabIntoView(activeTabId)
 
   useEffect(() => {
     setNotebookActiveNoteId(activeTabId)
@@ -748,7 +750,7 @@ export function NotebookWorkbench() {
 
         <main className="app-main notebook-main">
           <div className="editor-chrome">
-            <div className="wn-tabs">
+            <div className="wn-tabs" ref={tabsRef}>
               {openTabIds.map((id) => {
                 const note = openNotes[id]
                 if (!note) return null
@@ -756,6 +758,7 @@ export function NotebookWorkbench() {
                   <button
                     key={id}
                     type="button"
+                    data-tab-id={id}
                     className={`wn-tab ${id === activeTabId ? 'active' : ''}`}
                     {...bindPointerAction(() => setActiveTabId(id))}
                     onContextMenu={(e) => openTabContextMenu(e, id, setTabCtxMenu, setActiveTabId)}

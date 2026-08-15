@@ -30,6 +30,7 @@ import { SftpTransferRail } from '../../features/sftp/SftpTransferRail'
 import { useFileSelection } from '../../features/sftp/useFileSelection'
 import { useSftpFileDrop } from '../../features/sftp/useSftpFileDrop'
 import { bindPointerAction, bindPointerActionWithEvent } from '../../utils/pointerAction'
+import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 import { useSftpTransferQueue } from '../../features/sftp/useSftpTransferQueue'
 import { useSftpConflictResolver } from '../../features/sftp/useSftpConflictResolver'
 import { filterPathsWithConflict } from '../../features/sftp/transferConflict'
@@ -81,6 +82,7 @@ export function SftpWorkbench() {
   const workspaceRestored = useRef(false)
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
+  const tabsRef = useScrollActiveTabIntoView(activeTabId)
 
   useEffect(() => {
     if (activeProduct !== 'sftp') return
@@ -679,11 +681,12 @@ export function SftpWorkbench() {
         <main className="app-main sftp-main">
           {tabs.length > 0 && (
             <div className="editor-chrome">
-              <div className="wn-tabs">
+              <div className="wn-tabs" ref={tabsRef}>
                 {tabs.map((t) => (
                   <button
                     key={t.id}
                     type="button"
+                    data-tab-id={t.id}
                     className={`wn-tab wn-tab-terminal wn-tab-ssh ${t.id === activeTabId ? 'active' : ''}`}
                     {...bindPointerAction(() => setActiveTabId(t.id))}
                     onContextMenu={(e) => openTabContextMenu(e, t.id, setTabCtxMenu, setActiveTabId)}
