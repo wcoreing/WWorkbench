@@ -233,6 +233,9 @@ button {
   min-height: var(--tab-height);
   background: var(--color-tab-bar);
   border-bottom: 1px solid var(--color-border);
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
 }
 
 .editor-chrome .wn-tabs {

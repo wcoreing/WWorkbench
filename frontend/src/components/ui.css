@@ -1222,6 +1222,7 @@ button.wn-select-trigger {
   background: transparent;
   color: var(--color-text-muted);
   white-space: nowrap;
+  flex-shrink: 0;
   transition: color 0.12s, border-color 0.12s;
   margin-bottom: -1px;
 }
@@ -1303,6 +1304,7 @@ button.wn-select-trigger {
   font-size: 14px;
   font-weight: 300;
   min-width: 28px;
+  flex-shrink: 0;
   border-bottom: 1px solid transparent;
 }
 
@@ -1633,6 +1635,7 @@ button.wn-select-trigger {
   gap: 8px;
   min-height: 30px;
   padding: 0 10px;
+  min-width: 0;
 }
 
 .pane-toolbar-start,
@@ -1643,8 +1646,16 @@ button.wn-select-trigger {
   min-width: 0;
 }
 
+.pane-toolbar-start {
+  flex: 1;
+  overflow: hidden;
+}
+
 .pane-toolbar-end {
   flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
 }
 
 .pane-title {
@@ -1653,6 +1664,10 @@ button.wn-select-trigger {
   color: var(--color-text);
   font-family: var(--font-mono);
   letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .pane-meta {
