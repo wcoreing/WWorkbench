@@ -51,11 +51,15 @@ func (m *Manager) UninstallVersion(lang, version string) error {
 	case langGo:
 		err = uninstallGoVersion(version, emit)
 	case langPHP:
-		formula, ferr := phpBrewFormula(version)
-		if ferr != nil {
-			return ferr
+		if hasBrew() {
+			formula, ferr := phpBrewFormula(version)
+			if ferr != nil {
+				return ferr
+			}
+			err = uninstallPHPFormula(formula, emit)
+		} else {
+			err = uninstallPHPWorkbench(version, emit)
 		}
-		err = uninstallPHPFormula(formula, emit)
 	case langJava:
 		err = uninstallJavaVersion(version, emit)
 	default:
@@ -74,6 +78,23 @@ func (m *Manager) EnsureVersion(lang, version string) error {
 	version = strings.TrimSpace(version)
 	if version == "" {
 		return errno.New(errno.CodeInvalidArg, "版本号不能为空", lang)
+	}
+	if lang == langGo && !hasGoenv() {
+		resolved, err := resolveGoWorkbenchVersion(version)
+		if err != nil {
+			return err
+		}
+		version = resolved
+	}
+	if lang == langJava && !hasSdkman() {
+		if id, err := normalizeJavaInstallID(version); err == nil {
+			version = id
+		}
+	}
+	if lang == langPHP && !hasBrew() {
+		if resolved, err := resolvePHPWorkbenchVersion(version); err == nil {
+			version = resolved
+		}
 	}
 	if !versionInstalled(lang, version) {
 		if err := m.InstallVersion(lang, version); err != nil {

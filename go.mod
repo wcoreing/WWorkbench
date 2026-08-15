@@ -17,6 +17,7 @@ require (
 	github.com/wcoreing/ningharness v0.0.0-20260814155715-aa8c755a16ed
 	github.com/xuri/excelize/v2 v2.10.1
 	golang.org/x/crypto v0.51.0
+	golang.org/x/sys v0.46.0
 	modernc.org/sqlite v1.54.0
 )
 
@@ -124,7 +125,6 @@ require (
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect

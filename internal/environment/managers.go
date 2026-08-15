@@ -19,6 +19,17 @@ const (
 // InstallManager 安装语言对应的版本管理工具。
 func (m *Manager) InstallManager(lang string) error {
 	emit := m.installEmitter(lang)
+	if isWindows() {
+		switch lang {
+		case langGo, langJava, langPHP:
+			emit("WWorkbench 已内置 " + lang + " 版本管理，请直接安装版本即可")
+			return nil
+		case langNode:
+			err := windowsManagerUnsupported(lang)
+			emit(err.Error())
+			return err
+		}
+	}
 	emit("开始安装版本管理工具…")
 	var err error
 	switch lang {

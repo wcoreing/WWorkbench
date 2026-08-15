@@ -7,15 +7,15 @@ import '../../components/ui.css'
 const VERSION_HINT: Record<RuntimeLang, string> = {
   node: '例如 20、20.11.0、lts',
   go: '例如 1.22.3',
-  php: '例如 8.3（安装 php@8.3）',
-  java: '例如 17.0.11-tem',
+  php: '例如 5.6、7.4、8.3 或 8.3.33',
+  java: '例如 21、17（Temurin 主版本）',
 }
 
 const MANAGER_DESC: Record<RuntimeLang, string> = {
-  node: '通过 Homebrew 安装 nvm，可管理多个 Node.js 版本',
-  go: '通过 Homebrew 安装 goenv，可管理多个 Go 版本',
-  php: 'Homebrew 通过 php@8.x 安装并切换 PHP 版本',
-  java: 'sdkman 可安装多个 JDK（Java 暂无 brew 官方包，使用官方脚本）',
+  node: '通过 nvm / nvm-windows 管理多个 Node.js 版本',
+  go: 'WWorkbench 自管官方 Go（或 macOS goenv）',
+  php: 'WWorkbench 安装官方 Windows PHP（或 macOS Homebrew）',
+  java: 'WWorkbench 安装 Temurin JDK（或 macOS sdkman）',
 }
 
 interface EnvVersionModalProps {
@@ -147,8 +147,8 @@ export function EnvVersionModal({
       await api.useEnvVersion(lang, target)
       await onRefresh({ silent: true })
       const shellHint =
-        lang === 'php' || lang === 'go'
-          ? `，请执行 source ~/.zshrc 或新开终端后生效`
+        lang === 'php' || lang === 'go' || lang === 'java'
+          ? '，请新开终端后生效'
           : ''
       onStatus(`已切换至 ${v.version}${shellHint}`)
     } catch (e) {
@@ -163,7 +163,7 @@ export function EnvVersionModal({
     const target = versionActionTarget(v)
     return runInstall(`正在安装 ${v.version}…`, async () => {
       await api.installEnvVersion(lang, target)
-      onStatus(`已安装 ${v.version}`)
+      onStatus(`已安装并切换至 ${v.version}，请新开终端后执行 go version / java -version 验证`)
     }, false)
   }
 

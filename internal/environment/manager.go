@@ -147,15 +147,59 @@ func scanProjectDir(path string) model.ProjectEnvHintDO {
 		hint.Hints = append(hint.Hints, "go.mod → "+v)
 		hint.Suggested[langGo] = v
 	}
+	if v := readTrimFile(filepath.Join(path, ".go-version")); v != "" {
+		v = strings.TrimPrefix(strings.TrimSpace(v), "go")
+		hint.Hints = append(hint.Hints, ".go-version → "+v)
+		hint.Suggested[langGo] = v
+	}
 	if v := readTrimFile(filepath.Join(path, ".php-version")); v != "" {
 		hint.Hints = append(hint.Hints, ".php-version → "+v)
 		hint.Suggested[langPHP] = v
 	}
 	if v := readTrimFile(filepath.Join(path, ".java-version")); v != "" {
 		hint.Hints = append(hint.Hints, ".java-version → "+v)
-		hint.Suggested[langJava] = v
+		hint.Suggested[langJava] = normalizeJavaSuggest(v)
+	}
+	if raw := readFileText(filepath.Join(path, ".sdkmanrc")); raw != "" {
+		if j := parseSdkmanrcJava(raw); j != "" {
+			hint.Hints = append(hint.Hints, ".sdkmanrc → "+j)
+			hint.Suggested[langJava] = normalizeJavaSuggest(j)
+		}
 	}
 	return hint
+}
+
+// normalizeJavaSuggest 将项目线索规范为主版本或可安装 id。
+func normalizeJavaSuggest(v string) string {
+	id, err := normalizeJavaInstallID(v)
+	if err != nil {
+		return strings.TrimSpace(v)
+	}
+	return id
+}
+
+// parseSdkmanrcJava 从 .sdkmanrc 提取 java= 值。
+func parseSdkmanrcJava(content string) string {
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		lower := strings.ToLower(line)
+		if strings.HasPrefix(lower, "java=") {
+			return strings.TrimSpace(line[strings.Index(line, "=")+1:])
+		}
+	}
+	return ""
+}
+
+// readFileText 读取整个文本文件。
+func readFileText(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return string(data)
 }
 
 // readTrimFile 读取文件首行并去空白。
@@ -167,15 +211,22 @@ func readTrimFile(path string) string {
 	return strings.TrimSpace(strings.Split(string(data), "\n")[0])
 }
 
-var goModVersionRe = regexp.MustCompile(`(?m)^go\s+([0-9]+\.[0-9]+(?:\.[0-9]+)?)`)
+var (
+	goModVersionRe   = regexp.MustCompile(`(?m)^go\s+([0-9]+\.[0-9]+(?:\.[0-9]+)?)`)
+	goModToolchainRe = regexp.MustCompile(`(?m)^toolchain\s+go([0-9]+\.[0-9]+(?:\.[0-9]+)?)`)
+)
 
-// parseGoMod 从 go.mod 解析 Go 版本。
+// parseGoMod 从 go.mod 解析 Go 版本（优先 toolchain）。
 func parseGoMod(path string) string {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return ""
 	}
-	m := goModVersionRe.FindStringSubmatch(string(data))
+	text := string(data)
+	if m := goModToolchainRe.FindStringSubmatch(text); len(m) >= 2 {
+		return m[1]
+	}
+	m := goModVersionRe.FindStringSubmatch(text)
 	if len(m) < 2 {
 		return ""
 	}

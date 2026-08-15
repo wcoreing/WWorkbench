@@ -8,10 +8,31 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 )
+
+// runBinary 直接执行二进制并合并 stdout/stderr。
+func runBinary(bin string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin, args...)
+	out, err := cmd.CombinedOutput()
+	return strings.TrimSpace(string(out)), err
+}
+
+// runBinaryOK 执行二进制，失败返回空字符串。
+func runBinaryOK(bin string, args ...string) string {
+	out, _ := runBinary(bin, args...)
+	return strings.TrimSpace(out)
+}
+
+// isWindows 是否运行在 Windows。
+func isWindows() bool {
+	return runtime.GOOS == "windows"
+}
 
 // runLoginShell 在登录 Shell 中执行脚本并返回标准输出。
 func runLoginShell(script string) (string, error) {

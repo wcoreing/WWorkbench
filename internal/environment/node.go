@@ -40,6 +40,9 @@ func nvmScript() string {
 
 // detectNode 检测 Node.js 运行时。
 func detectNode() model.RuntimeDO {
+	if isWindows() {
+		return detectNodeWindows()
+	}
 	row := model.RuntimeDO{Lang: langNode, Label: "Node.js", ManagerLabel: managerLabelNvm()}
 	if hasNvm() {
 		row.Manager = managerNvm
@@ -53,8 +56,7 @@ func detectNode() model.RuntimeDO {
 		bin := runLoginShellOK(nvmScript() + ` && command -v node`)
 		row.Binary = bin
 		if row.Version == "" && bin != "" {
-			ver := runLoginShellOK(bin + ` -v`)
-			row.Version = normalizeNodeVersion(ver)
+			row.Version = normalizeNodeVersion(runBinaryOK(bin, "-v"))
 			row.Available = row.Version != ""
 		}
 		return row
@@ -64,28 +66,24 @@ func detectNode() model.RuntimeDO {
 	row.CanInstallManager = true
 	bin, err := execLookPath("node")
 	if err != nil {
-		row.Manager = "system"
 		return row
 	}
-	row.Manager = "system"
 	row.Binary = bin
-	row.Version = normalizeNodeVersion(runLoginShellOK(bin + ` -v`))
+	row.Version = normalizeNodeVersion(runBinaryOK(bin, "-v"))
 	row.Available = row.Version != ""
 	return row
 }
 
-// listNodeVersions 列出 Node 可切换版本（nvm LTS catalog + 已安装）。
+// listNodeVersions 列出 Node 可切换版本。
 func listNodeVersions() []model.RuntimeVersionDO {
 	current := detectNode().Version
+	if isWindows() {
+		return listNodeVersionsWindows(current)
+	}
 	if hasNvm() {
 		return listNodeCatalogVersions(current)
 	}
-	if current != "" {
-		return []model.RuntimeVersionDO{{
-			Version: current, Label: "system", Installed: true, Active: true,
-		}}
-	}
-	return nil
+	return systemOnlyVersions(current, "system")
 }
 
 // listNodeCatalogVersions 合并 nvm 已安装与 LTS 可选版本。
@@ -179,6 +177,9 @@ func compareNodeSemver(a, b string) int {
 // useNodeVersion 切换 Node 版本。
 func useNodeVersion(version string) error {
 	version = strings.TrimPrefix(strings.TrimSpace(version), "v")
+	if isWindows() {
+		return useNodeVersionWindows(version)
+	}
 	if !hasNvm() {
 		return errno.New(errno.CodeInvalidArg, "未检测到 nvm，请先安装 nvm", version)
 	}
@@ -198,6 +199,9 @@ func useNodeVersion(version string) error {
 
 // installNodeVersion 安装 Node 版本。
 func installNodeVersion(version string, emit func(string)) error {
+	if isWindows() {
+		return installNodeVersionWindows(version, emit)
+	}
 	if !hasNvm() {
 		return errno.New(errno.CodeInvalidArg, "未检测到 nvm，请先安装 nvm", version)
 	}

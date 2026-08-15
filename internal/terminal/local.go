@@ -38,7 +38,7 @@ func (m *Manager) OpenLocal(cols, rows int) (*model.TerminalSessionInfoDO, error
 	} else {
 		cmd = ptmx.Command(shell)
 	}
-	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor")
+	cmd.Env = environment.AugmentLocalEnv(append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor"))
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
 		cmd.Dir = home
 	}
