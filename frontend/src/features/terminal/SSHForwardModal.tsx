@@ -74,7 +74,12 @@ export function SSHForwardModal({ open, hosts, initial, defaultHostId, onClose, 
   return (
     <ModalPortal>
       <div className="wn-modal-backdrop" {...pressProps(onClose)}>
-        <div className="wn-modal wn-modal-compact" onClick={(e) => e.stopPropagation()} role="dialog">
+        <div
+          className="wn-modal wn-modal-compact"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          role="dialog"
+        >
           <header className="wn-modal-header">
             <h2 className="wn-modal-title">{initial ? t('sshForward.editPreset') : t('sshForward.newPreset')}</h2>
           </header>
