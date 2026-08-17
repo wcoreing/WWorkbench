@@ -10,7 +10,7 @@ import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildSftpSurface, briefList } from '../../stores/agentSurface'
 import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
-import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
+import { openNotebook, openTerminal, openLogs, openSSHForward, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
@@ -842,7 +842,7 @@ export function SftpWorkbench() {
             className="wn-context-item"
             {...pressProps(() => {
               setCtxMenu(null)
-              openProductLink({ action: 'notebook', hostId: ctxMenu.host.id })
+              openNotebook({ hostId: ctxMenu.host.id }, 'sftp')
             })}
           >
             {t('sftp.ctxNotebook')}
@@ -852,11 +852,66 @@ export function SftpWorkbench() {
             className="wn-context-item"
             {...pressProps(() => {
               setCtxMenu(null)
-              openProductLink({ action: 'terminal', hostId: ctxMenu.host.id })
+              openTerminal({ hostId: ctxMenu.host.id }, 'sftp')
             })}
           >
             {t('sftp.ctxTerminal')}
           </button>
+          {ctxMenu.host.kind === 'docker' && ctxMenu.host.contextId && ctxMenu.host.containerId && (
+            <button
+              type="button"
+              className="wn-context-item"
+              {...pressProps(() => {
+                const host = ctxMenu.host
+                setCtxMenu(null)
+                openLogs(
+                  {
+                    sourceType: 'docker',
+                    name: host.containerName || host.name,
+                    dockerContextId: host.contextId,
+                    containerId: host.containerId,
+                    fetch: true,
+                  },
+                  'sftp',
+                )
+              })}
+            >
+              {t('sftp.ctxLogs')}
+            </button>
+          )}
+          {ctxMenu.host.kind === 'ssh' && (
+            <button
+              type="button"
+              className="wn-context-item"
+              {...pressProps(() => {
+                const host = ctxMenu.host
+                setCtxMenu(null)
+                openLogs(
+                  {
+                    sourceType: 'ssh_file',
+                    name: host.name,
+                    sshHostId: host.id,
+                    fetch: false,
+                  },
+                  'sftp',
+                )
+              })}
+            >
+              {t('sftp.ctxLogs')}
+            </button>
+          )}
+          {ctxMenu.host.kind === 'ssh' && (
+            <button
+              type="button"
+              className="wn-context-item"
+              {...pressProps(() => {
+                setCtxMenu(null)
+                openSSHForward({ hostId: ctxMenu.host.id, openNew: true }, 'sftp')
+              })}
+            >
+              {t('sftp.ctxForward')}
+            </button>
+          )}
           {ctxMenu.host.kind === 'ssh' ? (
             <button
               type="button"

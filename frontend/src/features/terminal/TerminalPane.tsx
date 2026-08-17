@@ -4,8 +4,8 @@ import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { api } from '../../api/client'
 import { onTerminalClosed, onTerminalOutput } from '../../api/terminalEvents'
+import { bindSelectionGuard, zoomCompensatedPx } from '../../components/compat'
 import { useAppStore } from '../../stores/appStore'
-import { DEFAULT_UI_FONT_SIZE } from '../../shell/uiFontSize'
 import { registerTerminalFocus } from './terminalFocus'
 
 interface Props {
@@ -22,8 +22,6 @@ export function terminalBackground(opacity: number): string {
 
 const XTERM_CLEAR_BG = '#00000000'
 const BASE_TERM_FONT_PX = 12
-/** 小于此像素位移的拖拽视为点击，清掉误选区（壳层 zoom 下尤其容易飞选）。 */
-const SELECT_DRAG_SLOP_PX = 5
 
 /** 在容器可见且有尺寸时调整 xterm，避免 hidden/销毁后报错。 */
 function safeFit(fit: FitAddon, term: Terminal, el: HTMLElement): boolean {
@@ -38,39 +36,7 @@ function safeFit(fit: FitAddon, term: Terminal, el: HTMLElement): boolean {
 
 /** termFontSizeForUi 按壳层字号档位缩放终端字号（配合 host 反 zoom）。 */
 function termFontSizeForUi(uiFontSize: number): number {
-  return Math.max(11, Math.round(BASE_TERM_FONT_PX * (uiFontSize / DEFAULT_UI_FONT_SIZE)))
-}
-
-/** bindSelectionGuard 抑制误触选区：未形成有效拖拽则 clearSelection。 */
-function bindSelectionGuard(el: HTMLElement, term: Terminal): () => void {
-  let origin: { x: number; y: number } | null = null
-  let dragged = false
-
-  const onDown = (e: MouseEvent) => {
-    if (e.button !== 0) return
-    origin = { x: e.clientX, y: e.clientY }
-    dragged = false
-  }
-  const onMove = (e: MouseEvent) => {
-    if (!origin || (e.buttons & 1) === 0) return
-    if (Math.hypot(e.clientX - origin.x, e.clientY - origin.y) > SELECT_DRAG_SLOP_PX) {
-      dragged = true
-    }
-  }
-  const onUp = () => {
-    if (origin && !dragged) term.clearSelection()
-    origin = null
-    dragged = false
-  }
-
-  el.addEventListener('mousedown', onDown, true)
-  window.addEventListener('mousemove', onMove, true)
-  window.addEventListener('mouseup', onUp, true)
-  return () => {
-    el.removeEventListener('mousedown', onDown, true)
-    window.removeEventListener('mousemove', onMove, true)
-    window.removeEventListener('mouseup', onUp, true)
-  }
+  return Math.max(11, zoomCompensatedPx(BASE_TERM_FONT_PX, uiFontSize))
 }
 
 /** xterm 终端视图 */
@@ -136,7 +102,7 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
       term.writeln('\r\n\x1b[33m[会话已结束]\x1b[0m')
     })
 
-    const unbindGuard = bindSelectionGuard(el, term)
+    const unbindGuard = bindSelectionGuard(el, () => term.clearSelection())
     const ro = new ResizeObserver(() => resize())
     ro.observe(el)
 
@@ -203,7 +169,7 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
   return (
     <div
       ref={containerRef}
-      className="terminal-xterm-host"
+      className="terminal-xterm-host ww-zoom-content"
       data-ww-focus-hog=""
       style={{ backgroundColor: terminalBackground(opacity) }}
     />

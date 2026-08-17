@@ -6,9 +6,16 @@ import "WWorkbench/internal/workbench"
 type UIActionKind string
 
 const (
-	UIActionTerminalOpen   UIActionKind = UIActionKind(workbench.CapOpenTerminal)
-	UIActionTerminalExec   UIActionKind = UIActionKind(workbench.CapTerminalExec)
-	UIActionDatabaseOpen   UIActionKind = UIActionKind(workbench.CapDatabaseOpen)
+	UIActionTerminalOpen      UIActionKind = UIActionKind(workbench.CapOpenTerminal)
+	UIActionTerminalExec      UIActionKind = UIActionKind(workbench.CapTerminalExec)
+	UIActionDatabaseOpen      UIActionKind = UIActionKind(workbench.CapDatabaseOpen)
+	UIActionNotebookOpen      UIActionKind = UIActionKind(workbench.CapNotebookOpen)
+	UIActionSFTPOpen          UIActionKind = UIActionKind(workbench.CapSFTPOpen)
+	UIActionDockerContextOpen UIActionKind = UIActionKind(workbench.CapDockerContextOpen)
+	UIActionLogsOpen          UIActionKind = UIActionKind(workbench.CapLogsOpen)
+	UIActionHTTPAPIOpen       UIActionKind = UIActionKind(workbench.CapHTTPAPIOpen)
+	UIActionEnvironmentOpen   UIActionKind = UIActionKind(workbench.CapEnvironmentOpen)
+	UIActionSSHForwardOpen    UIActionKind = UIActionKind(workbench.CapSSHForwardOpen)
 )
 
 // UIActionBus 向前端投递 UI 联动（经 Wails agent:ui_action 事件）。

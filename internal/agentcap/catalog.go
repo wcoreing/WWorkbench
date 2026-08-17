@@ -192,6 +192,26 @@ func Catalog() []Item {
 			Description:  "优先 requestId；GET/HEAD 直执；变更类方法需用户确认",
 			NeedsConfirm: true, DefaultEnabled: true,
 		},
+		{
+			Name: "logs_open", Label: "打开日志中心", Risk: RiskSession,
+			Description:    "切换到日志产品线；可按 logSourceId 或 Docker/SSH 外键起草并拉取",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "httpapi_open", Label: "打开 API 工作台", Risk: RiskSession,
+			Description:    "切换到 HTTP API 产品线，可选聚焦已保存请求",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "environment_open", Label: "打开环境工作台", Risk: RiskSession,
+			Description:    "切换到本机环境产品线；可选 lang 打开版本切换或预设",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "ssh_forward_open", Label: "打开 SSH 隧道", Risk: RiskSession,
+			Description:    "切换到终端侧栏隧道；可按 hostId 新建或 presetId 编辑",
+			DefaultEnabled: true,
+		},
 	}
 }
 
@@ -205,4 +225,4 @@ func DefaultPermissions() map[string]bool {
 }
 
 // UnavailableNote 尚未接入 Agent 的系统能力说明。
-const UnavailableNote = "SFTP 文件操作、环境管理尚未完全接入 AI；核心资产落盘已齐：HTTP（请求+环境）、SSH（主机+端口转发）、库连接、日志源、Docker 上下文；变更经 workbench-changed 雷达刷新界面。"
+const UnavailableNote = "SFTP 文件操作尚未完全接入 AI；UI 打开类已齐：终端/库/笔记/SFTP/Docker/日志/API/环境；核心资产落盘：HTTP、SSH、库连接、日志源、Docker、环境预设；变更经 workbench-changed 雷达刷新界面。"

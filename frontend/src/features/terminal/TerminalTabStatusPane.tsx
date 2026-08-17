@@ -6,29 +6,30 @@ interface Props {
   title: string
   status: 'connecting' | 'failed'
   error?: string
-  opacity: number
   onRetry?: () => void
   onEdit?: () => void
 }
 
-/** TerminalTabStatusPane 标签页内连接中/失败状态。 */
-export function TerminalTabStatusPane({ title, status, error, opacity, onRetry, onEdit }: Props) {
+/** 连接中/失败遮罩：始终实底，避免终端玻璃透出桌面造成「双层」观感。 */
+export function TerminalTabStatusPane({ title, status, error, onRetry, onEdit }: Props) {
   const { t } = useI18n()
   return (
     <div
       className="pane-empty terminal-connect-empty terminal-tab-status-pane"
-      style={{ backgroundColor: terminalBackground(opacity) }}
+      style={{ backgroundColor: terminalBackground(1) }}
     >
       {status === 'connecting' ? (
         <>
           <span className="terminal-connect-spinner" aria-hidden />
           <p className="terminal-connect-title">{t('terminal.connecting', { name: title })}</p>
-          <p className="terminal-connect-hint">{t('terminal.connectingHint')}</p>
         </>
       ) : (
         <>
-          <p className="terminal-connect-title">{t('terminal.connectFailed', { name: title })}</p>
-          {error && <p className="terminal-connect-error">{error}</p>}
+          {error ? (
+            <p className="terminal-connect-error">{error}</p>
+          ) : (
+            <p className="terminal-connect-title">{t('terminal.connectFailed', { name: title })}</p>
+          )}
           <p className="terminal-connect-hint">{t('terminal.connectFailedHint')}</p>
           <div className="terminal-connect-actions">
             {onRetry && (

@@ -5,6 +5,7 @@ import { Capability } from './capabilities'
 export function capabilityToProductId(capability: string): ProductId | null {
   switch (capability) {
     case Capability.TerminalOpen:
+    case Capability.SSHForwardOpen:
       return 'terminal'
     case Capability.DatabaseOpen:
       return 'database'
@@ -14,6 +15,12 @@ export function capabilityToProductId(capability: string): ProductId | null {
       return 'sftp'
     case Capability.DockerContextOpen:
       return 'docker'
+    case Capability.LogsOpen:
+      return 'logs'
+    case Capability.HttpApiOpen:
+      return 'httpapi'
+    case Capability.EnvironmentOpen:
+      return 'environment'
     default:
       return null
   }

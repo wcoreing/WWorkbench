@@ -23,6 +23,14 @@ export function dispatchAgentUiAction(raw: Record<string, unknown>) {
         )
       } else if (kind === Capability.DatabaseOpen) {
         useAppStore.getState().setStatusMessage('AI：已打开数据库工作台')
+      } else if (kind === Capability.LogsOpen) {
+        useAppStore.getState().setStatusMessage('AI：已打开日志中心')
+      } else if (kind === Capability.HttpApiOpen) {
+        useAppStore.getState().setStatusMessage('AI：已打开 API 工作台')
+      } else if (kind === Capability.EnvironmentOpen) {
+        useAppStore.getState().setStatusMessage('AI：已打开环境工作台')
+      } else if (kind === Capability.SSHForwardOpen) {
+        useAppStore.getState().setStatusMessage('AI：已打开 SSH 隧道')
       }
     } else if (res.error) {
       useAppStore.getState().setStatusMessage(res.error)

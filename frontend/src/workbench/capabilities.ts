@@ -1,5 +1,7 @@
 /** 工作台统一能力 ID（与 Go internal/workbench/capability.go 保持一致）。
  * 名称须匹配 ^[a-zA-Z0-9_-]+$（OpenAI / DeepSeek function calling）。
+ *
+ * 本文件是前端能力名唯一源；跨产品跳转请用 assetOpen / openCapability，勿再发明 action 别名。
  */
 
 export const Capability = {
@@ -18,6 +20,10 @@ export const Capability = {
   NotebookAppend: 'notebook_append_content',
   SftpOpen: 'sftp_open',
   DockerContextOpen: 'docker_context_open',
+  LogsOpen: 'logs_open',
+  HttpApiOpen: 'httpapi_open',
+  EnvironmentOpen: 'environment_open',
+  SSHForwardOpen: 'ssh_forward_open',
 } as const
 
 export type WorkbenchCapability = (typeof Capability)[keyof typeof Capability]
@@ -29,4 +35,8 @@ export const UI_CAPABILITIES: ReadonlySet<string> = new Set([
   Capability.NotebookOpen,
   Capability.SftpOpen,
   Capability.DockerContextOpen,
+  Capability.LogsOpen,
+  Capability.HttpApiOpen,
+  Capability.EnvironmentOpen,
+  Capability.SSHForwardOpen,
 ])

@@ -21,7 +21,7 @@ import {
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildNotebookSurface, briefList } from '../../stores/agentSurface'
-import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
+import { openTerminal, openDatabase as openDatabaseWorkbench, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
@@ -530,9 +530,9 @@ export function NotebookWorkbench() {
       return
     }
     if (activeNote.sshHostId) {
-      openProductLink({ action: 'terminal', hostId: activeNote.sshHostId, initialCommand: command })
+      openTerminal({ hostId: activeNote.sshHostId, initialCommand: command }, 'notebook')
     } else {
-      openProductLink({ action: 'terminal', localShell: true, initialCommand: command })
+      openTerminal({ localShell: true, initialCommand: command }, 'notebook')
     }
     setStatusMessage(t('notebook.runningCmd'))
   }
@@ -550,12 +550,14 @@ export function NotebookWorkbench() {
     } else {
       setStatusMessage(conn ? t('notebook.openingConnFill', { name: conn.name }) : t('notebook.openingDbFill'))
     }
-    openProductLink({
-      action: 'database',
-      connectionId: activeNote.connectionId,
-      initialSql: sql || undefined,
-      runSql: runSql && Boolean(sql),
-    })
+    openDatabaseWorkbench(
+      {
+        connectionId: activeNote.connectionId,
+        initialSql: sql || undefined,
+        runSql: runSql && Boolean(sql),
+      },
+      'notebook',
+    )
   }
 
   /** onConnectionLinkChange 关联数据库连接，并同步 SSH 跳板主机。 */

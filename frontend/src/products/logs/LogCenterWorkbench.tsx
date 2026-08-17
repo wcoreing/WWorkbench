@@ -8,6 +8,9 @@ import { openAgentDraft, mentionLogSource } from '../../features/agent/openAgent
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildLogsSurface, briefList } from '../../stores/agentSurface'
+import { useWorkbenchCommand } from '../../stores/productLink'
+import { Capability } from '../../workbench/capabilities'
+import { payloadBool, payloadStr } from '../../workbench/commandPayload'
 import { subscribeLogsChunks } from '../../api/logsEvents'
 import { loadLogsWorkspace, scheduleLogsWorkspacePersist } from '../../stores/logsWorkspacePersist'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
@@ -163,6 +166,137 @@ export function LogCenterWorkbench() {
       loadEditor(list.find((x) => x.id === id) ?? null)
     })()
   }, [refreshList, loadEditor])
+
+  useWorkbenchCommand(Capability.LogsOpen, (cmd) => {
+    const logSourceId = payloadStr(cmd.payload, 'logSourceId')
+    const sourceTypeRaw = payloadStr(cmd.payload, 'sourceType')
+    const nameHint = payloadStr(cmd.payload, 'name')
+    const pathHint = payloadStr(cmd.payload, 'path') ?? ''
+    const sshHostIdHint = payloadStr(cmd.payload, 'sshHostId') ?? ''
+    const dockerContextIdHint = payloadStr(cmd.payload, 'dockerContextId') ?? ''
+    const containerIdHint = payloadStr(cmd.payload, 'containerId') ?? ''
+    const composeDirHint = payloadStr(cmd.payload, 'composeDir') ?? ''
+    const composeServiceHint = payloadStr(cmd.payload, 'composeService') ?? ''
+    const shouldFetch = cmd.payload.fetch === undefined ? true : payloadBool(cmd.payload, 'fetch')
+
+    void (async () => {
+      try {
+        const list = await refreshList()
+        let target = logSourceId ? list.find((i) => i.id === logSourceId) : undefined
+
+        const st = (SOURCE_TYPES.includes(sourceTypeRaw as LogSourceType)
+          ? sourceTypeRaw
+          : undefined) as LogSourceType | undefined
+
+        if (!target && st === 'docker' && dockerContextIdHint && containerIdHint) {
+          target = list.find(
+            (i) =>
+              i.sourceType === 'docker' &&
+              i.dockerContextId === dockerContextIdHint &&
+              i.containerId === containerIdHint,
+          )
+        }
+        if (!target && st === 'ssh_file' && sshHostIdHint && pathHint) {
+          target = list.find(
+            (i) => i.sourceType === 'ssh_file' && i.sshHostId === sshHostIdHint && i.path === pathHint,
+          )
+        }
+
+        // SSH 无路径：只起草表单，不落空资产
+        if (!target && (st === 'ssh_file' || (!st && sshHostIdHint && !pathHint && !dockerContextIdHint)) && sshHostIdHint && !pathHint) {
+          setActiveId('')
+          setName(nameHint || t('logs.newSource'))
+          setSourceType('ssh_file')
+          setPath('')
+          setSSHHostId(sshHostIdHint)
+          setDockerContextId('')
+          setContainerId('')
+          setComposeDir('')
+          setComposeService('')
+          setTailLines(200)
+          setContent('')
+          setStatusMessage(t('logs.draftSSH'))
+          return
+        }
+
+        if (!target && (st || dockerContextIdHint || (sshHostIdHint && pathHint) || pathHint)) {
+          const sourceType: LogSourceType = st ?? (dockerContextIdHint ? 'docker' : sshHostIdHint ? 'ssh_file' : 'local_file')
+          const label =
+            nameHint ||
+            (sourceType === 'docker' ? containerIdHint.slice(0, 12) || 'docker' : pathHint || t('logs.newSource'))
+          const saved = (await api.saveLogSource(
+            model.LogSourceDO.createFrom({
+              id: '',
+              name: label,
+              sourceType,
+              path: pathHint,
+              sshHostId: sshHostIdHint,
+              dockerContextId: dockerContextIdHint,
+              containerId: containerIdHint,
+              composeDir: composeDirHint,
+              composeService: composeServiceHint,
+              tailLines: 200,
+              sortOrder: 0,
+              createdAt: 0,
+              updatedAt: 0,
+            }),
+          )) as LogSource
+          const next = await refreshList()
+          target = next.find((i) => i.id === saved.id) ?? saved
+          setStatusMessage(t('logs.saved'))
+        }
+
+        if (!target) {
+          setStatusMessage(t('logs.emptyList'))
+          return
+        }
+
+        setActiveId(target.id)
+        loadEditor(target)
+        setContent('')
+
+        if (shouldFetch && canFetchLogConfig(
+          target.sourceType,
+          target.path,
+          target.sshHostId,
+          target.dockerContextId,
+          target.containerId,
+          target.composeDir,
+        )) {
+          setLoading(true)
+          try {
+            const res = await api.fetchLogSourceConfig(
+              model.LogSourceDO.createFrom({
+                id: target.id,
+                name: target.name,
+                sourceType: target.sourceType,
+                path: target.path,
+                sshHostId: target.sshHostId,
+                dockerContextId: target.dockerContextId,
+                containerId: target.containerId,
+                composeDir: target.composeDir,
+                composeService: target.composeService,
+                tailLines: target.tailLines > 0 ? target.tailLines : 200,
+                sortOrder: target.sortOrder,
+                createdAt: target.createdAt,
+                updatedAt: target.updatedAt,
+              }),
+              target.tailLines > 0 ? target.tailLines : 200,
+            )
+            setContent(res.content || '')
+            setStatusMessage(t('logs.refresh'))
+          } catch (e) {
+            setContent((e as Error).message)
+            setStatusMessage((e as Error).message)
+          } finally {
+            setLoading(false)
+          }
+        }
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  })
 
   useEffect(() => {
     const apply = async (evt: WorkbenchChangedEvent) => {

@@ -17,8 +17,7 @@ import { dismissOverlays } from '../components/compat/dismissOverlays'
 export type { WorkTab } from './workTab'
 export type { AgentSurface } from './agentSurface'
 
-export type ProductLinkAction = 'terminal' | 'sftp' | 'database' | 'docker-context' | 'notebook'
-
+/** ConnectionDraft 跨产品打开数据库时的连接草稿（Docker 等解析结果）。 */
 export interface ConnectionDraft {
   name?: string
   group?: string
@@ -31,17 +30,6 @@ export interface ConnectionDraft {
   charset?: string
   sshEnabled?: boolean
   sshHostId?: string
-}
-
-export interface ProductLinkRequest {
-  action: ProductLinkAction
-  hostId?: string
-  connectionId?: string
-  localShell?: boolean
-  initialCommand?: string
-  initialSql?: string
-  runSql?: boolean
-  connectionDraft?: ConnectionDraft
 }
 
 interface AppState {

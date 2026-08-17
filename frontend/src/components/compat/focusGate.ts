@@ -87,22 +87,44 @@ function findChromeControl(chrome: HTMLElement, x: number, y: number): HTMLEleme
   return null
 }
 
-function retargetPointer(control: HTMLElement, e: PointerEvent) {
-  control.dispatchEvent(
-    new PointerEvent('pointerdown', {
-      bubbles: true,
-      cancelable: true,
-      composed: true,
-      button: 0,
-      buttons: 1,
-      clientX: e.clientX,
-      clientY: e.clientY,
-      pointerId: e.pointerId,
-      pointerType: e.pointerType,
-      isPrimary: e.isPrimary,
-      view: window,
-    }),
-  )
+function pointerInit(e: PointerEvent): PointerEventInit {
+  return {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    button: 0,
+    buttons: 1,
+    clientX: e.clientX,
+    clientY: e.clientY,
+    pointerId: e.pointerId,
+    pointerType: e.pointerType || 'mouse',
+    isPrimary: e.isPrimary ?? true,
+    view: window,
+  }
+}
+
+/**
+ * chrome 穿透：原事件目标不是命令本身，必须重派。
+ * 合成 pointerdown 在 WKWebView 上不可靠，最终靠 click → pressProps.onClick。
+ */
+function retargetChromeControl(control: HTMLElement, e: PointerEvent) {
+  const init = pointerInit(e)
+  queueMicrotask(() => {
+    if (!control.isConnected) return
+    control.dispatchEvent(new PointerEvent('pointerdown', init))
+    control.click()
+  })
+}
+
+/**
+ * 右键菜单项：不 stop 原事件（让 pressProps 有机会直接跑），
+ * 再 microtask click 兜底；pressProps 短时去重防双触发。
+ */
+function ensureContextMenuPress(command: HTMLElement) {
+  queueMicrotask(() => {
+    if (!command.isConnected) return
+    command.click()
+  })
 }
 
 let installed = false
@@ -110,8 +132,9 @@ let installed = false
 /**
  * installFocusGate — 捕获阶段保证命令首击必达。
  *
- * 1. 内容持焦（Monaco/xterm/input）点到按钮/Select：先 blur，再让 pressProps 执行
- * 2. 浮层盖住显式 chrome（产品轨/顶栏）：dismiss + 转发给下方控件
+ * 1. 右键菜单：只 blur + click 兜底，禁止 stopImmediate（否则 portal 上 pressProps 永收不到）
+ * 2. 内容持焦点到普通按钮：blur 后重派
+ * 3. 浮层盖住显式 chrome：dismiss + 转发给下方控件
  */
 export function installFocusGate(): () => void {
   if (installed) return () => {}
@@ -119,6 +142,19 @@ export function installFocusGate(): () => void {
 
   const onPointerDown = (e: PointerEvent) => {
     if (e.button !== 0) return
+    if (!e.isTrusted) return
+
+    const inContextMenu =
+      e.target instanceof Element && !!e.target.closest('.wn-context-menu')
+
+    if (inContextMenu) {
+      const command = findCommandControl(e.target)
+      if (command) {
+        if (shouldReleaseForCommand(command)) blurActive()
+        ensureContextMenuPress(command)
+      }
+      return
+    }
 
     const targetInChrome =
       e.target instanceof Element && !!e.target.closest(CHROME_POINT_SEL)
@@ -131,7 +167,7 @@ export function installFocusGate(): () => void {
           e.preventDefault()
           e.stopImmediatePropagation()
           dismissOverlays()
-          retargetPointer(control, e)
+          retargetChromeControl(control, e)
           return
         }
       }
@@ -140,8 +176,9 @@ export function installFocusGate(): () => void {
     const command = findCommandControl(e.target)
     if (command && shouldReleaseForCommand(command)) {
       blurActive()
-      // 取消「仅焦移」；不 stop，让目标 pressProps / Select 同事件执行
+      // 不 stop：同一次 pointerdown 上的 pressProps 继续执行；click 仅作 WKWebView 兜底
       e.preventDefault()
+      ensureContextMenuPress(command)
     }
   }
 

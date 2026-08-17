@@ -12,7 +12,7 @@ import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/ag
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildTerminalSurface } from '../../stores/agentSurface'
-import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
+import { openNotebook, openDockerContextFromHost, openSftp, openLogs, openSSHForward, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadBool, payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
@@ -26,6 +26,7 @@ import { restoreTerminalTab } from '../../features/terminal/restoreTerminalWorks
 import { SSHHostModal } from '../../features/terminal/SSHHostModal'
 import { useSSHTrustConfirm } from '../../features/terminal/useSSHTrustConfirm'
 import { LocalPortsDialog } from '../../features/terminal/LocalPortsPanel'
+import { SSHForwardPanel } from '../../features/terminal/SSHForwardPanel'
 import { TerminalSplitView } from '../../features/terminal/TerminalSplitView'
 import { TerminalTabStatusPane } from '../../features/terminal/TerminalTabStatusPane'
 import { focusTerminalSession } from '../../features/terminal/terminalFocus'
@@ -205,20 +206,6 @@ export function TerminalWorkbench() {
     }
     prevProductRef.current = activeProduct
   }, [activeProduct, activeTabId, tabs])
-
-  useEffect(() => {
-    if (!ctxMenu) return
-    const close = () => setCtxMenu(null)
-    window.addEventListener('pointerdown', close)
-    return () => window.removeEventListener('pointerdown', close)
-  }, [ctxMenu])
-
-  useEffect(() => {
-    if (!tabCtxMenu) return
-    const close = () => setTabCtxMenu(null)
-    window.addEventListener('pointerdown', close)
-    return () => window.removeEventListener('pointerdown', close)
-  }, [tabCtxMenu])
 
   useEffect(() => {
     const readyTabs = tabs.filter((t) => t.connectState === 'ready')
@@ -969,6 +956,8 @@ export function TerminalWorkbench() {
                 </div>
               </section>
             )}
+
+            <SSHForwardPanel hosts={sshHosts} onStatus={setStatusMessage} />
           </>
         }
       >
@@ -1033,7 +1022,6 @@ export function TerminalWorkbench() {
                     title={t.title}
                     status={t.connectState}
                     error={t.connectError}
-                    opacity={terminalOpacity}
                     onRetry={t.connectState === 'failed' ? () => void retryTabConnect(t.id) : undefined}
                     onEdit={
                       t.connectState === 'failed' && t.kind === 'ssh' && t.connectHost
@@ -1075,6 +1063,7 @@ export function TerminalWorkbench() {
           x={ctxMenu.x}
           y={ctxMenu.y}
           onClick={(e) => e.stopPropagation()}
+          onDismiss={() => setCtxMenu(null)}
         >
           <button
             type="button"
@@ -1104,6 +1093,7 @@ export function TerminalWorkbench() {
           x={ctxMenu.x}
           y={ctxMenu.y}
           onClick={(e) => e.stopPropagation()}
+          onDismiss={() => setCtxMenu(null)}
         >
           <button
             type="button"
@@ -1158,7 +1148,7 @@ export function TerminalWorkbench() {
               const host = ctxMenu.host
               if (host === 'local') return
               setCtxMenu(null)
-              openProductLink({ action: 'notebook', hostId: host.id })
+              openNotebook({ hostId: host.id }, 'terminal')
             })}
           >
             {t('terminal.ctxNotebook')}
@@ -1171,7 +1161,7 @@ export function TerminalWorkbench() {
                 const host = ctxMenu.host
                 if (host === 'local') return
                 setCtxMenu(null)
-                openProductLink({ action: 'docker-context', hostId: host.id })
+                openDockerContextFromHost({ hostId: host.id }, 'terminal')
               })}
             >
               {t('terminal.ctxDocker')}
@@ -1184,11 +1174,70 @@ export function TerminalWorkbench() {
               const host = ctxMenu.host
               if (host === 'local') return
               setCtxMenu(null)
-              openProductLink({ action: 'sftp', hostId: host.id })
+              openSftp({ hostId: host.id }, 'terminal')
             })}
           >
             {t('terminal.ctxSftp')}
           </button>
+          {ctxMenu.host.kind === 'docker' && ctxMenu.host.contextId && ctxMenu.host.containerId && (
+            <button
+              type="button"
+              className="wn-context-item"
+              {...pressProps(() => {
+                const host = ctxMenu.host
+                if (host === 'local' || host.kind !== 'docker') return
+                setCtxMenu(null)
+                openLogs(
+                  {
+                    sourceType: 'docker',
+                    name: host.containerName || host.name,
+                    dockerContextId: host.contextId,
+                    containerId: host.containerId,
+                    fetch: true,
+                  },
+                  'terminal',
+                )
+              })}
+            >
+              {t('terminal.ctxLogs')}
+            </button>
+          )}
+          {ctxMenu.host.kind === 'ssh' && (
+            <button
+              type="button"
+              className="wn-context-item"
+              {...pressProps(() => {
+                const host = ctxMenu.host
+                if (host === 'local' || host.kind !== 'ssh') return
+                setCtxMenu(null)
+                openLogs(
+                  {
+                    sourceType: 'ssh_file',
+                    name: host.name,
+                    sshHostId: host.id,
+                    fetch: false,
+                  },
+                  'terminal',
+                )
+              })}
+            >
+              {t('terminal.ctxLogs')}
+            </button>
+          )}
+          {ctxMenu.host.kind === 'ssh' && (
+            <button
+              type="button"
+              className="wn-context-item"
+              {...pressProps(() => {
+                const host = ctxMenu.host
+                if (host === 'local' || host.kind !== 'ssh') return
+                setCtxMenu(null)
+                openSSHForward({ hostId: host.id, openNew: true }, 'terminal')
+              })}
+            >
+              {t('terminal.ctxForward')}
+            </button>
+          )}
           {ctxMenu.host.kind === 'ssh' && (
             <button
               type="button"

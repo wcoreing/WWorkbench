@@ -1,11 +1,18 @@
 import { EventsEmit } from '../../wailsjs/runtime/runtime'
-import type { ProductLinkAction, ProductLinkRequest } from '../stores/appStore'
 import { useAppStore } from '../stores/appStore'
-import { Capability, UI_CAPABILITIES } from './capabilities'
-import { linkToCommandPayload } from './commandPayload'
+import { UI_CAPABILITIES } from './capabilities'
 import { capabilityToProductId } from './routing'
 
-export type CommandSource = 'user' | 'notebook' | 'docker' | 'database' | 'terminal' | 'sftp' | 'agent'
+export type CommandSource =
+  | 'user'
+  | 'notebook'
+  | 'docker'
+  | 'database'
+  | 'terminal'
+  | 'sftp'
+  | 'logs'
+  | 'httpapi'
+  | 'agent'
 
 export interface WorkbenchCommand {
   id: string
@@ -53,24 +60,6 @@ export function reportCommandResult(id: string, result: CommandResult, capabilit
   EventsEmit('workbench:command:result', { id, capability, ...result })
 }
 
-/** productLinkActionToCapability 旧 action 映射到统一能力 ID。 */
-export function productLinkActionToCapability(action: ProductLinkAction): string | null {
-  switch (action) {
-    case 'terminal':
-      return Capability.TerminalOpen
-    case 'database':
-      return Capability.DatabaseOpen
-    case 'notebook':
-      return Capability.NotebookOpen
-    case 'sftp':
-      return Capability.SftpOpen
-    case 'docker-context':
-      return Capability.DockerContextOpen
-    default:
-      return null
-  }
-}
-
 /** activateProductForCapability 切换到目标产品线并触发懒挂载。 */
 function activateProductForCapability(capability: string) {
   const product = capabilityToProductId(capability)
@@ -86,7 +75,7 @@ async function runHandler(capability: string, cmd: WorkbenchCommand, fn: Command
   }
 }
 
-/** dispatchWorkbenchCommand 分发工作台命令（仅走已注册 handler，不经 productLink）。 */
+/** dispatchWorkbenchCommand 分发工作台命令。 */
 export async function dispatchWorkbenchCommand(
   input: Omit<WorkbenchCommand, 'id'> & { id?: string },
 ): Promise<CommandResult> {
@@ -120,13 +109,11 @@ export async function dispatchWorkbenchCommand(
   return { ok: true }
 }
 
-/** dispatchProductLink 兼容旧 ProductLinkRequest 调用。 */
-export function dispatchProductLink(link: ProductLinkRequest, source: CommandSource = 'user') {
-  const capability = productLinkActionToCapability(link.action)
-  if (!capability) return
-  void dispatchWorkbenchCommand({
-    capability,
-    source,
-    payload: linkToCommandPayload(link),
-  })
+/** openCapability 跨产品打开/联动的唯一入口（直接 capability，无 action 别名）。 */
+export function openCapability(
+  capability: string,
+  payload: Record<string, unknown> = {},
+  source: CommandSource = 'user',
+) {
+  void dispatchWorkbenchCommand({ capability, source, payload })
 }

@@ -11,7 +11,7 @@ import { READY_MESSAGES, useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildDockerSurface } from '../../stores/agentSurface'
 import { openAgentDraft, mentionSSH } from '../../features/agent/openAgentDraft'
-import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
+import { openTerminal, openSftp, openDatabase, openNotebook, openLogs, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
@@ -250,7 +250,6 @@ export function DockerWorkbench() {
   const selected = containers.find((c) => c.id === selectedId) ?? null
   const dockerReady = Boolean(activeContext?.connected)
   const isRemoteContext = activeContext != null && activeContext.id !== LOCAL_CONTEXT
-  const canDeleteActiveContext = canDeleteDockerContext(activeContext)
 
   useEffect(() => {
     if (activeProduct !== 'docker') return
@@ -533,10 +532,7 @@ export function DockerWorkbench() {
     setStatusMessage(t('docker.preparingShell'))
     try {
       const host = await api.ensureDockerHost(activeContextId, container.id)
-      openProductLink({
-        action: 'terminal',
-        hostId: host.id,
-      })
+      openTerminal({ hostId: host.id }, 'docker')
       setStatusMessage(t('docker.openingShell', { name: container.name || container.shortId }))
     } catch (e) {
       setStatusMessage((e as Error).message)
@@ -548,10 +544,7 @@ export function DockerWorkbench() {
     setStatusMessage(t('docker.preparingFiles'))
     try {
       const host = await api.ensureDockerHost(activeContextId, container.id)
-      openProductLink({
-        action: 'sftp',
-        hostId: host.id,
-      })
+      openSftp({ hostId: host.id }, 'docker')
       setStatusMessage(t('docker.openingFiles', { name: container.name || container.shortId }))
     } catch (e) {
       setStatusMessage((e as Error).message)
@@ -562,21 +555,23 @@ export function DockerWorkbench() {
     setStatusMessage(t('docker.resolvingDb'))
     try {
       const link = await api.resolveContainerDatabaseLink(activeContextId, container.id)
-      openProductLink({
-        action: 'database',
-        connectionDraft: {
-          name: link.name,
-          group: 'Docker',
-          dbType: link.dbType,
-          host: link.host,
-          port: link.port,
-          user: link.user,
-          password: link.password,
-          database: link.database,
-          sshEnabled: link.sshEnabled,
-          sshHostId: link.sshHostId,
+      openDatabase(
+        {
+          connectionDraft: {
+            name: link.name,
+            group: 'Docker',
+            dbType: link.dbType,
+            host: link.host,
+            port: link.port,
+            user: link.user,
+            password: link.password,
+            database: link.database,
+            sshEnabled: link.sshEnabled,
+            sshHostId: link.sshHostId,
+          },
         },
-      })
+        'docker',
+      )
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -737,49 +732,6 @@ export function DockerWorkbench() {
                   </li>
                 ))}
               </ul>
-              {canDeleteActiveContext && (
-                <button
-                  type="button"
-                  className="wn-btn wn-btn-tool wn-btn-sm docker-context-del"
-                  {...pressProps(() => activeContext && requestDeleteDockerContext(activeContext))}
-                >
-                  {t('docker.deleteCurrentContext')}
-                </button>
-              )}
-              {contexts.some(canDeleteDockerContext) && (
-                <div className="empty-hint mock-hint">{t('docker.remoteHint')}</div>
-              )}
-            </div>
-          </section>
-          <section className="sidebar-section">
-            <div className="sidebar-header">
-              <span>{t('docker.viewSection')}</span>
-            </div>
-            <div className="sidebar-body docker-views">
-              <button
-                type="button"
-                className={`docker-view-btn ${view === 'containers' ? 'active' : ''}`}
-                {...pressProps(() => setView('containers'))}
-              >
-                {t('docker.viewContainers')}
-              </button>
-              <button
-                type="button"
-                className={`docker-view-btn ${view === 'images' ? 'active' : ''}`}
-                {...pressProps(() => setView('images'))}
-              >
-                {t('docker.viewImages')}
-              </button>
-              <button
-                type="button"
-                className={`docker-view-btn ${view === 'compose' ? 'active' : ''}`}
-                {...pressProps(() => setView('compose'))}
-              >
-                {t('docker.compose')}
-              </button>
-              <button type="button" className="docker-view-btn" disabled title={t('docker.swarmSoon')}>
-                {t('docker.volumes')}
-              </button>
             </div>
           </section>
         </aside>
@@ -787,15 +739,33 @@ export function DockerWorkbench() {
         <main className="app-main docker-main">
           <div className="editor-chrome">
             <div className="wn-tabs">
-              <button type="button" className="wn-tab wn-tab-docker active">
+              <button
+                type="button"
+                className={`wn-tab wn-tab-docker ${view === 'containers' ? 'active' : ''}`}
+                {...pressProps(() => setView('containers'))}
+              >
                 <span className="tab-dot" />
-                <span className="tab-title">
-                  {view === 'images'
-                    ? t('docker.viewImages')
-                    : view === 'compose'
-                      ? t('docker.compose')
-                      : t('docker.viewContainers')}
-                </span>
+                <span className="tab-title">{t('docker.viewContainers')}</span>
+              </button>
+              <button
+                type="button"
+                className={`wn-tab wn-tab-docker ${view === 'images' ? 'active' : ''}`}
+                {...pressProps(() => setView('images'))}
+              >
+                <span className="tab-dot" />
+                <span className="tab-title">{t('docker.viewImages')}</span>
+              </button>
+              <button
+                type="button"
+                className={`wn-tab wn-tab-docker ${view === 'compose' ? 'active' : ''}`}
+                {...pressProps(() => setView('compose'))}
+              >
+                <span className="tab-dot" />
+                <span className="tab-title">{t('docker.compose')}</span>
+              </button>
+              <button type="button" className="wn-tab wn-tab-docker" disabled title={t('docker.swarmSoon')}>
+                <span className="tab-dot" />
+                <span className="tab-title">{t('docker.volumes')}</span>
               </button>
             </div>
             <span className="chrome-spacer" />
@@ -1255,6 +1225,26 @@ export function DockerWorkbench() {
               >
                 {t('docker.ctxMenuOpenFiles')}
               </button>
+              <button
+                type="button"
+                className="wn-context-item"
+                {...pressProps(() => {
+                  setCtxMenu(null)
+                  const c = ctxMenu.container
+                  openLogs(
+                    {
+                      sourceType: 'docker',
+                      name: c.name || c.shortId,
+                      dockerContextId: activeContextId,
+                      containerId: c.id,
+                      fetch: true,
+                    },
+                    'docker',
+                  )
+                })}
+              >
+                {t('docker.ctxMenuOpenLogs')}
+              </button>
             </>
           )}
           <button
@@ -1264,11 +1254,13 @@ export function DockerWorkbench() {
               setCtxMenu(null)
               const c = ctxMenu.container
               const hostId = activeContext?.sshHostId ?? ''
-              openProductLink({
-                action: 'notebook',
-                hostId: hostId || undefined,
-                initialCommand: `# ${c.name}\n# ${c.image}\n# ${c.status}\n\n\`\`\`shell\ndocker logs -f ${c.name}\ndocker exec -it ${c.name} sh\n\`\`\`\n`,
-              })
+              openNotebook(
+                {
+                  hostId: hostId || undefined,
+                  initialCommand: `# ${c.name}\n# ${c.image}\n# ${c.status}\n\n\`\`\`shell\ndocker logs -f ${c.name}\ndocker exec -it ${c.name} sh\n\`\`\`\n`,
+                },
+                'docker',
+              )
               setStatusMessage(t('docker.creatingNote'))
             })}
           >

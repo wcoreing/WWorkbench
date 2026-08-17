@@ -1,8 +1,12 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
+import { bindSelectionGuard, zoomCompensatedPx } from '../../components/compat'
 import { useContainerHeight } from '../../hooks/useContainerHeight'
 import { useAppStore } from '../../stores/appStore'
+
+const BASE_FONT_PX = 12
+const BASE_LINE_PX = 18
 
 export interface SqlEditorHandle {
   /** getRunSQL 获取待执行的 SQL（有选区则返回选区，否则全文）。 */
@@ -22,9 +26,12 @@ export const SqlEditor = forwardRef<SqlEditorHandle, Props>(function SqlEditor(
   ref
 ) {
   const theme = useAppStore((s) => s.theme)
+  const uiFontSize = useAppStore((s) => s.uiFontSize)
   const editorHostRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const editorHeight = useContainerHeight(editorHostRef, 120)
+  const fontSize = zoomCompensatedPx(BASE_FONT_PX, uiFontSize)
+  const lineHeight = zoomCompensatedPx(BASE_LINE_PX, uiFontSize)
 
   useImperativeHandle(ref, () => ({
     getRunSQL: () => {
@@ -39,6 +46,10 @@ export const SqlEditor = forwardRef<SqlEditorHandle, Props>(function SqlEditor(
     },
   }))
 
+  useEffect(() => {
+    editorRef.current?.updateOptions({ fontSize, lineHeight })
+  }, [fontSize, lineHeight])
+
   const onMount: OnMount = (editorInstance, monaco) => {
     editorRef.current = editorInstance
     if (editorInstance.getValue() !== sql) {
@@ -50,6 +61,14 @@ export const SqlEditor = forwardRef<SqlEditorHandle, Props>(function SqlEditor(
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
       run: onExecute,
     })
+    const dom = editorInstance.getDomNode()
+    if (!dom) return
+    const unbind = bindSelectionGuard(dom, () => {
+      const pos = editorInstance.getPosition()
+      if (!pos) return
+      editorInstance.setSelection(monaco.Selection.fromPositions(pos, pos))
+    })
+    editorInstance.onDidDispose(unbind)
   }
 
   useEffect(() => {
@@ -63,7 +82,7 @@ export const SqlEditor = forwardRef<SqlEditorHandle, Props>(function SqlEditor(
 
   return (
     <div className="sql-editor-wrap" data-ww-focus-hog="">
-      <div ref={editorHostRef} className="sql-editor-host">
+      <div ref={editorHostRef} className="sql-editor-host ww-zoom-content">
         <Editor
           key={tabId}
           height={editorHeight}
@@ -74,8 +93,8 @@ export const SqlEditor = forwardRef<SqlEditorHandle, Props>(function SqlEditor(
           loading={<div className="empty-hint">加载编辑器…</div>}
           options={{
             minimap: { enabled: false },
-            fontSize: 12,
-            lineHeight: 18,
+            fontSize,
+            lineHeight,
             fontFamily: 'var(--font-mono)',
             wordWrap: 'on',
             automaticLayout: true,

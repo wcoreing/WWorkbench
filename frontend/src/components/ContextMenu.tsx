@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useDismissOnPointerDown } from './compat'
 
 const PAD = 8
 /** 相对指针右偏，避免菜单压在光标下误点首项。 */
@@ -26,13 +27,24 @@ interface Props {
   children: ReactNode
   className?: string
   onClick?: (e: React.MouseEvent) => void
+  /** 外点关闭；必须带 contains 判断，否则会先卸菜单导致项上 pressProps 丢失（要点两次）。 */
+  onDismiss?: () => void
 }
 
 /** ContextMenu 挂到 body，避开壳层 zoom 与 client 坐标错位。 */
-export function ContextMenu({ x, y, children, className = 'wn-context-menu', onClick }: Props) {
+export function ContextMenu({
+  x,
+  y,
+  children,
+  className = 'wn-context-menu',
+  onClick,
+  onDismiss,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null)
   const ax = x + ANCHOR_OFFSET_X
   const [pos, setPos] = useState({ x: ax, y })
+
+  useDismissOnPointerDown(!!onDismiss, () => onDismiss?.(), ref)
 
   useLayoutEffect(() => {
     const el = ref.current

@@ -530,4 +530,61 @@ func (r *Registry) registerBuiltins() {
 		},
 		Handler: toolExecuteHTTP,
 	})
+	r.add(ToolDef{
+		Name:        workbench.CapLogsOpen,
+		Description: "打开日志中心：按 logSourceId 聚焦已有源，或按 Docker/SSH 外键起草并拉取。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"logSourceId":     map[string]interface{}{"type": "string"},
+				"sourceType":      map[string]interface{}{"type": "string", "description": "local_file|ssh_file|docker|compose"},
+				"name":            map[string]interface{}{"type": "string"},
+				"path":            map[string]interface{}{"type": "string"},
+				"sshHostId":       map[string]interface{}{"type": "string"},
+				"dockerContextId": map[string]interface{}{"type": "string"},
+				"containerId":     map[string]interface{}{"type": "string"},
+				"composeDir":      map[string]interface{}{"type": "string"},
+				"composeService":  map[string]interface{}{"type": "string"},
+				"fetch":           map[string]interface{}{"type": "boolean", "description": "打开后是否立即拉取，默认 true"},
+			},
+		},
+		Handler: toolLogsOpen,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapHTTPAPIOpen,
+		Description: "打开 API 工作台，可选 requestId 聚焦已保存请求。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"requestId": map[string]interface{}{"type": "string"},
+			},
+		},
+		Handler: toolHTTPAPIOpen,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapEnvironmentOpen,
+		Description: "打开本机环境工作台：可选 lang（node/go/php/java）打开版本切换，或 presetId 聚焦预设。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"lang":         map[string]interface{}{"type": "string", "description": "node|go|php|java"},
+				"presetId":     map[string]interface{}{"type": "string"},
+				"openVersions": map[string]interface{}{"type": "boolean", "description": "是否打开版本列表，默认在提供 lang 时为 true"},
+			},
+		},
+		Handler: toolEnvironmentOpen,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapSSHForwardOpen,
+		Description: "打开终端侧栏 SSH 隧道：可选 hostId 新建，或 presetId 编辑已有预设。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"hostId":   map[string]interface{}{"type": "string", "description": "预填 SSH 主机 ID"},
+				"presetId": map[string]interface{}{"type": "string"},
+				"openNew":  map[string]interface{}{"type": "boolean"},
+			},
+		},
+		Handler: toolSSHForwardOpen,
+	})
 }

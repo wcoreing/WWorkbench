@@ -1,7 +1,11 @@
 package workbench
 
-// 工作台统一能力 ID（与前端 workbench/capabilities.ts、UIActionKind 保持一致）。
+// 工作台统一能力 ID（与前端 workbench/capabilities.ts、agentcap.Catalog、workbenchtools 注册名保持一致）。
 // 名称须匹配 ^[a-zA-Z0-9_-]+$（OpenAI / DeepSeek function calling）。
+//
+// 约定：
+//   - 本文件是「能力名」的唯一常量源；风险/开关在 agentcap，handler 在 workbenchtools。
+//   - UICapabilities 列出的能力由前端 CommandBus 执行（可先切产品线再挂载 handler）。
 
 const (
 	CapGetWorkbenchContext  = "get_workbench_context"
@@ -19,9 +23,13 @@ const (
 	CapNotebookAppend       = "notebook_append_content"
 	CapSFTPOpen             = "sftp_open"
 	CapDockerContextOpen    = "docker_context_open"
+	CapLogsOpen             = "logs_open"
+	CapHTTPAPIOpen          = "httpapi_open"
+	CapEnvironmentOpen      = "environment_open"
+	CapSSHForwardOpen       = "ssh_forward_open"
 )
 
-// UICapabilities 需前端执行的 UI 联动能力。
+// UICapabilities 需前端执行的 UI 联动能力（切产品线 + CommandBus handler）。
 func UICapabilities() []string {
 	return []string{
 		CapOpenTerminal,
@@ -29,5 +37,19 @@ func UICapabilities() []string {
 		CapNotebookOpen,
 		CapSFTPOpen,
 		CapDockerContextOpen,
+		CapLogsOpen,
+		CapHTTPAPIOpen,
+		CapEnvironmentOpen,
+		CapSSHForwardOpen,
 	}
+}
+
+// IsUICapability 是否为前端 UI 联动能力。
+func IsUICapability(name string) bool {
+	for _, c := range UICapabilities() {
+		if c == name {
+			return true
+		}
+	}
+	return false
 }

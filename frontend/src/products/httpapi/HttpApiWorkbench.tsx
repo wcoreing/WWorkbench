@@ -8,6 +8,9 @@ import { openAgentDraft, mentionHttpRequest } from '../../features/agent/openAge
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildHttpApiSurface, briefList } from '../../stores/agentSurface'
+import { useWorkbenchCommand } from '../../stores/productLink'
+import { Capability } from '../../workbench/capabilities'
+import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { Select, pressProps, useDismissOverlays } from '../../components/compat'
 import {
@@ -485,6 +488,24 @@ export function HttpApiWorkbench() {
       setResponse(null)
     })
   }
+
+  useWorkbenchCommand(Capability.HttpApiOpen, (cmd) => {
+    const requestId = payloadStr(cmd.payload, 'requestId')
+    if (!requestId) return
+    void (async () => {
+      try {
+        const list = await refreshList()
+        const item = list.find((x) => x.id === requestId)
+        if (!item) {
+          setStatusMessage(`未找到请求 ${requestId}`)
+          return
+        }
+        selectItem(item)
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  })
 
   /** createNew 新建接口并立即落库，左侧目录树即时显示（Apifox 式）。 */
   const createNew = (targetFolderId = '') => {

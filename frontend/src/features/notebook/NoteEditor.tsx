@@ -1,9 +1,13 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 import type { NoteLanguage } from '../../api/types'
+import { bindSelectionGuard, zoomCompensatedPx } from '../../components/compat'
 import { useContainerHeight } from '../../hooks/useContainerHeight'
 import { useAppStore } from '../../stores/appStore'
+
+const BASE_FONT_PX = 13
+const BASE_LINE_PX = 20
 
 export interface NoteEditorHandle {
   /** getSelectedText 获取选中文本，无选区则返回全文。 */
@@ -24,9 +28,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
   ref
 ) {
   const theme = useAppStore((s) => s.theme)
+  const uiFontSize = useAppStore((s) => s.uiFontSize)
   const editorHostRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const editorHeight = useContainerHeight(editorHostRef, 120)
+  const fontSize = zoomCompensatedPx(BASE_FONT_PX, uiFontSize)
+  const lineHeight = zoomCompensatedPx(BASE_LINE_PX, uiFontSize)
 
   useImperativeHandle(ref, () => ({
     getSelectedText: () => {
@@ -41,6 +48,10 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
     },
   }))
 
+  useEffect(() => {
+    editorRef.current?.updateOptions({ fontSize, lineHeight })
+  }, [fontSize, lineHeight])
+
   const onMount: OnMount = (editorInstance, monaco) => {
     editorRef.current = editorInstance
     if (onRunSelection) {
@@ -51,11 +62,19 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
         run: onRunSelection,
       })
     }
+    const dom = editorInstance.getDomNode()
+    if (!dom) return
+    const unbind = bindSelectionGuard(dom, () => {
+      const pos = editorInstance.getPosition()
+      if (!pos) return
+      editorInstance.setSelection(monaco.Selection.fromPositions(pos, pos))
+    })
+    editorInstance.onDidDispose(unbind)
   }
 
   return (
-    <div className="note-editor-wrap">
-      <div ref={editorHostRef} className="note-editor-host">
+    <div className="note-editor-wrap" data-ww-focus-hog="">
+      <div ref={editorHostRef} className="note-editor-host ww-zoom-content">
         <Editor
           key={noteId}
           height={editorHeight}
@@ -66,8 +85,8 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
           loading={<div className="empty-hint">加载编辑器…</div>}
           options={{
             minimap: { enabled: false },
-            fontSize: 13,
-            lineHeight: 20,
+            fontSize,
+            lineHeight,
             fontFamily: 'var(--font-mono)',
             wordWrap: 'on',
             automaticLayout: true,

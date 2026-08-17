@@ -1612,14 +1612,14 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 .terminal-connect-title {
   margin: 0;
   font-size: 14px;
-  color: var(--color-text, #d4d4dc);
+  color: #e8e8ed;
 }
 
 .terminal-connect-hint {
   margin: 0;
   max-width: 420px;
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: #9a9aa3;
   line-height: 1.5;
 }
 
@@ -1829,10 +1829,13 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   padding: 4px 6px;
   box-sizing: border-box;
   overflow: hidden;
-  /*
-   * 壳层 .workbench-shell 使用 CSS zoom 缩放整页；xterm 仍按未缩放坐标算选区，
-   * 会导致轻微移动鼠标就出现大块灰色「选中」。此处反缩放，字号在 TerminalPane 同步放大。
-   */
+}
+
+/*
+ * 壳层 .workbench-shell 使用 CSS zoom；xterm/Monaco 按未缩放坐标命中，
+ * 轻微移动鼠标就会大块飞选。反缩放后字号用 zoomCompensatedPx 同步放大。
+ */
+.ww-zoom-content {
   zoom: calc(1 / var(--ui-zoom, 1));
 }
 
@@ -2728,6 +2731,17 @@ body.is-sftp-file-dragging * {
   grid-column: 1;
   font-size: 10px;
   color: var(--color-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.toolchain-project-lang-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
 }
 
 .env-version-install {
@@ -2936,37 +2950,14 @@ body.is-sftp-file-dragging * {
   font-size: 11px;
 }
 
-/* Docker 原型 */
-.docker-sidebar .docker-views {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 2px 4px 6px;
-}
-
-.docker-view-btn {
-  text-align: left;
-  padding: 5px 8px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  font-size: 11px;
-  color: var(--color-text-muted);
-  cursor: default;
-}
-
-.docker-view-btn.active {
-  background: var(--accent-muted);
-  color: var(--accent);
-  font-weight: 500;
-}
-
-.docker-view-btn:disabled {
-  opacity: 0.5;
-}
-
+/* Docker */
 .docker-main {
   min-width: 0;
+}
+
+.docker-main .wn-tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .docker-table-containers {
@@ -4778,11 +4769,6 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
 .docker-table-full {
   flex: 1;
   min-height: 0;
-}
-
-.docker-context-del {
-  margin-top: 8px;
-  width: 100%;
 }
 
 .docker-context-item {

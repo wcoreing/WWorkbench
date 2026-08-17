@@ -38,6 +38,7 @@ export function TabContextMenu({
       x={menu.x}
       y={menu.y}
       onClick={(e) => e.stopPropagation()}
+      onDismiss={onDismiss}
     >
       {onReconnect && (
         <button

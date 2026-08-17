@@ -1,12 +1,24 @@
-import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, SyntheticEvent } from 'react'
 
-export type PressHandler = (e: ReactPointerEvent | ReactKeyboardEvent) => void
+export type PressHandler = (e: ReactPointerEvent | ReactKeyboardEvent | SyntheticEvent) => void
 
 export type PressOptions = {
   /** 禁用时不触发（对齐 button.disabled）。 */
   disabled?: boolean
   /** 等价 agentdesk `v-press.stop`。 */
   stop?: boolean
+}
+
+/** 同一控件短时重复 press（FocusGate 延迟重派 pointerdown + click）只执行一次。 */
+const recentPressAt = new WeakMap<object, number>()
+const PRESS_DEDUP_MS = 200
+
+function takePressSlot(target: object): boolean {
+  const now = performance.now()
+  const prev = recentPressAt.get(target)
+  if (prev != null && now - prev < PRESS_DEDUP_MS) return false
+  recentPressAt.set(target, now)
+  return true
 }
 
 /**
@@ -19,20 +31,25 @@ export type PressOptions = {
 export function pressProps(run: PressHandler | undefined, options: PressOptions = {}) {
   if (!run) return {}
   const { disabled = false, stop = false } = options
+  const invoke = (e: ReactPointerEvent | ReactKeyboardEvent | SyntheticEvent) => {
+    if (disabled) return
+    if (!takePressSlot(e.currentTarget)) return
+    if ('preventDefault' in e) e.preventDefault()
+    if (stop) e.stopPropagation()
+    run(e)
+  }
   return {
     onPointerDown: (e: ReactPointerEvent) => {
       if (e.button !== 0) return
-      if (disabled) return
-      e.preventDefault()
-      if (stop) e.stopPropagation()
-      run(e)
+      invoke(e)
+    },
+    onClick: (e: SyntheticEvent) => {
+      // FocusGate 重派 pointerdown 若未进 React，靠 click() 兜底
+      invoke(e)
     },
     onKeyDown: (e: ReactKeyboardEvent) => {
       if (e.key !== 'Enter' && e.key !== ' ') return
-      if (disabled) return
-      e.preventDefault()
-      if (stop) e.stopPropagation()
-      run(e)
+      invoke(e)
     },
   }
 }

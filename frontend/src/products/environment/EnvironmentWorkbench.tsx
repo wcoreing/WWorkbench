@@ -9,6 +9,9 @@ import { EnvVersionModal } from '../../features/environment/EnvVersionModal'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildEnvironmentSurface, briefList } from '../../stores/agentSurface'
+import { useWorkbenchCommand } from '../../stores/productLink'
+import { Capability } from '../../workbench/capabilities'
+import { payloadBool, payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { pressProps } from '../../components/compat'
 
@@ -141,6 +144,30 @@ export function EnvironmentWorkbench() {
     setSwitchLang(lang)
     void loadVersions(lang)
   }
+
+  useWorkbenchCommand(Capability.EnvironmentOpen, (cmd) => {
+    const langRaw = payloadStr(cmd.payload, 'lang')
+    const presetId = payloadStr(cmd.payload, 'presetId')
+    const openVersions = payloadBool(cmd.payload, 'openVersions') || Boolean(langRaw)
+
+    void (async () => {
+      try {
+        await refreshAll()
+        if (presetId) {
+          const list = await api.listEnvPresets()
+          setPresets(list)
+          const hit = list.find((p) => p.id === presetId)
+          if (hit) setStatusMessage(t('environment.presetFocused', { name: hit.name }))
+        }
+        const lang = (LANGS.includes(langRaw as RuntimeLang) ? langRaw : undefined) as RuntimeLang | undefined
+        if (lang && openVersions) {
+          openSwitch(lang)
+        }
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  })
 
   const closeVersionModal = () => {
     versionRequestRef.current += 1
@@ -417,9 +444,33 @@ export function EnvironmentWorkbench() {
                     </div>
                     <div className="toolchain-project-suggest">
                       {t('environment.suggest')}
-                      {Object.entries(proj.suggested)
-                        .map(([k, v]) => `${k} ${v}`)
-                        .join(' · ') || '—'}
+                      {Object.keys(proj.suggested).length === 0 ? (
+                        '—'
+                      ) : (
+                        <span className="toolchain-project-lang-actions">
+                          {Object.entries(proj.suggested).map(([lang, ver]) => {
+                            const runtimeLang = lang as RuntimeLang
+                            if (!LANGS.includes(runtimeLang)) {
+                              return (
+                                <span key={lang} className="toolchain-hint-tag">
+                                  {lang} {ver}
+                                </span>
+                              )
+                            }
+                            return (
+                              <button
+                                key={lang}
+                                type="button"
+                                className="wn-btn wn-btn-xs wn-btn-ghost"
+                                title={t('environment.manageLang', { lang: RUNTIME_META[runtimeLang].label, ver })}
+                                {...pressProps(() => openSwitch(runtimeLang))}
+                              >
+                                {RUNTIME_META[runtimeLang].label} {ver}
+                              </button>
+                            )
+                          })}
+                        </span>
+                      )}
                     </div>
                     <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" {...pressProps(() => void alignProject(proj))}>
                       {t('environment.alignProject')}

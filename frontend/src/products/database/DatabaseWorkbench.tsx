@@ -19,7 +19,7 @@ import { TableDesignEditor } from '../../features/table-design/TableDesignEditor
 import { TableDataEditor } from '../../features/table-data/TableDataEditor'
 import { useAppStore } from '../../stores/appStore'
 import { buildDatabaseSurface } from '../../stores/agentSurface'
-import { openProductLink, useWorkbenchCommand } from '../../stores/productLink'
+import { openTerminal, openSftp, openNotebook, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadBool, payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
@@ -908,7 +908,8 @@ export function DatabaseWorkbench() {
     try {
       setStatusMessage(t('database.resolvingSsh'))
       const host = await api.ensureSSHHostFromConnection(session.connectionId)
-      openProductLink({ action, hostId: host.id })
+      if (action === 'terminal') openTerminal({ hostId: host.id }, 'database')
+      else openSftp({ hostId: host.id }, 'database')
       setStatusMessage(
         action === 'terminal'
           ? t('database.openingTerminal', { name: host.name })
@@ -922,7 +923,7 @@ export function DatabaseWorkbench() {
   /** openNotebookFromConnection 从当前连接创建笔记本笔记。 */
   const openNotebookFromConnection = () => {
     if (!session) return
-    openProductLink({ action: 'notebook', connectionId: session.connectionId })
+    openNotebook({ connectionId: session.connectionId }, 'database')
     setStatusMessage(t('database.creatingNote'))
   }
 
