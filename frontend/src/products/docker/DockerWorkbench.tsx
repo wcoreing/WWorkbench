@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { ContainerEnvVar, DockerContainer, DockerContext, DockerImage, SSHHost } from '../../api/types'
+import { shellHostAsSSH } from '../../api/types'
 import { IconDocker, IconPlus } from '../../components/Icons'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ContextMenu } from '../../components/ContextMenu'
@@ -297,6 +298,17 @@ export function DockerWorkbench() {
     }
   }, [setStatusMessage])
 
+  /** loadSSHHosts 拉取终端已保存的 SSH 主机，供远程 Docker / 提及使用。 */
+  const loadSSHHosts = useCallback(async () => {
+    try {
+      const list = await api.listShellHosts()
+      setSSHHosts(list.map((h) => shellHostAsSSH(h)).filter((h): h is SSHHost => Boolean(h)))
+    } catch (e) {
+      setSSHHosts([])
+      setStatusMessage((e as Error).message)
+    }
+  }, [setStatusMessage])
+
   const loadLogs = useCallback(async (contextId: string, containerId: string) => {
     try {
       const content = await api.getContainerLogs(contextId, containerId, 300)
@@ -392,8 +404,12 @@ export function DockerWorkbench() {
 
   useEffect(() => {
     void refreshContexts()
-    void api.listSSHHosts().then(setSSHHosts).catch(() => setSSHHosts([]))
-  }, [refreshContexts])
+    void loadSSHHosts()
+  }, [refreshContexts, loadSSHHosts])
+
+  useEffect(() => {
+    if (activeProduct === 'docker') void loadSSHHosts()
+  }, [activeProduct, loadSSHHosts])
 
   useEffect(() => {
     if (!activeContextId) return
@@ -435,6 +451,17 @@ export function DockerWorkbench() {
       void apply(evt)
     })
   }, [activeContextId, refreshData, refreshContexts])
+
+  useEffect(() => {
+    const apply = async (evt: WorkbenchChangedEvent) => {
+      if (evt.domain !== 'ssh.host') return
+      await loadSSHHosts()
+    }
+    for (const evt of takePendingWorkbenchChanged('ssh.host')) void apply(evt)
+    return subscribeWorkbenchChanged((evt) => {
+      void apply(evt)
+    })
+  }, [loadSSHHosts])
 
   useEffect(() => {
     setContainerPage(1)
@@ -695,6 +722,7 @@ export function DockerWorkbench() {
                 {...pressProps(() => {
                   setContextModalHostId(undefined)
                   setContextModalOpen(true)
+                  void loadSSHHosts()
                 })}
               >
                 <IconPlus size={14} />
@@ -1127,13 +1155,15 @@ export function DockerWorkbench() {
 
       <DockerContextModal
         open={contextModalOpen}
-        hosts={sshHosts}
         initialHostId={contextModalHostId}
         onClose={() => {
           setContextModalOpen(false)
           setContextModalHostId(undefined)
         }}
-        onSaved={() => void refreshContexts()}
+        onSaved={() => {
+          void refreshContexts()
+          void loadSSHHosts()
+        }}
       />
 
       <DockerRunModal

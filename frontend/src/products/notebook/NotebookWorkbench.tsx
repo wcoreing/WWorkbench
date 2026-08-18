@@ -93,6 +93,8 @@ export function NotebookWorkbench() {
   const noteSnapshots = useRef<Record<string, string>>({})
   const uiTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const booted = useRef(false)
+  const openNotesRef = useRef(openNotes)
+  openNotesRef.current = openNotes
 
   const activeNote = activeTabId ? openNotes[activeTabId] ?? null : null
   const tabsRef = useScrollActiveTabIntoView(activeTabId)
@@ -154,7 +156,7 @@ export function NotebookWorkbench() {
   }, [])
 
   const markNoteDirty = useCallback((id: string) => {
-    setSaveByNote((prev) => ({ ...prev, [id]: 'dirty' }))
+    setSaveByNote((prev) => (prev[id] === 'dirty' ? prev : { ...prev, [id]: 'dirty' }))
   }, [])
 
   const refreshSummaries = useCallback(async () => {
@@ -213,7 +215,7 @@ export function NotebookWorkbench() {
 
   const openNoteById = useCallback(
     async (id: string) => {
-      if (openNotes[id]) {
+      if (openNotesRef.current[id]) {
         setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
         setActiveTabId(id)
         return
@@ -229,7 +231,7 @@ export function NotebookWorkbench() {
       setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
       setActiveTabId(id)
     },
-    [openNotes, markNoteSaved],
+    [markNoteSaved],
   )
 
   useEffect(() => {
@@ -259,7 +261,7 @@ export function NotebookWorkbench() {
           return next
         })
         setActiveTabId((cur) => (cur === noteId ? null : cur))
-      } else if (noteId && openNotes[noteId] && evt.op !== 'delete') {
+      } else if (noteId && openNotesRef.current[noteId] && evt.op !== 'delete') {
         try {
           const note = (await api.getNote(noteId)) as Note
           markNoteSaved(note)
@@ -274,7 +276,7 @@ export function NotebookWorkbench() {
     return subscribeWorkbenchChanged((evt) => {
       void apply(evt)
     })
-  }, [refreshSummaries, refreshAll, openNoteById, openNotes, markNoteSaved])
+  }, [refreshSummaries, refreshAll, openNoteById, markNoteSaved])
 
   useEffect(() => {
     if (!notebookFocusNoteId || loading) return
@@ -409,6 +411,7 @@ export function NotebookWorkbench() {
     return () => window.removeEventListener('keydown', onKey)
   }, [activeNote, flushSaveActive])
 
+  /** updateActiveNote 合并当前笔记字段；无实际变化则不 setState，避免 Monaco 回推造成更新环。 */
   const updateActiveNote = (patch: Partial<Note>) => {
     if (!activeTabId || !activeNote) return
     const nextPatch = { ...patch }
@@ -418,6 +421,10 @@ export function NotebookWorkbench() {
         nextPatch.groupId,
       )
     }
+    const changed = (Object.keys(nextPatch) as (keyof Note)[]).some(
+      (k) => nextPatch[k] !== activeNote[k],
+    )
+    if (!changed) return
     const next = { ...activeNote, ...nextPatch }
     setOpenNotes((prev) => ({ ...prev, [activeTabId]: next }))
     markNoteDirty(activeTabId)

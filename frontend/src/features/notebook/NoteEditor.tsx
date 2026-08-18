@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 import type { NoteLanguage } from '../../api/types'
@@ -31,6 +31,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
   const uiFontSize = useAppStore((s) => s.uiFontSize)
   const editorHostRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
+  const onChangeRef = useRef(onChange)
+  const contentRef = useRef(content)
+  const onRunSelectionRef = useRef(onRunSelection)
+  onChangeRef.current = onChange
+  contentRef.current = content
+  onRunSelectionRef.current = onRunSelection
   const editorHeight = useContainerHeight(editorHostRef, 120)
   const fontSize = zoomCompensatedPx(BASE_FONT_PX, uiFontSize)
   const lineHeight = zoomCompensatedPx(BASE_LINE_PX, uiFontSize)
@@ -38,7 +44,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
   useImperativeHandle(ref, () => ({
     getSelectedText: () => {
       const ed = editorRef.current
-      if (!ed) return content
+      if (!ed) return contentRef.current
       const selection = ed.getSelection()
       const model = ed.getModel()
       if (!selection || !model || selection.isEmpty()) {
@@ -48,20 +54,38 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
     },
   }))
 
-  useEffect(() => {
-    editorRef.current?.updateOptions({ fontSize, lineHeight })
-  }, [fontSize, lineHeight])
+  const handleChange = useCallback((v?: string) => {
+    const next = v || ''
+    if (next === contentRef.current) return
+    onChangeRef.current(next)
+  }, [])
 
-  const onMount: OnMount = (editorInstance, monaco) => {
+  const options = useMemo(
+    () => ({
+      minimap: { enabled: false },
+      fontSize,
+      lineHeight,
+      fontFamily: 'var(--font-mono)',
+      wordWrap: 'on' as const,
+      automaticLayout: true,
+      scrollBeyondLastLine: false,
+      padding: { top: 8, bottom: 8 },
+      renderLineHighlight: 'line' as const,
+      overviewRulerBorder: false,
+      hideCursorInOverviewRuler: true,
+      scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
+    }),
+    [fontSize, lineHeight],
+  )
+
+  const onMount: OnMount = useCallback((editorInstance, monaco) => {
     editorRef.current = editorInstance
-    if (onRunSelection) {
-      editorInstance.addAction({
-        id: 'run-note-selection',
-        label: 'Run in Terminal',
-        keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
-        run: onRunSelection,
-      })
-    }
+    editorInstance.addAction({
+      id: 'run-note-selection',
+      label: 'Run in Terminal',
+      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
+      run: () => onRunSelectionRef.current?.(),
+    })
     const dom = editorInstance.getDomNode()
     if (!dom) return
     const unbind = bindSelectionGuard(dom, () => {
@@ -70,7 +94,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
       editorInstance.setSelection(monaco.Selection.fromPositions(pos, pos))
     })
     editorInstance.onDidDispose(unbind)
-  }
+  }, [])
 
   return (
     <div className="note-editor-wrap" data-ww-focus-hog="">
@@ -81,22 +105,9 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
           language={language}
           theme={theme === 'dark' ? 'vs-dark' : 'vs'}
           value={content}
-          onChange={(v) => onChange(v || '')}
+          onChange={handleChange}
           loading={<div className="empty-hint">加载编辑器…</div>}
-          options={{
-            minimap: { enabled: false },
-            fontSize,
-            lineHeight,
-            fontFamily: 'var(--font-mono)',
-            wordWrap: 'on',
-            automaticLayout: true,
-            scrollBeyondLastLine: false,
-            padding: { top: 8, bottom: 8 },
-            renderLineHighlight: 'line',
-            overviewRulerBorder: false,
-            hideCursorInOverviewRuler: true,
-            scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
-          }}
+          options={options}
           onMount={onMount}
         />
       </div>
