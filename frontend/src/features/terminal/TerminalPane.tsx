@@ -1,16 +1,30 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { api } from '../../api/client'
 import { onTerminalClosed, onTerminalOutput } from '../../api/terminalEvents'
-import { bindSelectionGuard, zoomCompensatedPx } from '../../components/compat'
+import { bindSelectionGuard, pressProps, zoomCompensatedPx } from '../../components/compat'
+import { ContextMenu } from '../../components/ContextMenu'
+import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { registerTerminalFocus } from './terminalFocus'
+import {
+  AGENT_SHELL_TAIL_LINES,
+  pasteIntoTerminal,
+  readXtermCopyText,
+  readXtermTail,
+  registerTerminalClipboard,
+  registerTerminalTail,
+  setActiveTerminalTailSession,
+  writeAppClipboard,
+} from './terminalClipboard'
 
 interface Props {
   sessionId: string
   active: boolean
+  /** 当前分屏焦点窗格（写入 Agent 上下文的那一路 Shell）。 */
+  focused?: boolean
   opacity: number
 }
 
@@ -40,11 +54,16 @@ function termFontSizeForUi(uiFontSize: number): number {
 }
 
 /** xterm 终端视图 */
-export function TerminalPane({ sessionId, active, opacity }: Props) {
+export function TerminalPane({ sessionId, active, focused = false, opacity }: Props) {
+  const { t } = useI18n()
+  const tRef = useRef(t)
+  tRef.current = t
+  const setStatusMessage = useAppStore((s) => s.setStatusMessage)
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
   const uiFontSize = useAppStore((s) => s.uiFontSize)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
     const el = containerRef.current
@@ -58,8 +77,8 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
       fontSize,
       fontFamily: 'ui-monospace, SF Mono, Menlo, Consolas, monospace',
       allowTransparency: true,
+      rightClickSelectsWord: true,
       theme: {
-        // 画布透明，由宿主 div 承担半透明底，避免双层 alpha 叠死
         background: XTERM_CLEAR_BG,
         foreground: '#d4d4dc',
         cursor: '#d4d4dc',
@@ -73,6 +92,50 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
     term.open(el)
     termRef.current = term
     fitRef.current = fit
+
+    const copyOut = async () => {
+      const text = readXtermCopyText(term)
+      if (!text) {
+        useAppStore.getState().setStatusMessage(tRef.current('terminal.copyEmpty'))
+        return ''
+      }
+      const ok = await writeAppClipboard(text)
+      useAppStore.getState().setStatusMessage(ok ? tRef.current('terminal.copied') : tRef.current('terminal.copyFailed'))
+      return ok ? text : ''
+    }
+    const pasteIn = async () => {
+      try {
+        const ok = await pasteIntoTerminal(sessionId)
+        if (!ok) useAppStore.getState().setStatusMessage(tRef.current('terminal.copyEmpty'))
+        return ok
+      } catch (e) {
+        useAppStore.getState().setStatusMessage((e as Error).message)
+        return false
+      }
+    }
+
+    const unregisterClip = registerTerminalClipboard(sessionId, {
+      copy: copyOut,
+      paste: pasteIn,
+    })
+    const unregisterTail = registerTerminalTail(sessionId, () => readXtermTail(term, AGENT_SHELL_TAIL_LINES))
+
+    term.attachCustomKeyEventHandler((ev) => {
+      if (ev.type !== 'keydown') return true
+      const key = ev.key.toLowerCase()
+      const copyKey = (ev.metaKey && key === 'c') || (ev.ctrlKey && ev.shiftKey && key === 'c')
+      const copySelOnly = ev.ctrlKey && !ev.metaKey && !ev.shiftKey && key === 'c' && term.hasSelection()
+      if (copyKey || copySelOnly) {
+        void copyOut()
+        return false
+      }
+      const pasteKey = (ev.metaKey && key === 'v') || (ev.ctrlKey && ev.shiftKey && key === 'v')
+      if (pasteKey) {
+        void pasteIn()
+        return false
+      }
+      return true
+    })
 
     const resize = () => {
       if (disposed) return
@@ -102,13 +165,22 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
       term.writeln('\r\n\x1b[33m[会话已结束]\x1b[0m')
     })
 
+    const onCtx = (e: MouseEvent) => {
+      e.preventDefault()
+      setCtxMenu({ x: e.clientX, y: e.clientY })
+    }
+    el.addEventListener('contextmenu', onCtx)
+
     const unbindGuard = bindSelectionGuard(el, () => term.clearSelection())
     const ro = new ResizeObserver(() => resize())
     ro.observe(el)
 
     return () => {
       disposed = true
+      el.removeEventListener('contextmenu', onCtx)
       unbindGuard()
+      unregisterClip()
+      unregisterTail()
       unregisterFocus()
       disposeData.dispose()
       offOutput()
@@ -140,7 +212,6 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
     if (!el || !term) return
     const bg = terminalBackground(opacity)
     el.style.backgroundColor = bg
-    // 保持画布透明，只改宿主底色
     if (term.options.theme?.background !== XTERM_CLEAR_BG) {
       term.options.theme = {
         ...term.options.theme,
@@ -151,9 +222,14 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
   }, [opacity])
 
   useEffect(() => {
+    if (focused) setActiveTerminalTailSession(sessionId)
+  }, [focused, sessionId])
+
+  useEffect(() => {
     const term = termRef.current
     if (!active) {
       term?.clearSelection()
+      setCtxMenu(null)
       return
     }
     const el = containerRef.current
@@ -166,12 +242,42 @@ export function TerminalPane({ sessionId, active, opacity }: Props) {
     })
   }, [active, sessionId])
 
+  const runCopy = () => {
+    void (async () => {
+      const text = termRef.current ? readXtermCopyText(termRef.current) : ''
+      if (!text) {
+        setStatusMessage(t('terminal.copyEmpty'))
+        return
+      }
+      const ok = await writeAppClipboard(text)
+      setStatusMessage(ok ? t('terminal.copied') : t('terminal.copyFailed'))
+    })()
+    setCtxMenu(null)
+  }
+
+  const runPaste = () => {
+    void pasteIntoTerminal(sessionId).catch((e) => setStatusMessage((e as Error).message))
+    setCtxMenu(null)
+  }
+
   return (
-    <div
-      ref={containerRef}
-      className="terminal-xterm-host ww-zoom-content"
-      data-ww-focus-hog=""
-      style={{ backgroundColor: terminalBackground(opacity) }}
-    />
+    <>
+      <div
+        ref={containerRef}
+        className="terminal-xterm-host ww-zoom-content"
+        data-ww-focus-hog=""
+        style={{ backgroundColor: terminalBackground(opacity) }}
+      />
+      {ctxMenu && (
+        <ContextMenu x={ctxMenu.x} y={ctxMenu.y} onDismiss={() => setCtxMenu(null)}>
+          <button type="button" className="wn-context-item" {...pressProps(runCopy)}>
+            {t('terminal.copy')}
+          </button>
+          <button type="button" className="wn-context-item" {...pressProps(runPaste)}>
+            {t('terminal.paste')}
+          </button>
+        </ContextMenu>
+      )}
+    </>
   )
 }

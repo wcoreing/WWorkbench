@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os/exec"
-	"runtime"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -24,51 +24,14 @@ type terminalExecArgs struct {
 
 const defaultExecTimeout = 30
 
-// validateExecCommand 校验无头命令（禁止 shell 元字符与高危子串）。
-func validateExecCommand(command string) error {
-	command = strings.TrimSpace(command)
-	if command == "" {
-		return errno.New(errno.CodeInvalidArg, "请填写 command", "")
-	}
-	if strings.ContainsAny(command, ";\n\r|&`$") {
-		return errno.New(errno.CodeInvalidArg, "命令不允许包含 ; | & ` $ 或换行", "")
-	}
-	if strings.Contains(command, ">") || strings.Contains(command, "<") {
-		return errno.New(errno.CodeInvalidArg, "命令不允许重定向", "")
-	}
-	lower := strings.ToLower(command)
-	// Docker 生命周期走专用工具，避免「docker rm」被泛化 rm 黑名单误伤且无引导。
-	if strings.HasPrefix(lower, "docker ") {
-		rest := strings.TrimSpace(lower[len("docker "):])
-		switch {
-		case strings.HasPrefix(rest, "rm "), strings.HasPrefix(rest, "rmi "),
-			strings.HasPrefix(rest, "stop "), strings.HasPrefix(rest, "kill "),
-			strings.HasPrefix(rest, "start "), strings.HasPrefix(rest, "restart "),
-			strings.HasPrefix(rest, "run "):
-			return errno.New(errno.CodeInvalidArg,
-				"容器启停/删除请用 start_container / stop_container / remove_container（会弹确认），勿经 terminal_exec",
-				command)
-		}
-	}
-	for _, banned := range []string{
-		"rm ", "rm\t", "dd ", "mkfs", "shutdown", "reboot", "poweroff",
-		"chmod ", "chown ", "kill ", "pkill ", "systemctl ",
-		":(){", "wget ", "curl ", "scp ", "sftp ",
-	} {
-		if strings.Contains(lower, banned) {
-			return errno.New(errno.CodeInvalidArg, "该命令不在允许范围内", command)
-		}
-	}
-	return nil
-}
-
-// toolTerminalExec 经 SSH 或本机执行只读命令并返回输出（无头，不打开终端 UI）。
+// toolTerminalExec 按 argv 起单进程并返回输出（无头；远端将参数单引号后再交给 sshd）。
 func toolTerminalExec(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	var in terminalExecArgs
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return Fail("参数无效: " + err.Error())
 	}
-	if err := validateExecCommand(in.Command); err != nil {
+	argv, err := parseAndValidateExec(in.Command)
+	if err != nil {
 		return Fail(err.Error())
 	}
 	timeout := in.TimeoutSeconds
@@ -76,12 +39,12 @@ func toolTerminalExec(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 		timeout = defaultExecTimeout
 	}
 	if in.LocalShell {
-		out, err := execLocalCommand(ctx, in.Command, timeout)
+		out, err := execLocalArgv(ctx, argv, timeout)
 		if err != nil {
 			return Fail(err.Error())
 		}
 		return OKData(map[string]interface{}{
-			"ok": true, "kind": "local", "command": in.Command, "output": out,
+			"ok": true, "kind": "local", "argv": argv, "command": in.Command, "output": out,
 		})
 	}
 	host, ambiguous, errMsg := resolveSSHHost(d, in.HostID, in.HostOrName)
@@ -95,17 +58,17 @@ func toolTerminalExec(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 		}
 		return Fail(errMsg)
 	}
-	out, err := execSSHCommand(ctx, d, *host, in.Command, timeout)
+	out, err := execSSHArgv(ctx, d, *host, argv, timeout)
 	if err != nil {
 		return Fail(err.Error())
 	}
 	return OKData(map[string]interface{}{
-		"ok": true, "hostId": host.ID, "host": host.Host, "command": in.Command, "output": out,
+		"ok": true, "hostId": host.ID, "host": host.Host, "argv": argv, "command": in.Command, "output": out,
 	})
 }
 
-// execSSHCommand 在远端执行单条命令并返回合并输出。
-func execSSHCommand(ctx context.Context, d *Deps, host model.SSHHostDO, command string, timeoutSec int) (string, error) {
+// execSSHArgv 在远端按 argv 执行（POSIX 单引号，避免 sshd 的 shell -c 再拆语句）。
+func execSSHArgv(ctx context.Context, d *Deps, host model.SSHHostDO, argv []string, timeoutSec int) (string, error) {
 	client, err := tunnel.DialSSH(ctx, terminal.HostToSpec(host))
 	if err != nil {
 		return "", err
@@ -123,14 +86,15 @@ func execSSHCommand(ctx context.Context, d *Deps, host model.SSHHostDO, command 
 		out []byte
 		err error
 	}
+	cmdline := posixQuoteArgv(argv)
 	done := make(chan result, 1)
 	go func() {
-		b, e := sess.CombinedOutput(command)
+		b, e := sess.CombinedOutput(cmdline)
 		done <- result{out: b, err: e}
 	}()
 	select {
 	case <-runCtx.Done():
-		return "", errno.New(errno.CodeConnFailed, "命令执行超时", command)
+		return "", errno.New(errno.CodeConnFailed, "命令执行超时", cmdline)
 	case r := <-done:
 		text := strings.TrimSpace(string(r.out))
 		if r.err != nil && text == "" {
@@ -143,16 +107,19 @@ func execSSHCommand(ctx context.Context, d *Deps, host model.SSHHostDO, command 
 	}
 }
 
-// execLocalCommand 在本机执行单条命令。
-func execLocalCommand(ctx context.Context, command string, timeoutSec int) (string, error) {
+// execLocalArgv 在本机按 argv 执行（不经 sh -c）。
+func execLocalArgv(ctx context.Context, argv []string, timeoutSec int) (string, error) {
 	runCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
 	defer cancel()
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.CommandContext(runCtx, "cmd", "/C", command)
-	} else {
-		cmd = exec.CommandContext(runCtx, "sh", "-c", command)
+	bin := argv[0]
+	if !strings.ContainsAny(bin, `/\`) && !filepath.IsAbs(bin) {
+		p, err := exec.LookPath(bin)
+		if err != nil {
+			return "", errno.Wrap(errno.CodeInvalidArg, "找不到可执行文件 "+bin, err)
+		}
+		bin = p
 	}
+	cmd := exec.CommandContext(runCtx, bin, argv[1:]...)
 	b, err := cmd.CombinedOutput()
 	text := strings.TrimSpace(string(b))
 	if err != nil && text == "" {

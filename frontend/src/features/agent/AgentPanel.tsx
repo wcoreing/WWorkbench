@@ -26,6 +26,7 @@ import {
 } from './agentMention'
 import { saveReplyToNotebook, savedToNotebookMessage } from './saveReplyToNotebook'
 import { AgentConfirmPanel } from './AgentConfirmPanel'
+import { readAgentShellTail } from '../terminal/terminalClipboard'
 
 interface AgentThreadItem {
   id: string
@@ -292,8 +293,9 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     })),
   })
 
-  const buildContext = (mentions: AgentMention[]) =>
-    model.AgentContextDO.createFrom({
+  const buildContext = (mentions: AgentMention[]) => {
+    const shell = readAgentShellTail()
+    return model.AgentContextDO.createFrom({
       activeProduct,
       sessionId: session?.sessionId ?? agentSurface.sessionId ?? '',
       connectionId: activeConnectionId ?? session?.connectionId ?? agentSurface.connectionId ?? '',
@@ -304,8 +306,11 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       tabTitle: agentSurface.tabTitle || '',
       openTabsBrief: agentSurface.openTabsBrief || '',
       selectionBrief: agentSurface.selectionBrief || '',
+      shellTail: shell.text,
+      terminalSessionId: shell.sessionId,
       mentions: toContextMentions(mergeMentions(mentions, threadMentions, autoMentions)),
     })
+  }
 
   const stopGeneration = async () => {
     if (!threadId) return

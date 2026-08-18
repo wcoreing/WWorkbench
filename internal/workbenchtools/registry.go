@@ -245,7 +245,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapOpenTerminal,
-		Description: "打开本机或 SSH 终端并可选注入命令（用户在终端面板查看，不返回输出）。需要直接拿到命令结果时用 terminal_exec。",
+		Description: "打开本机或 SSH 终端并可选注入命令。不返回 stdout；当前面板最近约 100 行已在本轮「工作台现状」里，问输出先看前馈。注入后要等下一轮用户消息才会带上新输出。需要立刻拿到结果时用 terminal_exec。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -271,7 +271,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapTerminalExec,
-		Description: "无头执行单条只读 Shell 命令并返回 stdout/stderr（uptime、free -h、df -h 等）。禁止 ; | & 重定向与高危命令。",
+		Description: "argv 安全模式：无头起一个进程并返回输出。适用 uptime、free -h、df -h、python --version、python -c \"import torch; print(torch.__version__)\"。面板最近输出已在工作台现状中，先看再决定是否再执行。引号内的 ; 是参数。未加引号的管道/串联、rm/curl/bash 会拒绝，请改 terminal_open。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -280,7 +280,7 @@ func (r *Registry) registerBuiltins() {
 				"hostOrName": map[string]interface{}{"type": "string"},
 				"command": map[string]interface{}{
 					"type":        "string",
-					"description": "单条命令，如 uptime 或 free -h",
+					"description": "一条进程的命令行，如 uptime 或 python -c \"import torch; print(torch.__version__)\"。不要写未加引号的 | 或 ; 串联",
 				},
 				"timeoutSeconds": map[string]interface{}{
 					"type":        "integer",

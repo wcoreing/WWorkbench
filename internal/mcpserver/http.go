@@ -17,13 +17,14 @@ import (
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
 // ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.54.54"
+const ServerVersion = "0.54.59"
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明。
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本等）。
 - 参数=schema 顶层字段（勿再包 {"arguments":…}）。
 - 写操作可能返回含 ww_confirm 的文本；需在 WWorkbench 侧栏确认，外置客户端本期不弹确认框。
 - 容器启停/删除用 start_container / stop_container / remove_container，勿用 terminal_exec 跑 docker rm/start/stop。
+- terminal_exec 为 argv 安全模式（python -c 可以，分号写在引号内）；未加引号的管道/rm/curl 请 terminal_open。工作台内建助手每轮会带上当前 Shell 面板最近约 100 行。
 - HTTP：先 save_http_request / save_http_environment，再 execute_http(requestId / envId)。
 - SSH / 数据库 / 日志 / Docker：save_ssh_host、save_ssh_forward、save_connection、save_log_source、save_docker_context 落盘后再引用 ID。
 - 工具受「AI 能力权限」开关约束；关闭的能力会拒绝调用。

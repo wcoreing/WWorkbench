@@ -372,6 +372,49 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.06));
 }
 
+.md-code-wrap {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0.45em 0;
+}
+
+.md-code-wrap pre {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.md-code-copy {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0.55;
+}
+
+.md-code-copy::before {
+  content: '';
+  display: block;
+  width: 16px;
+  height: 16px;
+  margin: 6px auto;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.4' stroke-linejoin='round'%3E%3Crect x='5.2' y='2.4' width='8.2' height='8.2' rx='1.4'/%3E%3Crect x='2.4' y='5.2' width='8.2' height='8.2' rx='1.4'/%3E%3C/svg%3E") center / 16px 16px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.4' stroke-linejoin='round'%3E%3Crect x='5.2' y='2.4' width='8.2' height='8.2' rx='1.4'/%3E%3Crect x='2.4' y='5.2' width='8.2' height='8.2' rx='1.4'/%3E%3C/svg%3E") center / 16px 16px no-repeat;
+}
+
+.md-code-copy:hover,
+.md-code-copy.is-copied {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+}
+
 .agent-md pre code {
   padding: 0;
   border: none;

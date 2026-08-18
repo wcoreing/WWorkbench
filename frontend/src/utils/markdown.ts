@@ -30,12 +30,23 @@ function enhanceMarkdownHtml(html: string): string {
 }
 
 /** markdownToHtml 将 GFM Markdown 转为安全 HTML。 */
-export function markdownToHtml(source: string): string {
+export function markdownToHtml(source: string, opts?: { copyLabel?: string }): string {
   const trimmed = source.trim()
   if (!trimmed) return ''
   const raw = marked.parse(trimmed, { async: false }) as string
   const enhanced = enhanceMarkdownHtml(raw)
-  return DOMPurify.sanitize(enhanced, {
-    ADD_ATTR: ['target', 'class'],
+  const withCopy = addCodeCopyButtons(enhanced, opts?.copyLabel)
+  return DOMPurify.sanitize(withCopy, {
+    ADD_TAGS: ['button'],
+    ADD_ATTR: ['target', 'class', 'type', 'title', 'aria-label'],
+  })
+}
+
+/** addCodeCopyButtons 在代码块右侧放复制图标，不覆盖正文。 */
+function addCodeCopyButtons(html: string, copyLabel?: string): string {
+  if (!copyLabel) return html
+  const label = escapeHtml(copyLabel)
+  return html.replace(/<pre>\s*<code\b([^>]*)>([\s\S]*?)<\/code>\s*<\/pre>/g, (_m, attrs, inner) => {
+    return `<div class="md-code-wrap"><pre><code${attrs}>${inner}</code></pre><button type="button" class="md-code-copy" title="${label}" aria-label="${label}"></button></div>`
   })
 }

@@ -74,12 +74,12 @@ func Catalog() []Item {
 		},
 		{
 			Name: "terminal_open", Label: "打开终端", Risk: RiskSession,
-			Description:    "打开本机或 SSH 终端并可选注入命令；输出在终端面板由用户查看",
+			Description:    "打开本机或 SSH 终端并可选注入命令；stdout 在面板（本轮前馈含最近 100 行，注入后下一轮才更新）",
 			DefaultEnabled: true,
 		},
 		{
 			Name: "terminal_exec", Label: "执行 Shell 命令（只读）", Risk: RiskRead,
-			Description:    "无头执行单条诊断命令并返回输出（如 uptime、free -h、df -h）",
+			Description:    "argv 安全模式：单进程诊断（含 python -c）；面板最近输出已在工作台现状中，先看再决定是否再执行；管道/rm/curl 请改 terminal_open",
 			DefaultEnabled: true,
 		},
 		{

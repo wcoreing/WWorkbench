@@ -7,7 +7,7 @@ import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ContextMenu } from '../../components/ContextMenu'
 import { ProductLayout } from '../../components/layout'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
-import { IconDocker, IconLaptop, IconPlus, IconRefresh, IconServer, IconTerminal } from '../../components/Icons'
+import { IconCopy, IconDocker, IconLaptop, IconPlus, IconRefresh, IconServer, IconTerminal } from '../../components/Icons'
 import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
@@ -30,6 +30,7 @@ import { SSHForwardPanel } from '../../features/terminal/SSHForwardPanel'
 import { TerminalSplitView } from '../../features/terminal/TerminalSplitView'
 import { TerminalTabStatusPane } from '../../features/terminal/TerminalTabStatusPane'
 import { focusTerminalSession } from '../../features/terminal/terminalFocus'
+import { terminalClipboard } from '../../features/terminal/terminalClipboard'
 import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 import { terminalBackground } from '../../features/terminal/TerminalPane'
 import {
@@ -101,6 +102,11 @@ export function TerminalWorkbench() {
   })
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
+  const activeLeaf = (() => {
+    if (!activeTab) return null
+    const pane = findPane(activeTab.layout, activeTab.activePaneId)
+    return pane?.kind === 'leaf' ? pane : null
+  })()
   const tabStripRef = useScrollActiveTabIntoView(activeTabId)
   const activePaneCount = activeTab ? countLeaves(activeTab.layout) : 0
 
@@ -793,6 +799,43 @@ export function TerminalWorkbench() {
               >
                 <span className="terminal-toolbar-glyph">▤</span>
                 <span>{t('terminal.splitCol')}</span>
+              </button>
+              <button
+                type="button"
+                className="wn-btn wn-btn-chrome"
+                title={t('terminal.copyHint')}
+                disabled={!activeLeaf || !isLiveSessionId(activeLeaf.sessionId)}
+                {...pressProps(
+                  () => {
+                    const sid = activeLeaf?.sessionId
+                    if (!sid) return
+                    void terminalClipboard(sid)
+                      ?.copy()
+                      .then((text) => {
+                        if (!text) setStatusMessage(t('terminal.copyEmpty'))
+                      })
+                  },
+                  { disabled: !activeLeaf || !isLiveSessionId(activeLeaf?.sessionId ?? '') },
+                )}
+              >
+                <IconCopy size={13} />
+                <span>{t('terminal.copy')}</span>
+              </button>
+              <button
+                type="button"
+                className="wn-btn wn-btn-chrome"
+                title={t('terminal.paste')}
+                disabled={!activeLeaf || !isLiveSessionId(activeLeaf.sessionId)}
+                {...pressProps(
+                  () => {
+                    const sid = activeLeaf?.sessionId
+                    if (!sid) return
+                    void terminalClipboard(sid)?.paste()
+                  },
+                  { disabled: !activeLeaf || !isLiveSessionId(activeLeaf?.sessionId ?? '') },
+                )}
+              >
+                <span>{t('terminal.paste')}</span>
               </button>
               <button
                 type="button"

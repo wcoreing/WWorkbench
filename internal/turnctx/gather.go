@@ -9,15 +9,16 @@ import (
 )
 
 const (
-	maxSnapshotRunes = 4200
-	maxTabsBrief     = 280
-	maxFocusLabel    = 120
+	maxSnapshotRunes  = 4200
+	maxTabsBrief      = 280
+	maxFocusLabel     = 120
+	maxShellTailRunes = 18000
 )
 
 // Gather 组装本轮界面快照（Turn Transport）进 feedforward，与界面一致；细节用工具核实。
 func Gather(ctx model.AgentContextDO) string {
 	var b strings.Builder
-	b.WriteString("## 工作台现状（Turn Transport · 与界面一致；细节用工具核实）\n")
+	b.WriteString("## 工作台现状（Turn Transport · 与界面一致；当前 Shell 最近输出已附上）\n")
 	if ctx.ActiveProduct != "" {
 		fmt.Fprintf(&b, "- **产品线**：`%s`\n", ctx.ActiveProduct)
 	}
@@ -86,12 +87,34 @@ func Gather(ctx model.AgentContextDO) string {
 			}
 		}
 	}
-	b.WriteString("- 容器启停/删除用 start_container / stop_container / remove_container（会确认）；terminal_exec 仅只读诊断。\n")
+	b.WriteString("- 容器启停/删除用 start_container / stop_container / remove_container（会确认）；terminal_exec 为 argv 安全模式（python -c 分号写在引号内；管道用 terminal_open）。\n")
 	b.WriteString("- 资产落盘：HTTP→save_http_request+save_http_environment；SSH→save_ssh_host/save_ssh_forward；库→save_connection；日志→save_log_source；Docker→save_docker_context。\n")
 	out := b.String()
 	if utf8.RuneCountInString(out) > maxSnapshotRunes {
 		r := []rune(out)
 		out = string(r[:maxSnapshotRunes]) + "\n…"
+	}
+	if tail := strings.TrimSpace(ctx.ShellTail); tail != "" {
+		tail = trimTailEnd(tail, maxShellTailRunes)
+		fence := "```"
+		if strings.Contains(tail, "```") {
+			fence = "````"
+		}
+		var sb strings.Builder
+		sb.WriteString(out)
+		sb.WriteString("\n### 当前 Shell 最近输出（与终端面板一致，最多约 100 行）\n")
+		if sid := strings.TrimSpace(ctx.TerminalSessionID); sid != "" {
+			fmt.Fprintf(&sb, "- terminalSessionId=`%s`\n", sid)
+		}
+		sb.WriteString("- 用户问「跑完了吗 / 报错 / 装好了吗 / 这段输出」时直接引用下面内容，不要为了看屏幕再 terminal_exec / terminal_open。\n")
+		sb.WriteString("- 若要刷新或跑新命令再用工具；terminal_open 注入后输出仍在面板，下一轮用户消息才会带上最新 100 行。\n")
+		sb.WriteString(fence)
+		sb.WriteByte('\n')
+		sb.WriteString(tail)
+		sb.WriteByte('\n')
+		sb.WriteString(fence)
+		sb.WriteByte('\n')
+		out = sb.String()
 	}
 	return out
 }
@@ -118,6 +141,15 @@ func trimBrief(s string, max int) string {
 	}
 	r := []rune(s)
 	return string(r[:max]) + "…"
+}
+
+func trimTailEnd(s string, max int) string {
+	s = strings.TrimSpace(s)
+	if max <= 0 || utf8.RuneCountInString(s) <= max {
+		return s
+	}
+	r := []rune(s)
+	return "…\n" + string(r[len(r)-max:])
 }
 
 // FocusRefFromContext 推导 sessions.focus_ref。

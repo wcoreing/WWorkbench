@@ -51,7 +51,12 @@ export function TerminalSplitView({
             </button>
           </div>
         )}
-        <TerminalPane sessionId={layout.sessionId} active={tabActive} opacity={opacity} />
+        <TerminalPane
+          sessionId={layout.sessionId}
+          active={tabActive}
+          focused={tabActive && layout.paneId === activePaneId}
+          opacity={opacity}
+        />
       </div>
     )
   }

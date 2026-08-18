@@ -2675,6 +2675,8 @@ export namespace model {
 	    tabTitle?: string;
 	    openTabsBrief?: string;
 	    selectionBrief?: string;
+	    shellTail?: string;
+	    terminalSessionId?: string;
 	    mentions: AgentMentionDO[];
 	
 	    static createFrom(source: any = {}) {
@@ -2693,6 +2695,8 @@ export namespace model {
 	        this.tabTitle = source["tabTitle"];
 	        this.openTabsBrief = source["openTabsBrief"];
 	        this.selectionBrief = source["selectionBrief"];
+	        this.shellTail = source["shellTail"];
+	        this.terminalSessionId = source["terminalSessionId"];
 	        this.mentions = this.convertValues(source["mentions"], AgentMentionDO);
 	    }
 	

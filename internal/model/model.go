@@ -803,17 +803,19 @@ type AgentMentionDO struct {
 
 // AgentContextDO 前端传入的工作台上下文（含界面快照，进 feedforward）。
 type AgentContextDO struct {
-	ActiveProduct  string           `json:"activeProduct"`
-	SessionID      string           `json:"sessionId"`
-	ConnectionID   string           `json:"connectionId"`
-	Database       string           `json:"database"`
-	Table          string           `json:"table,omitempty"`
-	FocusKind      string           `json:"focusKind,omitempty"`  // table|design|sql|terminal.ssh|terminal.local|…
-	FocusLabel     string           `json:"focusLabel,omitempty"` // 人话焦点，如 gbu_admissions.admin
-	TabTitle       string           `json:"tabTitle,omitempty"`
-	OpenTabsBrief  string           `json:"openTabsBrief,omitempty"` // 中栏打开标签摘要
-	SelectionBrief string           `json:"selectionBrief,omitempty"`
-	Mentions       []AgentMentionDO `json:"mentions"`
+	ActiveProduct     string           `json:"activeProduct"`
+	SessionID         string           `json:"sessionId"`
+	ConnectionID      string           `json:"connectionId"`
+	Database          string           `json:"database"`
+	Table             string           `json:"table,omitempty"`
+	FocusKind         string           `json:"focusKind,omitempty"`  // table|design|sql|terminal.ssh|terminal.local|…
+	FocusLabel        string           `json:"focusLabel,omitempty"` // 人话焦点，如 gbu_admissions.admin
+	TabTitle          string           `json:"tabTitle,omitempty"`
+	OpenTabsBrief     string           `json:"openTabsBrief,omitempty"` // 中栏打开标签摘要
+	SelectionBrief    string           `json:"selectionBrief,omitempty"`
+	ShellTail         string           `json:"shellTail,omitempty"` // 当前 Shell 最近约 100 行（与面板一致）
+	TerminalSessionID string           `json:"terminalSessionId,omitempty"`
+	Mentions          []AgentMentionDO `json:"mentions"`
 }
 
 // AgentChatRequestDO 发起对话请求。
