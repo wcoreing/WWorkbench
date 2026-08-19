@@ -373,46 +373,45 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 }
 
 .md-code-wrap {
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
+  position: relative;
   margin: 0.45em 0;
 }
 
 .md-code-wrap pre {
-  flex: 1;
-  min-width: 0;
   margin: 0;
+  padding-right: 28px;
 }
 
 .md-code-copy {
-  flex-shrink: 0;
-  width: 28px;
-  height: 28px;
-  margin-top: 4px;
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border: none;
-  border-radius: 6px;
-  background: transparent;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--surface, #f4f4f5) 82%, transparent);
   cursor: pointer;
-  opacity: 0.55;
+  opacity: 0.7;
 }
 
 .md-code-copy::before {
   content: '';
   display: block;
-  width: 16px;
-  height: 16px;
-  margin: 6px auto;
+  width: 14px;
+  height: 14px;
+  margin: 4px auto;
   background-color: currentColor;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.4' stroke-linejoin='round'%3E%3Crect x='5.2' y='2.4' width='8.2' height='8.2' rx='1.4'/%3E%3Crect x='2.4' y='5.2' width='8.2' height='8.2' rx='1.4'/%3E%3C/svg%3E") center / 16px 16px no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.4' stroke-linejoin='round'%3E%3Crect x='5.2' y='2.4' width='8.2' height='8.2' rx='1.4'/%3E%3Crect x='2.4' y='5.2' width='8.2' height='8.2' rx='1.4'/%3E%3C/svg%3E") center / 16px 16px no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.4' stroke-linejoin='round'%3E%3Crect x='5.2' y='2.4' width='8.2' height='8.2' rx='1.4'/%3E%3Crect x='2.4' y='5.2' width='8.2' height='8.2' rx='1.4'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.4' stroke-linejoin='round'%3E%3Crect x='5.2' y='2.4' width='8.2' height='8.2' rx='1.4'/%3E%3Crect x='2.4' y='5.2' width='8.2' height='8.2' rx='1.4'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
 }
 
 .md-code-copy:hover,
 .md-code-copy.is-copied {
   opacity: 1;
-  background: rgba(0, 0, 0, 0.06);
+  background: color-mix(in srgb, var(--surface, #f4f4f5) 94%, transparent);
 }
 
 .agent-md pre code {

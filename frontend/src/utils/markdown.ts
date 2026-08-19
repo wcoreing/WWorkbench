@@ -42,7 +42,7 @@ export function markdownToHtml(source: string, opts?: { copyLabel?: string }): s
   })
 }
 
-/** addCodeCopyButtons 在代码块右侧放复制图标，不覆盖正文。 */
+/** addCodeCopyButtons 给代码块叠加右上角复制图标（不占布局）。 */
 function addCodeCopyButtons(html: string, copyLabel?: string): string {
   if (!copyLabel) return html
   const label = escapeHtml(copyLabel)
