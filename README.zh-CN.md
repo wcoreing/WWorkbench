@@ -1,6 +1,6 @@
 # WWorkbench
 
-**WWorkbench** — 本地多主机运维与开发工作台：数据库、终端、文件、容器、运行时、HTTP、日志与笔记本，集成在一个桌面应用中——围绕跨主机、跨服务把事做完。
+**WWorkbench** — 本地多主机运维与开发工作台：数据库、终端、文件、容器、运行时、HTTP、日志与笔记本，集成在一个桌面应用中。侧栏助手能看见你正在看的机器与终端，帮你查、写、落盘——**引导你把事做完，而不是替你点完**。
 
 [English](README.md) | **简体中文**
 
@@ -8,8 +8,9 @@
 [![Wails](https://img.shields.io/badge/Wails-v2-DF4C32)](https://wails.io/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/wcoreing/WWorkbench)](https://github.com/wcoreing/WWorkbench/releases/latest)
 
-> 当前版本：**v0.51.0**（界面右下角可查看）
+> 当前版本：**v0.54.72**（界面右下角可查看） · [下载 macOS Apple Silicon](https://github.com/wcoreing/WWorkbench/releases/latest)
 
 ---
 
@@ -17,20 +18,22 @@
 
 | 模块 | 说明 |
 |------|------|
-| **数据库** | MySQL / PostgreSQL / Redis 连接、SQL 或命令控制台、对象树、表/键数据、DDL / 表设计（MySQL） |
-| **终端** | 本机 Shell、SSH 交互终端、主机信任与分屏 |
+| **数据库** | MySQL / PostgreSQL / SQLite / Redis：SQL 或命令控制台、对象树、表/键数据、DDL / 表设计（MySQL） |
+| **终端** | 本机 Shell、SSH 交互终端、主机资产、分屏；**SSH 本地端口转发**（隧道） |
 | **文件 (SFTP)** | 远程目录浏览、上传下载、书签、冲突处理与传输队列 |
 | **容器 (Docker)** | 本地 / SSH 远程 Docker、镜像与容器管理、日志与环境变量、从镜像运行、数据库一键连接 |
 | **环境 (Env)** | Node / Go / PHP / Java 本机版本安装、切换与项目预设 |
-| **笔记本** | 运维速记、Markdown 编辑与预览 |
-| **API** | HTTP 请求调试与响应查看 |
+| **笔记本** | 运维速记、Markdown 编辑与预览、分组与模板、关联 SSH / 数据库资产 |
+| **API** | HTTP 请求、环境变量、目录与响应查看 |
 | **日志** | 本机、SSH、Docker 与 Compose 日志查看，支持实时跟随 |
+| **助手** | Ask / Plan / Agent 三模式；`@` 绑定主机/库/容器；写操作确认。看得见的改机走终端面板，无头只读探针另开会话。Cursor 等可接本机 **MCP**（`/mcp/workbench`），能读当前 Shell 最近约 100 行 |
 
 其他特性：
 
 - 深色 / 浅色主题，偏好持久化到本地 SQLite
 - 界面语言：**简体中文 / English**（顶栏地球图标切换）
-- 多产品线工作区状态自动恢复
+- 多产品线工作区状态自动恢复；资产落盘后界面雷达刷新
+- 能力权限开关：关闭的 AI 工具不会被调用
 
 ---
 
@@ -224,6 +227,16 @@ git checkout -b fix/xxx        # 缺陷修复
 2. 遵循现有目录与命名习惯（Go 模型 `*DO` 后缀等）
 3. 用户可见文案请同步更新 `zh.ts` / `en.ts`
 4. 功能变更请递增 `version.go` 中的版本号
+
+---
+
+## 交流
+
+使用问题、功能建议或一起打磨工作台，扫码加微信 **韦宁**（广西 南宁）：
+
+<img src="docs/images/wechat.jpg" alt="微信：韦宁" width="220" />
+
+也欢迎 [GitHub Issues](https://github.com/wcoreing/WWorkbench/issues)。
 
 ---
 

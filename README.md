@@ -1,6 +1,6 @@
 # WWorkbench
 
-**WWorkbench** — a local multi-host ops & development workbench: database, terminal, files, containers, runtimes, HTTP, logs, and notebooks in one desktop app — built to finish work across hosts and services.
+**WWorkbench** — a local multi-host ops & development workbench: database, terminal, files, containers, runtimes, HTTP, logs, and notebooks in one desktop app. The sidebar assistant can see the host and shell you are looking at — **it helps you finish the work, it does not replace you clicking through it**.
 
 **English** | [简体中文](README.zh-CN.md)
 
@@ -8,8 +8,9 @@
 [![Wails](https://img.shields.io/badge/Wails-v2-DF4C32)](https://wails.io/)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/wcoreing/WWorkbench)](https://github.com/wcoreing/WWorkbench/releases/latest)
 
-> Current version: **v0.51.0** (shown in the bottom-right corner of the app)
+> Current version: **v0.54.72** (shown in the bottom-right corner of the app) · [Download macOS Apple Silicon](https://github.com/wcoreing/WWorkbench/releases/latest)
 
 ---
 
@@ -17,20 +18,22 @@
 
 | Module | Description |
 |--------|-------------|
-| **Database** | MySQL / PostgreSQL / Redis — SQL or command console, table/key browser, DDL / design (MySQL) |
-| **Terminal** | Local shell, interactive SSH terminal, host trust, split panes |
+| **Database** | MySQL / PostgreSQL / SQLite / Redis — SQL or command console, table/key browser, DDL / design (MySQL) |
+| **Terminal** | Local shell, interactive SSH, host assets, split panes, **SSH local port forwards** |
 | **Files (SFTP)** | Remote directory browsing, upload/download, bookmarks, conflict handling, transfer queue |
 | **Containers (Docker)** | Local / remote SSH Docker, image & container management, logs & env vars, run from image, one-click DB connect |
 | **Environment (Env)** | Install, switch, and preset local Node / Go / PHP / Java versions |
-| **Notebook** | Ops notes, Markdown editing & preview |
-| **API** | HTTP request debugging and response viewer |
+| **Notebook** | Ops notes, Markdown editing & preview, groups & templates, bind SSH / database assets |
+| **API** | HTTP requests, environments, folders, and response viewer |
 | **Logs** | Local, SSH, Docker and Compose log viewer with live follow |
+| **Assistant** | Ask / Plan / Agent modes; `@` bind hosts/DBs/containers; writes confirm. Visible mutations go to the terminal pane; headless probes are read-only. Cursor can connect to local **MCP** (`/mcp/workbench`) and read ~100 lines of the current shell |
 
 Additional capabilities:
 
 - Dark / light theme with preferences persisted to local SQLite
 - UI language: **English / 简体中文** (switch via the globe icon in the top bar)
-- Multi-product workspace state auto-restore
+- Multi-product workspace state auto-restore; asset radar refreshes the UI after saves
+- Capability switches: disabled AI tools are refused
 
 ---
 
@@ -224,6 +227,16 @@ Issues and Pull Requests are welcome. Before submitting:
 2. Follow existing directory and naming conventions (Go models use `*DO` suffix, etc.)
 3. Update both `zh.ts` and `en.ts` for user-visible strings
 4. Bump the version in `version.go` for feature changes
+
+---
+
+## Contact
+
+Questions, ideas, or building the workbench together — scan WeChat (**韦宁**, Nanning, Guangxi):
+
+<img src="docs/images/wechat.jpg" alt="WeChat: 韦宁" width="220" />
+
+Or open a [GitHub Issue](https://github.com/wcoreing/WWorkbench/issues).
 
 ---
 
