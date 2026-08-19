@@ -1,0 +1,125 @@
+# 三端都在 GitHub 托管机上原生机编译（Wails CGO 不能交叉编 Linux/Windows）。
+# 触发：发布 Release，或手动填 tag。产物名与现有发版一致，上传时 --clobber。
+name: release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "要构建并上传的 Release tag，例如 v0.54.73"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  NODE_OPTIONS: --max-old-space-size=4096
+
+jobs:
+  desktop:
+    name: ${{ matrix.artifact }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux/amd64
+            artifact: linux-amd64
+            wails_args: "-tags webkit2_41"
+          - os: macos-14
+            platform: darwin/arm64
+            artifact: darwin-arm64
+            wails_args: ""
+          - os: windows-2022
+            platform: windows/amd64
+            artifact: windows-amd64
+            wails_args: "-webview2 embed"
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install GTK / WebKit 4.1
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc pkg-config zip \
+            libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Install MinGW
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install mingw -y --no-progress
+          $paths = @(
+            "C:\ProgramData\mingw64\mingw64\bin",
+            "C:\mingw64\bin"
+          )
+          Get-ChildItem "C:\ProgramData\chocolatey\lib\mingw" -Recurse -Filter gcc.exe -ErrorAction SilentlyContinue |
+            Select-Object -First 1 |
+            ForEach-Object { $paths += $_.DirectoryName }
+          foreach ($p in $paths) {
+            if (Test-Path $p) { Add-Content $env:GITHUB_PATH $p }
+          }
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+      - name: Build
+        shell: bash
+        run: wails build -platform "${{ matrix.platform }}" ${{ matrix.wails_args }}
+
+      - name: Zip
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${TAG}"
+          case "${{ matrix.artifact }}" in
+            darwin-arm64)
+              test -d build/bin/WWorkbench.app
+              ditto -c -k --sequesterRsrc --keepParent \
+                build/bin/WWorkbench.app \
+                "WWorkbench-${TAG}-darwin-arm64.zip"
+              ;;
+            linux-amd64)
+              test -x build/bin/WWorkbench
+              (cd build/bin && zip -9 "../../WWorkbench-${TAG}-linux-amd64.zip" WWorkbench)
+              ;;
+            windows-amd64)
+              test -f build/bin/WWorkbench.exe
+              python -c "import os,zipfile; t=os.environ['TAG']; z=zipfile.ZipFile(f'WWorkbench-{t}-windows-amd64.zip','w',zipfile.ZIP_DEFLATED); z.write('build/bin/WWorkbench.exe','WWorkbench.exe')"
+              ;;
+            *)
+              echo "unknown artifact ${{ matrix.artifact }}" >&2
+              exit 1
+              ;;
+          esac
+          ls -lh "WWorkbench-${TAG}-${{ matrix.artifact }}.zip"
+
+      - name: Upload to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: gh release upload "$TAG" "WWorkbench-${TAG}-${{ matrix.artifact }}.zip" --clobber
