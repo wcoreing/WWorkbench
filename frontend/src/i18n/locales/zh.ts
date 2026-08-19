@@ -76,7 +76,7 @@ export const zh: MessageTree = {
     choiceSend: '发送',
     choicePlaceholder: '填写后回车或点发送',
     attachCurrent: '附加当前资源',
-    attachOnSend: '发送时将附带',
+    attachOnSend: '当前焦点（本轮可见，不写入对话绑定）',
     sendToAgent: '发给 AI',
     draftSSH: '帮我检查这台主机的内存、磁盘和系统负载，并给出简要结论。',
     draftDatabase: '若连接尚未落盘请先 save_connection；再概览主要表结构，并给 2～3 条常用只读查询建议。',

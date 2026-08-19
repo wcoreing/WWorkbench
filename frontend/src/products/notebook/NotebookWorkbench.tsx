@@ -215,17 +215,14 @@ export function NotebookWorkbench() {
 
   const openNoteById = useCallback(
     async (id: string) => {
-      if (openNotesRef.current[id]) {
-        setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
-        setActiveTabId(id)
-        return
-      }
       const note = (await api.getNote(id)) as Note
       markNoteSaved(note)
       setOpenNotes((prev) => ({ ...prev, [id]: note }))
       setSummaries((prev) => {
         const sum = toSummary(note)
-        if (prev.some((s) => s.id === id)) return prev
+        if (prev.some((s) => s.id === id)) {
+          return prev.map((s) => (s.id === id ? sum : s))
+        }
         return [sum, ...prev]
       })
       setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
@@ -328,6 +325,12 @@ export function NotebookWorkbench() {
   }, [openTabIds, activeTabId, loading, persistUI])
 
   useWorkbenchCommand(Capability.NotebookOpen, (cmd) => {
+    const existingId = payloadStr(cmd.payload, 'noteId')
+    if (existingId) {
+      useAppStore.getState().setNotebookFocusNoteId(existingId)
+      void openNoteById(existingId).catch((e) => setStatusMessage((e as Error).message))
+      return
+    }
     const hostId = payloadStr(cmd.payload, 'hostId')
     const connectionId = payloadStr(cmd.payload, 'connectionId')
     const initialCommand = payloadStr(cmd.payload, 'initialCommand')

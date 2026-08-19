@@ -33,6 +33,7 @@ interface Props {
   onModelChange: (model: string) => void
   onSend: (text: string, mentions: AgentMention[], images: ChatImage[]) => void | Promise<void>
   onStop: () => void
+  onUnbindThreadMention?: (id: string, kind: AgentMention['kind']) => void
 }
 
 /** AgentInputBar 对话输入区（@ 提及 SSH / 数据库 / Docker）。 */
@@ -48,6 +49,7 @@ export function AgentInputBar({
   onModelChange,
   onSend,
   onStop,
+  onUnbindThreadMention,
 }: Props) {
   const { t } = useI18n()
   const [input, setInput] = useState('')
@@ -209,9 +211,11 @@ export function AgentInputBar({
 
   const pendingAuto = useMemo(() => {
     return autoMentions.filter(
-      (a) => !mentions.some((m) => m.kind === a.kind && m.id === a.id),
+      (a) =>
+        !mentions.some((m) => m.kind === a.kind && m.id === a.id) &&
+        !threadMentions.some((m) => m.kind === a.kind && m.id === a.id),
     )
-  }, [autoMentions, mentions])
+  }, [autoMentions, mentions, threadMentions])
 
   const addImageFiles = async (files: File[]) => {
     if (!files.length) return
@@ -272,6 +276,14 @@ export function AgentInputBar({
                         : 'DB'}
               </span>
               <span className="agent-mention-chip-label">{m.label}</span>
+              <button
+                type="button"
+                className="agent-mention-chip-remove"
+                aria-label={t('agent.mentionRemove')}
+                onClick={() => onUnbindThreadMention?.(m.id, m.kind)}
+              >
+                ×
+              </button>
             </span>
           ))}
         </div>

@@ -9,6 +9,7 @@ import (
 	"WWorkbench/internal/conn"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/terminal"
+	"WWorkbench/internal/turnctx"
 	"WWorkbench/internal/workbench"
 
 	"github.com/google/uuid"
@@ -72,10 +73,21 @@ func toolSaveSSHHost(_ context.Context, d *Deps, raw json.RawMessage) ToolResult
 	}
 	host := strings.TrimSpace(in.Host)
 	user := strings.TrimSpace(in.User)
+	port := in.Port
+	if cmdUser, cmdHost, cmdPort, ok := turnctx.ParseSSHTarget(host); ok {
+		if cmdHost != "" {
+			host = cmdHost
+		}
+		if cmdUser != "" {
+			user = cmdUser
+		}
+		if cmdPort > 0 {
+			port = cmdPort
+		}
+	}
 	if host == "" || user == "" {
 		return Fail("请填写 host 与 user")
 	}
-	port := in.Port
 	if port <= 0 {
 		port = 22
 	}

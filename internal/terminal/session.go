@@ -30,6 +30,7 @@ type Session struct {
 	localPty   gopty.Pty
 	dockerExec *docker.ExecSession
 	dockerMgr  *docker.Manager
+	tail       *outputTail
 }
 
 // cleanup 释放会话资源。

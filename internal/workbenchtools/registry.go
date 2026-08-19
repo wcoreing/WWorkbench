@@ -95,7 +95,7 @@ func (r *Registry) add(def ToolDef) {
 func (r *Registry) registerBuiltins() {
 	r.add(ToolDef{
 		Name:        "get_workbench_context",
-		Description: "获取当前工作台上下文：产品线、界面焦点（表/标签）、连接、打开的数据库会话、最近查询历史摘要。",
+		Description: "工作台快照：连接/SSH/会话，以及当前打开终端最近约 100 行（与可见 PTY 同源）。问「跑完了吗 / 这段输出」先调本工具，不要为了看屏幕再 terminal_exec。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -122,14 +122,14 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        "save_ssh_host",
-		Description: "将 SSH 主机保存为工作台资产（终端/SFTP 树可见）。需 keyPath 或 password；优先 keyPath。落盘后用 hostId 打开终端。",
+		Description: "将 SSH 主机保存为工作台资产。host/port/user 以用户消息里的 ssh 命令为准；与已有主机地址不同时不要填旧 id（应新建），禁止只改端口却沿用另一台机器的 host。需 keyPath 或 password。落盘后用返回的 hostId 打开终端。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"id":       map[string]interface{}{"type": "string", "description": "已有主机 ID（更新时填写）"},
 				"name":     map[string]interface{}{"type": "string"},
-				"host":     map[string]interface{}{"type": "string"},
-				"port":     map[string]interface{}{"type": "integer", "description": "默认 22"},
+				"host":     map[string]interface{}{"type": "string", "description": "主机名，必须来自用户 ssh 命令（如 connect.westd.seetacloud.com），不要复制已绑定主机的 host"},
+				"port":     map[string]interface{}{"type": "integer", "description": "来自 ssh -p，默认 22"},
 				"user":     map[string]interface{}{"type": "string"},
 				"password": map[string]interface{}{"type": "string", "description": "可选；勿在对用户回复中复述"},
 				"keyPath":  map[string]interface{}{"type": "string", "description": "私钥路径，推荐 ~/.ssh/id_ed25519"},
@@ -246,7 +246,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapOpenTerminal,
-		Description: "打开本机或 SSH 终端并可选注入命令。不返回 stdout；当前面板最近约 100 行已在本轮「工作台现状」里，问输出先看前馈。注入后要等下一轮用户消息才会带上新输出。需要立刻拿到结果时用 terminal_exec。",
+		Description: "给人看的终端：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。不返回 stdout；人在面板看输出。本轮「工作台现状」已有最近约 100 行；注入后下一轮用户消息才会带上新输出。禁止编造注入后的 stdout。只读短探针（uptime / nvidia-smi / python -c print）才用 terminal_exec。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -272,7 +272,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapTerminalExec,
-		Description: "argv 安全模式：无头起一个进程并返回输出。适用 uptime、free -h、df -h、python --version、python -c \"import torch; print(torch.__version__)\"。面板最近输出已在工作台现状中，先看再决定是否再执行。引号内的 ; 是参数。未加引号的管道/串联、rm/curl/bash 会拒绝，请改 terminal_open。",
+		Description: "无头只读短探针：另开 SSH、等结果、默认 30s 最多 120s。白名单如 uptime、free、df、nvidia-smi、ps、ls、cat、pip show、python -c print/import。不改机器状态。pip install / 下载 / 训练 / 脚本 / 管道必须 terminal_open。不踩用户正在看的 PTY。面板最近输出已在工作台现状中，先看再决定是否再探针。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -281,7 +281,7 @@ func (r *Registry) registerBuiltins() {
 				"hostOrName": map[string]interface{}{"type": "string"},
 				"command": map[string]interface{}{
 					"type":        "string",
-					"description": "一条进程的命令行，如 uptime 或 python -c \"import torch; print(torch.__version__)\"。不要写未加引号的 | 或 ; 串联",
+					"description": "只读探针命令行，如 uptime 或 python -c \"import torch; print(torch.__version__)\"。不要 | / ; 串联，不要 install/下载/训练",
 				},
 				"timeoutSeconds": map[string]interface{}{
 					"type":        "integer",
@@ -356,7 +356,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapNotebookAppend,
-		Description: "将 Markdown 内容写入笔记本：新建笔记或追加到 appendToNoteId。巡检/总结后应调用此工具留存报告。",
+		Description: "将 Markdown 写入笔记本：新建（须明确 title）或追加到 appendToNoteId。当前打开的笔记常是无关草稿，禁止默认用前馈 noteId。写训练/巡检先 list_notes 按标题定位。界面会打开写入的那篇。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -364,7 +364,7 @@ func (r *Registry) registerBuiltins() {
 				"content":        map[string]interface{}{"type": "string", "description": "Markdown 正文"},
 				"sshHostId":      map[string]interface{}{"type": "string", "description": "关联 SSH 主机 ID（可选）"},
 				"connectionId":   map[string]interface{}{"type": "string", "description": "关联数据库连接 ID（可选）"},
-				"appendToNoteId": map[string]interface{}{"type": "string", "description": "追加到已有笔记 ID（可选）"},
+				"appendToNoteId": map[string]interface{}{"type": "string", "description": "追加目标笔记 ID；须 list_notes 按标题确认，不要用当前打开的草稿 ID"},
 			},
 			"required": []interface{}{"content"},
 		},

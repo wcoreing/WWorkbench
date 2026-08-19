@@ -117,6 +117,16 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 	if httpList, err := d.Store.ListHTTPRequests(); err == nil {
 		out["httpRequests"] = httpList
 	}
+	if d.Terminals != nil {
+		openTerms := d.Terminals.ListSessionTails(terminal.ShellTailLines)
+		out["openTerminals"] = openTerms
+		if recent := d.Terminals.RecentShellTail(terminal.ShellTailLines); recent.SessionID != "" && recent.Tail != "" {
+			out["shellTail"] = recent.Tail
+			out["terminalSessionId"] = recent.SessionID
+			out["terminalTitle"] = recent.Title
+			out["terminalHostId"] = recent.HostID
+		}
+	}
 	return OKData(out)
 }
 

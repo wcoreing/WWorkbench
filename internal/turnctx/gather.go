@@ -16,7 +16,7 @@ const (
 )
 
 // Gather 组装本轮界面快照（Turn Transport）进 feedforward，与界面一致；细节用工具核实。
-func Gather(ctx model.AgentContextDO) string {
+func Gather(ctx model.AgentContextDO, userText string) string {
 	var b strings.Builder
 	b.WriteString("## 工作台现状（Turn Transport · 与界面一致；当前 Shell 最近输出已附上）\n")
 	if ctx.ActiveProduct != "" {
@@ -62,7 +62,7 @@ func Gather(ctx model.AgentContextDO) string {
 		if tb := strings.TrimSpace(ctx.TabTitle); tb != "" {
 			fmt.Fprintf(&b, " 标题「%s」", trimBrief(tb, 80))
 		}
-		b.WriteString("\n- 用户说「这篇 / 当前笔记 / 打开的笔记」时用 get_note(noteId)；笔记在工作台库内，禁止 cat 文件，禁止 recall_resource。\n")
+		b.WriteString("\n- 用户说「这篇 / 当前笔记 / 打开的笔记」时用 get_note(noteId) 读；写训练/巡检记录不要默认追加到这篇（常是无关「未命名」草稿），list_notes 按标题定位或新建明确 title。笔记在工作台库内，禁止 cat 文件，禁止 recall_resource。\n")
 	}
 	if ot := strings.TrimSpace(ctx.OpenTabsBrief); ot != "" {
 		fmt.Fprintf(&b, "- **中栏标签**：%s\n", trimBrief(ot, maxTabsBrief))
@@ -71,11 +71,13 @@ func Gather(ctx model.AgentContextDO) string {
 		fmt.Fprintf(&b, "- **树/资源选中**：%s\n", trimBrief(sel, 160))
 	}
 
+	hasSSHMention := false
 	if len(ctx.Mentions) > 0 {
 		b.WriteString("- **本轮 @ 绑定**（优先使用，勿编造 ID）:\n")
 		for _, m := range ctx.Mentions {
 			switch m.Kind {
 			case "ssh":
+				hasSSHMention = true
 				fmt.Fprintf(&b, "  · SSH「%s」 hostId=%s\n", m.Label, m.ID)
 			case "database":
 				fmt.Fprintf(&b, "  · 数据库「%s」 connectionId=%s\n", m.Label, m.ID)
@@ -94,7 +96,13 @@ func Gather(ctx model.AgentContextDO) string {
 			}
 		}
 	}
-	b.WriteString("- 容器启停/删除用 start_container / stop_container / remove_container（会确认）；terminal_exec 为 argv 安全模式（python -c 分号写在引号内；管道用 terminal_open）。\n")
+	if hasSSHMention {
+		b.WriteString("- SSH 连不上时先核对绑定里的 user@host:port 是否与控制台一致；握手 EOF 表示该端口没有 SSH（区域名/端口填错或实例关机），不是 known_hosts。\n")
+	}
+	if hint := userSSHHint(userText, ctx.Mentions); hint != "" {
+		b.WriteString(hint)
+	}
+	b.WriteString("- 容器启停/删除用 start_container / stop_container / remove_container（会确认）。terminal_open=注入给人看（pip/下载/训练）；terminal_exec=无头只读短探针，禁止改机器。\n")
 	b.WriteString("- 资产落盘：HTTP→save_http_request+save_http_environment；SSH→save_ssh_host/save_ssh_forward；库→save_connection；日志→save_log_source；Docker→save_docker_context。\n")
 	out := b.String()
 	if utf8.RuneCountInString(out) > maxSnapshotRunes {
@@ -114,7 +122,7 @@ func Gather(ctx model.AgentContextDO) string {
 			fmt.Fprintf(&sb, "- terminalSessionId=`%s`\n", sid)
 		}
 		sb.WriteString("- 用户问「跑完了吗 / 报错 / 装好了吗 / 这段输出」时直接引用下面内容，不要为了看屏幕再 terminal_exec / terminal_open。\n")
-		sb.WriteString("- 若要刷新或跑新命令再用工具；terminal_open 注入后输出仍在面板，下一轮用户消息才会带上最新 100 行。\n")
+		sb.WriteString("- 改机器状态用 terminal_open 注入，不要编造 stdout；注入后下一轮用户消息才会带上最新 100 行。只读数字用 terminal_exec。\n")
 		sb.WriteString(fence)
 		sb.WriteByte('\n')
 		sb.WriteString(tail)
@@ -122,6 +130,38 @@ func Gather(ctx model.AgentContextDO) string {
 		sb.WriteString(fence)
 		sb.WriteByte('\n')
 		out = sb.String()
+	}
+	return out
+}
+
+// AttachSSHEndpoints 把已保存的 user@host:port 写入 SSH @ 绑定标签，避免助手只看到昵称。
+func AttachSSHEndpoints(ctx model.AgentContextDO, lookup func(id string) (user, host string, port int, ok bool)) model.AgentContextDO {
+	if lookup == nil || len(ctx.Mentions) == 0 {
+		return ctx
+	}
+	out := ctx
+	out.Mentions = append([]model.AgentMentionDO(nil), ctx.Mentions...)
+	for i, m := range out.Mentions {
+		if m.Kind != "ssh" {
+			continue
+		}
+		user, host, port, ok := lookup(m.ID)
+		if !ok || strings.TrimSpace(host) == "" {
+			continue
+		}
+		if port <= 0 {
+			port = 22
+		}
+		addr := fmt.Sprintf("%s@%s:%d", user, host, port)
+		if strings.Contains(m.Label, addr) {
+			continue
+		}
+		label := strings.TrimSpace(m.Label)
+		if label == "" {
+			out.Mentions[i].Label = addr
+			continue
+		}
+		out.Mentions[i].Label = label + " · " + addr
 	}
 	return out
 }

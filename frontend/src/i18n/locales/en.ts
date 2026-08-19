@@ -76,7 +76,7 @@ export const en: MessageTree = {
     choiceSend: 'Send',
     choicePlaceholder: 'Type then Enter or Send',
     attachCurrent: 'Attach current',
-    attachOnSend: 'Will attach on send',
+    attachOnSend: 'Current focus (this turn, not bound)',
     sendToAgent: 'Send to AI',
     draftSSH: 'Check memory, disk, and load on this host and summarize.',
     draftDatabase: 'If the connection is not saved yet, first save_connection; then summarize main tables and suggest a few read-only queries.',

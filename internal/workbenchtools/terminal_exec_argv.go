@@ -95,10 +95,12 @@ func unquotedShellOp(s string, i int) (string, bool) {
 
 func unquotedOpHint(op string) string {
 	return fmt.Sprintf(
-		"未加引号的 %s 不会按管道/多语句执行（argv 安全模式只起一个进程）。python -c 里的分号请写在引号内；管道请用 terminal_open。",
+		"未加引号的 %s 不会按管道/多语句执行。无头只做只读短探针；管道/多语句请 terminal_open 注入到面板。",
 		op,
 	)
 }
+
+const execOpenInstead = "请改用 terminal_open 注入到终端面板（人看得见）。无头 terminal_exec 只做只读短探针。"
 
 // posixQuoteArgv 将 argv 编成远端 shell 不会二次拆语句的命令行。
 func posixQuoteArgv(argv []string) string {
@@ -109,55 +111,93 @@ func posixQuoteArgv(argv []string) string {
 	return strings.Join(parts, " ")
 }
 
+// execProbeBins 无头白名单：只读短探针。不在表内的一律请注入面板。
+var execProbeBins = map[string]bool{
+	"uptime": true, "free": true, "df": true, "du": true, "nproc": true,
+	"hostname": true, "uname": true, "whoami": true, "id": true, "date": true, "pwd": true,
+	"nvidia-smi": true, "nvcc": true,
+	"ps": true, "pgrep": true, "pidof": true,
+	"ls": true, "lsblk": true, "lscpu": true, "lsmem": true,
+	"cat": true, "head": true, "tail": true, "wc": true, "stat": true, "file": true,
+	"readlink": true, "realpath": true, "dirname": true, "basename": true,
+	"which": true, "whereis": true, "type": true,
+	"pip": true, "pip3": true,
+	"git": true,
+	"docker": true, "systemctl": true, "journalctl": true,
+	"ip": true, "ss": true,
+	"echo": true, "true": true, "false": true,
+}
+
 var execBannedBins = map[string]string{
-	"rm":       "删除请在终端面板操作（terminal_open）",
-	"dd":       "磁盘写入请 terminal_open",
-	"mkfs":     "格式化请 terminal_open",
-	"shutdown": "关机请 terminal_open",
-	"reboot":   "重启请 terminal_open",
-	"poweroff": "关机请 terminal_open",
-	"halt":     "关机请 terminal_open",
-	"chmod":    "改权限请 terminal_open",
-	"chown":    "改属主请 terminal_open",
-	"kill":     "杀进程请 terminal_open",
-	"pkill":    "杀进程请 terminal_open",
-	"killall":  "杀进程请 terminal_open",
-	"wget":     "下载请 terminal_open",
-	"curl":     "HTTP 请用 execute_http；其它下载请 terminal_open",
-	"scp":      "传文件请用 SFTP 或 terminal_open",
+	"rm":       "删除" + execOpenInstead,
+	"dd":       "磁盘写入" + execOpenInstead,
+	"mkfs":     "格式化" + execOpenInstead,
+	"shutdown": "关机" + execOpenInstead,
+	"reboot":   "重启" + execOpenInstead,
+	"poweroff": "关机" + execOpenInstead,
+	"halt":     "关机" + execOpenInstead,
+	"chmod":    "改权限" + execOpenInstead,
+	"chown":    "改属主" + execOpenInstead,
+	"kill":     "杀进程" + execOpenInstead,
+	"pkill":    "杀进程" + execOpenInstead,
+	"killall":  "杀进程" + execOpenInstead,
+	"wget":     "下载" + execOpenInstead,
+	"curl":     "HTTP 请用 execute_http；其它下载" + execOpenInstead,
+	"scp":      "传文件请用 SFTP，或" + execOpenInstead,
 	"sftp":     "传文件请用 SFTP 产品线",
-	"sudo":     "提权请 terminal_open",
-	"su":       "提权请 terminal_open",
-	"doas":     "提权请 terminal_open",
-	"bash":     "不要包一层 shell。直接写要跑的程序（如 python、uptime）",
-	"sh":       "不要包一层 shell。直接写要跑的程序（如 python、uptime）",
-	"zsh":      "不要包一层 shell。直接写要跑的程序",
-	"ksh":      "不要包一层 shell。直接写要跑的程序",
-	"dash":     "不要包一层 shell。直接写要跑的程序",
-	"fish":     "不要包一层 shell。直接写要跑的程序",
-	"csh":      "不要包一层 shell。直接写要跑的程序",
-	"tcsh":     "不要包一层 shell。直接写要跑的程序",
-	"busybox":  "busybox 请 terminal_open",
-	"xargs":    "xargs 请 terminal_open",
-	"env":      "请直接写目标程序（如 python），不要经 env 包装",
+	"sudo":     "提权" + execOpenInstead,
+	"su":       "提权" + execOpenInstead,
+	"doas":     "提权" + execOpenInstead,
+	"bash":     "不要包一层 shell；无头直接写探针程序。长命令/脚本" + execOpenInstead,
+	"sh":       "不要包一层 shell；无头直接写探针程序。长命令/脚本" + execOpenInstead,
+	"zsh":      "不要包一层 shell。" + execOpenInstead,
+	"ksh":      "不要包一层 shell。" + execOpenInstead,
+	"dash":     "不要包一层 shell。" + execOpenInstead,
+	"fish":     "不要包一层 shell。" + execOpenInstead,
+	"csh":      "不要包一层 shell。" + execOpenInstead,
+	"tcsh":     "不要包一层 shell。" + execOpenInstead,
+	"busybox":  "busybox " + execOpenInstead,
+	"xargs":    "xargs " + execOpenInstead,
+	"env":      "请直接写目标程序，不要经 env 包装",
+	"nohup":    "后台任务" + execOpenInstead,
+	"screen":   "会话复用" + execOpenInstead,
+	"tmux":     "会话复用" + execOpenInstead,
+	"apt":      "装包" + execOpenInstead,
+	"apt-get":  "装包" + execOpenInstead,
+	"yum":      "装包" + execOpenInstead,
+	"dnf":      "装包" + execOpenInstead,
+	"pacman":   "装包" + execOpenInstead,
+	"make":     "构建" + execOpenInstead,
+	"cmake":    "构建" + execOpenInstead,
+	"gcc":      "编译" + execOpenInstead,
+	"g++":      "编译" + execOpenInstead,
 }
 
-var dockerDeniedVerbs = map[string]bool{
-	"rm": true, "rmi": true, "stop": true, "kill": true, "start": true,
-	"restart": true, "run": true, "exec": true, "create": true,
+var dockerProbeVerbs = map[string]bool{
+	"ps": true, "images": true, "inspect": true, "logs": true, "stats": true,
+	"version": true, "info": true, "top": true, "port": true,
 }
 
-var dockerComposeDenied = map[string]bool{
-	"up": true, "down": true, "kill": true, "rm": true, "start": true,
-	"stop": true, "restart": true, "run": true, "exec": true, "create": true,
+var dockerComposeProbe = map[string]bool{
+	"ps": true, "logs": true, "config": true, "images": true, "ls": true, "version": true,
 }
 
-var systemctlDenied = map[string]bool{
-	"start": true, "stop": true, "restart": true, "reload": true, "kill": true,
-	"mask": true, "unmask": true, "enable": true, "disable": true, "isolate": true,
+var systemctlProbe = map[string]bool{
+	"status": true, "is-active": true, "is-enabled": true, "is-failed": true,
+	"show": true, "cat": true, "list-units": true, "list-unit-files": true,
+	"show-environment": true,
 }
 
-// validateExecArgv 只拦危险程序与 Docker/systemctl 写操作，不拦引号内符号。
+var pipProbeVerbs = map[string]bool{
+	"show": true, "list": true, "freeze": true, "index": true, "help": true, "--version": true, "-V": true,
+}
+
+var gitProbeVerbs = map[string]bool{
+	"status": true, "log": true, "diff": true, "show": true, "branch": true,
+	"rev-parse": true, "remote": true, "describe": true, "ls-files": true,
+}
+
+// validateExecArgv 无头只允许只读短探针（白名单 + 动词），写操作/长任务走 terminal_open。
 func validateExecArgv(argv []string) error {
 	if len(argv) == 0 {
 		return errno.New(errno.CodeInvalidArg, "请填写 command", "")
@@ -167,19 +207,102 @@ func validateExecArgv(argv []string) error {
 		return errno.New(errno.CodeInvalidArg, fmt.Sprintf("%s：%s", bin, hint), strings.Join(argv, " "))
 	}
 	if strings.HasPrefix(bin, "mkfs.") {
-		return errno.New(errno.CodeInvalidArg, "mkfs：格式化请 terminal_open", bin)
+		return errno.New(errno.CodeInvalidArg, "mkfs："+execOpenInstead, bin)
+	}
+	if isPythonBin(bin) {
+		return validatePythonProbe(argv)
+	}
+	if bin == "pip" || bin == "pip3" {
+		return validatePipProbe(argv, 1)
+	}
+	if bin == "git" {
+		return validateGitProbe(argv)
 	}
 	if bin == "docker" {
-		if err := validateDockerArgv(argv); err != nil {
-			return err
-		}
+		return validateDockerArgv(argv)
 	}
 	if bin == "systemctl" {
-		if err := validateSystemctlArgv(argv); err != nil {
-			return err
+		return validateSystemctlArgv(argv)
+	}
+	if execProbeBins[bin] {
+		return nil
+	}
+	return errno.New(errno.CodeInvalidArg,
+		bin+" 不是只读短探针，"+execOpenInstead,
+		strings.Join(argv, " "))
+}
+
+func isPythonBin(bin string) bool {
+	return bin == "python" || strings.HasPrefix(bin, "python3")
+}
+
+func validatePythonProbe(argv []string) error {
+	if len(argv) == 1 {
+		return errno.New(errno.CodeInvalidArg, "python 无头仅允许 --version / -c print… / -m pip show。跑脚本"+execOpenInstead, strings.Join(argv, " "))
+	}
+	for i := 1; i < len(argv); i++ {
+		a := argv[i]
+		switch a {
+		case "-V", "--version":
+			return nil
+		case "-c":
+			if i+1 >= len(argv) {
+				return errno.New(errno.CodeInvalidArg, "python -c 缺少代码", strings.Join(argv, " "))
+			}
+			if pythonCLooksLikeWrite(argv[i+1]) {
+				return errno.New(errno.CodeInvalidArg, "python -c 含写入/子进程，"+execOpenInstead, argv[i+1])
+			}
+			return nil
+		case "-m":
+			if i+1 >= len(argv) {
+				return errno.New(errno.CodeInvalidArg, "python -m 缺少模块", strings.Join(argv, " "))
+			}
+			mod := strings.ToLower(argv[i+1])
+			if mod == "pip" {
+				return validatePipProbe(argv, i+2)
+			}
+			return errno.New(errno.CodeInvalidArg, "python -m "+argv[i+1]+" "+execOpenInstead+"（无头仅 python -m pip show/list/freeze）", strings.Join(argv, " "))
 		}
 	}
-	return nil
+	return errno.New(errno.CodeInvalidArg, "python 跑脚本或无 -c "+execOpenInstead, strings.Join(argv, " "))
+}
+
+func pythonCLooksLikeWrite(code string) bool {
+	lower := strings.ToLower(code)
+	needles := []string{
+		"open(", "write(", "writelines", "unlink", "remove(", "rmtree",
+		"shutil", "subprocess", "os.system", "path.write", "mkdir",
+		"makedirs", "torch.save", "to_csv", "savefig", "dump(",
+	}
+	for _, n := range needles {
+		if strings.Contains(lower, n) {
+			return true
+		}
+	}
+	return false
+}
+
+func validatePipProbe(argv []string, start int) error {
+	verb, _ := firstNonFlag(argv, start)
+	if verb == "" {
+		return errno.New(errno.CodeInvalidArg, "pip 无头仅 show/list/freeze；install "+execOpenInstead, strings.Join(argv, " "))
+	}
+	if pipProbeVerbs[verb] {
+		return nil
+	}
+	return errno.New(errno.CodeInvalidArg, "pip "+verb+" "+execOpenInstead+"（无头仅 pip show/list/freeze）", strings.Join(argv, " "))
+}
+
+func validateGitProbe(argv []string) error {
+	verb, _ := firstNonFlag(argv, 1)
+	verb = strings.ToLower(verb)
+	if verb == "" || gitProbeVerbs[verb] {
+		if verb == "" {
+			return errno.New(errno.CodeInvalidArg, "git 无头请带 status/log/diff；commit/push "+execOpenInstead, strings.Join(argv, " "))
+		}
+		return nil
+	}
+	return errno.New(errno.CodeInvalidArg, "git "+verb+" "+execOpenInstead+"（无头仅 status/log/diff/show）", strings.Join(argv, " "))
 }
 
 func execBinName(argv0 string) string {
@@ -208,38 +331,38 @@ func validateDockerArgv(argv []string) error {
 	verb, idx := firstNonFlag(argv, 1)
 	verb = strings.ToLower(verb)
 	if verb == "" {
-		return nil
+		return errno.New(errno.CodeInvalidArg, "docker 无头请带 ps/images/inspect/logs；启停请用专用工具或 "+execOpenInstead, strings.Join(argv, " "))
 	}
 	if verb == "compose" {
 		sub, _ := firstNonFlag(argv, idx+1)
 		sub = strings.ToLower(sub)
-		if dockerComposeDenied[sub] {
-			return errno.New(errno.CodeInvalidArg,
-				"容器启停/删除请用 start_container / stop_container / remove_container（会弹确认），勿经 terminal_exec 跑 docker compose "+sub,
-				strings.Join(argv, " "))
+		if dockerComposeProbe[sub] {
+			return nil
 		}
-		return nil
-	}
-	if dockerDeniedVerbs[verb] {
 		return errno.New(errno.CodeInvalidArg,
-			"容器启停/删除请用 start_container / stop_container / remove_container（会弹确认），勿经 terminal_exec",
+			"docker compose "+sub+" 会改状态；启停/删除用 start/stop/remove_container，其它 "+execOpenInstead,
 			strings.Join(argv, " "))
 	}
-	return nil
+	if dockerProbeVerbs[verb] {
+		return nil
+	}
+	return errno.New(errno.CodeInvalidArg,
+		"docker "+verb+" 不是只读探针；启停/删除用专用工具，其它 "+execOpenInstead,
+		strings.Join(argv, " "))
 }
 
 func validateSystemctlArgv(argv []string) error {
 	action, _ := firstNonFlag(argv, 1)
 	action = strings.ToLower(action)
 	if action == "" {
-		return errno.New(errno.CodeInvalidArg, "systemctl 请带只读动作，如 status / is-active；启停请 terminal_open", strings.Join(argv, " "))
+		return errno.New(errno.CodeInvalidArg, "systemctl 无头仅 status / is-active；启停 "+execOpenInstead, strings.Join(argv, " "))
 	}
-	if systemctlDenied[action] {
-		return errno.New(errno.CodeInvalidArg,
-			"systemctl "+action+" 请在终端面板执行（terminal_open）；只读可用 systemctl status / is-active",
-			strings.Join(argv, " "))
+	if systemctlProbe[action] {
+		return nil
 	}
-	return nil
+	return errno.New(errno.CodeInvalidArg,
+		"systemctl "+action+" "+execOpenInstead+"（无头仅 status / is-active）",
+		strings.Join(argv, " "))
 }
 
 // parseAndValidateExec 解析并校验 argv 安全模式命令。

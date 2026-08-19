@@ -33,6 +33,7 @@ func (s *Service) wireAgentRunner() {
 		Docker:    s.docker,
 		UIActions: workbenchtools.NewUIActionBus(emit),
 		Radar:     radar,
+		Terminals: s.terminals,
 	}
 	reg := workbenchtools.NewRegistry(deps)
 	s.toolsRegistry = reg
@@ -185,6 +186,23 @@ func (s *Service) GetAgentThread(threadID string) ApiResult[model.AgentThreadDet
 		ID: info.ID, Title: info.Title, UpdatedAt: info.UpdatedAt,
 		Context: model.AgentContextDO{Mentions: mentions},
 	})
+}
+
+// SetAgentThreadBindings 更新对话 @ 绑定（解绑不发消息）。
+func (s *Service) SetAgentThreadBindings(threadID string, mentions []model.AgentMentionDO) ApiResult[bool] {
+	if threadID == "" {
+		return ErrResult[bool](errno.New(errno.CodeInvalidArg, "threadId 不能为空", ""))
+	}
+	if s.harnessHost == nil {
+		return ErrResult[bool](errAgentNotReady())
+	}
+	if mentions == nil {
+		mentions = []model.AgentMentionDO{}
+	}
+	if err := s.harnessHost.SetBindings(threadID, mentions, ""); err != nil {
+		return ErrResult[bool](err)
+	}
+	return OkResult(true)
 }
 
 // ListAgentThreads 列出已保存的对话线程。

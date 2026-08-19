@@ -123,6 +123,9 @@ func (m *Manager) Open(ctx context.Context, hostID string, cols, rows int) (*mod
 
 // registerSession 注册会话并启动输出泵。
 func (m *Manager) registerSession(ts *Session, reader io.Reader, onDone func()) {
+	if ts.tail == nil {
+		ts.tail = newOutputTail()
+	}
 	m.mu.Lock()
 	m.sessions[ts.ID] = ts
 	m.mu.Unlock()
@@ -132,10 +135,17 @@ func (m *Manager) registerSession(ts *Session, reader io.Reader, onDone func()) 
 // emitter 创建会话输出回调。
 func (m *Manager) emitter(sessionID string) func([]byte) {
 	return func(data []byte) {
+		if len(data) == 0 {
+			return
+		}
 		m.mu.RLock()
+		s := m.sessions[sessionID]
 		onOutput := m.onOutput
 		m.mu.RUnlock()
-		if onOutput != nil && len(data) > 0 {
+		if s != nil {
+			s.tail.append(data)
+		}
+		if onOutput != nil {
 			onOutput(sessionID, string(data))
 		}
 	}

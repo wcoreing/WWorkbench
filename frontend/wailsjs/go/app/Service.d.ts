@@ -305,6 +305,8 @@ export function ScanEnvProjects(arg1:string):Promise<app.ApiResult___WWorkbench_
 
 export function SearchNotes(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_NoteSummaryDO_>;
 
+export function SetAgentThreadBindings(arg1:string,arg2:Array<model.AgentMentionDO>):Promise<app.ApiResult_bool_>;
+
 export function SetAppSetting(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
 export function SetDatabase(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_SessionInfoDO_>;

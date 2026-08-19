@@ -125,14 +125,15 @@ func (r *Runner) Chat(req model.AgentChatRequestDO) (string, error) {
 	th.pendingImages = images
 	th.mode = NormalizeChatMode(req.Mode)
 	th.mu.Unlock()
-	ff := turnctx.Gather(req.Context)
-	_ = r.harness.SetBindings(threadID, req.Context.Mentions, turnctx.FocusRefFromContext(req.Context))
+	ctx := turnctx.AttachSSHEndpoints(req.Context, sshEndpointLookup(r.store))
+	ff := turnctx.Gather(ctx, msg)
+	_ = r.harness.SetBindings(threadID, ctx.Mentions, turnctx.FocusRefFromContext(ctx))
 	uiText := msg
 	if uiText == "" {
 		uiText = imageOnlyPrompt
 	}
 	payload := map[string]interface{}{
-		"threadId": threadID, "content": uiText, "mentions": req.Context.Mentions,
+		"threadId": threadID, "content": uiText, "mentions": ctx.Mentions,
 	}
 	if len(images) > 0 {
 		payload["images"] = previewImages(images)
@@ -469,15 +470,15 @@ func (r *Runner) systemPrompt(mode string) string {
 
 你是 WWorkbench 内置助手，只能通过提供的工具操作工作台。
 规则：
-1. 每轮用户消息可能带有「本轮工作台现状」前馈（含界面焦点、中栏标签、@ 绑定、当前连接、当前笔记 noteId，以及当前 Shell 最近约 100 行）。用户说「这个 / 这张表 / 这个库 / 这个主机 / 这个请求 / 这篇笔记」时优先指界面焦点，不要空猜；优先使用其中的 ID，不要编造。问终端输出、报错、是否装好时先看前馈里的 Shell 最近输出，不要为了看屏幕再跑一遍。
+1. 每轮用户消息可能带有「本轮工作台现状」前馈（含界面焦点、中栏标签、@ 绑定、当前连接、当前笔记 noteId，以及当前 Shell 最近约 100 行）。用户说「这个 / 这张表 / 这个库 / 这个主机 / 这个请求 / 这篇笔记」且没给出新地址时，优先指界面焦点，不要空猜；优先使用其中的 ID，不要编造。用户消息里出现 ssh -p / user@host 时，那是权威地址，优先于 @ 绑定：地址不同就是新机器，save_ssh_host 必须用命令里的 host/port，禁止沿用绑定资产的 host，terminal_exec 不要用旧 hostId。问终端输出、报错、是否装好时先看前馈里的 Shell 最近输出，不要为了看屏幕再跑一遍。
 2. 用户问「有哪些连接/链接」时，必须同时调用 list_connections（数据库）与 list_ssh_hosts（SSH），分开展示。
-3. 查看远程资源：terminal_exec 是 argv 安全模式（一个进程）。可用 python -c "import torch; print(torch.__version__)"（分号写在引号里）。uptime / free -h / df -h / pip show 照旧。未加引号的管道 | 或多语句 ; 请 terminal_open；rm/curl/bash 会拒绝。terminal_open 只注入命令、不返回 stdout；跑完后输出在面板，下一轮前馈会带上最新 100 行。
+3. 终端合同：人看得见的工作（pip、下载、训练、写脚本、管道）必须 terminal_open 注入可见 PTY，本轮不返回 stdout，禁止编造输出；下一轮用户消息前馈会带上面板最近约 100 行。terminal_exec 只做只读短探针（uptime / free / df / nvidia-smi / pip show / python -c print），另开会话、等结果、默认 30s；装包/下载/训练/跑脚本会被拒绝。用户 PTY 正忙时不要用 exec 抢同一台的交互，探针另开会话。问「跑完了吗」先看前馈 Shell 尾，不要为了看屏幕再跑一遍。
 4. 容器启停/删除必须用 start_container / stop_container / remove_container（会弹确认），禁止 docker rm/start/stop 走 terminal_exec。
 5. 查库：database_open 或 open_database_session + execute_sql；默认 readonly=true。
 6. 禁止 DROP DATABASE；不要输出或猜测密码。
 7. 需要图表时用 echarts 围栏代码块（合法 ECharts option JSON）。
-8. 巡检/报告：收集数据后可用 notebook_append_content 存档。
-8b. 读笔记：正文在工作台库里。list_notes 浏览，search_notes(query) 按标题/正文搜，get_note(noteId) 取全文。用户说「这篇」用前馈 noteId。禁止 cat 文件路径，禁止用 recall_resource 当笔记（那是工具结果 resource#N）。
+8. 巡检/报告：收集数据后可用 notebook_append_content 存档。当前打开的笔记常是无关草稿，禁止把前馈 noteId 当成默认写入目标；list_notes 按标题定位或新建明确 title，再 appendToNoteId。
+8b. 读笔记：正文在工作台库里。list_notes 浏览，search_notes(query) 按标题/正文搜，get_note(noteId) 取全文。用户说「这篇」才用前馈 noteId 去读。禁止 cat 文件路径，禁止用 recall_resource 当笔记（那是工具结果 resource#N）。
 9. Docker：远端先 save_docker_context(sshHostId)，再 list_containers；变更用 start/stop/remove_container；日志：新源先 save_log_source，再用 fetch_logs(logSourceId) 或 get_container_logs。
 9b. 工作台是资产容器——凡要可复现的配置必须落盘：HTTP→save_http_request + save_http_environment；SSH→save_ssh_host / save_ssh_forward；数据库→save_connection；日志→save_log_source；Docker→save_docker_context。禁止只临时候参数打完就结束；笔记本是报告旁路，主资产在各产品树。
 10. 本轮工具返回已在上下文中，直接基于其内容作答；不要为本轮结果调用 recall_resource。跨轮或历史被挤出窗口后，用 recall_resource（resource#N / resource_id）取回全文；可用 search_session / get_task_summary 定位。
@@ -499,4 +500,17 @@ func (r *Runner) systemPrompt(mode string) string {
 	}
 
 	return langRule + toolRules
+}
+
+func sshEndpointLookup(st *store.Store) func(id string) (user, host string, port int, ok bool) {
+	return func(id string) (string, string, int, bool) {
+		if st == nil || strings.TrimSpace(id) == "" {
+			return "", "", 0, false
+		}
+		h, err := st.GetSSHHost(id)
+		if err != nil || h == nil {
+			return "", "", 0, false
+		}
+		return h.User, h.Host, h.Port, true
+	}
 }

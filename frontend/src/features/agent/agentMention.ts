@@ -38,12 +38,12 @@ export function insertMentionToken(
   return { text: next, cursor: pos }
 }
 
-/** toContextMentions 转为后端 AgentMentionDO 结构。 */
+/** toContextMentions 转为后端 AgentMentionDO 结构（sublabel 带进 label，供前馈展示真实地址）。 */
 export function toContextMentions(mentions: AgentMention[]) {
   return mentions.map((m) => ({
     kind: m.kind,
     id: m.id,
-    label: m.label,
+    label: m.sublabel ? `${m.label} · ${m.sublabel}` : m.label,
   }))
 }
 

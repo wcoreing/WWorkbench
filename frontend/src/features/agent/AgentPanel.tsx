@@ -317,7 +317,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       shellTail: shell.text,
       terminalSessionId: shell.sessionId,
       noteId: agentSurface.noteId || '',
-      mentions: toContextMentions(mergeMentions(mentions, threadMentions, autoMentions)),
+      mentions: toContextMentions(mentions),
     })
   }
 
@@ -326,6 +326,18 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     try {
       await api.agentStop(threadId)
     } catch (e) {
+      setStatusMessage((e as Error).message)
+    }
+  }
+
+  const unbindThreadMention = async (id: string, kind: AgentMention['kind']) => {
+    const next = threadMentions.filter((m) => !(m.id === id && m.kind === kind))
+    setThreadMentions(next)
+    if (!threadId) return
+    try {
+      await api.setAgentThreadBindings(threadId, next)
+    } catch (e) {
+      setThreadMentions(threadMentions)
       setStatusMessage((e as Error).message)
     }
   }
@@ -351,6 +363,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
         }),
       )
       if (res.threadId) setThreadId(res.threadId)
+      setThreadMentions(mentions)
     } catch (e) {
       setBusy(false)
       const msg = (e as Error).message || t('agent.sendFailed')
@@ -626,7 +639,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
                         ? (text) => {
                             void send(
                               text,
-                              mergeMentions(threadMentions, autoMentions),
+                              threadMentions,
                             ).catch(() => {})
                           }
                         : undefined
@@ -706,6 +719,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
             onModelChange={(id) => void switchModel(id)}
             onSend={(text, mentions, images) => send(text, mentions, images)}
             onStop={() => void stopGeneration()}
+            onUnbindThreadMention={(id, kind) => void unbindThreadMention(id, kind)}
           />
         </div>
       )}

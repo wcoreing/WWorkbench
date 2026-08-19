@@ -13,11 +13,20 @@ export function openAgentDraft(payload: AgentDraftPayload) {
 }
 
 /** mentionSSH 构造 SSH @ 资源。 */
-export function mentionSSH(host: { id: string; name?: string; host: string }): AgentMention {
+export function mentionSSH(host: {
+  id: string
+  name?: string
+  host: string
+  user?: string
+  port?: number
+}): AgentMention {
+  const user = host.user?.trim() || 'root'
+  const port = host.port && host.port > 0 ? host.port : 22
   return {
     kind: 'ssh',
     id: host.id,
     label: host.name?.trim() || host.host,
+    sublabel: `${user}@${host.host}:${port}`,
   }
 }
 

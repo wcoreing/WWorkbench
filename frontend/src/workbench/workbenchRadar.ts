@@ -67,6 +67,15 @@ export function startWorkbenchRadar(): () => void {
     if (evt.reveal && evt.product) {
       useAppStore.getState().setActiveProduct(evt.product as ProductId)
     }
+    // 笔记本首次挂载会从持久化 UI 恢复「上次打开的草稿」，必须抢在 boot 覆盖之前记下 reveal 目标。
+    if (
+      evt.reveal &&
+      evt.domain === 'notebook.note' &&
+      evt.op !== 'delete' &&
+      evt.ids[0]
+    ) {
+      useAppStore.getState().setNotebookFocusNoteId(evt.ids[0])
+    }
     for (const fn of listeners) {
       try {
         fn(evt)

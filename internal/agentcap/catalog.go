@@ -26,7 +26,7 @@ func Catalog() []Item {
 	return []Item{
 		{
 			Name: "get_workbench_context", Label: "读取工作台上下文", Risk: RiskRead,
-			Description:    "当前产品线、数据库连接、SSH 主机、已开会话、最近 SQL 历史摘要（均无密码）",
+			Description:    "产品线/连接/SSH，以及打开中的可见终端最近约 100 行（PTY 同源）",
 			DefaultEnabled: true,
 		},
 		{
@@ -51,7 +51,7 @@ func Catalog() []Item {
 		},
 		{
 			Name: "save_ssh_host", Label: "保存 SSH 主机资产", Risk: RiskWrite,
-			Description:    "写入可复现的 SSH 主机并刷新界面；需 keyPath 或 password",
+			Description:    "写入 SSH 主机；host/port 以用户 ssh 命令为准，地址不同时新建勿复用旧 host",
 			DefaultEnabled: true,
 		},
 		{
@@ -76,12 +76,12 @@ func Catalog() []Item {
 		},
 		{
 			Name: "terminal_open", Label: "打开终端", Risk: RiskSession,
-			Description:    "打开本机或 SSH 终端并可选注入命令；stdout 在面板（本轮前馈含最近 100 行，注入后下一轮才更新）",
+			Description:    "给人看的终端：注入 pip/下载/训练/脚本到可见 PTY；不返回 stdout，下一轮前馈才带新输出",
 			DefaultEnabled: true,
 		},
 		{
 			Name: "terminal_exec", Label: "执行 Shell 命令（只读）", Risk: RiskRead,
-			Description:    "argv 安全模式：单进程诊断（含 python -c）；面板最近输出已在工作台现状中，先看再决定是否再执行；管道/rm/curl 请改 terminal_open",
+			Description:    "无头只读短探针（uptime/nvidia-smi/python -c print）；改机器必须 terminal_open；不踩用户 PTY",
 			DefaultEnabled: true,
 		},
 		{
@@ -116,7 +116,7 @@ func Catalog() []Item {
 		},
 		{
 			Name: "notebook_append_content", Label: "写入笔记本", Risk: RiskWrite,
-			Description:    "将 Markdown 巡检/总结追加到笔记本（新建或追加指定笔记）",
+			Description:    "写入笔记本（按标题定位或新建，不要默认当前打开的草稿）",
 			DefaultEnabled: true,
 		},
 		{

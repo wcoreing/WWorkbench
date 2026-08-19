@@ -23,4 +23,5 @@ type Deps struct {
 	Docker    *dockersvc.Manager
 	UIActions *UIActionBus
 	Radar     *RadarBus
+	Terminals *terminal.Manager
 }

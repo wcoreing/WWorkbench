@@ -60,6 +60,7 @@ func toolNotebookAppend(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 		if d.Radar != nil {
 			d.Radar.EmitNotebookNote(workbench.RadarOpUpdate, saved.ID, "agent-notebook-append", saved.Title, reveal)
 		}
+		revealNotebook(d, saved.ID, reveal)
 		return OKData(map[string]interface{}{
 			"noteId": saved.ID, "title": saved.Title, "appended": true,
 		})
@@ -79,7 +80,17 @@ func toolNotebookAppend(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 	if d.Radar != nil {
 		d.Radar.EmitNotebookNote(workbench.RadarOpCreate, saved.ID, "agent-notebook-create", saved.Title, reveal)
 	}
+	revealNotebook(d, saved.ID, reveal)
 	return OKData(map[string]interface{}{
 		"noteId": saved.ID, "title": saved.Title, "created": true,
+	})
+}
+
+func revealNotebook(d *Deps, noteID string, reveal bool) {
+	if !reveal || d == nil || d.UIActions == nil || strings.TrimSpace(noteID) == "" {
+		return
+	}
+	d.UIActions.Dispatch(UIActionNotebookOpen, map[string]interface{}{
+		"noteId": noteID,
 	})
 }

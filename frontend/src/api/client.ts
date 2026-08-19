@@ -161,6 +161,7 @@ import {
   ListAgentMessages,
   ListAgentThreads,
   GetAgentThread,
+  SetAgentThreadBindings,
   ListAppSettings,
   SetAppSetting,
   LoadWorkspace,
@@ -673,4 +674,8 @@ export const api = {
   listAgentMessages: async (threadId: string) => asArray(await unwrap(() => ListAgentMessages(threadId))),
   listAgentThreads: async () => asArray(await unwrap(() => ListAgentThreads())),
   getAgentThread: async (threadId: string) => unwrap(() => GetAgentThread(threadId)),
+  setAgentThreadBindings: async (
+    threadId: string,
+    mentions: { kind: string; id: string; label: string }[],
+  ) => unwrap(() => SetAgentThreadBindings(threadId, mentions)),
 }

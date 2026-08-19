@@ -130,18 +130,31 @@ func DialSSH(ctx context.Context, spec model.TunnelSpecDO) (*ssh.Client, error) 
 	dialer := &net.Dialer{Timeout: 10 * time.Second}
 	conn, err := dialer.DialContext(ctx, "tcp", remote)
 	if err != nil {
-		return nil, errno.Wrap(errno.CodeConnFailed, "连接 SSH 服务器失败", err)
+		return nil, wrapSSHDialErr(remote, "连接 SSH 服务器失败", err)
 	}
 	hostKeyAddr := net.JoinHostPort(spec.Host, strconv.Itoa(sshPort))
 	sshConn, chans, reqs, err := ssh.NewClientConn(conn, hostKeyAddr, config)
 	if err != nil {
 		_ = conn.Close()
-		if ae := errno.Extract(err); ae != nil {
-			return nil, ae
-		}
-		return nil, errno.Wrap(errno.CodeConnFailed, "SSH 握手失败", err)
+		return nil, wrapSSHDialErr(remote, "SSH 握手失败", err)
 	}
 	return ssh.NewClient(sshConn, chans, reqs), nil
+}
+
+// wrapSSHDialErr 把目标地址写进错误，EOF 视为该端口没有有效 SSH（填错区域/端口或实例关机）。
+func wrapSSHDialErr(remote, message string, err error) error {
+	if err == nil {
+		return errno.New(errno.CodeConnFailed, message, remote)
+	}
+	if ae := errno.Extract(err); ae != nil {
+		return ae
+	}
+	detail := err.Error()
+	if strings.Contains(strings.ToLower(detail), "eof") {
+		return errno.New(errno.CodeConnFailed, "SSH 握手被断开",
+			fmt.Sprintf("%s · 目标 %s 无有效 SSH 服务，请核对区域主机名与端口（实例关机或填错也会如此）", detail, remote))
+	}
+	return errno.New(errno.CodeConnFailed, message, fmt.Sprintf("%s · %s", detail, remote))
 }
 
 func (t *sshTunnel) acceptLoop(target string) {

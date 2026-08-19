@@ -606,6 +606,10 @@ export function SearchNotes(arg1) {
   return window['go']['app']['Service']['SearchNotes'](arg1);
 }
 
+export function SetAgentThreadBindings(arg1, arg2) {
+  return window['go']['app']['Service']['SetAgentThreadBindings'](arg1, arg2);
+}
+
 export function SetAppSetting(arg1, arg2) {
   return window['go']['app']['Service']['SetAppSetting'](arg1, arg2);
 }
