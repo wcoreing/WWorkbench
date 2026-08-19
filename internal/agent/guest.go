@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"WWorkbench/internal/agentcap"
 	"WWorkbench/internal/harness"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/turnctx"
@@ -22,7 +23,7 @@ import (
 	"github.com/cloudwego/eino/schema"
 )
 
-const maxAgentSteps = 10
+const maxAgentSteps = 30
 
 // workbenchGuest：history + harness.Complete（框架流式）+ Gateway 工具。
 type workbenchGuest struct {
@@ -32,6 +33,7 @@ type workbenchGuest struct {
 	ctxSnap  model.AgentContextDO
 	cm       einomodel.ToolCallingChatModel
 	waiting  bool
+	mode     string
 }
 
 func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error) {
@@ -40,10 +42,10 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 	}
 	_ = in
 	root := g.r.harness.Root
-	_ = history.EnsureSystem(root, g.threadID, g.r.systemPrompt())
+	_ = history.EnsureSystem(root, g.threadID, g.r.systemPrompt(g.mode))
 
 	perms := g.r.store.GetToolPermissions()
-	toolDefs := g.r.listToolDefs(perms)
+	toolDefs := g.r.listToolDefs(perms, g.mode)
 	toolInfos, err := toSchemaTools(toolDefs)
 	if err != nil {
 		return "", err
@@ -67,11 +69,11 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			}
 		}
 		bounded := history.BuildForModel(all, history.DefaultBudget(), true)
-		msgs := historyToSchema(g.r.systemPrompt(), bounded, lastUser)
-
+		msgs := historyToSchema(g.r.harness.Root, g.r.systemPrompt(g.mode), bounded, lastUser)
+		hadMedia := schemaHasUserMedia(msgs)
 		out, err := g.r.harness.Complete(ctx, g.cm, msgs, toolInfos)
 		if err != nil {
-			return "", err
+			return "", guest.RewriteGenerateError(err, hadMedia)
 		}
 
 		var specs []history.ToolCallSpec
@@ -116,6 +118,9 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			if name == "get_workbench_context" {
 				args = mergeWorkbenchContext(args, g.ctxSnap)
 			}
+			if name == "get_note" {
+				args = mergeNoteID(args, g.ctxSnap)
+			}
 			argsPreview := string(args)
 			if utf8.RuneCountInString(argsPreview) > 96 {
 				argsPreview = string([]rune(argsPreview)[:93]) + "…"
@@ -128,6 +133,12 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 
 			if perms != nil && !harness.IsMemoryTool(name) && !workbenchtools.IsToolEnabled(perms, name) {
 				fail := workbenchtools.Fail("该能力已在 AI 权限设置中关闭: " + name)
+				_ = g.appendToolResult(root, callID, fail, 0)
+				appendToolErrorNote(ctx, name+": "+fail.Error)
+				continue
+			}
+			if deny := toolDeniedByMode(g.mode, name); deny != "" {
+				fail := workbenchtools.Fail(deny)
 				_ = g.appendToolResult(root, callID, fail, 0)
 				appendToolErrorNote(ctx, name+": "+fail.Error)
 				continue
@@ -217,6 +228,20 @@ func mergeWorkbenchContext(args json.RawMessage, snap model.AgentContextDO) json
 	return out
 }
 
+func mergeNoteID(args json.RawMessage, snap model.AgentContextDO) json.RawMessage {
+	var merged map[string]interface{}
+	_ = json.Unmarshal(args, &merged)
+	if merged == nil {
+		merged = map[string]interface{}{}
+	}
+	cur, _ := merged["noteId"].(string)
+	if strings.TrimSpace(cur) == "" && strings.TrimSpace(snap.NoteID) != "" {
+		merged["noteId"] = snap.NoteID
+	}
+	out, _ := json.Marshal(merged)
+	return out
+}
+
 func toSchemaTools(defs []workbenchtools.ToolDef) ([]*schema.ToolInfo, error) {
 	out := make([]*schema.ToolInfo, 0, len(defs))
 	for _, d := range defs {
@@ -229,7 +254,7 @@ func toSchemaTools(defs []workbenchtools.ToolDef) ([]*schema.ToolInfo, error) {
 	return out, nil
 }
 
-func historyToSchema(system string, bounded []history.Msg, lastUser *history.Msg) []*schema.Message {
+func historyToSchema(root, system string, bounded []history.Msg, lastUser *history.Msg) []*schema.Message {
 	out := []*schema.Message{schema.SystemMessage(system)}
 	lastSeq := -1
 	if lastUser != nil {
@@ -238,11 +263,13 @@ func historyToSchema(system string, bounded []history.Msg, lastUser *history.Msg
 	for _, m := range bounded {
 		switch m.Role {
 		case "user":
-			content := m.Content
+			text, refs := history.SplitImageRefs(m.Content)
 			if lastUser != nil && m.Seq == lastSeq {
-				content = history.WireUser(*lastUser)
+				cp := *lastUser
+				cp.Content = text
+				text = history.WireUser(cp)
 			}
-			out = append(out, schema.UserMessage(content))
+			out = append(out, guest.UserMessage(text, loadUserImages(root, refs)))
 		case "assistant":
 			var tcs []schema.ToolCall
 			if m.ToolCallsJSON != "" {
@@ -267,6 +294,27 @@ func historyToSchema(system string, bounded []history.Msg, lastUser *history.Msg
 		}
 	}
 	return out
+}
+
+func toolDeniedByMode(mode, name string) string {
+	switch NormalizeChatMode(mode) {
+	case ChatModeAsk:
+		return "Ask 模式不能调用工具。请切到 Agent 执行，或 Plan 先出方案。"
+	case ChatModePlan:
+		if agentcap.RiskOf(name) != agentcap.RiskRead {
+			return "Plan 模式只能只读探查。请把计划交给用户，或切到 Agent。"
+		}
+	}
+	return ""
+}
+
+func schemaHasUserMedia(msgs []*schema.Message) bool {
+	for _, m := range msgs {
+		if m != nil && len(m.UserInputMultiContent) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 var _ guest.Guest = (*workbenchGuest)(nil)

@@ -54,8 +54,15 @@ func Gather(ctx model.AgentContextDO) string {
 		fmt.Fprintf(&b, "- **会话** sessionId=`%s`\n", ctx.SessionID)
 	}
 
-	if tb := strings.TrimSpace(ctx.TabTitle); tb != "" {
-		fmt.Fprintf(&b, "- **当前标签**：%s\n", trimBrief(tb, 80))
+	if ctx.TabTitle != "" {
+		fmt.Fprintf(&b, "- **当前标签**：%s\n", trimBrief(ctx.TabTitle, 80))
+	}
+	if nid := strings.TrimSpace(ctx.NoteID); nid != "" {
+		fmt.Fprintf(&b, "- **当前笔记** noteId=`%s`", nid)
+		if tb := strings.TrimSpace(ctx.TabTitle); tb != "" {
+			fmt.Fprintf(&b, " 标题「%s」", trimBrief(tb, 80))
+		}
+		b.WriteString("\n- 用户说「这篇 / 当前笔记 / 打开的笔记」时用 get_note(noteId)；笔记在工作台库内，禁止 cat 文件，禁止 recall_resource。\n")
 	}
 	if ot := strings.TrimSpace(ctx.OpenTabsBrief); ot != "" {
 		fmt.Fprintf(&b, "- **中栏标签**：%s\n", trimBrief(ot, maxTabsBrief))
@@ -170,6 +177,9 @@ func FocusRefFromContext(ctx model.AgentContextDO) string {
 			return "docker:" + m.ID
 		}
 	}
+	if nid := strings.TrimSpace(ctx.NoteID); nid != "" {
+		return "notebook:" + nid
+	}
 	if ctx.ConnectionID != "" {
 		if ctx.Database != "" && ctx.Table != "" {
 			return "db:" + ctx.ConnectionID + "/" + ctx.Database + "." + ctx.Table
@@ -208,6 +218,9 @@ func SkillPathsFromContext(ctx model.AgentContextDO) []string {
 	}
 	if ctx.Table != "" {
 		add("table/" + ctx.Table)
+	}
+	if nid := strings.TrimSpace(ctx.NoteID); nid != "" {
+		add("notebook/" + nid)
 	}
 	for _, m := range ctx.Mentions {
 		if m.Kind != "" {

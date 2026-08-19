@@ -3,10 +3,11 @@ import type { AgentMention } from './agentMention'
 interface Props {
   content: string
   mentions?: AgentMention[]
+  images?: { mime: string; data: string }[]
 }
 
-/** AgentUserContent 渲染用户消息（@ 资源 chip + 文本）。 */
-export function AgentUserContent({ content, mentions }: Props) {
+/** AgentUserContent 渲染用户消息（@ 资源 chip + 图片 + 文本）。 */
+export function AgentUserContent({ content, mentions, images }: Props) {
   return (
     <div className="agent-user-content">
       {mentions && mentions.length > 0 && (
@@ -26,6 +27,13 @@ export function AgentUserContent({ content, mentions }: Props) {
               </span>
               <span className="agent-mention-chip-label">{m.label}</span>
             </span>
+          ))}
+        </div>
+      )}
+      {images && images.length > 0 && (
+        <div className="agent-msg-images">
+          {images.map((img, i) => (
+            <img key={`${img.mime}-${i}`} src={img.data} alt="" className="agent-msg-image" />
           ))}
         </div>
       )}

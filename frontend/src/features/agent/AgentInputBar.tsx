@@ -12,17 +12,43 @@ import {
   type AgentMentionMenuItem,
 } from './agentMention'
 
+import {
+  collectClipboardImages,
+  fileToChatImage,
+  mergeChatImages,
+  type ChatImage,
+} from './agentImages'
+import { AgentModeMenu, AgentModelMenu } from './AgentComposerMenus'
+import type { AgentChatMode } from './agentChatMode'
+
 interface Props {
   busy: boolean
   threadId: string
   autoMentions: AgentMention[]
   threadMentions: AgentMention[]
-  onSend: (text: string, mentions: AgentMention[]) => void | Promise<void>
+  mode: AgentChatMode
+  onModeChange: (mode: AgentChatMode) => void
+  modelName: string
+  provider: string
+  onModelChange: (model: string) => void
+  onSend: (text: string, mentions: AgentMention[], images: ChatImage[]) => void | Promise<void>
   onStop: () => void
 }
 
 /** AgentInputBar 对话输入区（@ 提及 SSH / 数据库 / Docker）。 */
-export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, onSend, onStop }: Props) {
+export function AgentInputBar({
+  busy,
+  threadId,
+  autoMentions,
+  threadMentions,
+  mode,
+  onModeChange,
+  modelName,
+  provider,
+  onModelChange,
+  onSend,
+  onStop,
+}: Props) {
   const { t } = useI18n()
   const [input, setInput] = useState('')
   const [mentions, setMentions] = useState<AgentMention[]>([])
@@ -35,6 +61,7 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
   const [connections, setConnections] = useState<Connection[]>([])
   const [dockerContexts, setDockerContexts] = useState<DockerContext[]>([])
   const [resourcesLoaded, setResourcesLoaded] = useState(false)
+  const [images, setImages] = useState<ChatImage[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const draftTick = useAgentStore((s) => s.draftTick)
 
@@ -186,11 +213,26 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
     )
   }, [autoMentions, mentions])
 
-  const flushSend = (text: string, nextMentions: AgentMention[]) => {
-    void Promise.resolve(onSend(text, nextMentions))
+  const addImageFiles = async (files: File[]) => {
+    if (!files.length) return
+    const converted: ChatImage[] = []
+    for (const f of files) {
+      try {
+        converted.push(await fileToChatImage(f))
+      } catch {
+        /* skip bad file */
+      }
+    }
+    if (!converted.length) return
+    setImages((prev) => mergeChatImages(prev, converted))
+  }
+
+  const flushSend = (text: string, nextMentions: AgentMention[], attach: ChatImage[] = images) => {
+    void Promise.resolve(onSend(text, nextMentions, attach))
       .then(() => {
         setInput('')
         setMentions([])
+        setImages([])
         setMenuOpen(false)
       })
       .catch(() => {
@@ -200,7 +242,7 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
 
   const send = () => {
     const text = input.trim()
-    if (!text || busy) return
+    if (busy || (!text && images.length === 0)) return
     flushSend(text, mergeMentions(mentions, threadMentions))
   }
 
@@ -272,7 +314,36 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
           ))}
         </div>
       )}
-      <div className="agent-input-wrap">
+      <div className="agent-composer">
+      {images.length > 0 && (
+        <div className="agent-image-drafts">
+          {images.map((img, i) => (
+            <span key={`${img.mime}-${i}`} className="agent-image-draft">
+              <img src={img.data} alt="" />
+              <button
+                type="button"
+                className="agent-image-draft-remove"
+                aria-label={t('agent.removeImage')}
+                onClick={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div
+        className="agent-input-wrap"
+        onDragOver={(e) => {
+          if (collectClipboardImages(e.dataTransfer).length) e.preventDefault()
+        }}
+        onDrop={(e) => {
+          const files = collectClipboardImages(e.dataTransfer)
+          if (!files.length) return
+          e.preventDefault()
+          void addImageFiles(files)
+        }}
+      >
         <AgentMentionPicker
           open={menuOpen}
           items={menuItems}
@@ -294,8 +365,20 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
               (e.target as HTMLTextAreaElement).selectionStart ?? 0,
             )
           }
-          placeholder={t('agent.inputPlaceholder')}
+          placeholder={
+            mode === 'ask'
+              ? t('agent.inputPlaceholderAsk')
+              : mode === 'plan'
+                ? t('agent.inputPlaceholderPlan')
+                : t('agent.inputPlaceholder')
+          }
           rows={3}
+          onPaste={(e) => {
+            const files = collectClipboardImages(e.clipboardData)
+            if (!files.length) return
+            e.preventDefault()
+            void addImageFiles(files)
+          }}
           onKeyDown={(e) => {
             if (menuOpen && menuItems.length > 0) {
               if (e.key === 'ArrowDown') {
@@ -326,7 +409,14 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
           }}
         />
       </div>
-      <div className="agent-input-actions">
+      <div className="agent-composer-toolbar">
+        <AgentModeMenu mode={mode} disabled={busy} onChange={onModeChange} />
+        <AgentModelMenu
+          modelName={modelName}
+          provider={provider}
+          disabled={busy}
+          onChange={onModelChange}
+        />
         {autoMentions[0] && (
           <button
             type="button"
@@ -337,7 +427,7 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
             {t('agent.attachCurrent')}
           </button>
         )}
-        {canRunbook && (
+        {mode === 'agent' && canRunbook && (
           <button
             type="button"
             className="wn-btn wn-btn-xs wn-btn-ghost"
@@ -349,13 +439,13 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
                     ? t('agent.runbookPromptContainer')
                     : t('agent.runbookPromptDocker')
                   : t('agent.runbookPrompt')
-              flushSend(prompt, mergeMentions(mentions, threadMentions))
+              flushSend(prompt, mergeMentions(mentions, threadMentions), [])
             }}
           >
             {t('agent.runbook')}
           </button>
         )}
-        <div className="agent-input-actions-main">
+        <div className="agent-composer-toolbar-end">
           {busy && threadId && (
             <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" onClick={onStop}>
               {t('agent.stop')}
@@ -363,13 +453,14 @@ export function AgentInputBar({ busy, threadId, autoMentions, threadMentions, on
           )}
           <button
             type="button"
-            className="wn-btn wn-btn-sm wn-btn-primary"
-            disabled={busy || !input.trim()}
+            className="wn-btn wn-btn-sm wn-btn-primary agent-composer-send"
+            disabled={busy || (!input.trim() && images.length === 0)}
             onClick={send}
           >
             {t('agent.send')}
           </button>
         </div>
+      </div>
       </div>
     </footer>
   )

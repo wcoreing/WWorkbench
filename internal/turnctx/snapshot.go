@@ -22,6 +22,7 @@ func ApplySnapshot(dst map[string]interface{}, snap model.AgentContextDO) {
 	setIf("tabTitle", snap.TabTitle)
 	setIf("openTabsBrief", snap.OpenTabsBrief)
 	setIf("selectionBrief", snap.SelectionBrief)
+	setIf("noteId", snap.NoteID)
 	if len(snap.Mentions) > 0 {
 		dst["mentions"] = snap.Mentions
 	}

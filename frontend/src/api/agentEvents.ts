@@ -34,7 +34,21 @@ export interface AgentUserEvent {
   threadId: string
   content: string
   mentions: unknown
+  images?: { mime: string; data: string }[]
   seq?: number
+}
+
+function parseEventImages(raw: unknown): { mime: string; data: string }[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const out: { mime: string; data: string }[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const rec = item as Record<string, unknown>
+    const mime = String(rec.mime ?? '')
+    const data = String(rec.data ?? '')
+    if (mime && data) out.push({ mime, data })
+  }
+  return out.length ? out : undefined
 }
 
 function optionalSeq(raw: Record<string, unknown>): number | undefined {
@@ -65,6 +79,7 @@ export function subscribeAgentEvents(handlers: {
           threadId: String(raw.threadId ?? ''),
           content: String(raw.content ?? ''),
           mentions: raw.mentions,
+          images: parseEventImages(raw.images),
           seq: optionalSeq(raw),
         })
       }),

@@ -1,5 +1,7 @@
 package agentcap
 
+import "strings"
+
 // Risk 工具风险级别。
 type Risk string
 
@@ -118,6 +120,21 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "list_notes", Label: "列出笔记", Risk: RiskRead,
+			Description:    "笔记本标题、id、分组（无正文）。读某篇用 get_note(noteId)",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "search_notes", Label: "搜索笔记", Risk: RiskRead,
+			Description:    "按标题或正文关键词搜笔记摘要；再 get_note(noteId) 取全文。禁止用 recall_resource 当笔记",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "get_note", Label: "读取笔记正文", Risk: RiskRead,
+			Description:    "按 noteId 返回 Markdown 全文。当前打开的笔记 id 在本轮工作台现状里。笔记在工作台库内，禁止 cat 文件",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "list_docker_contexts", Label: "列出 Docker 上下文", Risk: RiskRead,
 			Description:    "本地与 SSH 远端 Docker 上下文",
 			DefaultEnabled: true,
@@ -222,6 +239,17 @@ func DefaultPermissions() map[string]bool {
 		m[c.Name] = c.DefaultEnabled
 	}
 	return m
+}
+
+// RiskOf 按工具名返回风险级别；未登记的记忆类工具视为只读。
+func RiskOf(name string) Risk {
+	name = strings.TrimSpace(name)
+	for _, c := range Catalog() {
+		if c.Name == name {
+			return c.Risk
+		}
+	}
+	return RiskRead
 }
 
 // UnavailableNote 尚未接入 Agent 的系统能力说明。

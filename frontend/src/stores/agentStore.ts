@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { AgentMention } from '../features/agent/agentMention'
 import type { AgentPanelView } from '../features/agent/agentTypes'
+import { loadChatMode, persistChatMode, type AgentChatMode } from '../features/agent/agentChatMode'
 
 const STORAGE_OPEN = 'agent_panel_open'
 
@@ -9,6 +10,7 @@ export interface AgentChatLine {
   role: 'user' | 'assistant' | 'system'
   content: string
   mentions?: AgentMention[]
+  images?: { mime: string; data: string }[]
   /** history_message.seq；有值时可「截到此处」 */
   seq?: number
 }
@@ -59,6 +61,7 @@ interface AgentStore {
   draftTick: number
   toolSteps: AgentToolStep[]
   threadMentions: AgentMention[]
+  chatMode: AgentChatMode
   setPanelOpen: (open: boolean) => void
   togglePanel: () => void
   setView: (view: AgentPanelView) => void
@@ -75,6 +78,7 @@ interface AgentStore {
   finishToolStep: (tool: string, status?: AgentToolStep['status'], summary?: string) => void
   clearToolSteps: () => void
   setThreadMentions: (mentions: AgentMention[]) => void
+  setChatMode: (mode: AgentChatMode) => void
 }
 
 /** useAgentStore AI 侧栏与对话状态（收起不丢会话）。 */
@@ -89,6 +93,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
   draftTick: 0,
   toolSteps: [],
   threadMentions: [],
+  chatMode: loadChatMode(),
   setPanelOpen: (open) => {
     persistAgentPanelOpen(open)
     set({ panelOpen: open })
@@ -109,6 +114,10 @@ export const useAgentStore = create<AgentStore>((set) => ({
   resetThread: () =>
     set({ threadId: '', lines: [], streamingLineId: null, view: 'chat', toolSteps: [], threadMentions: [] }),
   setThreadMentions: (threadMentions) => set({ threadMentions }),
+  setChatMode: (chatMode) => {
+    persistChatMode(chatMode)
+    set({ chatMode })
+  },
   applyDraft: (payload) =>
     set((s) => ({
       panelOpen: true,

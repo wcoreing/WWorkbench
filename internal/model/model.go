@@ -815,14 +815,23 @@ type AgentContextDO struct {
 	SelectionBrief    string           `json:"selectionBrief,omitempty"`
 	ShellTail         string           `json:"shellTail,omitempty"` // 当前 Shell 最近约 100 行（与面板一致）
 	TerminalSessionID string           `json:"terminalSessionId,omitempty"`
+	NoteID            string           `json:"noteId,omitempty"` // 当前打开的笔记
 	Mentions          []AgentMentionDO `json:"mentions"`
+}
+
+// AgentChatImageDO 对话附件图片（data 为无前缀 base64，或 data URL）。
+type AgentChatImageDO struct {
+	MIME string `json:"mime"`
+	Data string `json:"data"`
 }
 
 // AgentChatRequestDO 发起对话请求。
 type AgentChatRequestDO struct {
-	ThreadID string         `json:"threadId"`
-	Message  string         `json:"message"`
-	Context  AgentContextDO `json:"context"`
+	ThreadID string             `json:"threadId"`
+	Message  string             `json:"message"`
+	Images   []AgentChatImageDO `json:"images,omitempty"`
+	Mode     string             `json:"mode,omitempty"` // ask | agent | plan
+	Context  AgentContextDO     `json:"context"`
 }
 
 // AgentChatResultDO 对话提交结果。
@@ -842,9 +851,10 @@ type AgentPendingDO struct {
 
 // AgentMessageDO 对话消息。
 type AgentMessageDO struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-	Seq     int    `json:"seq,omitempty"`
+	Role    string             `json:"role"`
+	Content string             `json:"content"`
+	Images  []AgentChatImageDO `json:"images,omitempty"`
+	Seq     int                `json:"seq,omitempty"`
 }
 
 // AgentRewindRequestDO 截断工作记忆。

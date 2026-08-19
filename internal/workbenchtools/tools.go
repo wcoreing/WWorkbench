@@ -26,6 +26,7 @@ type ctxArgs struct {
 	TabTitle       string                 `json:"tabTitle"`
 	OpenTabsBrief  string                 `json:"openTabsBrief"`
 	SelectionBrief string                 `json:"selectionBrief"`
+	NoteID         string                 `json:"noteId"`
 	Mentions       []model.AgentMentionDO `json:"mentions"`
 }
 
@@ -102,6 +103,7 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 		TabTitle:       in.TabTitle,
 		OpenTabsBrief:  in.OpenTabsBrief,
 		SelectionBrief: in.SelectionBrief,
+		NoteID:         in.NoteID,
 		Mentions:       in.Mentions,
 	})
 	if d.Docker != nil {

@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"WWorkbench/internal/agentcap"
 	"WWorkbench/internal/harness"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/store"
@@ -25,11 +26,13 @@ type Emitter func(event string, payload map[string]interface{})
 
 // threadState 进程内会话缓存。
 type threadState struct {
-	mu      sync.Mutex
-	id      string
-	title   string
-	context model.AgentContextDO
-	taskID  string
+	mu            sync.Mutex
+	id            string
+	title         string
+	context       model.AgentContextDO
+	taskID        string
+	pendingImages []model.AgentChatImageDO
+	mode          string
 }
 
 // Runner Agent Host 薄封装：编排交给 ningharness Lifecycle，思考交给 WorkbenchGuest（流式）。
@@ -99,7 +102,11 @@ func (r *Runner) Chat(req model.AgentChatRequestDO) (string, error) {
 		return "", fmt.Errorf("ningharness 未就绪，请重启应用")
 	}
 	msg := strings.TrimSpace(req.Message)
-	if msg == "" {
+	images, err := normalizeChatImages(req.Images)
+	if err != nil {
+		return "", err
+	}
+	if msg == "" && len(images) == 0 {
 		return "", fmt.Errorf("消息不能为空")
 	}
 	settings := r.store.GetAgentSettings()
@@ -113,13 +120,29 @@ func (r *Runner) Chat(req model.AgentChatRequestDO) (string, error) {
 	if threadID == "" {
 		threadID = uuid.NewString()
 	}
-	th := r.getOrCreateThread(threadID, req.Context, msg)
+	th := r.getOrCreateThread(threadID, req.Context, firstLineTitle(msg, len(images) > 0))
+	th.mu.Lock()
+	th.pendingImages = images
+	th.mode = NormalizeChatMode(req.Mode)
+	th.mu.Unlock()
 	ff := turnctx.Gather(req.Context)
 	_ = r.harness.SetBindings(threadID, req.Context.Mentions, turnctx.FocusRefFromContext(req.Context))
-	r.emit("agent:user", map[string]interface{}{
-		"threadId": threadID, "content": msg, "mentions": req.Context.Mentions,
-	})
-	go r.runTurn(th.id, msg, ff, false)
+	uiText := msg
+	if uiText == "" {
+		uiText = imageOnlyPrompt
+	}
+	payload := map[string]interface{}{
+		"threadId": threadID, "content": uiText, "mentions": req.Context.Mentions,
+	}
+	if len(images) > 0 {
+		payload["images"] = previewImages(images)
+	}
+	r.emit("agent:user", payload)
+	prompt := msg
+	if prompt == "" {
+		prompt = imageOnlyPrompt
+	}
+	go r.runTurn(th.id, prompt, ff, false)
 	return threadID, nil
 }
 
@@ -240,12 +263,17 @@ func (r *Runner) ListMessages(threadID string) []model.AgentMessageDO {
 		}
 		content := history.ContentForUI(m.Content)
 		// 兼容旧 ningharness：确认续跑曾落盘 "(context)" 占位。
-		if m.Role == "user" && (content == "" || content == "(context)") {
+		content, images := messageImagesFromContent(r.harness.Root, content)
+		if m.Role == "user" && (content == "" || content == "(context)") && len(images) == 0 {
 			continue
 		}
-		out = append(out, model.AgentMessageDO{
+		item := model.AgentMessageDO{
 			Role: m.Role, Content: content, Seq: m.Seq,
-		})
+		}
+		if len(images) > 0 {
+			item.Images = images
+		}
+		out = append(out, item)
 	}
 	return out
 }
@@ -287,11 +315,23 @@ func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool) {
 	th.mu.Lock()
 	th.taskID = taskID
 	ctxSnap := th.context
+	pending := th.pendingImages
+	th.pendingImages = nil
+	mode := NormalizeChatMode(th.mode)
 	th.mu.Unlock()
+
+	if !skipUser && len(pending) > 0 && r.harness.Root != "" {
+		refs, putErr := putUserImages(r.harness.Root, threadID, taskID, pending)
+		if putErr != nil {
+			r.emit("agent:done", map[string]interface{}{"threadId": threadID, "error": putErr.Error()})
+			return
+		}
+		prompt = history.EncodeImageHead(refs) + prompt
+	}
 
 	g := &workbenchGuest{
 		r: r, threadID: threadID, taskID: taskID,
-		ctxSnap: ctxSnap, cm: cm,
+		ctxSnap: ctxSnap, cm: cm, mode: mode,
 	}
 	r.harness.RT.SetGuest(g)
 
@@ -371,18 +411,31 @@ func (r *Runner) ensureThread(id string) *threadState {
 	return th
 }
 
-func (r *Runner) listToolDefs(perms map[string]bool) []workbenchtools.ToolDef {
+func (r *Runner) listToolDefs(perms map[string]bool, mode string) []workbenchtools.ToolDef {
+	mode = NormalizeChatMode(mode)
+	if mode == ChatModeAsk {
+		return nil
+	}
 	defs := r.tools.ListDefsFiltered(perms)
-	if r.harness == nil {
+	if r.harness != nil {
+		for _, d := range harness.MemoryToolDefs() {
+			if perms != nil && !workbenchtools.IsToolEnabled(perms, d.Name) {
+				continue
+			}
+			defs = append(defs, d)
+		}
+	}
+	if mode != ChatModePlan {
 		return defs
 	}
-	for _, d := range harness.MemoryToolDefs() {
-		if perms != nil && !workbenchtools.IsToolEnabled(perms, d.Name) {
+	out := make([]workbenchtools.ToolDef, 0, len(defs))
+	for _, d := range defs {
+		if agentcap.RiskOf(d.Name) != agentcap.RiskRead {
 			continue
 		}
-		defs = append(defs, d)
+		out = append(out, d)
 	}
-	return defs
+	return out
 }
 
 func toolStatus(toolName string, result workbenchtools.ToolResult) (status, summary string) {
@@ -395,17 +448,28 @@ func toolStatus(toolName string, result workbenchtools.ToolResult) (status, summ
 	return StatusError, meaningfulSummary(toolName, result)
 }
 
-func (r *Runner) systemPrompt() string {
+func (r *Runner) systemPrompt(mode string) string {
 	locale, _ := r.store.GetAppSetting(store.SettingLocale)
 	langRule := "【语言】对用户可见的全部文字必须使用简体中文（含工具调用之间的说明）；不要用英文自言自语。工具名与代码标识符可保持原文。"
 	if locale == "en" {
 		langRule = "[Language] All user-visible text must be in English (including brief notes between tool calls)."
 	}
-	return langRule + `
+	mode = NormalizeChatMode(mode)
+	if mode == ChatModeAsk {
+		return langRule + `
+
+你是 WWorkbench 内置助手，当前是 Ask 模式。
+只讲解、答疑、给思路；禁止调用工具，禁止声称已经执行了操作。
+每轮可能带有「本轮工作台现状」前馈（界面焦点、中栏标签、@ 绑定、当前连接、当前笔记 noteId、Shell 最近约 100 行）——先读再答，不要空猜。
+笔记正文不在前馈里；若要读全文请用户切到 Agent（get_note）。
+用户若要动手：请他切到 Plan（先出方案，自己也能做）或 Agent（执行，变更会确认）。`
+	}
+
+	toolRules := `
 
 你是 WWorkbench 内置助手，只能通过提供的工具操作工作台。
 规则：
-1. 每轮用户消息可能带有「本轮工作台现状」前馈（含界面焦点、中栏标签、@ 绑定、当前连接，以及当前 Shell 最近约 100 行）。用户说「这个 / 这张表 / 这个库 / 这个主机 / 这个请求」时优先指界面焦点，不要空猜；优先使用其中的 ID，不要编造。问终端输出、报错、是否装好时先看前馈里的 Shell 最近输出，不要为了看屏幕再跑一遍。
+1. 每轮用户消息可能带有「本轮工作台现状」前馈（含界面焦点、中栏标签、@ 绑定、当前连接、当前笔记 noteId，以及当前 Shell 最近约 100 行）。用户说「这个 / 这张表 / 这个库 / 这个主机 / 这个请求 / 这篇笔记」时优先指界面焦点，不要空猜；优先使用其中的 ID，不要编造。问终端输出、报错、是否装好时先看前馈里的 Shell 最近输出，不要为了看屏幕再跑一遍。
 2. 用户问「有哪些连接/链接」时，必须同时调用 list_connections（数据库）与 list_ssh_hosts（SSH），分开展示。
 3. 查看远程资源：terminal_exec 是 argv 安全模式（一个进程）。可用 python -c "import torch; print(torch.__version__)"（分号写在引号里）。uptime / free -h / df -h / pip show 照旧。未加引号的管道 | 或多语句 ; 请 terminal_open；rm/curl/bash 会拒绝。terminal_open 只注入命令、不返回 stdout；跑完后输出在面板，下一轮前馈会带上最新 100 行。
 4. 容器启停/删除必须用 start_container / stop_container / remove_container（会弹确认），禁止 docker rm/start/stop 走 terminal_exec。
@@ -413,10 +477,26 @@ func (r *Runner) systemPrompt() string {
 6. 禁止 DROP DATABASE；不要输出或猜测密码。
 7. 需要图表时用 echarts 围栏代码块（合法 ECharts option JSON）。
 8. 巡检/报告：收集数据后可用 notebook_append_content 存档。
+8b. 读笔记：正文在工作台库里。list_notes 浏览，search_notes(query) 按标题/正文搜，get_note(noteId) 取全文。用户说「这篇」用前馈 noteId。禁止 cat 文件路径，禁止用 recall_resource 当笔记（那是工具结果 resource#N）。
 9. Docker：远端先 save_docker_context(sshHostId)，再 list_containers；变更用 start/stop/remove_container；日志：新源先 save_log_source，再用 fetch_logs(logSourceId) 或 get_container_logs。
 9b. 工作台是资产容器——凡要可复现的配置必须落盘：HTTP→save_http_request + save_http_environment；SSH→save_ssh_host / save_ssh_forward；数据库→save_connection；日志→save_log_source；Docker→save_docker_context。禁止只临时候参数打完就结束；笔记本是报告旁路，主资产在各产品树。
 10. 本轮工具返回已在上下文中，直接基于其内容作答；不要为本轮结果调用 recall_resource。跨轮或历史被挤出窗口后，用 recall_resource（resource#N / resource_id）取回全文；可用 search_session / get_task_summary 定位。
 11. 需要用户拍板（选库/选操作/可选下一步）时：在回复末尾挂 fenced 代码块，语言标记 agent-choice（或 desk-choice），JSON 示例：
    {"n":1,"mode":"single","prompt":"可选下一步","options":[{"key":"a","label":"列出表"},{"key":"b","label":"查慢查询"}]}
 用户点选后会直接发送选项原文；也可手打选项文案。mode 可为 single / multi / text。勿只写 Markdown 列表代替（对方只能手打）。禁止向用户描述工具管道内部细节或自言自语。禁止在回复中复述用户密码。`
+
+	if mode == ChatModePlan {
+		return langRule + `
+
+你是 WWorkbench 内置助手，当前是 Plan 模式。
+产品目标是让用户自己能做，而不是你代劳。
+用只读/探查工具摸清现状，然后给出计划：目标、现状判断、分步（每步人能做或交给 Agent）、风险与需确认的点。
+禁止变更：save_*、启停/删容器、写入 SQL、变更类 HTTP、往笔记本落盘。
+末尾可用 agent-choice 问用户「切到 Agent 执行」还是「我自己按步骤做」。
+` + toolRules + `
+
+【Plan 覆盖】本轮禁止执行变更与资产落盘；只读探查后写计划。`
+	}
+
+	return langRule + toolRules
 }

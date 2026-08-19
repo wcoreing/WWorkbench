@@ -6,9 +6,11 @@ export interface AgentSurface {
   database?: string
   connectionId?: string
   sessionId?: string
-  /** SSH / Docker shell / SFTP 主机 id（供 auto @） */
-  hostId?: string
-  tabTitle?: string
+	/** SSH / Docker shell / SFTP 主机 id（供 auto @） */
+	hostId?: string
+	/** 当前打开的笔记 id */
+	noteId?: string
+	tabTitle?: string
   openTabsBrief?: string
   selectionBrief?: string
 }
@@ -254,6 +256,7 @@ export function buildNotebookSurface(input: {
   return {
     focusKind: 'notebook.note',
     focusLabel: input.groupLabel ? `${input.groupLabel} / ${label}` : label,
+    noteId: input.noteId,
     tabTitle: label,
     openTabsBrief: input.openTabsBrief,
     connectionId: input.connectionId || '',

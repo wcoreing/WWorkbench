@@ -9,6 +9,7 @@ import { model } from '../../../wailsjs/go/models'
 import type { AgentConfirmEvent } from '../../api/agentEvents'
 import type { AgentPanelView, CapabilityRow } from './agentTypes'
 import { AgentConfigView, saveAgentAPIConfig } from './AgentConfigView'
+import { rememberRecentModel } from './agentChatMode'
 import { AgentPermissionsView, saveAgentPermissions } from './AgentPermissionsView'
 import { AgentMessageContent } from './AgentMessageContent'
 import { useAgentPanelResize } from './useAgentPanelResize'
@@ -63,6 +64,8 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   const clearToolSteps = useAgentStore((s) => s.clearToolSteps)
   const threadMentions = useAgentStore((s) => s.threadMentions)
   const setThreadMentions = useAgentStore((s) => s.setThreadMentions)
+  const chatMode = useAgentStore((s) => s.chatMode)
+  const setChatMode = useAgentStore((s) => s.setChatMode)
 
   const [showHistory, setShowHistory] = useState(false)
   const [threads, setThreads] = useState<AgentThreadItem[]>([])
@@ -107,6 +110,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     const s = await api.getAgentSettings()
     setApiBase(s.apiBase || 'https://dashscope.aliyuncs.com/compatible-mode/v1')
     setModelName(s.model || 'qwen-plus')
+    if (s.model) rememberRecentModel(s.model)
     setHasKey(s.hasApiKey)
     setAllowWrite(s.allowWrite)
     setProvider(s.provider || 'bailian')
@@ -173,6 +177,9 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
             id: nextAgentLineId(),
             role: (m.role === 'assistant' ? 'assistant' : m.role === 'system' ? 'system' : 'user') as AgentChatLine['role'],
             content: m.content ?? '',
+            images: Array.isArray(m.images)
+              ? m.images.map((img) => ({ mime: img.mime ?? '', data: img.data ?? '' })).filter((img) => img.data)
+              : undefined,
             seq: typeof m.seq === 'number' && m.seq > 0 ? m.seq : undefined,
           })),
         )
@@ -219,8 +226,9 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
         appendLine({
           id: nextAgentLineId(),
           role: 'user',
-          content: evt.content,
+          content: evt.content === '（图片）' ? '' : evt.content,
           mentions: parseMentionsFromEvent(evt.mentions),
+          images: evt.images,
           seq: evt.seq,
         })
       },
@@ -308,6 +316,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       selectionBrief: agentSurface.selectionBrief || '',
       shellTail: shell.text,
       terminalSessionId: shell.sessionId,
+      noteId: agentSurface.noteId || '',
       mentions: toContextMentions(mergeMentions(mentions, threadMentions, autoMentions)),
     })
   }
@@ -325,8 +334,8 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     setCapabilities((prev) => prev.map((c) => (c.name === name ? { ...c, enabled: !c.enabled } : c)))
   }
 
-  const send = async (text: string, mentions: AgentMention[]) => {
-    if (!text.trim() || busy) return
+  const send = async (text: string, mentions: AgentMention[], images: { mime: string; data: string }[] = []) => {
+    if ((!text.trim() && images.length === 0) || busy) return
     clearToolSteps()
     setBusy(true)
     setPending(null)
@@ -336,6 +345,8 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
         model.AgentChatRequestDO.createFrom({
           threadId,
           message: text.trim(),
+          images: images.map((img) => ({ mime: img.mime, data: img.data })),
+          mode: chatMode,
           context: buildContext(mentions),
         }),
       )
@@ -471,6 +482,18 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     setBusy(false)
   }
 
+  const switchModel = async (id: string) => {
+    const next = id.trim()
+    if (!next || next === modelName) return
+    try {
+      await saveAgentAPIConfig(apiBase, '', next, provider)
+      setModelName(next)
+      rememberRecentModel(next)
+    } catch (e) {
+      setStatusMessage((e as Error).message)
+    }
+  }
+
   const tabs: { id: AgentPanelView; label: string }[] = [
     { id: 'chat', label: t('agent.tabChat') },
     { id: 'config', label: t('agent.tabSettings') },
@@ -596,6 +619,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
                     content={line.content}
                     role={line.role}
                     mentions={line.mentions}
+                    images={line.images}
                     choiceDisabled={busy || !isLastAssistant}
                     onChoiceSend={
                       line.role === 'assistant'
@@ -608,7 +632,9 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
                         : undefined
                     }
                   />
-                  {(line.role === 'assistant' || line.role === 'user') && line.content.trim() && !busy && (
+                  {(line.role === 'assistant' || line.role === 'user') &&
+                    (line.content.trim() || (line.images && line.images.length > 0)) &&
+                    !busy && (
                     <div className="agent-turn-actions">
                       {line.role === 'assistant' && (
                         <button
@@ -648,6 +674,12 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
                   <span className="agent-thinking-dot" />
                   <span className="agent-thinking-dot" />
                   <span className="agent-thinking-dot" />
+                  {chatMode === 'ask'
+                    ? t('agent.modeAsk')
+                    : chatMode === 'plan'
+                      ? t('agent.modePlan')
+                      : t('agent.modeAgent')}
+                  {' · '}
                   {t('agent.thinking')}
                 </span>
               </div>
@@ -667,7 +699,12 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
             threadId={threadId}
             autoMentions={autoMentions}
             threadMentions={threadMentions}
-            onSend={(text, mentions) => send(text, mentions)}
+            mode={chatMode}
+            onModeChange={setChatMode}
+            modelName={modelName}
+            provider={provider}
+            onModelChange={(id) => void switchModel(id)}
+            onSend={(text, mentions, images) => send(text, mentions, images)}
             onStop={() => void stopGeneration()}
           />
         </div>

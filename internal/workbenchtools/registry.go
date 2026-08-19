@@ -109,6 +109,7 @@ func (r *Registry) registerBuiltins() {
 				"tabTitle":       map[string]interface{}{"type": "string", "description": "当前标签标题"},
 				"openTabsBrief":  map[string]interface{}{"type": "string", "description": "中栏打开标签摘要"},
 				"selectionBrief": map[string]interface{}{"type": "string", "description": "树/资源选中摘要"},
+				"noteId":         map[string]interface{}{"type": "string", "description": "当前打开的笔记 ID"},
 			},
 		},
 		Handler: toolGetWorkbenchContext,
@@ -322,6 +323,36 @@ func (r *Registry) registerBuiltins() {
 			"required": []interface{}{"sessionId", "sql"},
 		},
 		Handler: toolExecuteSQL,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapListNotes,
+		Description: "列出工作台笔记摘要（标题、noteId、分组，无正文）。读某篇必须 get_note(noteId)。笔记在库内，禁止 cat 文件，禁止用 recall_resource 当笔记。",
+		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
+		Handler:     toolListNotes,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapSearchNotes,
+		Description: "按标题或正文关键词搜索笔记摘要。找到 noteId 后用 get_note 取全文。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"query": map[string]interface{}{"type": "string", "description": "标题或正文关键词"},
+			},
+			"required": []interface{}{"query"},
+		},
+		Handler: toolSearchNotes,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapGetNote,
+		Description: "按 noteId 读取笔记 Markdown 全文。用户说「这篇/当前笔记」时用本轮工作台现状里的 noteId。不要 cat，不要 recall_resource。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"noteId": map[string]interface{}{"type": "string", "description": "笔记 ID"},
+			},
+			"required": []interface{}{"noteId"},
+		},
+		Handler: toolGetNote,
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapNotebookAppend,
