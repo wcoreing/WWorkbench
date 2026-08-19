@@ -119,6 +119,7 @@ var execProbeBins = map[string]bool{
 	"ps": true, "pgrep": true, "pidof": true,
 	"ls": true, "lsblk": true, "lscpu": true, "lsmem": true,
 	"cat": true, "head": true, "tail": true, "wc": true, "stat": true, "file": true,
+	"grep": true, "egrep": true, "fgrep": true,
 	"readlink": true, "realpath": true, "dirname": true, "basename": true,
 	"which": true, "whereis": true, "type": true,
 	"pip": true, "pip3": true,
@@ -228,8 +229,17 @@ func validateExecArgv(argv []string) error {
 		return nil
 	}
 	return errno.New(errno.CodeInvalidArg,
-		bin+" 不是只读短探针，"+execOpenInstead,
+		bin+" 不是只读短探针，"+execOpenInstead+execReadFileHint(bin),
 		strings.Join(argv, " "))
+}
+
+func execReadFileHint(bin string) string {
+	switch bin {
+	case "sed", "awk", "perl", "ruby", "less", "more", "vi", "vim", "nano":
+		return " 读磁盘文件请用 cat / head / tail（无头允许）。"
+	default:
+		return ""
+	}
 }
 
 func isPythonBin(bin string) bool {

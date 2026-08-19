@@ -102,8 +102,18 @@ func TestParseAndValidateExecRejectsPythonWrite(t *testing.T) {
 	}
 }
 
-func TestParseAndValidateExecAllowsNvidiaSmi(t *testing.T) {
-	if _, err := parseAndValidateExec("nvidia-smi"); err != nil {
+func TestParseAndValidateExecAllowsCat(t *testing.T) {
+	if _, err := parseAndValidateExec("cat /root/autodl-tmp/sft_lora_smoke.py"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestParseAndValidateExecSedHintsCat(t *testing.T) {
+	_, err := parseAndValidateExec("sed -n 1,20p /tmp/a.py")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "cat") {
 		t.Fatal(err)
 	}
 }

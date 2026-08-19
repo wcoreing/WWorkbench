@@ -264,7 +264,7 @@ func (r *Registry) registerBuiltins() {
 				},
 				"initialCommand": map[string]interface{}{
 					"type":        "string",
-					"description": "连接后自动执行的命令，可多行",
+					"description": "连接后自动注入到可见 PTY，可多行。行首空格与空行会原样送进终端（Python/heredoc 可用）。不返回 stdout。",
 				},
 			},
 		},

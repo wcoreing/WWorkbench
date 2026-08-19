@@ -17,25 +17,21 @@ type openTerminalArgs struct {
 }
 
 // normalizeTerminalCommand 将多行命令规范为可写入 PTY 的格式（每行以 \r 结尾）。
+// 保留行首缩进与空行：Python / heredoc 依赖空白；禁止 TrimSpace 每一行。
 func normalizeTerminalCommand(cmd string) string {
-	cmd = strings.TrimSpace(cmd)
-	if cmd == "" {
+	if strings.TrimSpace(cmd) == "" {
 		return ""
 	}
 	raw := strings.ReplaceAll(cmd, "\r\n", "\n")
+	raw = strings.ReplaceAll(raw, "\r", "\n")
+	raw = strings.Trim(raw, "\n")
 	lines := strings.Split(raw, "\n")
-	var parts []string
+	var b strings.Builder
 	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		if !strings.HasSuffix(line, "\r") {
-			line += "\r"
-		}
-		parts = append(parts, line)
+		b.WriteString(line)
+		b.WriteByte('\r')
 	}
-	return strings.Join(parts, "")
+	return b.String()
 }
 
 // resolveSSHHost 按 id、IP/主机名或显示名称匹配 SSH 配置。
