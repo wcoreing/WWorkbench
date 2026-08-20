@@ -9,6 +9,7 @@ import { pressProps } from '../../components/compat'
 import { useSQLExport } from '../export/useSQLExport'
 import {
   ACTIONS_COL_WIDTH,
+  CHECK_COL_WIDTH,
   INDEX_COL_WIDTH,
   ResizableTh,
   WnGrid,
@@ -53,6 +54,9 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
   const [filterDirty, setFilterDirty] = useState(false)
   const [excelExportOpen, setExcelExportOpen] = useState(false)
   const [viewer, setViewer] = useState<(CellViewerTarget & { rowId: string }) | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set())
+  const lastSelectIndexRef = useRef<number>(-1)
+  const selectAllRef = useRef<HTMLInputElement>(null)
   const loadSeq = useRef(0)
   const onTableMissingRef = useRef(onTableMissing)
   onTableMissingRef.current = onTableMissing
@@ -62,6 +66,7 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
   const columnNames = columns.map((c) => c.name)
   const firstColName = columns[0]?.name ?? ''
   const gridColParts = [
+    { key: '__check', fallback: CHECK_COL_WIDTH },
     { key: '__index', fallback: INDEX_COL_WIDTH },
     ...dataColParts(columnNames),
     ...(!page?.readOnly ? [{ key: '__actions', fallback: ACTIONS_COL_WIDTH }] : []),
@@ -101,6 +106,8 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
       })
       if (seq !== loadSeq.current) return
       setPage(data)
+      setSelectedIds(new Set())
+      lastSelectIndexRef.current = -1
       setRows(
         data.rows.map((r) => ({
           ...r,
@@ -127,6 +134,13 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    const el = selectAllRef.current
+    if (!el) return
+    const n = selectedIds.size
+    el.indeterminate = n > 0 && n < rows.length
+  }, [selectedIds, rows.length])
 
   const activeFilterCount = queryFilters.length
   const activeSortCount = querySorts.length
@@ -224,6 +238,62 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
         })
         .filter(Boolean) as EditableRow[]
     )
+    setSelectedIds((prev) => {
+      if (!prev.has(rowId)) return prev
+      const next = new Set(prev)
+      next.delete(rowId)
+      return next
+    })
+  }
+
+  /** toggleRowSelect 单击/Shift 范围选中行。 */
+  const toggleRowSelect = (rowId: string, index: number, shiftKey: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (shiftKey && lastSelectIndexRef.current >= 0) {
+        const from = Math.min(lastSelectIndexRef.current, index)
+        const to = Math.max(lastSelectIndexRef.current, index)
+        for (let i = from; i <= to; i++) {
+          const id = rows[i]?.rowId
+          if (id) next.add(id)
+        }
+      } else if (next.has(rowId)) {
+        next.delete(rowId)
+      } else {
+        next.add(rowId)
+      }
+      return next
+    })
+    lastSelectIndexRef.current = index
+  }
+
+  /** toggleSelectAll 全选/取消当前页可见行。 */
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      if (rows.length === 0) return prev
+      const allSelected = rows.every((r) => prev.has(r.rowId))
+      if (allSelected) return new Set()
+      return new Set(rows.map((r) => r.rowId))
+    })
+  }
+
+  /** deleteSelected 将选中行标记为删除（新行直接移除），需再点提交落库。 */
+  const deleteSelected = () => {
+    if (page?.readOnly || selectedIds.size === 0) return
+    setRows((prev) =>
+      prev
+        .map((r) => {
+          if (!selectedIds.has(r.rowId)) return r
+          if (r.state === 'new') return null
+          if (r.state === 'deleted') return r
+          return { ...r, state: 'deleted' as RowState, oldPk: r.oldPk || pkFromRow(r, columns) }
+        })
+        .filter(Boolean) as EditableRow[]
+    )
+    setSelectedIds(new Set())
+    lastSelectIndexRef.current = -1
+    setSuccess(`已标记删除 ${selectedIds.size} 行，请提交生效`)
+    setError('')
   }
 
   const commit = async () => {
@@ -283,6 +353,7 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
   const metaParts = [
     `第 ${page.page} 页`,
     page.total >= 0 ? `共 ${page.total} 行` : null,
+    selectedIds.size > 0 ? `已选 ${selectedIds.size}` : null,
     activeFilterCount > 0 ? `筛选 ${activeFilterCount}` : null,
     activeSortCount > 0 ? `排序 ${activeSortCount}` : null,
     page.readOnly ? '只读' : null,
@@ -318,6 +389,16 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
                 <button type="button" className="wn-btn wn-btn-tool" onClick={addRow}>
                   新增
                 </button>
+                {selectedIds.size > 0 && (
+                  <button
+                    type="button"
+                    className="wn-btn wn-btn-tool wn-btn-danger"
+                    title="标记删除选中行，需再点提交才落库"
+                    {...pressProps(deleteSelected)}
+                  >
+                    删除({selectedIds.size})
+                  </button>
+                )}
                 <button type="button" className="wn-btn wn-btn-tool wn-btn-accent" onClick={commit}>
                   提交
                 </button>
@@ -406,6 +487,17 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
         tableStyle={tableStyle}
         header={
           <>
+            <th className="col-check">
+              <input
+                ref={selectAllRef}
+                type="checkbox"
+                className="grid-row-check"
+                checked={rows.length > 0 && selectedIds.size === rows.length}
+                onChange={toggleSelectAll}
+                title="全选本页"
+                aria-label="全选本页"
+              />
+            </th>
             <th className="col-index">#</th>
             {columns.map((c) => {
               const sortIdx = sortIndexOf(c.name)
@@ -437,14 +529,39 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
       >
         {rows.length === 0 ? (
           <tr>
-            <td colSpan={columns.length + (page.readOnly ? 1 : 2)} className="grid-empty">
+            <td colSpan={columns.length + (page.readOnly ? 2 : 3)} className="grid-empty">
               {activeFilterCount > 0 ? '无匹配数据' : '（空表）'}
             </td>
           </tr>
         ) : (
-          rows.map((r, idx) => (
-            <tr key={r.rowId} className={`row-${r.state}`}>
-              <td className="col-index">{idx + 1}</td>
+          rows.map((r, idx) => {
+            const selected = selectedIds.has(r.rowId)
+            return (
+            <tr
+              key={r.rowId}
+              className={`row-${r.state}${selected ? ' is-selected' : ''}`}
+            >
+              <td className="col-check">
+                <input
+                  type="checkbox"
+                  className="grid-row-check"
+                  checked={selected}
+                  onChange={() => toggleRowSelect(r.rowId, idx, false)}
+                  onClick={(e) => {
+                    if (!e.shiftKey) return
+                    e.preventDefault()
+                    toggleRowSelect(r.rowId, idx, true)
+                  }}
+                  aria-label={`选中第 ${idx + 1} 行`}
+                />
+              </td>
+              <td
+                className="col-index col-index-select"
+                title="单击选中，Shift+单击范围选"
+                onClick={(e) => toggleRowSelect(r.rowId, idx, e.shiftKey)}
+              >
+                {idx + 1}
+              </td>
               {columns.map((c) => {
                 const cell = r.values?.[c.name]
                 const display = cell?.isNull ? null : (r.editValues[c.name] ?? cell?.display ?? cell?.value ?? '')
@@ -517,7 +634,8 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
                 </td>
               )}
             </tr>
-          ))
+            )
+          })
         )}
       </WnGrid>
       <ExportFieldsDialog

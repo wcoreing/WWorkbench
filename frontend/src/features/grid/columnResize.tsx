@@ -10,6 +10,7 @@ import {
 
 export const MIN_COL_WIDTH = 56
 export const DEFAULT_COL_WIDTH = 140
+export const CHECK_COL_WIDTH = 36
 export const INDEX_COL_WIDTH = 40
 export const ACTIONS_COL_WIDTH = 64
 

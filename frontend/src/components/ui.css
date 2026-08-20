@@ -2063,6 +2063,37 @@ body.is-col-resizing * {
   font-size: 10px;
 }
 
+.wn-grid .col-index-select {
+  cursor: pointer;
+  user-select: none;
+}
+
+.wn-grid .col-index-select:hover {
+  color: var(--color-text);
+}
+
+.wn-grid .col-check {
+  width: 36px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.wn-grid .grid-row-check {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.wn-grid tbody tr.is-selected td {
+  background: var(--color-tree-active);
+}
+
+.wn-grid tbody tr.is-selected:hover td {
+  background: color-mix(in srgb, var(--color-tree-active) 80%, var(--color-tree-hover));
+}
+
 .wn-grid .col-actions {
   width: 64px;
   text-align: center;
