@@ -1,8 +1,10 @@
 # WWorkbench
 
-**WWorkbench** — a local multi-host ops & development workbench: database, terminal, files, containers, runtimes, HTTP, logs, and notebooks in one desktop app. The sidebar assistant can see the host and shell you are looking at — **it helps you finish the work, it does not replace you clicking through it**.
+**WWorkbench** — a local multi-host ops & development workbench.
 
-**English** | [简体中文](README.zh-CN.md)
+The sidebar assistant can see the host and shell you are looking at — **it helps you finish the work; it does not replace you clicking through it**.
+
+**English** | [简体中文](README.zh-CN.md) · [Website](http://wworkbench.wcore.top)
 
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![Wails](https://img.shields.io/badge/Wails-v2-DF4C32)](https://wails.io/)
@@ -10,7 +12,64 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/wcoreing/WWorkbench)](https://github.com/wcoreing/WWorkbench/releases/latest)
 
-> Current version: **v0.54.72** (shown in the bottom-right corner of the app) · [Download macOS Apple Silicon](https://github.com/wcoreing/WWorkbench/releases/latest)
+> Current version: **v0.54.74** (shown in the bottom-right corner of the app)
+
+### Download (unzip and run)
+
+| Platform | Package |
+|----------|---------|
+| **macOS** (Apple Silicon) | [Releases](https://github.com/wcoreing/WWorkbench/releases/latest) → `*-darwin-arm64.zip` |
+| **Windows** (x64) | [Releases](https://github.com/wcoreing/WWorkbench/releases/latest) → `*-windows-amd64.zip` |
+| **Linux** (x64) | [Releases](https://github.com/wcoreing/WWorkbench/releases/latest) → `*-linux-amd64.zip` |
+
+Direct links also on the site: [wworkbench.wcore.top](http://wworkbench.wcore.top/#download)
+
+**Privacy**: connections, secrets, and preferences stay in local `~/.wworkbench` (SQLite). No mandatory cloud account. Agent / MCP are optional; disabled capabilities are refused.
+
+---
+
+## Who it's for
+
+- **Multi-host ops**: SSH + Docker + logs + DB belong in one incident workflow
+- **Full-stack / self-hosted**: local and remote assets in one restorable workspace
+- **Cursor power users**: local MCP lets the editor's AI read ~100 lines of the shell you are watching
+
+| Usual setup | WWorkbench |
+|-------------|------------|
+| Termius + DBeaver + Docker Desktop + notes in separate apps | One desk, shared assets |
+| AI guesses which host you are on | `@` bind hosts/DBs/containers; MCP reads live context |
+
+Recording scripts: [docs/demo-scripts.md](docs/demo-scripts.md).
+
+---
+
+## 5-minute start
+
+1. Download the zip for your OS from Releases and open the app.
+2. Open **Terminal**: local shell, or add an SSH host.
+3. Open **Notebook**: write one line about what you are doing.
+4. (Optional) Sidebar Ask: “what is the current terminal doing?” — check that context is right.
+5. (Optional) Wire Cursor — see MCP below.
+
+---
+
+## Cursor via MCP
+
+1. Start WWorkbench; in assistant settings, keep **MCP HTTP** on (default `127.0.0.1:51021`).
+2. Copy the **Workbench URL** (must be `/mcp/workbench`, not `/mcp`).
+3. Add to Cursor `mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "wworkbench": {
+      "url": "http://127.0.0.1:51021/mcp/workbench"
+    }
+  }
+}
+```
+
+Writes may return `ww_confirm` text — confirm in the **WWorkbench sidebar**. External clients do not click confirm for you.
 
 ---
 
@@ -26,13 +85,13 @@
 | **Notebook** | Ops notes, Markdown editing & preview, groups & templates, bind SSH / database assets |
 | **API** | HTTP requests, environments, folders, and response viewer |
 | **Logs** | Local, SSH, Docker and Compose log viewer with live follow |
-| **Assistant** | Ask / Plan / Agent modes; `@` bind hosts/DBs/containers; writes confirm. Visible mutations go to the terminal pane; headless probes are read-only. Cursor can connect to local **MCP** (`/mcp/workbench`) and read ~100 lines of the current shell |
+| **Assistant** | Ask / Plan / Agent modes; `@` bind hosts/DBs/containers; writes confirm. Visible mutations go to the terminal pane; headless probes are read-only |
 
-Additional capabilities:
+Additional:
 
-- Dark / light theme with preferences persisted to local SQLite
-- UI language: **English / 简体中文** (switch via the globe icon in the top bar)
-- Multi-product workspace state auto-restore; asset radar refreshes the UI after saves
+- Dark / light theme with preferences in local SQLite
+- UI language: **English / 简体中文** (globe icon in the top bar)
+- Multi-product workspace restore; asset radar refreshes the UI after saves
 - Capability switches: disabled AI tools are refused
 
 ---
@@ -50,9 +109,9 @@ Additional capabilities:
 
 ---
 
-## Prerequisites
+## Develop from source
 
-Before developing or building from source:
+### Prerequisites
 
 | Dependency | Notes |
 |------------|-------|
@@ -61,191 +120,89 @@ Before developing or building from source:
 | **Wails CLI** | v2.12+, see [Wails docs](https://wails.io/docs/gettingstarted/installation) |
 | **Platform toolchain** | macOS: Xcode CLT; Windows: WebView2 + build tools |
 
-Optional (feature-dependent):
+Optional: Docker Desktop / `docker.sock`; Homebrew / nvm / goenv (Env module).
 
-- **Docker Desktop** or local `docker.sock` — container module
-- **Homebrew / nvm / goenv, etc.** — environment module version management
-
----
-
-## Quick Start
-
-### 1. Clone the repository
+### Clone and run
 
 ```bash
 git clone https://github.com/wcoreing/WWorkbench.git
 cd WWorkbench
-```
-
-### 2. Install dependencies
-
-```bash
-# Frontend dependencies
 cd frontend && npm install && cd ..
-
-# Go dependencies (from project root)
 go mod download
-```
-
-### 3. Development mode (hot reload)
-
-```bash
 wails dev
 ```
 
-Optional browser debugging: open `http://localhost:34115` while dev server is running.
-
-### 4. Production build
+Optional browser debug: `http://localhost:34115`.
 
 ```bash
-wails build
-```
-
-Artifacts are written to `build/bin/`:
-
-- macOS: `WWorkbench.app` or `WWorkbench`
-- Windows: `WWorkbench.exe`
-
-### 5. Regenerate Wails frontend bindings
-
-After changing exported methods in the Go `app` layer:
-
-```bash
-wails generate module
+wails build            # output under build/bin/
+wails generate module  # after changing Go-exported APIs
 ```
 
 ---
 
-## Project Structure
+## Project layout
 
 ```
 WWorkbench/
-├── main.go                 # Application entry
-├── version.go              # Version number (bump before release)
-├── internal/
-│   ├── app/                # Wails API layer
-│   ├── adapter/            # DB adapters (MySQL / PostgreSQL / SQLite / Redis)
-│   ├── conn/               # Connections & sessions
-│   ├── docker/             # Docker management
-│   ├── environment/        # Local runtime versions
-│   ├── notebook/           # Notebook
-│   ├── sftp/               # SFTP
-│   ├── store/              # SQLite & configuration
-│   └── terminal/           # Terminal & SSH
-├── frontend/
-│   ├── src/
-│   │   ├── products/       # Product workbenches
-│   │   ├── features/       # Feature components
-│   │   ├── i18n/           # zh / en strings
-│   │   └── shell/          # App shell & navigation
-│   └── wailsjs/            # Wails auto-generated bindings
-└── build/                  # Platform packaging assets
+├── main.go
+├── version.go
+├── internal/          # app, adapters, docker, notebook, sftp, store, terminal, …
+├── frontend/          # React products / features / i18n / shell
+└── build/             # packaging assets
 ```
 
 ---
 
-## Data & Configuration
-
-Application data is stored under the user home directory and is **never** committed to the repo:
+## Data & config
 
 | Path | Contents |
 |------|----------|
-| `~/.wworkbench/` | SQLite database, SSH known_hosts, workspace snapshots, etc. |
+| `~/.wworkbench/` | SQLite DB, SSH known_hosts, workspace snapshots |
 
-Passwords and other secrets are stored only in the local database. Do not attach `~/.wworkbench` to issues or commits.
-
----
-
-## Internationalization (i18n)
-
-- String files: `frontend/src/i18n/locales/zh.ts`, `en.ts`
-- In components: `const { t } = useI18n()` → `t('common.save')`
-- Preference key: `locale` (`zh` | `en`), stored in SQLite `app_settings`
-
-Modules not yet migrated to i18n may still show Chinese; follow the Docker module as a reference when adding translations.
+Do not commit or attach `~/.wworkbench` to issues.
 
 ---
 
-## Publishing to GitHub
+## i18n
 
-### First push
+- Locales: `frontend/src/i18n/locales/zh.ts`, `en.ts`
+- Usage: `const { t } = useI18n()` → `t('common.save')`
+- Preference key `locale` (`zh` | `en`) in SQLite `app_settings`
 
-```bash
-cd WWorkbench
+---
 
-# Initialize Git (if not already done)
-git init
+## Releases
 
-# Ensure .gitignore is effective (no node_modules, build/bin, local DB, etc.)
-git status
-
-git add .
-git commit -m "chore: initial open source release"
-
-# After creating an empty repo on GitHub (do not add a README to avoid conflicts)
-git branch -M main
-git remote add origin https://github.com/wcoreing/WWorkbench.git
-git push -u origin main
-```
-
-### Release checklist
-
-1. Update `AppVersion` in `version.go`
-2. Commit and tag:
-
-```bash
-git commit -am "chore: release v0.22.2"
-git tag v0.22.2
-git push origin main --tags
-```
-
-3. Create a GitHub **Release** from the tag and upload `wails build` artifacts (`.app` / `.exe`)
-
-### Pre-push checklist
-
-- [ ] No `.env`, API keys, passwords, or private keys in the repo
-- [ ] No `frontend/node_modules`, `build/bin`, or other large directories
-- [ ] `LICENSE` is present (MIT for this project)
-- [ ] Repository URL in `README.md` points to your GitHub org/user
-- [ ] Optional: add screenshots under `docs/images/` and link them in the README
-
-### Branching (optional)
-
-```bash
-git checkout -b feature/xxx    # feature work
-git checkout -b fix/xxx        # bug fixes
-# Open a Pull Request to main when done
-```
+1. Bump `AppVersion` in `version.go`
+2. Tag and upload darwin-arm64 / windows-amd64 / linux-amd64 zips on GitHub Releases
+3. Ensure no secrets, no `node_modules` / `build/bin` in the repo
 
 ---
 
 ## Contributing
 
-Issues and Pull Requests are welcome. Before submitting:
+PRs welcome. Before submit:
 
-1. Ensure `go build .` and `cd frontend && npm run build` pass
-2. Follow existing directory and naming conventions (Go models use `*DO` suffix, etc.)
-3. Update both `zh.ts` and `en.ts` for user-visible strings
-4. Bump the version in `version.go` for feature changes
+1. `go build .` and `cd frontend && npm run build` pass
+2. Follow existing layout and naming
+3. Sync user-facing strings in `zh.ts` / `en.ts`
+4. Bump `version.go` for functional changes
 
 ---
 
-## Contact
+## Community
 
-Questions, ideas, or building the workbench together — scan WeChat (**韦宁**, Nanning, Guangxi):
+WeChat (**韦宁**, Nanning, Guangxi) — see QR in [README.zh-CN.md](README.zh-CN.md).
 
-<img src="docs/images/wechat.jpg" alt="WeChat: 韦宁" width="220" />
-
-Or open a [GitHub Issue](https://github.com/wcoreing/WWorkbench/issues).
+[GitHub Issues](https://github.com/wcoreing/WWorkbench/issues)
 
 ---
 
 ## License
 
-This project is open source under the [MIT License](LICENSE).
-
----
+[MIT License](LICENSE)
 
 ## Acknowledgements
 
-- [Wails](https://wails.io/) — Go + web desktop app framework
+- [Wails](https://wails.io/) — Go + Web desktop framework
