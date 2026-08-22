@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"WWorkbench/internal/agent/agentchoice"
 	"WWorkbench/internal/agentcap"
 	"WWorkbench/internal/harness"
 	"WWorkbench/internal/model"
@@ -23,7 +24,10 @@ import (
 	"github.com/cloudwego/eino/schema"
 )
 
-const maxAgentSteps = 30
+const (
+	maxAgentSteps        = 30
+	maxChoiceJSONRetries = 3
+)
 
 // workbenchGuest：history + harness.Complete（框架流式）+ Gateway 工具。
 type workbenchGuest struct {
@@ -51,6 +55,7 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 		return "", err
 	}
 
+	choiceJSONRetries := 0
 	for step := 0; step < maxAgentSteps; step++ {
 		if ctx.Err() != nil {
 			g.r.emit("agent:done", map[string]interface{}{"threadId": g.threadID, "stopped": true})
@@ -87,12 +92,21 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			})
 		}
 		asstContent := out.Content
-		_ = history.Append(root, g.threadID, history.Msg{
-			Role: "assistant", Content: asstContent,
-			ToolCallsJSON: history.EncodeToolCalls(specs), TaskID: g.taskID,
-		})
 
 		if len(out.ToolCalls) == 0 {
+			if retry, valErr := choiceJSONRetry(asstContent, choiceJSONRetries, maxChoiceJSONRetries); retry {
+				choiceJSONRetries++
+				_ = history.Append(root, g.threadID, history.Msg{
+					Role: "assistant", Content: asstContent, TaskID: g.taskID,
+				})
+				_ = history.Append(root, g.threadID, history.Msg{
+					Role: "user", Content: agentchoice.RetryUserMessage(valErr), TaskID: g.taskID,
+				})
+				continue
+			}
+			_ = history.Append(root, g.threadID, history.Msg{
+				Role: "assistant", Content: asstContent, TaskID: g.taskID,
+			})
 			if asstContent != "" {
 				g.r.emit("agent:assistant", map[string]interface{}{
 					"threadId": g.threadID, "content": asstContent,
@@ -101,6 +115,11 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			g.r.emit("agent:done", map[string]interface{}{"threadId": g.threadID})
 			return asstContent, nil
 		}
+
+		_ = history.Append(root, g.threadID, history.Msg{
+			Role: "assistant", Content: asstContent,
+			ToolCallsJSON: history.EncodeToolCalls(specs), TaskID: g.taskID,
+		})
 
 		for _, tc := range out.ToolCalls {
 			callID := tc.ID
