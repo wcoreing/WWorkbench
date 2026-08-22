@@ -181,7 +181,7 @@ func userSSHHint(userText string, mentions []model.AgentMentionDO) string {
 			if strings.EqualFold(bound.Host, e.Host) && bound.Port == e.Port {
 				continue
 			}
-			fmt.Fprintf(&b, "- 已绑定「%s」是 `%s`，与用户命令不是同一台。save_ssh_host 必须用命令里的 host/port，禁止沿用绑定资产的 host；terminal_exec 不要用绑定的旧 hostId。\n",
+			fmt.Fprintf(&b, "- 已绑定「%s」是 `%s`，与用户命令不是同一台。save_ssh_host 必须用命令里的 host/port，禁止沿用绑定资产的 host；shell_probe 不要用绑定的旧 hostId。\n",
 				mentionTitle(m.Label), bound.addr())
 		}
 	}

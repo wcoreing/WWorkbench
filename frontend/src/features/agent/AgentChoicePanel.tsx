@@ -11,11 +11,12 @@ interface Props {
   questions: AgentChoiceQuestion[]
   /** 历史气泡 / 忙碌时不可点 */
   disabled?: boolean
-  onSend: (text: string) => void
+  /** 将选项写入侧栏输入框（不直接发送） */
+  onDraft: (text: string) => void
 }
 
 /** AgentChoicePanel 渲染助手挂出的可点选项（对齐 AgentDesk desk-choice）。 */
-export function AgentChoicePanel({ questions, disabled, onSend }: Props) {
+export function AgentChoicePanel({ questions, disabled, onDraft }: Props) {
   const { t } = useI18n()
   const [answers, setAnswers] = useState<Record<number, ChoiceAnswer>>({})
 
@@ -44,11 +45,24 @@ export function AgentChoicePanel({ questions, disabled, onSend }: Props) {
   const canSendAll = sendTexts.length > 0 && !disabled
   const needBatch = questions.some((q) => q.mode === 'multi') || questions.length > 1
 
+  const pushDraft = (next: Record<number, ChoiceAnswer>) => {
+    const body = joinChoiceSendTexts(questions, next)
+    if (body) onDraft(body)
+  }
+
   const pickSingle = (q: AgentChoiceQuestion, key: string) => {
     if (disabled) return
+    if (needBatch) {
+      setAnswers((prev) => {
+        const next = { ...prev, [q.n]: { keys: [key], text: '' } }
+        pushDraft(next)
+        return next
+      })
+      return
+    }
     const opt = q.options.find((o) => o.key === key)
     const label = (opt?.label || '').trim()
-    if (label) onSend(label)
+    if (label) onDraft(label)
   }
 
   const toggleMulti = (q: AgentChoiceQuestion, key: string) => {
@@ -59,24 +73,38 @@ export function AgentChoicePanel({ questions, disabled, onSend }: Props) {
       const i = keys.indexOf(key)
       if (i >= 0) keys.splice(i, 1)
       else keys.push(key)
-      return { ...prev, [q.n]: { ...cur, keys } }
+      const next = { ...prev, [q.n]: { ...cur, keys } }
+      pushDraft(next)
+      return next
     })
   }
 
   const submitText = (q: AgentChoiceQuestion) => {
     if (disabled) return
     const text = formatChoiceSendText(q, answers[q.n] ?? {})
-    if (text) onSend(text)
+    if (!text) return
+    if (needBatch) {
+      setAnswers((prev) => {
+        const next = { ...prev, [q.n]: { ...(prev[q.n] ?? { keys: [] }), text } }
+        pushDraft(next)
+        return next
+      })
+      return
+    }
+    onDraft(text)
   }
 
   const sendAll = () => {
     if (!canSendAll) return
     const body = joinChoiceSendTexts(questions, answers)
-    if (body) onSend(body)
+    if (body) onDraft(body)
   }
 
-  const isSelected = (q: AgentChoiceQuestion, key: string) =>
-    (answers[q.n]?.keys || []).includes(key)
+  const isSelected = (q: AgentChoiceQuestion, key: string) => {
+    const keys = answers[q.n]?.keys || []
+    if (q.mode === 'multi') return keys.includes(key)
+    return keys[0] === key
+  }
 
   return (
     <div className={`agent-choice${disabled ? ' is-disabled' : ''}`}>
@@ -148,8 +176,8 @@ export function AgentChoicePanel({ questions, disabled, onSend }: Props) {
             disabled={!canSendAll}
             onClick={sendAll}
           >
-            {t('agent.choiceSend')}
-            {sendTexts.length ? `（${sendTexts.length}）` : ''}
+            {t('agent.choiceApplyInput')}
+            {sendTexts.length ? `（${sendTexts.length}/${questions.length}）` : ''}
           </button>
         </div>
       )}

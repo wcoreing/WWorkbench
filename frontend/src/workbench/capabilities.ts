@@ -8,8 +8,8 @@ export const Capability = {
   GetWorkbenchContext: 'get_workbench_context',
   ListConnections: 'list_connections',
   ListSSHHosts: 'list_ssh_hosts',
-  TerminalOpen: 'terminal_open',
-  TerminalExec: 'terminal_exec',
+  ShellRun: 'shell_run',
+  ShellProbe: 'shell_probe',
   DatabaseSessionOpen: 'open_database_session',
   DatabaseSessionClose: 'close_database_session',
   ListTables: 'list_tables',
@@ -34,7 +34,7 @@ export type WorkbenchCapability = (typeof Capability)[keyof typeof Capability]
 
 /** UI 联动能力（由 CommandBus 在前端执行）。 */
 export const UI_CAPABILITIES: ReadonlySet<string> = new Set([
-  Capability.TerminalOpen,
+  Capability.ShellRun,
   Capability.DatabaseOpen,
   Capability.NotebookOpen,
   Capability.SftpOpen,

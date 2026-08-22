@@ -27,7 +27,6 @@ import {
 } from './agentMention'
 import { saveReplyToNotebook, savedToNotebookMessage } from './saveReplyToNotebook'
 import { AgentConfirmPanel } from './AgentConfirmPanel'
-import { readAgentShellTail } from '../terminal/terminalClipboard'
 
 interface AgentThreadItem {
   id: string
@@ -332,7 +331,6 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   })
 
   const buildContext = (mentions: AgentMention[]) => {
-    const shell = readAgentShellTail()
     return model.AgentContextDO.createFrom({
       activeProduct,
       sessionId: session?.sessionId ?? agentSurface.sessionId ?? '',
@@ -344,8 +342,6 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       tabTitle: agentSurface.tabTitle || '',
       openTabsBrief: agentSurface.openTabsBrief || '',
       selectionBrief: agentSurface.selectionBrief || '',
-      shellTail: shell.text,
-      terminalSessionId: shell.sessionId,
       noteId: agentSurface.noteId || '',
       mentions: toContextMentions(mentions),
     })
@@ -666,13 +662,13 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
                     skillIds={line.skillIds}
                     images={line.images}
                     choiceDisabled={busy || !isLastAssistant}
-                    onChoiceSend={
+                    onChoiceDraft={
                       line.role === 'assistant'
                         ? (text) => {
-                            void send(
-                              text,
-                              threadMentions,
-                            ).catch(() => {})
+                            useAgentStore.getState().applyDraft({
+                              message: text,
+                              mentions: threadMentions,
+                            })
                           }
                         : undefined
                     }

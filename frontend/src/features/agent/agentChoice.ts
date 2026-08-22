@@ -1,6 +1,6 @@
 /**
  * Agent 可选表单：回复里挂 ```agent-choice / ```desk-choice，侧栏渲成可点选项。
- * 点选后发送选项 label 原文（与 AgentDesk desk-choice 同构）。
+ * 点选后写入侧栏输入框（多题可逐题点选再统一发送）。
  * 模型常误写成 ```json / 无语言标记，形似选项表时一并抽出。
  */
 

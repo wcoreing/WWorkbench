@@ -93,9 +93,11 @@ func (s *Store) GetToolPermissions() map[string]bool {
 	}
 	def := agentcap.DefaultPermissions()
 	legacy := map[string]string{
-		"open_terminal":           workbench.CapOpenTerminal,
-		"terminal.open":           workbench.CapOpenTerminal,
-		"terminal.exec":           workbench.CapTerminalExec,
+		"open_terminal":           workbench.CapShellRun,
+		"terminal.open":           workbench.CapShellRun,
+		"terminal_open":           workbench.CapShellRun,
+		"terminal.exec":           workbench.CapShellProbe,
+		"terminal_exec":           workbench.CapShellProbe,
 		"database.open":           workbench.CapDatabaseOpen,
 		"notebook.append_content": workbench.CapNotebookAppend,
 	}

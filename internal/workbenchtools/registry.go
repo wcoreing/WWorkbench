@@ -79,9 +79,11 @@ func (r *Registry) Deps() *Deps {
 
 // toolAliases 兼容旧工具名。
 var toolAliases = map[string]string{
-	"open_terminal":           workbench.CapOpenTerminal,
-	"terminal.open":           workbench.CapOpenTerminal,
-	"terminal.exec":           workbench.CapTerminalExec,
+	"open_terminal":           workbench.CapShellRun,
+	"terminal.open":           workbench.CapShellRun,
+	"terminal_open":           workbench.CapShellRun,
+	"terminal.exec":           workbench.CapShellProbe,
+	"terminal_exec":           workbench.CapShellProbe,
 	"database.open":           workbench.CapDatabaseOpen,
 	"notebook.append_content": workbench.CapNotebookAppend,
 }
@@ -109,7 +111,7 @@ func (r *Registry) add(def ToolDef) {
 func (r *Registry) registerBuiltins() {
 	r.add(ToolDef{
 		Name:        "get_workbench_context",
-		Description: "工作台快照：连接/SSH/会话，以及当前打开终端最近约 100 行（与可见 PTY 同源）。问「跑完了吗 / 这段输出」先调本工具，不要为了看屏幕再 terminal_exec。",
+		Description: "工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）。问终端输出用 get_shell_output 按需分页拉取，不要为了看屏幕乱 shell_probe。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -259,8 +261,8 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolDescribeTable,
 	})
 	r.add(ToolDef{
-		Name:        workbench.CapOpenTerminal,
-		Description: "给人看的终端：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。不返回 stdout；人在面板看输出。本轮「工作台现状」已有最近约 100 行；注入后下一轮用户消息才会带上新输出。禁止编造注入后的 stdout。只读短探针（uptime / nvidia-smi / python -c print）才用 terminal_exec。",
+		Name:        workbench.CapShellRun,
+		Description: "给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。不返回 stdout；人在面板看输出。注入后用 get_shell_output 查看新输出，禁止编造 stdout。只读短探针才用 shell_probe。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -285,8 +287,8 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolTerminalOpen,
 	})
 	r.add(ToolDef{
-		Name:        workbench.CapTerminalExec,
-		Description: "无头只读短探针：另开 SSH、等结果、默认 30s 最多 120s。白名单如 uptime、free、df、nvidia-smi、ps、ls、cat、pip show、python -c print/import。不改机器状态。pip install / 下载 / 训练 / 脚本 / 管道必须 terminal_open。不踩用户正在看的 PTY。面板最近输出已在工作台现状中，先看再决定是否再探针。",
+		Name:        workbench.CapShellProbe,
+		Description: "无头只读短探针：另开 SSH、等结果、默认 30s 最多 120s。白名单如 uptime、free、df、nvidia-smi、ps、ls、cat、pip show、python -c print/import。不改机器状态。pip install / 下载 / 训练 / 脚本 / 管道必须 shell_run。看可见终端输出用 get_shell_output，不踩用户 PTY。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -305,6 +307,36 @@ func (r *Registry) registerBuiltins() {
 			"required": []interface{}{"command"},
 		},
 		Handler: toolTerminalExec,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapGetShellOutput,
+		Description: "分页读取可见 PTY scrollback（与终端面板同源）。offsetFromEnd=0 为最新一页；hasMoreOlder 为 true 时用 nextOffsetFromEnd 继续向历史翻。问「跑完了吗/报错/这段输出」先调本工具，不要编造。shell_run 注入后需再调本工具看新输出。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"sessionId": map[string]interface{}{
+					"type":        "string",
+					"description": "终端 sessionId（openTerminals 或 get_workbench_context.terminalSessionId）",
+				},
+				"terminalSessionId": map[string]interface{}{
+					"type":        "string",
+					"description": "同 sessionId",
+				},
+				"hostId": map[string]interface{}{
+					"type":        "string",
+					"description": "SSH/Docker 主机 ID；与 sessionId 二选一，取该主机最近活动的终端",
+				},
+				"lines": map[string]interface{}{
+					"type":        "integer",
+					"description": "本页行数，默认 100，最大 500",
+				},
+				"offsetFromEnd": map[string]interface{}{
+					"type":        "integer",
+					"description": "从尾部向历史偏移行数；0=最新一页，翻页用返回的 nextOffsetFromEnd",
+				},
+			},
+		},
+		Handler: toolGetShellOutput,
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapDatabaseOpen,
@@ -432,7 +464,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        "start_container",
-		Description: "启动已存在的容器（需用户确认）。勿用 terminal_exec 执行 docker start。",
+		Description: "启动已存在的容器（需用户确认）。勿用 shell_probe 执行 docker start。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -445,7 +477,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        "stop_container",
-		Description: "停止运行中的容器（需用户确认）。勿用 terminal_exec 执行 docker stop。",
+		Description: "停止运行中的容器（需用户确认）。勿用 shell_probe 执行 docker stop。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -458,7 +490,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        "remove_container",
-		Description: "删除容器（force，需用户确认）。勿用 terminal_exec 执行 docker rm。",
+		Description: "删除容器（force，需用户确认）。勿用 shell_probe 执行 docker rm。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{

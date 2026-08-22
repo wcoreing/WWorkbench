@@ -70,7 +70,7 @@ func resolveSSHHost(d *Deps, hostID, hostOrName string) (*model.SSHHostDO, []mod
 	}
 }
 
-// toolOpenTerminal 打开终端并可选注入命令（UI 联动 terminal_open）。
+// toolOpenTerminal 打开终端并可选注入命令（UI 联动 shell_run）。
 func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	var in openTerminalArgs
 	if err := json.Unmarshal(raw, &in); err != nil {
@@ -81,7 +81,7 @@ func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 		if d.UIActions == nil {
 			return Fail("UI 联动未初始化")
 		}
-		d.UIActions.Dispatch(UIActionTerminalOpen, map[string]interface{}{
+		d.UIActions.Dispatch(UIActionShellRun, map[string]interface{}{
 			"localShell":     true,
 			"initialCommand": cmd,
 		})
@@ -106,7 +106,7 @@ func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 	if d.UIActions == nil {
 		return Fail("UI 联动未初始化")
 	}
-	d.UIActions.Dispatch(UIActionTerminalOpen, map[string]interface{}{
+	d.UIActions.Dispatch(UIActionShellRun, map[string]interface{}{
 		"hostId":         host.ID,
 		"initialCommand": cmd,
 	})

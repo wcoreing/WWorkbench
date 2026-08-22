@@ -13,7 +13,7 @@ interface Props {
   images?: { mime: string; data: string }[]
   /** 可点选项：仅最新助手气泡启用 */
   choiceDisabled?: boolean
-  onChoiceSend?: (text: string) => void
+  onChoiceDraft?: (text: string) => void
 }
 
 /** AgentMessageContent 渲染对话消息。 */
@@ -24,7 +24,7 @@ export function AgentMessageContent({
   skillIds,
   images,
   choiceDisabled,
-  onChoiceSend,
+  onChoiceDraft,
 }: Props) {
   const choice = useMemo(
     () => (role === 'assistant' ? extractAgentChoices(content) : null),
@@ -35,11 +35,11 @@ export function AgentMessageContent({
     return (
       <>
         <AgentRichContent content={choice?.body || content} />
-        {choice && choice.questions.length > 0 && onChoiceSend && (
+        {choice && choice.questions.length > 0 && onChoiceDraft && (
           <AgentChoicePanel
             questions={choice.questions}
             disabled={choiceDisabled}
-            onSend={onChoiceSend}
+            onDraft={onChoiceDraft}
           />
         )}
       </>

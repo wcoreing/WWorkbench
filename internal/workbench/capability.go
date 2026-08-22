@@ -11,8 +11,9 @@ const (
 	CapGetWorkbenchContext  = "get_workbench_context"
 	CapListConnections      = "list_connections"
 	CapListSSHHosts         = "list_ssh_hosts"
-	CapOpenTerminal         = "terminal_open"
-	CapTerminalExec         = "terminal_exec"
+	CapShellRun             = "shell_run"
+	CapShellProbe           = "shell_probe"
+	CapGetShellOutput       = "get_shell_output"
 	CapOpenDatabaseSession  = "open_database_session"
 	CapCloseDatabaseSession = "close_database_session"
 	CapListTables           = "list_tables"
@@ -38,7 +39,7 @@ const (
 // UICapabilities 需前端执行的 UI 联动能力（切产品线 + CommandBus handler）。
 func UICapabilities() []string {
 	return []string{
-		CapOpenTerminal,
+		CapShellRun,
 		CapDatabaseOpen,
 		CapNotebookOpen,
 		CapSFTPOpen,

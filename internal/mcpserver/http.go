@@ -23,8 +23,8 @@ const ServerVersion = "0.54.90"
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本等）。
 - 参数=schema 顶层字段（勿再包 {"arguments":…}）。
 - 写操作可能返回含 ww_confirm 的文本；需在 WWorkbench 侧栏确认，外置客户端本期不弹确认框。
-- 容器启停/删除用 start_container / stop_container / remove_container，勿用 terminal_exec 跑 docker rm/start/stop。
-- 问终端输出先 get_workbench_context（含当前可见 PTY 最近约 100 行 shellTail）；不要为了看屏幕再 terminal_exec。terminal_open=给人看（注入 pip/下载/训练/脚本，不返回 stdout；多行会保留行首空格与空行）。terminal_exec=无头只读短探针（uptime/nvidia-smi/ls/cat/python -c print），禁止改机器；看磁盘文件用 cat，不要 sed/awk。
+- 容器启停/删除用 start_container / stop_container / remove_container，勿用 shell_probe 跑 docker rm/start/stop。
+- 问终端输出用 get_shell_output（分页读可见 PTY scrollback；offsetFromEnd=0 最新页，nextOffsetFromEnd 向历史翻）。shell_run=给人看（注入 pip/下载/训练/脚本，不返回 stdout）。shell_probe=无头只读短探针，禁止改机器；看磁盘文件用 cat，不要 sed/awk。
 - HTTP：先 save_http_request / save_http_environment，再 execute_http(requestId / envId)。
 - 笔记本：list_notes / search_notes / get_note(noteId) 读正文；notebook_append_content 写入；发布技能用 publish_agent_skill（/ 手动调用）。
 - Agent 对话：agent_chat 同步发消息并等回复（支持 /skill-id、mentions、sshHostId）；待确认用 agent_confirm。

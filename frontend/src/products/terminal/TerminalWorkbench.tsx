@@ -559,7 +559,7 @@ export function TerminalWorkbench() {
     await connectHost(host)
   }
 
-  useWorkbenchCommand(Capability.TerminalOpen, (cmd) => {
+  useWorkbenchCommand(Capability.ShellRun, (cmd) => {
     const hostId = payloadStr(cmd.payload, 'hostId')
     const localShell = payloadBool(cmd.payload, 'localShell')
     const initialCommand = payloadStr(cmd.payload, 'initialCommand')

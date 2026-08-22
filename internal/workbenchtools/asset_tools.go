@@ -121,7 +121,7 @@ func toolSaveSSHHost(_ context.Context, d *Deps, raw json.RawMessage) ToolResult
 	return OKData(map[string]interface{}{
 		"ok": true, "op": op, "id": out.ID, "name": out.Name,
 		"host": out.Host, "port": out.Port, "user": out.User, "keyPath": out.KeyPath,
-		"note": "已写入 SSH 资产；界面将刷新。后续用 hostId 调用 terminal_open / terminal_exec。",
+		"note": "已写入 SSH 资产；界面将刷新。后续用 hostId 调用 shell_run / shell_probe。",
 	})
 }
 

@@ -70,14 +70,14 @@ var skillSeeds = []skillSeed{
 ## 本轮流程
 
 1. 确认本轮已绑定 SSH 主机（前馈 / @）；没有则先请用户附加。
-2. 用 terminal_exec 在该主机执行只读诊断：uptime、free -h、df -h；必要时再看 load / 关键进程。
+2. 用 shell_probe 在该主机执行只读诊断：uptime、free -h、df -h；必要时再看 load / 关键进程。
 3. 汇总内存 / 磁盘 / 负载结论（简明条目，不堆原始长输出）。
 4. 用 notebook_append_content 把 Markdown 报告写入笔记本。
 
 ## 不要
 
 - 不要改配置、装包、重启服务。
-- 不要用可见终端抢用户屏幕；探针用 terminal_exec。
+- 不要用可见终端抢用户屏幕；探针用 shell_probe。
 `,
 	},
 	{
@@ -115,7 +115,7 @@ var skillSeeds = []skillSeed{
 ## 本轮流程
 
 1. 确认本轮已绑定容器主机（hostId 形如 docker:…）。
-2. 用 terminal_exec（hostId=该容器）执行 uptime、df -h、free -h 等只读诊断。
+2. 用 shell_probe（hostId=该容器）执行 uptime、df -h、free -h 等只读诊断。
 3. 必要时再 list_containers / get_container_logs。
 4. notebook_append_content 写入 Markdown 报告。
 
@@ -139,7 +139,7 @@ var skillSeeds = []skillSeed{
 1. 确认本轮已绑定 SSH 主机（前馈 / @）；没有则先请用户附加。
 2. **必须先** get_skill host-probe-script 加载本技能。
 3. **必须** read_file 读取 system/skills/host-probe-script/scripts/probe.sh（禁止臆造命令）。
-4. 将脚本中的每条只读命令用 terminal_exec 在绑定主机执行（不要 bash -lc 整文件执行）。
+4. 将脚本中的每条只读命令用 shell_probe 在绑定主机执行（不要 bash -lc 整文件执行）。
 5. 用户要求落盘时用 notebook_append_content 写 Markdown 报告。
 
 ## 脚本位置
@@ -177,7 +177,7 @@ hostname -f 2>/dev/null || hostname
 1. 确认本轮已绑定 SSH 主机（前馈 / @）；没有则先请用户附加。
 2. **必须先** get_skill gpu-mem-probe 加载本技能。
 3. **必须** read_file 读取 system/skills/gpu-mem-probe/scripts/gpu_mem.sh（正文不在 SKILL.md 里，禁止臆造命令）。
-4. 将脚本中的每条只读命令用 terminal_exec 在绑定主机执行（不要 bash -lc 整文件执行）。
+4. 将脚本中的每条只读命令用 shell_probe 在绑定主机执行（不要 bash -lc 整文件执行）。
 5. 汇总 GPU / 内存结论（简明条目）；用户要求落盘时用 notebook_append_content 写 Markdown 报告。
 
 ## 脚本位置
@@ -191,7 +191,7 @@ hostname -f 2>/dev/null || hostname
 `,
 		scripts: map[string]string{
 			"scripts/gpu_mem.sh": `#!/usr/bin/env bash
-# gpu-mem-probe：只读 GPU / 内存探针（Agent 须 read_file 本文件后再 terminal_exec 各条命令）
+# gpu-mem-probe：只读 GPU / 内存探针（Agent 须 read_file 本文件后再 shell_probe 各条命令）
 set -euo pipefail
 echo "=== gpu-mem-probe ==="
 if command -v nvidia-smi >/dev/null 2>&1; then

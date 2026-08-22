@@ -95,12 +95,12 @@ func unquotedShellOp(s string, i int) (string, bool) {
 
 func unquotedOpHint(op string) string {
 	return fmt.Sprintf(
-		"未加引号的 %s 不会按管道/多语句执行。无头只做只读短探针；管道/多语句请 terminal_open 注入到面板。",
+		"未加引号的 %s 不会按管道/多语句执行。无头只做只读短探针；管道/多语句请 shell_run 注入到面板。",
 		op,
 	)
 }
 
-const execOpenInstead = "请改用 terminal_open 注入到终端面板（人看得见）。无头 terminal_exec 只做只读短探针。"
+const execOpenInstead = "请改用 shell_run 注入到终端面板（人看得见）。无头 shell_probe 只做只读短探针。"
 
 // posixQuoteArgv 将 argv 编成远端 shell 不会二次拆语句的命令行。
 func posixQuoteArgv(argv []string) string {
@@ -198,7 +198,7 @@ var gitProbeVerbs = map[string]bool{
 	"rev-parse": true, "remote": true, "describe": true, "ls-files": true,
 }
 
-// validateExecArgv 无头只允许只读短探针（白名单 + 动词），写操作/长任务走 terminal_open。
+// validateExecArgv 无头只允许只读短探针（白名单 + 动词），写操作/长任务走 shell_run。
 func validateExecArgv(argv []string) error {
 	if len(argv) == 0 {
 		return errno.New(errno.CodeInvalidArg, "请填写 command", "")

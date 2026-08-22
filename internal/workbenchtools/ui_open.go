@@ -14,7 +14,7 @@ type databaseOpenArgs struct {
 	ConnectionDraft map[string]interface{} `json:"connectionDraft"`
 }
 
-// toolTerminalOpen 打开终端（UI 联动 terminal_open）。
+// toolTerminalOpen 打开终端（UI 联动 shell_run）。
 func toolTerminalOpen(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	return toolOpenTerminal(ctx, d, raw)
 }

@@ -26,7 +26,7 @@ func Catalog() []Item {
 	return []Item{
 		{
 			Name: "get_workbench_context", Label: "读取工作台上下文", Risk: RiskRead,
-			Description:    "产品线/连接/SSH，以及打开中的可见终端最近约 100 行（PTY 同源）",
+			Description:    "产品线/连接/SSH，以及打开中的终端列表（不含正文）",
 			DefaultEnabled: true,
 		},
 		{
@@ -90,13 +90,18 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
-			Name: "terminal_open", Label: "打开终端", Risk: RiskSession,
-			Description:    "给人看的终端：注入 pip/下载/训练/脚本到可见 PTY；不返回 stdout，下一轮前馈才带新输出",
+			Name: "shell_run", Label: "Shell 运行（可见）", Risk: RiskSession,
+			Description:    "给人看的 Shell：注入 pip/下载/训练/脚本到可见 PTY；不返回 stdout，下一轮前馈才带新输出",
 			DefaultEnabled: true,
 		},
 		{
-			Name: "terminal_exec", Label: "执行 Shell 命令（只读）", Risk: RiskRead,
-			Description:    "无头只读短探针（uptime/nvidia-smi/python -c print）；改机器必须 terminal_open；不踩用户 PTY",
+			Name: "shell_probe", Label: "Shell 探针（只读）", Risk: RiskRead,
+			Description:    "无头只读短探针（uptime/nvidia-smi/python -c print）；改机器必须 shell_run；看可见终端用 get_shell_output",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "get_shell_output", Label: "读取终端输出", Risk: RiskRead,
+			Description:    "分页读取可见 PTY scrollback；offsetFromEnd=0 最新，nextOffsetFromEnd 向历史翻页",
 			DefaultEnabled: true,
 		},
 		{
@@ -181,7 +186,7 @@ func Catalog() []Item {
 		},
 		{
 			Name: "remove_container", Label: "删除容器", Risk: RiskWrite,
-			Description:  "强制删除容器；执行前需用户确认（勿用 terminal_exec docker rm）",
+			Description:  "强制删除容器；执行前需用户确认（勿用 shell_probe docker rm）",
 			NeedsConfirm: true, DefaultEnabled: true,
 		},
 		{

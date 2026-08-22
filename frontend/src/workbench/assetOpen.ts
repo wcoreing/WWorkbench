@@ -14,7 +14,7 @@ export function openTerminal(
   source: CommandSource = 'user',
 ) {
   openCapability(
-    Capability.TerminalOpen,
+    Capability.ShellRun,
     {
       hostId: opts.hostId,
       localShell: opts.localShell,

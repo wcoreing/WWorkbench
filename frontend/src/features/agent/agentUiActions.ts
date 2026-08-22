@@ -17,7 +17,7 @@ export function dispatchAgentUiAction(raw: Record<string, unknown>) {
     payload,
   }).then((res) => {
     if (res.ok) {
-      if (kind === Capability.TerminalOpen) {
+      if (kind === Capability.ShellRun) {
         useAppStore.getState().setStatusMessage(
           payload.localShell ? 'AI：已打开本机终端' : 'AI：已打开 SSH 终端',
         )
