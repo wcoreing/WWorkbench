@@ -9,6 +9,7 @@ interface Props {
   content: string
   role: 'user' | 'assistant' | 'system'
   mentions?: AgentMention[]
+  skillIds?: string[]
   images?: { mime: string; data: string }[]
   /** 可点选项：仅最新助手气泡启用 */
   choiceDisabled?: boolean
@@ -20,6 +21,7 @@ export function AgentMessageContent({
   content,
   role,
   mentions,
+  skillIds,
   images,
   choiceDisabled,
   onChoiceSend,
@@ -45,7 +47,7 @@ export function AgentMessageContent({
   }
 
   if (role === 'user') {
-    return <AgentUserContent content={content} mentions={mentions} images={images} />
+    return <AgentUserContent content={content} mentions={mentions} skillIds={skillIds} images={images} />
   }
 
   return <p className="agent-plain agent-plain-muted">{content}</p>

@@ -22,16 +22,12 @@ func NewWorkbenchMCPServer(gw *toolgateway.Gateway, reg *workbenchtools.Registry
 }
 
 func registerWorkbenchTools(s *server.MCPServer, gw *toolgateway.Gateway, reg *workbenchtools.Registry) {
-	if s == nil || gw == nil || reg == nil {
+	if s == nil || reg == nil {
 		return
 	}
-	for _, def := range reg.ListDefs() {
+	for _, def := range reg.ListMCPDefs() {
 		name := strings.TrimSpace(def.Name)
 		if name == "" || name == "recall_resource" {
-			continue
-		}
-		fn := gw.Handler(name)
-		if fn == nil {
 			continue
 		}
 		schema, err := json.Marshal(def.Parameters)
@@ -39,9 +35,49 @@ func registerWorkbenchTools(s *server.MCPServer, gw *toolgateway.Gateway, reg *w
 			schema = []byte(`{"type":"object","properties":{}}`)
 		}
 		tool := mcp.NewToolWithRawSchema(name, def.Description, schema)
-		handler := fn
-		s.AddTool(tool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			return handler(ctx, req)
-		})
+		toolName := name
+		if fn := gwHandler(gw, toolName); fn != nil {
+			handler := fn
+			s.AddTool(tool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+				return handler(ctx, req)
+			})
+			continue
+		}
+		if def.MCPOnly {
+			s.AddTool(tool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+				return invokeRegistryTool(ctx, reg, toolName, req)
+			})
+		}
 	}
+}
+
+func gwHandler(gw *toolgateway.Gateway, name string) toolgateway.ToolHandler {
+	if gw == nil {
+		return nil
+	}
+	return gw.Handler(name)
+}
+
+func invokeRegistryTool(ctx context.Context, reg *workbenchtools.Registry, name string, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := req.GetArguments()
+	raw, err := json.Marshal(args)
+	if err != nil {
+		raw = []byte("{}")
+	}
+	res := reg.Invoke(ctx, name, raw, nil)
+	if res.NeedsConfirm {
+		wire, _ := json.Marshal(map[string]any{
+			"ww_confirm": true,
+			"summary":    res.ConfirmSummary,
+			"preview":    json.RawMessage(res.Data),
+		})
+		return mcp.NewToolResultText(string(wire)), nil
+	}
+	if !res.OK {
+		return mcp.NewToolResultError(res.Error), nil
+	}
+	if len(res.Data) > 0 {
+		return mcp.NewToolResultText(string(res.Data)), nil
+	}
+	return mcp.NewToolResultText(`{"ok":true}`), nil
 }

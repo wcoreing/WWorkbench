@@ -827,16 +827,78 @@ type AgentChatImageDO struct {
 
 // AgentChatRequestDO 发起对话请求。
 type AgentChatRequestDO struct {
-	ThreadID string             `json:"threadId"`
-	Message  string             `json:"message"`
-	Images   []AgentChatImageDO `json:"images,omitempty"`
-	Mode     string             `json:"mode,omitempty"` // ask | agent | plan
-	Context  AgentContextDO     `json:"context"`
+	ThreadID  string             `json:"threadId"`
+	Message   string             `json:"message"`
+	Images    []AgentChatImageDO `json:"images,omitempty"`
+	Mode      string             `json:"mode,omitempty"` // ask | agent | plan
+	SkillIDs  []string           `json:"skillIds,omitempty"`
+	Context   AgentContextDO     `json:"context"`
+}
+
+// AgentSkillDO Agent 技能（Skill）。
+type AgentSkillDO struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Enabled     bool     `json:"enabled"`
+	Globs       []string `json:"globs,omitempty"`
+	Builtin     bool     `json:"builtin"`
+	Content     string   `json:"content,omitempty"`
+}
+
+// AgentSkillFileSaveDO 保存技能目录下文件。
+type AgentSkillFileSaveDO struct {
+	Path    string `json:"path"`
+	Content string `json:"content"`
+}
+
+// AgentSkillCreateDO 新建 Skill。
+type AgentSkillCreateDO struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Content     string `json:"content,omitempty"`
+}
+
+// AgentSkillSaveDO 保存 Skill（正文与可选元数据）。
+type AgentSkillSaveDO struct {
+	ID            string   `json:"id"`
+	Content       string   `json:"content"`
+	Name          string   `json:"name,omitempty"`
+	Description   string   `json:"description,omitempty"`
+	Globs         []string `json:"globs,omitempty"`
+	UpdateContent bool     `json:"updateContent"`
+	UpdateGlobs   bool     `json:"updateGlobs"`
+}
+
+// AgentSkillPublishDO 从笔记发布/更新 Skill。
+type AgentSkillPublishDO struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Content     string   `json:"content"`
+	Globs       []string `json:"globs,omitempty"`
+	NoteID      string   `json:"noteId,omitempty"`
+}
+
+// AgentSkillEnabledDO 启用/禁用 Skill。
+type AgentSkillEnabledDO struct {
+	ID      string `json:"id"`
+	Enabled bool   `json:"enabled"`
 }
 
 // AgentChatResultDO 对话提交结果。
 type AgentChatResultDO struct {
 	ThreadID string `json:"threadId"`
+}
+
+// AgentChatSyncResultDO MCP 同步对话结果。
+type AgentChatSyncResultDO struct {
+	ThreadID       string   `json:"threadId"`
+	Reply          string   `json:"reply,omitempty"`
+	SkillIDs       []string `json:"skillIds,omitempty"`
+	WaitingConfirm bool     `json:"waitingConfirm,omitempty"`
+	PendingID      string   `json:"pendingId,omitempty"`
 }
 
 // AgentPendingDO 待用户确认的工具调用。

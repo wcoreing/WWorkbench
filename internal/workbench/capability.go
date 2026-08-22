@@ -30,6 +30,9 @@ const (
 	CapHTTPAPIOpen          = "httpapi_open"
 	CapEnvironmentOpen      = "environment_open"
 	CapSSHForwardOpen       = "ssh_forward_open"
+	CapPublishAgentSkill    = "publish_agent_skill"
+	CapAgentChat            = "agent_chat"
+	CapAgentConfirm         = "agent_confirm"
 )
 
 // UICapabilities 需前端执行的 UI 联动能力（切产品线 + CommandBus handler）。

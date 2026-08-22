@@ -126,3 +126,8 @@ func (b *RadarBus) EmitSFTPBookmark(op, id, writeID, label string, reveal bool) 
 func (b *RadarBus) EmitSSHForward(op, id, writeID, label string, reveal bool) {
 	b.EmitAsset(workbench.RadarDomainSSHForward, "terminal", op, id, writeID, label, reveal)
 }
+
+// EmitAgentSkill 快捷广播 Agent 技能变更。
+func (b *RadarBus) EmitAgentSkill(op, id, writeID, label string, reveal bool) {
+	b.EmitAsset(workbench.RadarDomainAgentSkill, "skills", op, id, writeID, label, reveal)
+}

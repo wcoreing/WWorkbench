@@ -19,6 +19,7 @@ const (
 	RadarDomainEnvPreset       = "environment.preset"
 	RadarDomainSFTPBookmark    = "sftp.bookmark"
 	RadarDomainSSHForward      = "ssh.forward"
+	RadarDomainAgentSkill      = "agent.skill"
 )
 
 // 变更操作。

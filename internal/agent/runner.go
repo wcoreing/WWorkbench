@@ -19,6 +19,7 @@ import (
 	"github.com/cloudwego/eino/schema"
 	"github.com/google/uuid"
 	"github.com/wcoreing/ningharness/history"
+	nhskill "github.com/wcoreing/ningharness/skill"
 )
 
 // Emitter 向前端推送 Agent 事件。
@@ -96,27 +97,51 @@ func (r *Runner) Rewind(threadID string, keepSeq int) error {
 	return nil
 }
 
-// Chat 处理用户消息（Lifecycle 异步；Guest 内 Provider 流式）。
-func (r *Runner) Chat(req model.AgentChatRequestDO) (string, error) {
+// preparedChat 一次对话轮次的公共准备结果。
+type preparedChat struct {
+	threadID  string
+	prompt    string
+	ff        string
+	skillIDs  []string
+	uiContent string
+	ctxSnap   model.AgentContextDO
+	images    []model.AgentChatImageDO
+	th        *threadState
+}
+
+// prepareChat 校验并准备会话；resolveLeading 为 true 时解析消息开头 /skill。
+func (r *Runner) prepareChat(req model.AgentChatRequestDO, resolveLeading bool) (preparedChat, error) {
 	if r.harness == nil {
-		return "", fmt.Errorf("ningharness 未就绪，请重启应用")
+		return preparedChat{}, fmt.Errorf("ningharness 未就绪，请重启应用")
 	}
 	msg := strings.TrimSpace(req.Message)
 	images, err := normalizeChatImages(req.Images)
 	if err != nil {
-		return "", err
+		return preparedChat{}, err
 	}
 	if msg == "" && len(images) == 0 {
-		return "", fmt.Errorf("消息不能为空")
+		return preparedChat{}, fmt.Errorf("消息不能为空")
 	}
 	settings := r.store.GetAgentSettings()
 	if !settings.HasAPIKey {
-		return "", fmt.Errorf("请先在 AI 设置中填写 API Key 并保存")
+		return preparedChat{}, fmt.Errorf("请先在 AI 设置中填写 API Key 并保存")
 	}
 	if strings.TrimSpace(settings.Model) == "" {
-		return "", fmt.Errorf("请先在 AI 设置中填写模型名称")
+		return preparedChat{}, fmt.Errorf("请先在 AI 设置中填写模型名称")
 	}
-	threadID := req.ThreadID
+
+	skillIDs := trimSkillIDs(req.SkillIDs)
+	if resolveLeading && len(skillIDs) == 0 {
+		if list, err := nhskill.ListEnabled(r.harness.Root); err == nil {
+			rest, ids := nhskill.ResolveLeadingCommand(msg, list)
+			if len(ids) > 0 {
+				skillIDs = ids
+				msg = rest
+			}
+		}
+	}
+
+	threadID := strings.TrimSpace(req.ThreadID)
 	if threadID == "" {
 		threadID = uuid.NewString()
 	}
@@ -124,27 +149,54 @@ func (r *Runner) Chat(req model.AgentChatRequestDO) (string, error) {
 	th.mu.Lock()
 	th.pendingImages = images
 	th.mode = NormalizeChatMode(req.Mode)
+	if th.mode == "" {
+		th.mode = ChatModeAgent
+	}
 	th.mu.Unlock()
-	ctx := turnctx.AttachSSHEndpoints(req.Context, sshEndpointLookup(r.store))
-	ff := turnctx.Gather(ctx, msg)
-	_ = r.harness.SetBindings(threadID, ctx.Mentions, turnctx.FocusRefFromContext(ctx))
-	uiText := msg
-	if uiText == "" {
-		uiText = imageOnlyPrompt
+
+	ctxSnap := turnctx.AttachSSHEndpoints(req.Context, sshEndpointLookup(r.store))
+	ff := turnctx.Gather(ctxSnap, msg)
+	_ = r.harness.SetBindings(threadID, ctxSnap.Mentions, turnctx.FocusRefFromContext(ctxSnap))
+
+	uiContent := strings.TrimSpace(req.Message)
+	if uiContent == "" {
+		uiContent = msg
 	}
-	payload := map[string]interface{}{
-		"threadId": threadID, "content": uiText, "mentions": ctx.Mentions,
+	if uiContent == "" && len(images) > 0 {
+		uiContent = imageOnlyPrompt
 	}
-	if len(images) > 0 {
-		payload["images"] = previewImages(images)
-	}
-	r.emit("agent:user", payload)
 	prompt := msg
 	if prompt == "" {
 		prompt = imageOnlyPrompt
 	}
-	go r.runTurn(th.id, prompt, ff, false)
-	return threadID, nil
+	return preparedChat{
+		threadID: threadID, prompt: prompt, ff: ff, skillIDs: skillIDs,
+		uiContent: uiContent, ctxSnap: ctxSnap, images: images, th: th,
+	}, nil
+}
+
+func (r *Runner) emitAgentUser(p preparedChat) {
+	payload := map[string]interface{}{
+		"threadId": p.threadID, "content": p.uiContent, "mentions": p.ctxSnap.Mentions,
+	}
+	if len(p.images) > 0 {
+		payload["images"] = previewImages(p.images)
+	}
+	if len(p.skillIDs) > 0 {
+		payload["skillIds"] = p.skillIDs
+	}
+	r.emit("agent:user", payload)
+}
+
+// Chat 处理用户消息（Lifecycle 异步；Guest 内 Provider 流式）。
+func (r *Runner) Chat(req model.AgentChatRequestDO) (string, error) {
+	p, err := r.prepareChat(req, true)
+	if err != nil {
+		return "", err
+	}
+	r.emitAgentUser(p)
+	go r.runTurn(p.th.id, p.prompt, p.ff, false, p.skillIDs)
+	return p.threadID, nil
 }
 
 // Confirm 用户批准待确认操作并继续对话。
@@ -178,7 +230,7 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 			"threadId": p.ThreadID, "tool": p.ToolName,
 			"status": StatusDenied, "summary": summary, "result": denied,
 		})
-		go r.runTurn(p.ThreadID, "", "", true)
+		go r.runTurn(p.ThreadID, "", "", true, nil)
 		return nil
 	}
 
@@ -216,7 +268,7 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 		end["resourceId"] = rid
 	}
 	r.emit("agent:tool_end", end)
-	go r.runTurn(p.ThreadID, "", "", true)
+	go r.runTurn(p.ThreadID, "", "", true, nil)
 	return nil
 }
 
@@ -279,7 +331,7 @@ func (r *Runner) ListMessages(threadID string) []model.AgentMessageDO {
 	return out
 }
 
-func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool) {
+func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool, skillIDs []string) {
 	defer func() {
 		if rec := recover(); rec != nil {
 			r.emit("agent:done", map[string]interface{}{
@@ -342,7 +394,7 @@ func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool) {
 		Feedforward:    feedforward,
 		SkipUserAppend: skipUser,
 		TaskID:         taskID,
-		SkillPaths:     turnctx.SkillPathsFromContext(ctxSnap),
+		SkillIDs:       trimSkillIDs(skillIDs),
 		OnDelta: func(delta string) {
 			if delta == "" {
 				return
@@ -362,6 +414,27 @@ func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool) {
 		}
 		r.emit("agent:done", map[string]interface{}{"threadId": threadID, "error": err.Error()})
 	}
+}
+
+/** trimSkillIDs 去空白 skill id。 */
+func trimSkillIDs(in []string) []string {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(in))
+	seen := map[string]struct{}{}
+	for _, id := range in {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
 }
 
 func (r *Runner) getOrCreateThread(id string, ctx model.AgentContextDO, firstMsg string) *threadState {
@@ -425,6 +498,12 @@ func (r *Runner) listToolDefs(perms map[string]bool, mode string) []workbenchtoo
 			}
 			defs = append(defs, d)
 		}
+		for _, d := range harness.SkillToolDefs() {
+			if perms != nil && !workbenchtools.IsToolEnabled(perms, d.Name) {
+				continue
+			}
+			defs = append(defs, d)
+		}
 	}
 	if mode != ChatModePlan {
 		return defs
@@ -482,7 +561,8 @@ func (r *Runner) systemPrompt(mode string) string {
 9. Docker：远端先 save_docker_context(sshHostId)，再 list_containers；变更用 start/stop/remove_container；日志：新源先 save_log_source，再用 fetch_logs(logSourceId) 或 get_container_logs。
 9b. 工作台是资产容器——凡要可复现的配置必须落盘：HTTP→save_http_request + save_http_environment；SSH→save_ssh_host / save_ssh_forward；数据库→save_connection；日志→save_log_source；Docker→save_docker_context。禁止只临时候参数打完就结束；笔记本是报告旁路，主资产在各产品树。
 10. 本轮工具返回已在上下文中，直接基于其内容作答；不要为本轮结果调用 recall_resource。跨轮或历史被挤出窗口后，用 recall_resource（resource#N / resource_id）取回全文；可用 search_session / get_task_summary 定位。
-11. 需要用户拍板（选库/选操作/可选下一步）时：在回复末尾挂 fenced 代码块，语言标记 agent-choice（或 desk-choice），JSON 示例：
+11. 技能：用户 / 挂载或消息带 skillIds 时，首轮必须先 get_skill 加载 SKILL.md 与经验；scripts 用 read_file 读 system/skills/<id>/scripts/…，不要臆造流程。编辑技能正文请到「技能」产品线或 create_project_skill / publish_agent_skill。
+11b. 需要用户拍板（选库/选操作/可选下一步）时：在回复末尾挂 fenced 代码块，语言标记 agent-choice（或 desk-choice），JSON 示例：
    {"n":1,"mode":"single","prompt":"可选下一步","options":[{"key":"a","label":"列出表"},{"key":"b","label":"查慢查询"}]}
 用户点选后会直接发送选项原文；也可手打选项文案。mode 可为 single / multi / text。勿只写 Markdown 列表代替（对方只能手打）。禁止向用户描述工具管道内部细节或自言自语。禁止在回复中复述用户密码。`
 

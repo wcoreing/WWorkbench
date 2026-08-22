@@ -711,6 +711,320 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   font-size: 13px;
 }
 
+.agent-skills-hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+.agent-skill-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-skill-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius);
+  background: var(--color-surface-2);
+}
+
+.agent-skill-row.is-disabled {
+  opacity: 0.55;
+}
+
+.agent-skill-row-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.agent-skill-name {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.agent-skill-id {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--color-text-muted);
+}
+
+.agent-skill-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+
+.agent-skill-desc {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+.agent-skill-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.agent-glob-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.agent-glob-chip {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 10.5px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+}
+
+.agent-glob-chip:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.agent-glob-chip.is-on {
+  background: var(--accent-muted);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--color-border));
+  color: var(--accent);
+}
+
+.agent-skill-globs-line {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.agent-skill-editor {
+  flex: 1;
+  min-height: 220px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.agent-skill-create {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+}
+
+.agent-skill-row.is-active {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--color-border-subtle));
+  background: var(--accent-muted);
+}
+
+.skills-workbench .product-body.skills-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.skills-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-border-subtle);
+  min-height: 0;
+  background: var(--color-surface);
+}
+
+.dir-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dir-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 24px;
+  padding: 2px 8px 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dir-tree-row:hover {
+  background: var(--color-surface-2);
+  color: var(--color-text);
+}
+
+.dir-tree-file.is-active {
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+
+.dir-tree-chevron {
+  width: 10px;
+  flex-shrink: 0;
+  font-size: 9px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.dir-tree-dot {
+  width: 14px;
+  flex-shrink: 0;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.dir-tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.dir-tree-root .dir-tree-name {
+  font-weight: 600;
+}
+
+.skills-toolbar-enabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-left: 4px;
+}
+
+.skills-meta-compact {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.skills-editor-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.skills-editor-path {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.skills-editor-hint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.35;
+}
+
+.skills-sidebar-search {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.skills-sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+  min-height: 0;
+}
+
+.skills-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.skills-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.skills-path-hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.skills-editor {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.skills-enabled-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.agent-skills-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.agent-mention-icon-skill {
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+
+.agent-mention-chip-skill {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--color-border-subtle));
+}
+
 .agent-settings {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border-subtle);
@@ -968,21 +1282,44 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 .agent-composer-toolbar {
   display: flex;
   align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.agent-composer-toolbar-start {
+  display: flex;
+  align-items: center;
   gap: 4px;
   min-width: 0;
-  flex-wrap: wrap;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.agent-composer-toolbar-start::-webkit-scrollbar {
+  display: none;
 }
 
 .agent-composer-toolbar-end {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
+  flex-shrink: 0;
+  margin-left: 0;
+}
+
+.agent-composer-action {
+  flex-shrink: 0;
+  max-width: 7.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agent-composer-menu-wrap {
   position: relative;
-  flex-shrink: 1;
+  flex-shrink: 0;
   min-width: 0;
 }
 

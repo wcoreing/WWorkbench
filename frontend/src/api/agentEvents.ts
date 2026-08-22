@@ -35,6 +35,7 @@ export interface AgentUserEvent {
   content: string
   mentions: unknown
   images?: { mime: string; data: string }[]
+  skillIds?: string[]
   seq?: number
 }
 
@@ -48,6 +49,12 @@ function parseEventImages(raw: unknown): { mime: string; data: string }[] | unde
     const data = String(rec.data ?? '')
     if (mime && data) out.push({ mime, data })
   }
+  return out.length ? out : undefined
+}
+
+function parseEventSkillIds(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const out = raw.map((v) => String(v ?? '').trim()).filter(Boolean)
   return out.length ? out : undefined
 }
 
@@ -80,6 +87,7 @@ export function subscribeAgentEvents(handlers: {
           content: String(raw.content ?? ''),
           mentions: raw.mentions,
           images: parseEventImages(raw.images),
+          skillIds: parseEventSkillIds(raw.skillIds),
           seq: optionalSeq(raw),
         })
       }),

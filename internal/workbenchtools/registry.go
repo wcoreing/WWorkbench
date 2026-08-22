@@ -17,6 +17,7 @@ type ToolDef struct {
 	Description string
 	Parameters  map[string]interface{}
 	Handler     ToolHandler
+	MCPOnly     bool // 仅 MCP 外置客户端，不注入 Agent 工具环
 }
 
 // Registry 工具注册表。
@@ -38,13 +39,26 @@ func (r *Registry) ListDefs() []ToolDef {
 	return r.ListDefsFiltered(nil)
 }
 
-// ListDefsFiltered 按权限开关返回可用工具（nil 表示全部启用）。
+// ListDefsFiltered 按权限开关返回可用工具（nil 表示全部启用）；不含 MCPOnly。
 func (r *Registry) ListDefsFiltered(enabled map[string]bool) []ToolDef {
 	out := make([]ToolDef, 0, len(r.order))
 	for _, name := range r.order {
 		if enabled != nil && !enabled[name] {
 			continue
 		}
+		def := r.tools[name]
+		if def.MCPOnly {
+			continue
+		}
+		out = append(out, def)
+	}
+	return out
+}
+
+// ListMCPDefs 返回全部 MCP 工具（含 MCPOnly）。
+func (r *Registry) ListMCPDefs() []ToolDef {
+	out := make([]ToolDef, 0, len(r.order))
+	for _, name := range r.order {
 		out = append(out, r.tools[name])
 	}
 	return out
@@ -617,5 +631,66 @@ func (r *Registry) registerBuiltins() {
 			},
 		},
 		Handler: toolSSHForwardOpen,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapPublishAgentSkill,
+		Description: "发布或更新 Agent 技能（仅 / 手动调用）。从笔记发布时须传 noteId，并在 content 中去掉 wwb-skill 标记。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"id":          map[string]interface{}{"type": "string", "description": "技能 id，字母数字开头"},
+				"name":        map[string]interface{}{"type": "string", "description": "显示名"},
+				"description": map[string]interface{}{"type": "string", "description": "/ 菜单一句话说明"},
+				"content":     map[string]interface{}{"type": "string", "description": "SKILL.md 正文（不含 frontmatter 与 wwb-skill 标记）"},
+				"noteId":      map[string]interface{}{"type": "string", "description": "来源笔记 ID，用于写入关联标记"},
+			},
+			"required": []interface{}{"id", "content", "noteId"},
+		},
+		Handler: toolPublishAgentSkill,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapAgentChat,
+		Description: "同步发起 Agent 对话并等待回复（解析 /skill 前缀；mode 默认 agent）。外置 MCP 闭环测试用，不注入 Agent 工具环。",
+		MCPOnly:     true,
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"message":  map[string]interface{}{"type": "string", "description": "用户消息；可用 /skill-id 开头手动挂载技能"},
+				"threadId": map[string]interface{}{"type": "string", "description": "续聊线程 id，空则新建"},
+				"mode":     map[string]interface{}{"type": "string", "description": "ask | agent | plan，默认 agent"},
+				"skillIds":  map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "description": "显式 skill id（非空时跳过 / 解析）"},
+				"noteId":    map[string]interface{}{"type": "string", "description": "可选：写入 Agent 前馈的当前笔记 id"},
+				"sshHostId": map[string]interface{}{"type": "string", "description": "可选：绑定 SSH 主机 id（等价于 mentions 里 kind=ssh）"},
+				"mentions": map[string]interface{}{
+					"type": "array",
+					"items": map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"kind":  map[string]interface{}{"type": "string", "description": "ssh | database | docker | log | http"},
+							"id":    map[string]interface{}{"type": "string"},
+							"label": map[string]interface{}{"type": "string"},
+						},
+						"required": []interface{}{"kind", "id"},
+					},
+					"description": "可选：@ 绑定资源（与 UI 侧栏一致）",
+				},
+			},
+			"required": []interface{}{"message"},
+		},
+		Handler: toolAgentChat,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapAgentConfirm,
+		Description: "确认或拒绝 agent_chat 返回的 pendingId，并同步等待续跑结束。",
+		MCPOnly:     true,
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"pendingId": map[string]interface{}{"type": "string"},
+				"approved":  map[string]interface{}{"type": "boolean", "description": "默认 true"},
+			},
+			"required": []interface{}{"pendingId"},
+		},
+		Handler: toolAgentConfirm,
 	})
 }

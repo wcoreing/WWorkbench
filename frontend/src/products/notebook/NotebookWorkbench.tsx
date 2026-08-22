@@ -9,6 +9,8 @@ import { MarkdownPreview } from '../../features/notebook/MarkdownPreview'
 import { NoteEditor, type NoteEditorHandle } from '../../features/notebook/NoteEditor'
 import { NotebookGroupModal } from '../../features/notebook/NotebookGroupModal'
 import { NotebookSidebar } from '../../features/notebook/NotebookSidebar'
+import { openAgentDraft } from '../../features/agent/openAgentDraft'
+import { readLinkedSkillId } from '../../features/notebook/noteSkillLink'
 import { buildNotebookLayout, moveNoteInTree, nextNoteSortOrder } from '../../features/notebook/notebookTree'
 import { Select, pressProps, useDismissOverlays } from '../../components/compat'
 import {
@@ -498,6 +500,16 @@ export function NotebookWorkbench() {
     }
   }
 
+  const publishSkill = () => {
+    if (!activeNote) return
+    const linked = readLinkedSkillId(activeNote.content)
+    const linkedHint = linked ? ` 已关联 /${linked}，更新时请沿用 id。` : ''
+    openAgentDraft({
+      mentions: [],
+      message: `/skill-creator 请把当前笔记发布为技能。${linkedHint}（可在发送前补充 id、名称等要求）`,
+    })
+  }
+
   const insertTemplate = () => {
     if (!activeNote) return
     const host = activeNote.sshHostId ? hosts.find((h) => h.id === activeNote.sshHostId) : undefined
@@ -705,6 +717,9 @@ export function NotebookWorkbench() {
               </button>
               <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => void exportNote())}>
                 {t('notebook.export')}
+              </button>
+              <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(publishSkill)}>
+                {t('notebook.publishSkill')}
               </button>
               <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(runInTerminal)}>
                 <IconPlay size={14} /> {t('notebook.runTerminal')}
@@ -920,6 +935,7 @@ export function NotebookWorkbench() {
         onConfirm={() => void confirmDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
+
     </div>
   )
 }

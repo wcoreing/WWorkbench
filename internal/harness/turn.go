@@ -8,6 +8,7 @@ import (
 
 	"github.com/wcoreing/ningharness/guest"
 	"github.com/wcoreing/ningharness/lifecycle"
+	"github.com/wcoreing/ningharness/memory"
 	"github.com/wcoreing/ningharness/skill"
 )
 
@@ -20,6 +21,8 @@ type TurnInput struct {
 	TaskID         string
 	// SkillPaths 相对路径列表，写入 RunState 供 Skill.Match → Memory.SkillIDs。
 	SkillPaths []string
+	// SkillIDs 显式方法包（如 / 调用）；非空时跳过路径 Match。
+	SkillIDs []string
 	// OnDelta 本轮流式增量（经 guest.WithDeltaHandler 注入，产品勿自管 SSE）。
 	OnDelta func(delta string)
 }
@@ -51,7 +54,9 @@ func (h *Host) RunTurn(ctx context.Context, in TurnInput) (*lifecycle.RunState, 
 		Feedforward:    in.Feedforward,
 		SkipUserAppend: in.SkipUserAppend,
 	}
-	if paths := trimSkillPaths(in.SkillPaths); len(paths) > 0 {
+	if ids := trimSkillPaths(in.SkillIDs); len(ids) > 0 {
+		st.Set(memory.SkillIDsValueKey, ids)
+	} else if paths := trimSkillPaths(in.SkillPaths); len(paths) > 0 {
 		st.Set(skill.PathsValueKey, paths)
 	}
 	lc := h.RT.Lifecycle

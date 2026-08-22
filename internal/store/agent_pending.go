@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 
 	"WWorkbench/internal/errno"
@@ -99,4 +100,21 @@ func (s *Store) SaveAgentPendingFull(id, threadID, taskID, toolName, argsJSON, s
 func (s *Store) DeleteAgentPending(id string) error {
 	_, err := s.db.Exec(`DELETE FROM agent_pending WHERE id=?`, id)
 	return err
+}
+
+// FirstPendingByThread 返回线程上最早一条待确认 id（无则空串）。
+func (s *Store) FirstPendingByThread(threadID string) (string, error) {
+	threadID = strings.TrimSpace(threadID)
+	if threadID == "" {
+		return "", nil
+	}
+	var id string
+	err := s.db.QueryRow(`SELECT id FROM agent_pending WHERE thread_id=? ORDER BY created_at_ms ASC LIMIT 1`, threadID).Scan(&id)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	if err != nil {
+		return "", errno.Wrap(errno.CodeStoreFailed, "读取待确认失败", err)
+	}
+	return id, nil
 }

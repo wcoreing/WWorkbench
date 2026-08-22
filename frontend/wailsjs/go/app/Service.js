@@ -86,8 +86,16 @@ export function ComposeUp(arg1, arg2) {
   return window['go']['app']['Service']['ComposeUp'](arg1, arg2);
 }
 
+export function CreateAgentSkill(arg1) {
+  return window['go']['app']['Service']['CreateAgentSkill'](arg1);
+}
+
 export function CreateDatabase(arg1, arg2, arg3, arg4) {
   return window['go']['app']['Service']['CreateDatabase'](arg1, arg2, arg3, arg4);
+}
+
+export function DeleteAgentSkill(arg1) {
+  return window['go']['app']['Service']['DeleteAgentSkill'](arg1);
 }
 
 export function DeleteConnection(arg1) {
@@ -226,6 +234,14 @@ export function GetAgentSettings() {
   return window['go']['app']['Service']['GetAgentSettings']();
 }
 
+export function GetAgentSkill(arg1) {
+  return window['go']['app']['Service']['GetAgentSkill'](arg1);
+}
+
+export function GetAgentSkillFile(arg1) {
+  return window['go']['app']['Service']['GetAgentSkillFile'](arg1);
+}
+
 export function GetAgentThread(arg1) {
   return window['go']['app']['Service']['GetAgentThread'](arg1);
 }
@@ -330,6 +346,10 @@ export function ListAgentMessages(arg1) {
   return window['go']['app']['Service']['ListAgentMessages'](arg1);
 }
 
+export function ListAgentSkills() {
+  return window['go']['app']['Service']['ListAgentSkills']();
+}
+
 export function ListAgentThreads() {
   return window['go']['app']['Service']['ListAgentThreads']();
 }
@@ -360,6 +380,10 @@ export function ListDatabaseObjects(arg1, arg2) {
 
 export function ListDockerContexts() {
   return window['go']['app']['Service']['ListDockerContexts']();
+}
+
+export function ListEnabledAgentSkills() {
+  return window['go']['app']['Service']['ListEnabledAgentSkills']();
 }
 
 export function ListEnvPresets() {
@@ -442,6 +466,10 @@ export function ListShellHosts() {
   return window['go']['app']['Service']['ListShellHosts']();
 }
 
+export function ListSkillsDir(arg1) {
+  return window['go']['app']['Service']['ListSkillsDir'](arg1);
+}
+
 export function LoadWorkspace(arg1) {
   return window['go']['app']['Service']['LoadWorkspace'](arg1);
 }
@@ -490,6 +518,10 @@ export function PruneStoppedDockerHosts() {
   return window['go']['app']['Service']['PruneStoppedDockerHosts']();
 }
 
+export function PublishAgentSkill(arg1) {
+  return window['go']['app']['Service']['PublishAgentSkill'](arg1);
+}
+
 export function QuerySQLPage(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['app']['Service']['QuerySQLPage'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -536,6 +568,14 @@ export function SaveAgentPermissions(arg1) {
 
 export function SaveAgentSettings(arg1) {
   return window['go']['app']['Service']['SaveAgentSettings'](arg1);
+}
+
+export function SaveAgentSkill(arg1) {
+  return window['go']['app']['Service']['SaveAgentSkill'](arg1);
+}
+
+export function SaveAgentSkillFile(arg1) {
+  return window['go']['app']['Service']['SaveAgentSkillFile'](arg1);
 }
 
 export function SaveConnection(arg1) {
@@ -604,6 +644,10 @@ export function ScanEnvProjects(arg1) {
 
 export function SearchNotes(arg1) {
   return window['go']['app']['Service']['SearchNotes'](arg1);
+}
+
+export function SetAgentSkillEnabled(arg1) {
+  return window['go']['app']['Service']['SetAgentSkillEnabled'](arg1);
 }
 
 export function SetAgentThreadBindings(arg1, arg2) {

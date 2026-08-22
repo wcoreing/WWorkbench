@@ -359,3 +359,19 @@ export function buildEnvironmentSurface(input: {
     selectionBrief: [input.scanPath ? `scan ${input.scanPath}` : '', input.runtimeBrief || ''].filter(Boolean).join(' · '),
   }
 }
+
+/** buildSkillsSurface 从技能工作区推导界面焦点。 */
+export function buildSkillsSurface(input: {
+  skillId?: string
+  name?: string
+  openTabsBrief?: string
+}): AgentSurface {
+  const label = input.name?.trim() || input.skillId?.trim() || '技能'
+  return {
+    focusKind: 'skill',
+    focusLabel: label,
+    tabTitle: input.skillId ? `/${input.skillId}` : label,
+    openTabsBrief: input.openTabsBrief,
+    selectionBrief: input.skillId ? `skill ${input.skillId}` : '',
+  }
+}

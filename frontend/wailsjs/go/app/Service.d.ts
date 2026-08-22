@@ -45,7 +45,11 @@ export function ComposeRestart(arg1:string,arg2:string,arg3:string):Promise<app.
 
 export function ComposeUp(arg1:string,arg2:string):Promise<app.ApiResult_string_>;
 
+export function CreateAgentSkill(arg1:model.AgentSkillCreateDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
+
 export function CreateDatabase(arg1:string,arg2:string,arg3:string,arg4:string):Promise<app.ApiResult_bool_>;
+
+export function DeleteAgentSkill(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteConnection(arg1:string):Promise<app.ApiResult_bool_>;
 
@@ -115,6 +119,10 @@ export function FetchLogSourceConfig(arg1:model.LogSourceDO,arg2:number):Promise
 
 export function GetAgentSettings():Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 
+export function GetAgentSkill(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
+
+export function GetAgentSkillFile(arg1:string):Promise<app.ApiResult_string_>;
+
 export function GetAgentThread(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_AgentThreadDetailDO_>;
 
 export function GetComposeLogs(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WWorkbench_internal_model_ComposeLogsDO_>;
@@ -167,6 +175,8 @@ export function ListAgentCapabilities():Promise<app.ApiResult___WWorkbench_inter
 
 export function ListAgentMessages(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_AgentMessageDO_>;
 
+export function ListAgentSkills():Promise<app.ApiResult___WWorkbench_internal_model_AgentSkillDO_>;
+
 export function ListAgentThreads():Promise<app.ApiResult___WWorkbench_internal_model_AgentThreadDO_>;
 
 export function ListAppSettings():Promise<app.ApiResult_map_string_string_>;
@@ -182,6 +192,8 @@ export function ListContainers(arg1:string):Promise<app.ApiResult___WWorkbench_i
 export function ListDatabaseObjects(arg1:string,arg2:string):Promise<app.ApiResult___WWorkbench_internal_model_ObjectTreeNodeDO_>;
 
 export function ListDockerContexts():Promise<app.ApiResult___WWorkbench_internal_model_DockerContextDO_>;
+
+export function ListEnabledAgentSkills():Promise<app.ApiResult___WWorkbench_internal_model_AgentSkillDO_>;
 
 export function ListEnvPresets():Promise<app.ApiResult___WWorkbench_internal_model_EnvPresetDO_>;
 
@@ -223,6 +235,8 @@ export function ListSSHHosts():Promise<app.ApiResult___WWorkbench_internal_model
 
 export function ListShellHosts():Promise<app.ApiResult___WWorkbench_internal_model_ShellHostDO_>;
 
+export function ListSkillsDir(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_FileEntryDO_>;
+
 export function LoadWorkspace(arg1:string):Promise<app.ApiResult_string_>;
 
 export function MkdirLocalPath(arg1:string):Promise<app.ApiResult_bool_>;
@@ -247,6 +261,8 @@ export function PickLogFilePath():Promise<app.ApiResult_string_>;
 
 export function PruneStoppedDockerHosts():Promise<app.ApiResult_int_>;
 
+export function PublishAgentSkill(arg1:model.AgentSkillPublishDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
+
 export function QuerySQLPage(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<app.ApiResult_WWorkbench_internal_model_QueryPageDO_>;
 
 export function RemoveContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
@@ -270,6 +286,10 @@ export function SaveAgentAPIConfig(arg1:model.AgentAPIConfigSaveDO):Promise<app.
 export function SaveAgentPermissions(arg1:model.AgentPermissionsSaveDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 
 export function SaveAgentSettings(arg1:model.AgentSettingsSaveDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
+
+export function SaveAgentSkill(arg1:model.AgentSkillSaveDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
+
+export function SaveAgentSkillFile(arg1:model.AgentSkillFileSaveDO):Promise<app.ApiResult_bool_>;
 
 export function SaveConnection(arg1:model.ConnectionDO):Promise<app.ApiResult_WWorkbench_internal_model_ConnectionDO_>;
 
@@ -304,6 +324,8 @@ export function SaveWorkspace(arg1:string,arg2:string):Promise<app.ApiResult_boo
 export function ScanEnvProjects(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_ProjectEnvHintDO_>;
 
 export function SearchNotes(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_NoteSummaryDO_>;
+
+export function SetAgentSkillEnabled(arg1:model.AgentSkillEnabledDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
 
 export function SetAgentThreadBindings(arg1:string,arg2:Array<model.AgentMentionDO>):Promise<app.ApiResult_bool_>;
 

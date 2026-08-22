@@ -10,6 +10,7 @@ export interface AgentChatLine {
   role: 'user' | 'assistant' | 'system'
   content: string
   mentions?: AgentMention[]
+  skillIds?: string[]
   images?: { mime: string; data: string }[]
   /** history_message.seq；有值时可「截到此处」 */
   seq?: number

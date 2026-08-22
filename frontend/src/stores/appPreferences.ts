@@ -1,4 +1,5 @@
 import type { ProductId } from '../shell/products'
+import { PRODUCTS } from '../shell/products'
 import { api } from '../api/client'
 import type { AppLocale } from '../i18n/types'
 import { clampUiFontSize, DEFAULT_UI_FONT_SIZE, type UiFontSize } from '../shell/uiFontSize'
@@ -40,10 +41,8 @@ function parsePreferences(settings: Record<string, string>): AppPreferences {
   const localeRaw = settings[APP_SETTING_KEYS.locale]
   const locale: AppLocale = localeRaw === 'en' ? 'en' : 'zh'
   const product = settings[APP_SETTING_KEYS.activeProduct] as ProductId
-  const activeProduct: ProductId =
-    product === 'terminal' || product === 'sftp' || product === 'docker' || product === 'environment' || product === 'notebook'
-      ? product
-      : 'database'
+  const valid = new Set(PRODUCTS.map((p) => p.id))
+  const activeProduct: ProductId = valid.has(product) ? product : 'database'
   const opacity = Number(settings[APP_SETTING_KEYS.terminalOpacity])
   const fontRaw = Number(settings[APP_SETTING_KEYS.uiFontSize])
   return {

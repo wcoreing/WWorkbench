@@ -3,13 +3,24 @@ import type { AgentMention } from './agentMention'
 interface Props {
   content: string
   mentions?: AgentMention[]
+  skillIds?: string[]
   images?: { mime: string; data: string }[]
 }
 
-/** AgentUserContent 渲染用户消息（@ 资源 chip + 图片 + 文本）。 */
-export function AgentUserContent({ content, mentions, images }: Props) {
+/** AgentUserContent 渲染用户消息（@ 资源 chip + 技能 + 图片 + 文本）。 */
+export function AgentUserContent({ content, mentions, skillIds, images }: Props) {
   return (
     <div className="agent-user-content">
+      {skillIds && skillIds.length > 0 && (
+        <div className="agent-mention-chips agent-mention-chips-inline agent-mention-chips-skills">
+          {skillIds.map((id) => (
+            <span key={id} className="agent-mention-chip agent-mention-chip-skill">
+              <span className="agent-mention-chip-kind">/</span>
+              <span className="agent-mention-chip-label">{id}</span>
+            </span>
+          ))}
+        </div>
+      )}
       {mentions && mentions.length > 0 && (
         <div className="agent-mention-chips agent-mention-chips-inline">
           {mentions.map((m) => (

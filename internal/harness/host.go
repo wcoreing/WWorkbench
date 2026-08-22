@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"WWorkbench/internal/skillstore"
+
 	"github.com/wcoreing/ningharness"
 	"github.com/wcoreing/ningharness/defaults"
 	"github.com/wcoreing/ningharness/guest"
@@ -44,6 +46,10 @@ func Open(appDataDir string, prepare func(*toolgateway.Gateway)) (*Host, error) 
 	})
 	if err != nil {
 		return nil, fmt.Errorf("ningharness: %w", err)
+	}
+	if err := skillstore.EnsureSkillSeeds(dir); err != nil {
+		_ = rt.Close()
+		return nil, fmt.Errorf("skills: %w", err)
 	}
 	// Lesson 前馈 + 回合 JSONL 沉淀（默认 NewLesson 的 Ingest 是 no-op）
 	rt.SetMemory(memory.NewLessonWithFileIngest())

@@ -68,6 +68,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_AgentSkillDO_ {
+	    ok: boolean;
+	    data: model.AgentSkillDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_AgentSkillDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.AgentSkillDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_AgentThreadDetailDO_ {
 	    ok: boolean;
 	    data: model.AgentThreadDetailDO;
@@ -1462,6 +1496,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult___WWorkbench_internal_model_AgentSkillDO_ {
+	    ok: boolean;
+	    data: model.AgentSkillDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_AgentSkillDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.AgentSkillDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult___WWorkbench_internal_model_AgentThreadDO_ {
 	    ok: boolean;
 	    data: model.AgentThreadDO[];
@@ -2739,6 +2807,7 @@ export namespace model {
 	    message: string;
 	    images?: AgentChatImageDO[];
 	    mode?: string;
+	    skillIds?: string[];
 	    context: AgentContextDO;
 	
 	    static createFrom(source: any = {}) {
@@ -2751,6 +2820,7 @@ export namespace model {
 	        this.message = source["message"];
 	        this.images = this.convertValues(source["images"], AgentChatImageDO);
 	        this.mode = source["mode"];
+	        this.skillIds = source["skillIds"];
 	        this.context = this.convertValues(source["context"], AgentContextDO);
 	    }
 	
@@ -2900,6 +2970,122 @@ export namespace model {
 	        this.provider = source["provider"];
 	        this.allowWrite = source["allowWrite"];
 	        this.toolPermissionsJson = source["toolPermissionsJson"];
+	    }
+	}
+	export class AgentSkillCreateDO {
+	    id: string;
+	    name: string;
+	    description: string;
+	    content?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentSkillCreateDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.content = source["content"];
+	    }
+	}
+	export class AgentSkillDO {
+	    id: string;
+	    name: string;
+	    description: string;
+	    enabled: boolean;
+	    globs?: string[];
+	    builtin: boolean;
+	    content?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentSkillDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.enabled = source["enabled"];
+	        this.globs = source["globs"];
+	        this.builtin = source["builtin"];
+	        this.content = source["content"];
+	    }
+	}
+	export class AgentSkillEnabledDO {
+	    id: string;
+	    enabled: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentSkillEnabledDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.enabled = source["enabled"];
+	    }
+	}
+	export class AgentSkillFileSaveDO {
+	    path: string;
+	    content: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentSkillFileSaveDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.content = source["content"];
+	    }
+	}
+	export class AgentSkillPublishDO {
+	    id: string;
+	    name: string;
+	    description: string;
+	    content: string;
+	    globs?: string[];
+	    noteId?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentSkillPublishDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.content = source["content"];
+	        this.globs = source["globs"];
+	        this.noteId = source["noteId"];
+	    }
+	}
+	export class AgentSkillSaveDO {
+	    id: string;
+	    content: string;
+	    name?: string;
+	    description?: string;
+	    globs?: string[];
+	    updateContent: boolean;
+	    updateGlobs: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentSkillSaveDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.content = source["content"];
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.globs = source["globs"];
+	        this.updateContent = source["updateContent"];
+	        this.updateGlobs = source["updateGlobs"];
 	    }
 	}
 	export class AgentThreadDO {

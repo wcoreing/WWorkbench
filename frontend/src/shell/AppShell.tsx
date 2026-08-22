@@ -10,6 +10,7 @@ import { SftpWorkbench } from '../products/sftp/SftpWorkbench'
 import { HttpApiWorkbench } from '../products/httpapi/HttpApiWorkbench'
 import { LogCenterWorkbench } from '../products/logs/LogCenterWorkbench'
 import { TerminalWorkbench } from '../products/terminal/TerminalWorkbench'
+import { SkillsWorkbench } from '../products/skills/SkillsWorkbench'
 import { ProductRail } from './ProductRail'
 import { ShellChrome } from './ShellChrome'
 import { StatusBar } from './StatusBar'
@@ -29,6 +30,7 @@ const PRODUCT_VIEWS = {
   docker: DockerWorkbench,
   environment: EnvironmentWorkbench,
   notebook: NotebookWorkbench,
+  skills: SkillsWorkbench,
   httpapi: HttpApiWorkbench,
   logs: LogCenterWorkbench,
 } as const

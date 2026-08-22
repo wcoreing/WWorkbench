@@ -45,6 +45,21 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "list_skills", Label: "列出技能", Risk: RiskRead,
+			Description:    "列出 system/skills 下已启用技能（id / name / description）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "get_skill", Label: "加载技能正文", Risk: RiskRead,
+			Description:    "读取 SKILL.md 与 lesson 经验；/ 挂载后首轮须调用",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "read_file", Label: "读取项目文件", Risk: RiskRead,
+			Description:    "读取 ningharness 项目内文本（含 skill scripts）",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "list_ssh_hosts", Label: "列出 SSH 主机", Risk: RiskRead,
 			Description:    "已保存的 SSH 主机配置（不含密码，用于终端/SFTP）",
 			DefaultEnabled: true,
@@ -227,6 +242,11 @@ func Catalog() []Item {
 		{
 			Name: "ssh_forward_open", Label: "打开 SSH 隧道", Risk: RiskSession,
 			Description:    "切换到终端侧栏隧道；可按 hostId 新建或 presetId 编辑",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "publish_agent_skill", Label: "发布技能", Risk: RiskWrite,
+			Description:    "将笔记或正文发布为 / 可调用的 Skill；须 noteId，不写自动匹配",
 			DefaultEnabled: true,
 		},
 	}

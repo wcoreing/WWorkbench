@@ -220,24 +220,46 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   }, [setStatusMessage])
 
   useEffect(() => {
+    const isActiveThread = (eventThreadId: string) =>
+      !!eventThreadId && eventThreadId === useAgentStore.getState().threadId
+
+    const adoptThread = (eventThreadId: string, mentions?: unknown) => {
+      if (!eventThreadId) return
+      const cur = useAgentStore.getState().threadId
+      if (eventThreadId === cur) return
+      setThreadId(eventThreadId)
+      setLines([])
+      clearToolSteps()
+      setPending(null)
+      setBusy(true)
+      pinToBottom()
+      if (mentions !== undefined) {
+        setThreadMentions(parseMentionsFromEvent(mentions))
+      }
+    }
+
     const unsub = subscribeAgentEvents({
       onUser: (evt) => {
+        adoptThread(evt.threadId, evt.mentions)
         clearToolSteps()
         appendLine({
           id: nextAgentLineId(),
           role: 'user',
           content: evt.content === '（图片）' ? '' : evt.content,
           mentions: parseMentionsFromEvent(evt.mentions),
+          skillIds: evt.skillIds,
           images: evt.images,
           seq: evt.seq,
         })
       },
-      onAssistantDelta: (_tid, delta) => {
+      onAssistantDelta: (tid, delta) => {
+        if (!isActiveThread(tid)) return
         const { streamingLineId } = useAgentStore.getState()
         if (!streamingLineId) beginStreaming()
         appendStreamDelta(delta)
       },
       onAssistant: (evt) => {
+        if (!isActiveThread(evt.threadId)) return
         const { streamingLineId } = useAgentStore.getState()
         if (streamingLineId) {
           finishStreaming(evt.content, evt.seq)
@@ -246,20 +268,24 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
         }
       },
       onToolStart: (evt) => {
+        if (!isActiveThread(evt.threadId)) return
         cancelStreaming()
         const args = evt.args?.trim()
         pushToolStep(evt.tool, args && args.length > 96 ? `${args.slice(0, 93)}…` : args)
       },
       onToolEnd: (evt) => {
+        if (!isActiveThread(evt.threadId)) return
         const st = (evt.status || 'ok') as 'ok' | 'error' | 'denied' | 'need_confirm'
         finishToolStep(evt.tool, st, evt.summary)
       },
       onNeedsConfirm: (evt) => {
+        if (!isActiveThread(evt.threadId)) return
         finishToolStep(evt.tool, 'need_confirm', evt.summary)
         setPending(evt)
         setBusy(false)
       },
       onDone: (evt) => {
+        if (!isActiveThread(evt.threadId)) return
         setBusy(false)
         cancelStreaming()
         for (const step of useAgentStore.getState().toolSteps) {
@@ -278,6 +304,9 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   }, [
     t,
     setStatusMessage,
+    setThreadId,
+    setLines,
+    setThreadMentions,
     appendLine,
     beginStreaming,
     appendStreamDelta,
@@ -286,6 +315,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     clearToolSteps,
     pushToolStep,
     finishToolStep,
+    pinToBottom,
   ])
 
   const autoMentions = buildAutoMentions({
@@ -346,7 +376,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     setCapabilities((prev) => prev.map((c) => (c.name === name ? { ...c, enabled: !c.enabled } : c)))
   }
 
-  const send = async (text: string, mentions: AgentMention[], images: { mime: string; data: string }[] = []) => {
+  const send = async (text: string, mentions: AgentMention[], images: { mime: string; data: string }[] = [], skillIds: string[] = []) => {
     if ((!text.trim() && images.length === 0) || busy) return
     clearToolSteps()
     setBusy(true)
@@ -359,6 +389,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
           message: text.trim(),
           images: images.map((img) => ({ mime: img.mime, data: img.data })),
           mode: chatMode,
+          skillIds: skillIds.length ? skillIds : undefined,
           context: buildContext(mentions),
         }),
       )
@@ -632,6 +663,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
                     content={line.content}
                     role={line.role}
                     mentions={line.mentions}
+                    skillIds={line.skillIds}
                     images={line.images}
                     choiceDisabled={busy || !isLastAssistant}
                     onChoiceSend={
@@ -646,7 +678,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
                     }
                   />
                   {(line.role === 'assistant' || line.role === 'user') &&
-                    (line.content.trim() || (line.images && line.images.length > 0)) &&
+                    (line.content.trim() || (line.images && line.images.length > 0) || (line.skillIds && line.skillIds.length > 0)) &&
                     !busy && (
                     <div className="agent-turn-actions">
                       {line.role === 'assistant' && (

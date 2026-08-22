@@ -53,10 +53,15 @@ func (s *Service) wireAgentRunner() {
 			host = nil
 		} else {
 			s.harnessHost = host
+			deps.HarnessRoot = func() string { return host.Root }
 			log.Printf("harness: opened at %s", host.Root)
 		}
 	}
 	s.agentRunner = agent.NewRunner(s.store, reg, host, s.ctx, emit)
+	deps.Agent = s.agentRunner
+	if err := s.notebook.RemoveLegacySkillNotesGroup(); err != nil {
+		log.Printf("notebook: remove legacy skill group: %v", err)
+	}
 	if err := s.applyMCPFromSettings(); err != nil {
 		log.Printf("mcp: start failed: %v", err)
 	}

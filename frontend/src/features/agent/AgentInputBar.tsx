@@ -4,6 +4,7 @@ import type { Connection, DockerContext, ShellHost, SSHHost } from '../../api/ty
 import { mergeMentions } from './agentMention'
 import { useI18n } from '../../i18n'
 import { AgentMentionPicker } from './AgentMentionPicker'
+import { AgentSkillPicker } from './AgentSkillPicker'
 import { useAgentStore } from '../../stores/agentStore'
 import {
   findActiveMentionQuery,
@@ -11,6 +12,13 @@ import {
   type AgentMention,
   type AgentMentionMenuItem,
 } from './agentMention'
+import {
+  defaultSkillPrompt,
+  filterSkills,
+  findActiveSkillQuery,
+  parseLeadingSkillCommand,
+  type SkillRef,
+} from './agentSkillSlash'
 
 import {
   collectClipboardImages,
@@ -31,7 +39,7 @@ interface Props {
   modelName: string
   provider: string
   onModelChange: (model: string) => void
-  onSend: (text: string, mentions: AgentMention[], images: ChatImage[]) => void | Promise<void>
+  onSend: (text: string, mentions: AgentMention[], images: ChatImage[], skillIds?: string[]) => void | Promise<void>
   onStop: () => void
   onUnbindThreadMention?: (id: string, kind: AgentMention['kind']) => void
 }
@@ -64,6 +72,12 @@ export function AgentInputBar({
   const [dockerContexts, setDockerContexts] = useState<DockerContext[]>([])
   const [resourcesLoaded, setResourcesLoaded] = useState(false)
   const [images, setImages] = useState<ChatImage[]>([])
+  const [skills, setSkills] = useState<SkillRef[]>([])
+  const [skillMenuOpen, setSkillMenuOpen] = useState(false)
+  const [skillMenuIndex, setSkillMenuIndex] = useState(0)
+  const [skillQueryStart, setSkillQueryStart] = useState(-1)
+  const [skillQuery, setSkillQuery] = useState('')
+  const [pendingSkills, setPendingSkills] = useState<SkillRef[]>([])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const draftTick = useAgentStore((s) => s.draftTick)
 
@@ -73,6 +87,7 @@ export function AgentInputBar({
     setInput(draftInput)
     setMentions(draftMentions)
     setMenuOpen(false)
+    setSkillMenuOpen(false)
     requestAnimationFrame(() => textareaRef.current?.focus())
   }, [draftTick])
 
@@ -99,13 +114,14 @@ export function AgentInputBar({
     }
   }, [resourcesLoaded])
 
-  const effectiveMentions = useMemo(
-    () => mergeMentions(mentions, threadMentions, autoMentions),
-    [mentions, threadMentions, autoMentions],
-  )
-
-  const runbookMention = effectiveMentions.find((m) => m.kind === 'ssh' || m.kind === 'docker')
-  const canRunbook = Boolean(runbookMention)
+  const loadSkills = useCallback(async () => {
+    try {
+      const list = await api.listEnabledAgentSkills()
+      setSkills(list.map((s) => ({ id: s.id, name: s.name, description: s.description })))
+    } catch {
+      setSkills([])
+    }
+  }, [])
 
   const menuItems = useMemo((): AgentMentionMenuItem[] => {
     const q = query.trim().toLowerCase()
@@ -198,6 +214,58 @@ export function AgentInputBar({
     [input, mentionStart],
   )
 
+  const skillMenuItems = useMemo(
+    () => filterSkills(skills, skillQuery),
+    [skills, skillQuery],
+  )
+
+  const syncSkillMenu = useCallback(
+    (text: string, cursor: number) => {
+      const active = findActiveSkillQuery(text, cursor)
+      if (!active) {
+        setSkillMenuOpen(false)
+        setSkillQueryStart(-1)
+        setSkillQuery('')
+        return
+      }
+      // @ 优先
+      if (findActiveMentionQuery(text, cursor)) {
+        setSkillMenuOpen(false)
+        return
+      }
+      void loadSkills()
+      const same = skillMenuOpen && active.start === skillQueryStart
+      const queryChanged = active.query !== skillQuery
+      setSkillQueryStart(active.start)
+      setSkillQuery(active.query)
+      setSkillMenuOpen(true)
+      if (!same || queryChanged) setSkillMenuIndex(0)
+    },
+    [loadSkills, skillMenuOpen, skillQueryStart, skillQuery],
+  )
+
+  const pickSkill = useCallback(
+    (item: SkillRef) => {
+      const el = textareaRef.current
+      const cursor = el?.selectionStart ?? input.length
+      const start = skillQueryStart >= 0 ? skillQueryStart : cursor
+      const before = input.slice(0, start)
+      const after = input.slice(cursor)
+      const next = `${before}${after}`.replace(/\s{2,}/g, ' ')
+      setInput(next.trimStart())
+      setPendingSkills((prev) => (prev.some((s) => s.id === item.id) ? prev : [...prev, item]))
+      setSkillMenuOpen(false)
+      setSkillQueryStart(-1)
+      setSkillQuery('')
+      requestAnimationFrame(() => textareaRef.current?.focus())
+    },
+    [input, skillQueryStart],
+  )
+
+  const removePendingSkill = (id: string) => {
+    setPendingSkills((prev) => prev.filter((s) => s.id !== id))
+  }
+
   const removeMention = (id: string, kind: AgentMention['kind']) => {
     setMentions((prev) => prev.filter((m) => !(m.id === id && m.kind === kind)))
   }
@@ -231,13 +299,15 @@ export function AgentInputBar({
     setImages((prev) => mergeChatImages(prev, converted))
   }
 
-  const flushSend = (text: string, nextMentions: AgentMention[], attach: ChatImage[] = images) => {
-    void Promise.resolve(onSend(text, nextMentions, attach))
+  const flushSend = (text: string, nextMentions: AgentMention[], attach: ChatImage[] = images, skillIds: string[] = []) => {
+    void Promise.resolve(onSend(text, nextMentions, attach, skillIds))
       .then(() => {
         setInput('')
         setMentions([])
         setImages([])
+        setPendingSkills([])
         setMenuOpen(false)
+        setSkillMenuOpen(false)
       })
       .catch(() => {
         /* 发送失败保留输入，错误由上层展示 */
@@ -245,9 +315,17 @@ export function AgentInputBar({
   }
 
   const send = () => {
-    const text = input.trim()
-    if (busy || (!text && images.length === 0)) return
-    flushSend(text, mergeMentions(mentions, threadMentions))
+    if (busy) return
+    const parsed = parseLeadingSkillCommand(input, skills)
+    const fromPending = pendingSkills.map((s) => s.id)
+    const skillIds = [...new Set([...fromPending, ...parsed.skillIds])]
+    let text = parsed.skillIds.length ? parsed.message : input.trim()
+    if (!text && skillIds.length > 0) {
+      const sk = pendingSkills[0] || skills.find((s) => s.id === skillIds[0])
+      text = sk ? defaultSkillPrompt(sk) : t('agent.skillDefaultPrompt')
+    }
+    if (!text && images.length === 0) return
+    flushSend(text, mergeMentions(mentions, threadMentions), images, skillIds)
   }
 
   useEffect(() => {
@@ -256,6 +334,13 @@ export function AgentInputBar({
       setMenuIndex(menuItems.length - 1)
     }
   }, [menuItems.length, menuIndex])
+
+  useEffect(() => {
+    if (skillMenuItems.length === 0) return
+    if (skillMenuIndex >= skillMenuItems.length) {
+      setSkillMenuIndex(skillMenuItems.length - 1)
+    }
+  }, [skillMenuItems.length, skillMenuIndex])
 
   return (
     <footer className="agent-input-bar">
@@ -297,6 +382,24 @@ export function AgentInputBar({
             </span>
           ))}
         </p>
+      )}
+      {pendingSkills.length > 0 && (
+        <div className="agent-mention-chips agent-mention-chips-skills">
+          {pendingSkills.map((s) => (
+            <span key={s.id} className="agent-mention-chip agent-mention-chip-skill">
+              <span className="agent-mention-chip-kind">/</span>
+              <span className="agent-mention-chip-label">{s.name}</span>
+              <button
+                type="button"
+                className="agent-mention-chip-remove"
+                aria-label={t('agent.mentionRemove')}
+                onClick={() => removePendingSkill(s.id)}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
       )}
       {mentions.length > 0 && (
         <div className="agent-mention-chips">
@@ -363,20 +466,29 @@ export function AgentInputBar({
           onPick={pickItem}
           onHoverIndex={setMenuIndex}
         />
+        <AgentSkillPicker
+          open={skillMenuOpen && !menuOpen}
+          items={skillMenuItems}
+          activeIndex={skillMenuIndex}
+          onPick={pickSkill}
+          onHoverIndex={setSkillMenuIndex}
+        />
         <textarea
           ref={textareaRef}
           className="wn-input agent-input"
           value={input}
           onChange={(e) => {
             setInput(e.target.value)
-            syncMentionMenu(e.target.value, e.target.selectionStart ?? e.target.value.length)
+            const cursor = e.target.selectionStart ?? e.target.value.length
+            syncMentionMenu(e.target.value, cursor)
+            syncSkillMenu(e.target.value, cursor)
           }}
-          onClick={(e) =>
-            syncMentionMenu(
-              (e.target as HTMLTextAreaElement).value,
-              (e.target as HTMLTextAreaElement).selectionStart ?? 0,
-            )
-          }
+          onClick={(e) => {
+            const el = e.target as HTMLTextAreaElement
+            const cursor = el.selectionStart ?? 0
+            syncMentionMenu(el.value, cursor)
+            syncSkillMenu(el.value, cursor)
+          }}
           placeholder={
             mode === 'ask'
               ? t('agent.inputPlaceholderAsk')
@@ -414,6 +526,28 @@ export function AgentInputBar({
                 return
               }
             }
+            if (skillMenuOpen && skillMenuItems.length > 0) {
+              if (e.key === 'ArrowDown') {
+                e.preventDefault()
+                setSkillMenuIndex((i) => (i + 1) % skillMenuItems.length)
+                return
+              }
+              if (e.key === 'ArrowUp') {
+                e.preventDefault()
+                setSkillMenuIndex((i) => (i - 1 + skillMenuItems.length) % skillMenuItems.length)
+                return
+              }
+              if (e.key === 'Tab' || e.key === 'Enter') {
+                e.preventDefault()
+                pickSkill(skillMenuItems[skillMenuIndex] ?? skillMenuItems[0])
+                return
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                setSkillMenuOpen(false)
+                return
+              }
+            }
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
               send()
@@ -422,41 +556,25 @@ export function AgentInputBar({
         />
       </div>
       <div className="agent-composer-toolbar">
-        <AgentModeMenu mode={mode} disabled={busy} onChange={onModeChange} />
-        <AgentModelMenu
-          modelName={modelName}
-          provider={provider}
-          disabled={busy}
-          onChange={onModelChange}
-        />
-        {autoMentions[0] && (
-          <button
-            type="button"
-            className="wn-btn wn-btn-xs wn-btn-ghost"
-            disabled={busy || mentions.some((m) => m.id === autoMentions[0].id && m.kind === autoMentions[0].kind)}
-            onClick={() => addMention(autoMentions[0])}
-          >
-            {t('agent.attachCurrent')}
-          </button>
-        )}
-        {mode === 'agent' && canRunbook && (
-          <button
-            type="button"
-            className="wn-btn wn-btn-xs wn-btn-ghost"
+        <div className="agent-composer-toolbar-start">
+          <AgentModeMenu mode={mode} disabled={busy} onChange={onModeChange} />
+          <AgentModelMenu
+            modelName={modelName}
+            provider={provider}
             disabled={busy}
-            onClick={() => {
-              const prompt =
-                runbookMention?.kind === 'docker'
-                  ? runbookMention.id.startsWith('docker:')
-                    ? t('agent.runbookPromptContainer')
-                    : t('agent.runbookPromptDocker')
-                  : t('agent.runbookPrompt')
-              flushSend(prompt, mergeMentions(mentions, threadMentions), [])
-            }}
-          >
-            {t('agent.runbook')}
-          </button>
-        )}
+            onChange={onModelChange}
+          />
+          {autoMentions[0] && (
+            <button
+              type="button"
+              className="wn-btn wn-btn-xs wn-btn-ghost agent-composer-action"
+              disabled={busy || mentions.some((m) => m.id === autoMentions[0].id && m.kind === autoMentions[0].kind)}
+              onClick={() => addMention(autoMentions[0])}
+            >
+              {t('agent.attachCurrent')}
+            </button>
+          )}
+        </div>
         <div className="agent-composer-toolbar-end">
           {busy && threadId && (
             <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" onClick={onStop}>
@@ -466,7 +584,7 @@ export function AgentInputBar({
           <button
             type="button"
             className="wn-btn wn-btn-sm wn-btn-primary agent-composer-send"
-            disabled={busy || (!input.trim() && images.length === 0)}
+            disabled={busy || (!input.trim() && images.length === 0 && pendingSkills.length === 0)}
             onClick={send}
           >
             {t('agent.send')}
