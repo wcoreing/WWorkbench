@@ -1858,6 +1858,49 @@ button.wn-select-trigger {
   color: var(--color-text-muted);
 }
 
+.wn-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.wn-empty-pane {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.wn-empty-inline {
+  align-items: stretch;
+  text-align: left;
+  padding: var(--space-2);
+}
+
+.wn-empty-title {
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.wn-empty-hint {
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.wn-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.wn-empty-pane .wn-empty-actions {
+  justify-content: center;
+}
+
+.wn-empty-inline .wn-empty-actions {
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
 .result-workspace {
   display: flex;
   flex-direction: column;

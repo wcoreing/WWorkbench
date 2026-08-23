@@ -25,6 +25,15 @@
   color: #e8e8ed;
 }
 
+/* 终端底色恒为深色，空态文字不跟随主题 */
+.terminal-connect-empty .wn-empty-title {
+  color: #e8e8ed;
+}
+
+.terminal-connect-empty .wn-empty-hint {
+  color: #9a9aa3;
+}
+
 .terminal-connect-hint {
   margin: 0;
   max-width: 420px;

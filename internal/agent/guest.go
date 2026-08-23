@@ -145,6 +145,7 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 		})
 
 		var awaiting []confirmAwaitItem
+		var awaitingChoice []confirmAwaitItem
 
 		for _, pc := range planned {
 			callID, name := pc.id, pc.name
@@ -189,6 +190,22 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 				})
 				continue
 			}
+			if result.NeedsChoice {
+				payload := result.Data
+				if len(payload) == 0 {
+					payload = args
+				}
+				_ = g.r.store.SaveAgentPendingFull(callID, g.threadID, g.taskID, name, string(payload), result.ConfirmSummary)
+				awaitingChoice = append(awaitingChoice, confirmAwaitItem{
+					callID: callID, name: name, summary: result.ConfirmSummary,
+					preview: json.RawMessage(payload),
+				})
+				g.r.emit("agent:tool_end", map[string]interface{}{
+					"threadId": g.threadID, "tool": name,
+					"status": StatusNeedChoice, "summary": result.ConfirmSummary,
+				})
+				continue
+			}
 
 			if isProgressPollTool(name) {
 				progressPolls++
@@ -211,7 +228,7 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 				summary = fmt.Sprintf("%s · #%d", summary, rid)
 			}
 			_ = g.appendToolResult(root, callID, result, rid)
-			if !result.OK && !result.NeedsConfirm {
+			if !result.OK && !result.NeedsConfirm && !result.NeedsChoice {
 				note := name + ": " + strings.TrimSpace(result.Error)
 				if note == name+": " {
 					note = name + ": " + summary
@@ -265,6 +282,26 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			g.r.emit("agent:done", map[string]interface{}{"threadId": g.threadID, "waitingConfirm": true})
 			if st := lifecycle.RunStateFrom(ctx); st != nil {
 				st.Set("waiting_confirm", true)
+			}
+			return "", nil
+		}
+		if len(awaitingChoice) > 0 {
+			g.waiting = true
+			if strings.TrimSpace(asstContent) != "" {
+				g.r.emit("agent:assistant", map[string]interface{}{
+					"threadId": g.threadID, "content": asstContent,
+				})
+			}
+			pendings := make([]model.AgentPendingDO, 0, len(awaitingChoice))
+			for _, a := range awaitingChoice {
+				pendings = append(pendings, model.AgentPendingDO{
+					ID: a.callID, ThreadID: g.threadID, ToolName: a.name,
+					ArgsJSON: string(a.preview), Summary: a.summary,
+				})
+			}
+			g.r.emitOfferChoices(g.threadID, pendings)
+			if st := lifecycle.RunStateFrom(ctx); st != nil {
+				st.Set("waiting_choice", true)
 			}
 			return "", nil
 		}

@@ -6,7 +6,7 @@ import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { nextAgentLineId, useAgentStore, type AgentChatLine, type AgentToolStep } from '../../stores/agentStore'
 import { model } from '../../../wailsjs/go/models'
-import type { AgentConfirmEvent } from '../../api/agentEvents'
+import type { AgentConfirmEvent, AgentOfferChoicesEvent } from '../../api/agentEvents'
 import type { AgentPanelView, CapabilityRow } from './agentTypes'
 import { AgentConfigView, saveAgentAPIConfig } from './AgentConfigView'
 import { rememberRecentModel } from './agentChatMode'
@@ -73,6 +73,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
 
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<AgentConfirmEvent | null>(null)
+  const [pendingChoice, setPendingChoice] = useState<AgentOfferChoicesEvent | null>(null)
   const [skillCatalog, setSkillCatalog] = useState<Record<string, string>>({})
 
   const [apiBase, setApiBase] = useState('https://dashscope.aliyuncs.com/compatible-mode/v1')
@@ -94,6 +95,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   const scrollContentKey = [
     lines.map((l) => `${l.id}:${l.content.length}:${(l.tools || []).map((t) => t.status).join(',')}`).join('|'),
     pending?.pendingId ?? '',
+    pendingChoice?.pendingId ?? '',
     busy ? '1' : '0',
   ].join('#')
   const { scrollRef, onScroll: onMessagesScroll, pinToBottom } = useAgentChatScroll(
@@ -169,6 +171,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     async (id: string) => {
       setThreadId(id)
       setPending(null)
+      setPendingChoice(null)
       setBusy(false)
       setThreadSkillIds([])
       pinToBottom()
@@ -254,6 +257,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       setLines([])
       clearToolSteps()
       setPending(null)
+      setPendingChoice(null)
       setBusy(true)
       pinToBottom()
       if (mentions !== undefined) {
@@ -305,13 +309,24 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       },
       onToolEnd: (evt) => {
         if (!isActiveThread(evt.threadId)) return
-        const st = (evt.status || 'ok') as 'ok' | 'error' | 'denied' | 'need_confirm'
+        const st = (evt.status || 'ok') as
+          | 'ok'
+          | 'error'
+          | 'denied'
+          | 'need_confirm'
+          | 'need_choice'
         finishToolStep(evt.tool, st, evt.summary)
       },
       onNeedsConfirm: (evt) => {
         if (!isActiveThread(evt.threadId)) return
         finishToolStep(evt.tool, 'need_confirm', evt.summary)
         setPending(evt)
+        setBusy(false)
+      },
+      onOfferChoices: (evt) => {
+        if (!isActiveThread(evt.threadId)) return
+        finishToolStep('offer_choices', 'need_choice', evt.summary)
+        setPendingChoice(evt)
         setBusy(false)
       },
       onDone: (evt) => {
@@ -332,6 +347,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
           setStatusMessage(evt.error)
         }
         if (!evt.waitingConfirm) setPending(null)
+        if (!evt.waitingChoice) setPendingChoice(null)
       },
     })
     return unsub
@@ -425,6 +441,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     clearToolSteps()
     setBusy(true)
     setPending(null)
+    setPendingChoice(null)
     setPendingTurnSkillIds(allSkillIds)
     if (allSkillIds.length > 0) setThreadSkillIds(allSkillIds)
     pinToBottom()
@@ -470,6 +487,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       await api.agentRewind(threadId, keepSeq)
       clearToolSteps()
       setPending(null)
+      setPendingChoice(null)
       setLines((prev) => prev.filter((ln) => !ln.seq || ln.seq <= keepSeq))
       setStatusMessage(t('agent.rewindDone'))
     } catch (e) {
@@ -486,6 +504,29 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     setBusy(true)
     try {
       await api.agentConfirm(id, approved)
+    } catch (e) {
+      setBusy(false)
+      setStatusMessage((e as Error).message)
+    }
+  }
+
+  const submitChoice = async (answers: { pendingId?: string; keys: string[]; text: string }[]) => {
+    if (!pendingChoice) return
+    const payload = answers
+      .filter((a) => a.pendingId)
+      .map(
+        (a) =>
+          ({
+            pendingId: a.pendingId!,
+            keys: a.keys,
+            text: a.text,
+          }) satisfies model.AgentChoiceAnswerDO,
+      )
+    if (payload.length === 0) return
+    setPendingChoice(null)
+    setBusy(true)
+    try {
+      await api.agentChoose(payload)
     } catch (e) {
       setBusy(false)
       setStatusMessage((e as Error).message)
@@ -571,6 +612,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   const newThread = () => {
     resetThread()
     setPending(null)
+    setPendingChoice(null)
     setBusy(false)
   }
 
@@ -687,6 +729,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
           threadSkillIds={threadSkillIds}
           autoMentions={autoMentions}
           pending={pending}
+          pendingChoice={pendingChoice}
           threadId={threadId}
           modelName={modelName}
           provider={provider}
@@ -699,6 +742,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
               skillIds: threadSkillIds,
             })
           }}
+          onChoiceSubmit={(answers) => void submitChoice(answers)}
           onSaveToNotebook={(content) => {
             void saveReplyToNotebook(content, mergeMentions(threadMentions, autoMentions))
               .then(() => setStatusMessage(t(`agent.${savedToNotebookMessage()}`)))

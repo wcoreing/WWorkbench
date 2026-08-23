@@ -68,7 +68,7 @@ function persistAgentThreadId(threadId: string) {
 export interface AgentToolStep {
   id: string
   tool: string
-  status: 'running' | 'ok' | 'error' | 'denied' | 'need_confirm' | ''
+  status: 'running' | 'ok' | 'error' | 'denied' | 'need_confirm' | 'need_choice' | ''
   argsPreview?: string
   summary?: string
 }

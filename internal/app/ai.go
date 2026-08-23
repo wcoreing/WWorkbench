@@ -162,6 +162,25 @@ func (s *Service) AgentConfirm(pendingID string, approved bool) ApiResult[bool] 
 	return OkResult(true)
 }
 
+// AgentChoose 提交 offer_choices 点选并续跑。
+func (s *Service) AgentChoose(answers []model.AgentChoiceAnswerDO) ApiResult[bool] {
+	if s.agentRunner == nil {
+		return ErrResult[bool](errAgentNotReady())
+	}
+	in := make([]agent.ChoiceAnswer, 0, len(answers))
+	for _, a := range answers {
+		in = append(in, agent.ChoiceAnswer{
+			PendingID: a.PendingID,
+			Keys:      a.Keys,
+			Text:      a.Text,
+		})
+	}
+	if err := s.agentRunner.Choose(in); err != nil {
+		return ErrResult[bool](err)
+	}
+	return OkResult(true)
+}
+
 // ListAgentCapabilities 列出 AI 能力目录与当前权限开关。
 func (s *Service) ListAgentCapabilities() ApiResult[[]model.AgentCapabilityDO] {
 	return OkResult(s.store.BuildAgentCapabilities())

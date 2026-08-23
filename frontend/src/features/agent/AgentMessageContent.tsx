@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { AgentMention } from './agentMention'
 import { AgentRichContent } from './AgentRichContent'
 import { AgentUserContent } from './AgentUserContent'
-import { AgentChoicePanel } from './AgentChoicePanel'
+import { AgentChoicePanel, type ChoiceSubmitAnswer } from './AgentChoicePanel'
 import { AgentSkillChips } from './AgentSkillChips'
 import { extractAgentChoices } from './agentChoice'
 
@@ -15,7 +15,10 @@ interface Props {
   images?: { mime: string; data: string }[]
   /** 可点选项：仅最新助手气泡启用 */
   choiceDisabled?: boolean
+  /** 有工具级 pending 选项时，隐藏 Markdown 兜底面板，避免双份 */
+  hideInlineChoice?: boolean
   onChoiceDraft?: (text: string) => void
+  onChoiceSubmit?: (answers: ChoiceSubmitAnswer[]) => void
 }
 
 /** AgentMessageContent 渲染对话消息。 */
@@ -27,7 +30,9 @@ export function AgentMessageContent({
   skillLabels,
   images,
   choiceDisabled,
+  hideInlineChoice,
   onChoiceDraft,
+  onChoiceSubmit,
 }: Props) {
   const choice = useMemo(
     () => (role === 'assistant' ? extractAgentChoices(content) : null),
@@ -44,13 +49,17 @@ export function AgentMessageContent({
           className="agent-turn-skills"
         />
         <AgentRichContent content={choice?.body || content} />
-        {choice && choice.questions.length > 0 && onChoiceDraft && (
-          <AgentChoicePanel
-            questions={choice.questions}
-            disabled={choiceDisabled}
-            onDraft={onChoiceDraft}
-          />
-        )}
+        {!hideInlineChoice &&
+          choice &&
+          choice.questions.length > 0 &&
+          (onChoiceDraft || onChoiceSubmit) && (
+            <AgentChoicePanel
+              questions={choice.questions}
+              disabled={choiceDisabled}
+              onDraft={onChoiceDraft}
+              onSubmit={onChoiceSubmit}
+            />
+          )}
       </>
     )
   }

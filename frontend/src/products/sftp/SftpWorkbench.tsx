@@ -5,6 +5,7 @@ import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import { IconDocker, IconPlus, IconServer } from '../../components/Icons'
 import { ContextMenu } from '../../components/ContextMenu'
+import { EmptyState } from '../../components/EmptyState'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
@@ -602,7 +603,11 @@ export function SftpWorkbench() {
             </div>
             <div className="sidebar-body">
               {sshHosts.length === 0 ? (
-                <div className="empty-hint">{t('sftp.emptyHosts')}</div>
+                <EmptyState
+                  variant="inline"
+                  title={t('sftp.emptyHosts')}
+                  actions={[{ label: t('sftp.addHost'), onPress: () => setHostModalOpen(true), primary: true }]}
+                />
               ) : (
                 <ul className="conn-list">
                   {sshHosts.map((h) => (
@@ -717,9 +722,22 @@ export function SftpWorkbench() {
           )}
 
           {!activeTab ? (
-            <div className="pane-empty">
-              <span>{t('sftp.emptyWorkspace')}</span>
-            </div>
+            <EmptyState
+              title={t('sftp.emptyWorkspace')}
+              hint={t('sftp.emptyWorkspaceHint')}
+              actions={
+                sshHosts.length > 0
+                  ? [
+                      {
+                        label: t('sftp.connectHost', { name: sshHosts[0].name }),
+                        onPress: () => void connectHost(sshHosts[0]),
+                        primary: true,
+                      },
+                      { label: t('sftp.addHost'), onPress: () => setHostModalOpen(true) },
+                    ]
+                  : [{ label: t('sftp.addHost'), onPress: () => setHostModalOpen(true), primary: true }]
+              }
+            />
           ) : (
             <div className="product-body sftp-panes">
               <FilePane

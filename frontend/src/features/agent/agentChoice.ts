@@ -1,7 +1,6 @@
 /**
- * Agent 可选表单：回复里挂 ```agent-choice / ```desk-choice，侧栏渲成可点选项。
- * 点选后写入侧栏输入框（多题可逐题点选再统一发送）。
- * 模型常误写成 ```json / 无语言标记，形似选项表时一并抽出。
+ * Agent 可选表单：优先由工具 offer_choices 驱动（点选后续跑）；
+ * 回复里 ```agent-choice / ```desk-choice 与 Markdown 列表为兜底（点选写入输入框）。
  */
 
 export type AgentChoiceOption = {
@@ -147,13 +146,24 @@ export function extractAgentChoices(content: string): AgentChoiceParse {
 }
 
 const NEXT_STEPS_HEADER =
-  /(?:^|\n)(?:#{1,3}\s*)?(?:\*\*)?(?:可选下一步|Next steps?)(?:\*\*)?\s*[：:]?\s*(?:\n|$)/i
+  /(?:^|\n)(?:#{1,3}\s*)?(?:\*\*)?(?:可选下一步|Next steps?|需要的话我可以继续|我可以继续(?:帮你|为你)?|接下来(?:我)?可以|你可以选择|可选操作|还可以(?:继续|做)|要不要我)(?:\*\*)?\s*[：:]?\s*(?:\n|$)/i
 
+/** Agent 只写 Markdown 列表、未挂 agent-choice 时，从「可选下一步 / 需要的话我可以继续」等段落成表单。 */
 function extractNextStepsFromMarkdown(body: string): {
   question: AgentChoiceQuestion | null
   body: string
 } {
-  const m = body.match(NEXT_STEPS_HEADER)
+  const fromHeader = extractListAfterHeader(body, NEXT_STEPS_HEADER)
+  if (fromHeader.question) return fromHeader
+  // 兜底：末尾「……：\n- a\n- b」+ 可选收尾问句
+  return extractTrailingOfferList(body)
+}
+
+function extractListAfterHeader(
+  body: string,
+  headerRe: RegExp,
+): { question: AgentChoiceQuestion | null; body: string } {
+  const m = body.match(headerRe)
   if (!m || m.index === undefined) return { question: null, body }
   const start = m.index + m[0].length
   const tail = body.slice(start)
@@ -165,16 +175,79 @@ function extractNextStepsFromMarkdown(body: string): {
     label,
   }))
   const end = start + consumedListChars(tail, labels.length)
+  const prompt = m[0]
+    .replace(/^\n/, '')
+    .replace(/^#{1,3}\s*/, '')
+    .replace(/\*\*/g, '')
+    .replace(/[：:]\s*$/, '')
+    .trim() || '可选下一步'
   const stripped = (body.slice(0, m.index) + body.slice(end)).replace(/\n{3,}/g, '\n\n').trim()
   return {
     question: {
       n: 1,
       id: 'next-steps',
       mode: 'single',
-      prompt: '可选下一步',
+      prompt,
       options,
     },
     body: stripped,
+  }
+}
+
+/** 正文末尾「引导句：」+ 2～8 条列表（常见于模型未写 agent-choice）。 */
+function extractTrailingOfferList(body: string): {
+  question: AgentChoiceQuestion | null
+  body: string
+} {
+  const lines = body.split('\n')
+  // 从末尾跳过空行与收尾短问句
+  let i = lines.length - 1
+  while (i >= 0 && !lines[i].trim()) i--
+  if (i < 0) return { question: null, body }
+  const closing = lines[i].trim()
+  let listEnd = i
+  if (/[？?]$/.test(closing) && closing.length <= 40 && !/^(?:[-*+]|\d+[.)、])\s/.test(closing)) {
+    listEnd = i - 1
+    while (listEnd >= 0 && !lines[listEnd].trim()) listEnd--
+  }
+  if (listEnd < 0) return { question: null, body }
+
+  const labels: string[] = []
+  let j = listEnd
+  while (j >= 0) {
+    const trimmed = lines[j].trim()
+    if (!trimmed) break
+    const item = trimmed.match(/^(?:[-*+]|\d+[.)、])\s*(.+)$/)
+    if (!item) break
+    labels.unshift(item[1].replace(/\*\*/g, '').trim())
+    j--
+  }
+  if (labels.length < 2 || labels.length > 8) return { question: null, body }
+  while (j >= 0 && !lines[j].trim()) j--
+  if (j < 0) return { question: null, body }
+  const head = lines[j].trim().replace(/\*\*/g, '')
+  if (!/[：:]$/.test(head) || head.length > 48) return { question: null, body }
+  if (!/(继续|选择|下一步|可以|要不要|可选|接着)/.test(head)) return { question: null, body }
+
+  const keys = 'abcdefghijklmnopqrstuvwxyz'
+  const options: AgentChoiceOption[] = labels.map((label, idx) => ({
+    key: keys[idx] || String(idx + 1),
+    label,
+  }))
+  const prompt = head.replace(/[：:]\s*$/, '').trim() || '可选下一步'
+  const stripped = lines.slice(0, j).join('\n').replace(/\n{3,}/g, '\n\n').trim()
+  // 保留收尾问句（若有）
+  const keepTail =
+    listEnd < i ? '\n\n' + lines.slice(listEnd + 1).join('\n').trim() : ''
+  return {
+    question: {
+      n: 1,
+      id: 'next-steps',
+      mode: 'single',
+      prompt,
+      options,
+    },
+    body: (stripped + keepTail).replace(/\n{3,}/g, '\n\n').trim(),
   }
 }
 

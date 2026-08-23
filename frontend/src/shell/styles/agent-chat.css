@@ -434,6 +434,15 @@
   color: var(--color-text, #1a1d24);
 }
 
+.agent-choice-pending {
+  flex-shrink: 0;
+  margin: 0 12px 8px;
+}
+
+.agent-choice-pending .agent-choice {
+  margin-top: 0;
+}
+
 .agent-choice.is-disabled {
   opacity: 0.72;
 }

@@ -912,6 +912,13 @@ type AgentPendingDO struct {
 	CreatedAt int64  `json:"createdAt"`
 }
 
+// AgentChoiceAnswerDO 用户对 offer_choices 的作答。
+type AgentChoiceAnswerDO struct {
+	PendingID string   `json:"pendingId"`
+	Keys      []string `json:"keys,omitempty"`
+	Text      string   `json:"text,omitempty"`
+}
+
 // AgentMessageToolDO 挂在 assistant 气泡下的可折叠工具调用。
 type AgentMessageToolDO struct {
 	ID      string `json:"id,omitempty"`

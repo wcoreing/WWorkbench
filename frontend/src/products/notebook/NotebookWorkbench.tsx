@@ -4,6 +4,7 @@ import type { Connection, Note, NoteLanguage, NoteSummary, NotebookGroup, ShellH
 import { model } from '../../../wailsjs/go/models'
 import { IconDatabase, IconNotebook, IconPlay, IconPlus } from '../../components/Icons'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { EmptyState } from '../../components/EmptyState'
 import { ProductLayout, rememberScalarSize, recallScalarSize, useResizable } from '../../components/layout'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { MarkdownPreview } from '../../features/notebook/MarkdownPreview'
@@ -1008,7 +1009,11 @@ export function NotebookWorkbench() {
               </div>
             </div>
           ) : (
-            <div className="pane-empty"><span>{t('notebook.emptyWorkspace')}</span></div>
+            <EmptyState
+              title={t('notebook.emptyWorkspace')}
+              hint={t('notebook.emptyWorkspaceHint')}
+              actions={[{ label: t('notebook.newNote'), onPress: () => void createNote(), primary: true }]}
+            />
           )}
         </main>
       </ProductLayout>

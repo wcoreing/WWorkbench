@@ -259,6 +259,11 @@ func Catalog() []Item {
 			Description:    "更新已有 Skill 正文或元数据；不写笔记",
 			DefaultEnabled: true,
 		},
+		{
+			Name: "offer_choices", Label: "向用户提问选项", Risk: RiskRead,
+			Description:    "展示可点选项并等待用户选择（拍板/选下一步）；调用后本轮暂停",
+			DefaultEnabled: true,
+		},
 	}
 }
 

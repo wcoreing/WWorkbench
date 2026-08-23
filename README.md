@@ -12,7 +12,7 @@ The sidebar assistant can see the host and shell you are looking at — **it hel
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/wcoreing/WWorkbench)](https://github.com/wcoreing/WWorkbench/releases/latest)
 
-> Current version: **v0.54.134** (shown in the bottom-right corner of the app)
+> Current version: **v0.54.138** (shown in the bottom-right corner of the app)
 
 ### Download (unzip and run)
 

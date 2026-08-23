@@ -40,6 +40,14 @@ func RegisterWorkbenchTools(gw *toolgateway.Gateway, reg *workbenchtools.Registr
 				})
 				return mcp.NewToolResultText(string(wire)), nil
 			}
+			if res.NeedsChoice {
+				wire, _ := json.Marshal(map[string]any{
+					"ww_choice": true,
+					"summary":   res.ConfirmSummary,
+					"preview":   json.RawMessage(res.Data),
+				})
+				return mcp.NewToolResultText(string(wire)), nil
+			}
 			if !res.OK {
 				return mcp.NewToolResultError(res.Error), nil
 			}

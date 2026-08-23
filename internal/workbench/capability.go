@@ -35,6 +35,7 @@ const (
 	CapUpdateAgentSkill     = "update_agent_skill"
 	CapAgentChat            = "agent_chat"
 	CapAgentConfirm         = "agent_confirm"
+	CapOfferChoices         = "offer_choices"
 )
 
 // UICapabilities 需前端执行的 UI 联动能力（切产品线 + CommandBus handler）。

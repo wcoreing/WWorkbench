@@ -36,7 +36,30 @@ export interface AgentDoneEvent {
   threadId: string
   error?: string
   waitingConfirm?: boolean
+  waitingChoice?: boolean
   stopped?: boolean
+}
+
+export interface AgentOfferChoiceOption {
+  key: string
+  label: string
+}
+
+export interface AgentOfferChoiceItem {
+  pendingId: string
+  n: number
+  prompt: string
+  mode: 'single' | 'multi' | 'text'
+  options?: AgentOfferChoiceOption[]
+  placeholder?: string
+  summary?: string
+}
+
+export interface AgentOfferChoicesEvent {
+  threadId: string
+  pendingId: string
+  summary?: string
+  items: AgentOfferChoiceItem[]
 }
 
 export interface AgentUserEvent {
@@ -85,6 +108,7 @@ export function subscribeAgentEvents(handlers: {
   onToolStart?: (evt: AgentToolEvent) => void
   onToolEnd?: (evt: AgentToolEvent) => void
   onNeedsConfirm?: (evt: AgentConfirmEvent) => void
+  onOfferChoices?: (evt: AgentOfferChoicesEvent) => void
   onDone?: (evt: AgentDoneEvent) => void
 }) {
   const unsubs: Array<() => void> = []
@@ -154,21 +178,20 @@ export function subscribeAgentEvents(handlers: {
         const itemsRaw = raw.items
         let items: AgentConfirmItem[] | undefined
         if (Array.isArray(itemsRaw)) {
-          items = itemsRaw
-            .map((row) => {
-              if (!row || typeof row !== 'object') return null
-              const rec = row as Record<string, unknown>
-              const pendingId = String(rec.pendingId ?? '').trim()
-              if (!pendingId) return null
-              return {
-                pendingId,
-                tool: String(rec.tool ?? ''),
-                summary: String(rec.summary ?? ''),
-                preview: rec.preview,
-              } satisfies AgentConfirmItem
+          const parsed: AgentConfirmItem[] = []
+          for (const row of itemsRaw) {
+            if (!row || typeof row !== 'object') continue
+            const rec = row as Record<string, unknown>
+            const pendingId = String(rec.pendingId ?? '').trim()
+            if (!pendingId) continue
+            parsed.push({
+              pendingId,
+              tool: String(rec.tool ?? ''),
+              summary: String(rec.summary ?? ''),
+              preview: rec.preview,
             })
-            .filter((x): x is AgentConfirmItem => x != null)
-          if (items.length === 0) items = undefined
+          }
+          items = parsed.length > 0 ? parsed : undefined
         }
         handlers.onNeedsConfirm!({
           threadId: String(raw.threadId ?? ''),
@@ -181,6 +204,52 @@ export function subscribeAgentEvents(handlers: {
       }),
     )
   }
+  if (handlers.onOfferChoices) {
+    unsubs.push(
+      EventsOn('agent:offer_choices', (raw: Record<string, unknown>) => {
+        const itemsRaw = raw.items
+        const items: AgentOfferChoiceItem[] = []
+        if (Array.isArray(itemsRaw)) {
+          for (const row of itemsRaw) {
+            if (!row || typeof row !== 'object') continue
+            const rec = row as Record<string, unknown>
+            const pendingId = String(rec.pendingId ?? '').trim()
+            if (!pendingId) continue
+            const modeRaw = String(rec.mode ?? 'single').toLowerCase()
+            const mode =
+              modeRaw === 'multi' || modeRaw === 'text' ? modeRaw : 'single'
+            const optsRaw = rec.options
+            const options: AgentOfferChoiceOption[] = []
+            if (Array.isArray(optsRaw)) {
+              for (const o of optsRaw) {
+                if (!o || typeof o !== 'object') continue
+                const or = o as Record<string, unknown>
+                const key = String(or.key ?? '').trim()
+                const label = String(or.label ?? '').trim()
+                if (key && label) options.push({ key, label })
+              }
+            }
+            const n = Number(rec.n)
+            items.push({
+              pendingId,
+              n: Number.isFinite(n) && n > 0 ? n : items.length + 1,
+              prompt: String(rec.prompt ?? rec.summary ?? ''),
+              mode,
+              options,
+              placeholder: rec.placeholder ? String(rec.placeholder) : undefined,
+              summary: rec.summary ? String(rec.summary) : undefined,
+            })
+          }
+        }
+        handlers.onOfferChoices!({
+          threadId: String(raw.threadId ?? ''),
+          pendingId: String(raw.pendingId ?? ''),
+          summary: raw.summary ? String(raw.summary) : undefined,
+          items,
+        })
+      }),
+    )
+  }
   if (handlers.onDone) {
     unsubs.push(
       EventsOn('agent:done', (raw: Record<string, unknown>) => {
@@ -188,6 +257,7 @@ export function subscribeAgentEvents(handlers: {
           threadId: String(raw.threadId ?? ''),
           error: raw.error ? String(raw.error) : undefined,
           waitingConfirm: Boolean(raw.waitingConfirm),
+          waitingChoice: Boolean(raw.waitingChoice),
           stopped: Boolean(raw.stopped),
         })
       }),

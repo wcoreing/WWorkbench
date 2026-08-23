@@ -108,6 +108,12 @@ type confirmWire struct {
 	Preview   json.RawMessage `json:"preview"`
 }
 
+type choiceWire struct {
+	WWChoice bool            `json:"ww_choice"`
+	Summary  string          `json:"summary"`
+	Preview  json.RawMessage `json:"preview"`
+}
+
 // CallTool 经 Gateway 执行任意已注册工具（产品 + 核）。
 func (h *Host) CallTool(ctx context.Context, name string, args json.RawMessage) workbenchtools.ToolResult {
 	if h == nil {
@@ -148,6 +154,10 @@ func (h *Host) CallTool(ctx context.Context, name string, args json.RawMessage) 
 	var wire confirmWire
 	if json.Unmarshal([]byte(text), &wire) == nil && wire.WWConfirm {
 		return workbenchtools.Confirm("", wire.Summary, json.RawMessage(wire.Preview))
+	}
+	var choice choiceWire
+	if json.Unmarshal([]byte(text), &choice) == nil && choice.WWChoice {
+		return workbenchtools.Choice(choice.Summary, json.RawMessage(choice.Preview))
 	}
 	return workbenchtools.OKData(text)
 }

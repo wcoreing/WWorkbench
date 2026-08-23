@@ -3,6 +3,7 @@ import { api } from '../../api/client'
 import type { DockerContainer, DockerContext, LogSource, LogSourceType, SSHHost } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ContextMenu } from '../../components/ContextMenu'
+import { EmptyState } from '../../components/EmptyState'
 import { IconPlus, IconRefresh } from '../../components/Icons'
 import { openAgentDraft, mentionLogSource } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
@@ -533,7 +534,11 @@ export function LogCenterWorkbench() {
             </div>
             <div className="sidebar-body">
               {items.length === 0 ? (
-                <div className="empty-hint">{t('logs.emptyList')}</div>
+                <EmptyState
+                  variant="inline"
+                  title={t('logs.emptyList')}
+                  actions={[{ label: t('logs.newSource'), onPress: createNew, primary: true }]}
+                />
               ) : (
                 <ul className="conn-list">
                   {items.map((item) => (

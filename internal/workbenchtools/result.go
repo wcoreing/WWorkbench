@@ -8,6 +8,7 @@ type ToolResult struct {
 	Data           json.RawMessage `json:"data,omitempty"`
 	Error          string          `json:"error,omitempty"`
 	NeedsConfirm   bool            `json:"needsConfirm,omitempty"`
+	NeedsChoice    bool            `json:"needsChoice,omitempty"`
 	PendingID      string          `json:"pendingId,omitempty"`
 	ConfirmSummary string          `json:"confirmSummary,omitempty"`
 }
@@ -30,6 +31,17 @@ func Confirm(pendingID, summary string, preview interface{}) ToolResult {
 		OK:             true,
 		NeedsConfirm:   true,
 		PendingID:      pendingID,
+		ConfirmSummary: summary,
+		Data:           b,
+	}
+}
+
+// Choice 构造待用户点选结果（offer_choices）。
+func Choice(summary string, payload interface{}) ToolResult {
+	b, _ := json.Marshal(payload)
+	return ToolResult{
+		OK:             true,
+		NeedsChoice:    true,
 		ConfirmSummary: summary,
 		Data:           b,
 	}

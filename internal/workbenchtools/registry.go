@@ -698,6 +698,7 @@ func (r *Registry) registerBuiltins() {
 		},
 		Handler: toolUpdateAgentSkill,
 	})
+	r.add(offerChoicesToolDef())
 	r.add(ToolDef{
 		Name:        workbench.CapAgentChat,
 		Description: "同步发起 Agent 对话并等待回复（解析 /skill 前缀；mode 默认 agent）。外置 MCP 闭环测试用，不注入 Agent 工具环。",

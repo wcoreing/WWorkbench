@@ -3,6 +3,7 @@ import { api } from '../../api/client'
 import type { Connection, ExecuteResult, IndexMeta, QueryHistory, QueryPage, SQLBatchResult, SessionInfo } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ContextMenu } from '../../components/ContextMenu'
+import { EmptyState } from '../../components/EmptyState'
 import { ProductLayout, PaneCollapseButton, ResizeHandle, SidebarColumns, SidebarStack, usePaneCollapse, useResizable } from '../../components/layout'
 import { loadSizeMap, rememberScalarSize, recallScalarSize, type CollapsedMap } from '../../components/layout/layoutStorage'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
@@ -1219,7 +1220,13 @@ export function DatabaseWorkbench() {
                             </div>
                             <div className="sidebar-body connections-body">
                               {connectionList.length === 0 ? (
-                                <div className="empty-hint">{t('database.emptyConnectionsGeneric')}</div>
+                                <EmptyState
+                                  variant="inline"
+                                  title={t('database.emptyConnectionsGeneric')}
+                                  actions={[
+                                    { label: t('database.newConnection'), onPress: () => openConnModal(), primary: true },
+                                  ]}
+                                />
                               ) : (
                                 groupedConnections.map(([group, list]) => (
                                   <div key={group} className="conn-group">
@@ -1430,11 +1437,33 @@ export function DatabaseWorkbench() {
           </div>
 
           <div className="workspace">
-            {!activeTab && (
-              <div className="pane-empty">
-                <span>{t('database.emptyWorkspace')}</span>
-              </div>
-            )}
+            {!activeTab &&
+              (session ? (
+                <EmptyState
+                  title={t('database.emptyWorkspace')}
+                  hint={t('database.emptyWorkspaceHint')}
+                  actions={[{ label: t('database.newQuery'), onPress: newSqlTab, primary: true }]}
+                />
+              ) : connectionList.length === 0 ? (
+                <EmptyState
+                  title={t('database.emptyConnectionsGeneric')}
+                  hint={t('database.emptyConnectionsHint')}
+                  actions={[{ label: t('database.newConnection'), onPress: () => openConnModal(), primary: true }]}
+                />
+              ) : (
+                <EmptyState
+                  title={t('database.connectFirst')}
+                  hint={t('database.connectFirstHint')}
+                  actions={[
+                    {
+                      label: t('database.connectAction', { name: connectionList[0].name }),
+                      onPress: () => void connect(connectionList[0].id),
+                      primary: true,
+                    },
+                    { label: t('database.newConnection'), onPress: () => openConnModal() },
+                  ]}
+                />
+              ))}
             {activeTab?.kind === 'sql' && (
               <div className="sql-workspace">
                 <SqlEditor

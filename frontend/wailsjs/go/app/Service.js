@@ -6,6 +6,10 @@ export function AgentChat(arg1) {
   return window['go']['app']['Service']['AgentChat'](arg1);
 }
 
+export function AgentChoose(arg1) {
+  return window['go']['app']['Service']['AgentChoose'](arg1);
+}
+
 export function AgentConfirm(arg1, arg2) {
   return window['go']['app']['Service']['AgentConfirm'](arg1, arg2);
 }

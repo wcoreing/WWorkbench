@@ -18,6 +18,8 @@ function statusLabel(status: AgentToolStep['status'] | '', t: (k: string) => str
       return t('agent.traceStepDenied')
     case 'need_confirm':
       return t('agent.traceStepNeedConfirm')
+    case 'need_choice':
+      return t('agent.traceStepNeedChoice')
     default:
       return status || ''
   }
@@ -53,7 +55,7 @@ export function AgentTurnTools({ tools }: Props) {
   const isOpen = (step: AgentToolStep) => {
     if (openMap[step.id] !== undefined) return openMap[step.id]
     // 默认折叠；失败 / 待确认 / 执行中展开
-    return step.status === 'error' || step.status === 'denied' || step.status === 'need_confirm' || step.status === 'running'
+    return step.status === 'error' || step.status === 'denied' || step.status === 'need_confirm' || step.status === 'need_choice' || step.status === 'running'
   }
 
   return (

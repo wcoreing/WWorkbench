@@ -1,9 +1,11 @@
 import type { RefObject } from 'react'
-import type { AgentConfirmEvent } from '../../api/agentEvents'
+import type { AgentConfirmEvent, AgentOfferChoicesEvent } from '../../api/agentEvents'
 import type { AgentChatLine } from '../../stores/agentStore'
 import type { AgentChatMode } from './agentChatMode'
 import type { AgentMention, AgentMentionKind } from './agentMention'
 import { AgentConfirmPanel } from './AgentConfirmPanel'
+import { AgentChoicePanel, type ChoiceSubmitAnswer } from './AgentChoicePanel'
+import type { AgentChoiceQuestion } from './agentChoice'
 import { AgentInputBar } from './AgentInputBar'
 import { AgentMessageContent } from './AgentMessageContent'
 import { AgentTurnTools } from './AgentTurnTools'
@@ -42,12 +44,14 @@ interface Props {
   threadSkillIds: string[]
   autoMentions: AgentMention[]
   pending: AgentConfirmEvent | null
+  pendingChoice: AgentOfferChoicesEvent | null
   threadId: string
   modelName: string
   provider: string
   scrollRef: RefObject<HTMLDivElement>
   onMessagesScroll: () => void
   onChoiceDraft: (text: string) => void
+  onChoiceSubmit: (answers: ChoiceSubmitAnswer[]) => void
   onSaveToNotebook: (content: string) => void
   onRewind: (seq: number) => void
   onConfirm: (ok: boolean) => void
@@ -64,6 +68,17 @@ interface Props {
   onUnbindThreadSkill: (id: string) => void
 }
 
+function offerEventToQuestions(evt: AgentOfferChoicesEvent): AgentChoiceQuestion[] {
+  return evt.items.map((it) => ({
+    n: it.n,
+    id: it.pendingId,
+    mode: it.mode,
+    prompt: it.prompt || it.summary || '',
+    options: (it.options || []).map((o) => ({ key: o.key, label: o.label })),
+    placeholder: it.placeholder,
+  }))
+}
+
 /** AgentChatPane 对话区：轨迹、消息、确认、输入栏。 */
 export function AgentChatPane({
   t,
@@ -75,12 +90,14 @@ export function AgentChatPane({
   threadSkillIds,
   autoMentions,
   pending,
+  pendingChoice,
   threadId,
   modelName,
   provider,
   scrollRef,
   onMessagesScroll,
   onChoiceDraft,
+  onChoiceSubmit,
   onSaveToNotebook,
   onRewind,
   onConfirm,
@@ -91,6 +108,7 @@ export function AgentChatPane({
   onUnbindThreadMention,
   onUnbindThreadSkill,
 }: Props) {
+  const hasToolChoice = Boolean(pendingChoice && pendingChoice.items.length > 0)
   return (
     <div className="agent-chat-pane">
       <div className="agent-messages" ref={scrollRef} onScroll={onMessagesScroll}>
@@ -150,6 +168,7 @@ export function AgentChatPane({
                     skillLabels={skillCatalog}
                     images={line.images}
                     choiceDisabled={busy || !isLastAssistant}
+                    hideInlineChoice={hasToolChoice && isLastAssistant}
                     onChoiceDraft={line.role === 'assistant' ? onChoiceDraft : undefined}
                   />
                   {(line.role === 'assistant' || line.role === 'user') &&
@@ -226,6 +245,16 @@ export function AgentChatPane({
           onApprove={() => onConfirm(true)}
           onReject={() => onConfirm(false)}
         />
+      )}
+
+      {hasToolChoice && pendingChoice && (
+        <div className="agent-choice-pending">
+          <AgentChoicePanel
+            questions={offerEventToQuestions(pendingChoice)}
+            disabled={busy}
+            onSubmit={onChoiceSubmit}
+          />
+        </div>
       )}
 
       <AgentInputBar

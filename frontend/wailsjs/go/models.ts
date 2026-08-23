@@ -2856,6 +2856,22 @@ export namespace model {
 	        this.threadId = source["threadId"];
 	    }
 	}
+	export class AgentChoiceAnswerDO {
+	    pendingId: string;
+	    keys?: string[];
+	    text?: string;
+
+	    static createFrom(source: any = {}) {
+	        return new AgentChoiceAnswerDO(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.pendingId = source["pendingId"];
+	        this.keys = source["keys"];
+	        this.text = source["text"];
+	    }
+	}
 	
 	
 	export class AgentMessageToolDO {

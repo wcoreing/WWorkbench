@@ -5,6 +5,7 @@ import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ContextMenu } from '../../components/ContextMenu'
+import { EmptyState } from '../../components/EmptyState'
 import { ProductLayout } from '../../components/layout'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { IconCopy, IconDocker, IconLaptop, IconPlus, IconRefresh, IconServer, IconTerminal } from '../../components/Icons'
@@ -909,7 +910,11 @@ export function TerminalWorkbench() {
               </div>
               <div className="sidebar-body">
                 {sshHosts.length === 0 ? (
-                  <div className="empty-hint">{t('terminal.emptyHosts')}</div>
+                  <EmptyState
+                    variant="inline"
+                    title={t('terminal.emptyHosts')}
+                    actions={[{ label: t('terminal.addHost'), onPress: () => openHostModal(), primary: true }]}
+                  />
                 ) : (
                   <ul className="conn-list">
                     {sshHosts.map((h) => {
@@ -1036,12 +1041,16 @@ export function TerminalWorkbench() {
           </div>
           <div className="workspace terminal-workspace">
             {tabs.length === 0 && (
-              <div
-                className="pane-empty terminal-connect-empty"
+              <EmptyState
+                className="terminal-connect-empty"
                 style={{ backgroundColor: terminalBackground(terminalOpacity) }}
-              >
-                <span>{t('terminal.emptyWorkspace')}</span>
-              </div>
+                title={t('terminal.emptyWorkspace')}
+                hint={t('terminal.emptyWorkspaceHint')}
+                actions={[
+                  { label: t('terminal.localTerminal'), onPress: () => void connectLocal(), primary: true },
+                  { label: t('terminal.addHost'), onPress: () => openHostModal() },
+                ]}
+              />
             )}
             {tabs.map((t) => (
               <div

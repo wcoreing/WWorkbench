@@ -18,6 +18,8 @@ function statusLabel(status: AgentToolStep['status'], t: (k: string) => string):
       return t('agent.traceStepDenied')
     case 'need_confirm':
       return t('agent.traceStepNeedConfirm')
+    case 'need_choice':
+      return t('agent.traceStepNeedChoice')
     default:
       return status
   }

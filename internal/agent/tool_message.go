@@ -41,6 +41,12 @@ func meaningfulSummary(toolName string, result workbenchtools.ToolResult) string
 		}
 		return toolName + " 待确认"
 	}
+	if result.NeedsChoice {
+		if result.ConfirmSummary != "" {
+			return result.ConfirmSummary
+		}
+		return toolName + " 待选择"
+	}
 	if !result.OK {
 		if result.Error != "" {
 			return result.Error

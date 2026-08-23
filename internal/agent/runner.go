@@ -14,6 +14,7 @@ import (
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/store"
 	"WWorkbench/internal/turnctx"
+	"WWorkbench/internal/workbench"
 	"WWorkbench/internal/workbenchtools"
 
 	"github.com/cloudwego/eino/schema"
@@ -210,6 +211,7 @@ func (r *Runner) Chat(req model.AgentChatRequestDO) (string, error) {
 }
 
 // Confirm 用户批准/拒绝待确认操作；同 task 一批全部处理后再续跑。
+// 同 task 上的 offer_choices 不会一并批准，确认后再弹出选项。
 func (r *Runner) Confirm(pendingID string, approved bool) error {
 	if r.harness == nil {
 		return fmt.Errorf("ningharness 未就绪")
@@ -217,6 +219,9 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 	seed, err := r.store.GetAgentPending(pendingID)
 	if err != nil {
 		return err
+	}
+	if seed.ToolName == workbench.CapOfferChoices {
+		return fmt.Errorf("该项为选项确认，请使用 Choose")
 	}
 	th := r.ensureThread(seed.ThreadID)
 	if th == nil {
@@ -229,6 +234,10 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 	}
 	if len(batch) == 0 {
 		batch = []model.AgentPendingDO{*seed}
+	}
+	batch = filterConfirmPendings(batch)
+	if len(batch) == 0 {
+		return fmt.Errorf("没有待确认操作")
 	}
 	for _, p := range batch {
 		_ = r.store.DeleteAgentPending(p.ID)
@@ -272,8 +281,174 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 		}
 		r.emit("agent:tool_end", end)
 	}
+	if r.emitOfferChoicesIfPending(seed.ThreadID, taskID) {
+		return nil
+	}
 	go r.runTurn(seed.ThreadID, "", "", true, nil)
 	return nil
+}
+
+// ChoiceAnswer 用户对 offer_choices 的一次作答。
+type ChoiceAnswer struct {
+	PendingID string
+	Keys      []string
+	Text      string
+}
+
+// Choose 写入 offer_choices 工具结果并续跑（同 task 一批选项需一次答完）。
+func (r *Runner) Choose(answers []ChoiceAnswer) error {
+	if r.harness == nil {
+		return fmt.Errorf("ningharness 未就绪")
+	}
+	if len(answers) == 0 {
+		return fmt.Errorf("答案不能为空")
+	}
+	seedID := strings.TrimSpace(answers[0].PendingID)
+	if seedID == "" {
+		return fmt.Errorf("pendingId 不能为空")
+	}
+	seed, err := r.store.GetAgentPending(seedID)
+	if err != nil {
+		return err
+	}
+	if seed.ToolName != workbench.CapOfferChoices {
+		return fmt.Errorf("该项不是选项确认")
+	}
+	th := r.ensureThread(seed.ThreadID)
+	if th == nil {
+		return fmt.Errorf("对话线程不存在")
+	}
+	taskID := r.store.GetAgentPendingTaskID(seedID)
+	batch, err := r.store.ListAgentPendingSameTask(seed.ThreadID, taskID, seedID)
+	if err != nil {
+		return err
+	}
+	batch = filterChoicePendings(batch)
+	if len(batch) == 0 {
+		batch = []model.AgentPendingDO{*seed}
+	}
+	byID := make(map[string]ChoiceAnswer, len(answers))
+	for _, a := range answers {
+		id := strings.TrimSpace(a.PendingID)
+		if id == "" {
+			continue
+		}
+		byID[id] = a
+	}
+	for _, p := range batch {
+		if _, ok := byID[p.ID]; !ok {
+			return fmt.Errorf("请完成全部选项后再提交")
+		}
+	}
+	root := r.harness.Root
+	prepared := make([]workbenchtools.ToolResult, len(batch))
+	for i, p := range batch {
+		a := byID[p.ID]
+		result, err := workbenchtools.ChoiceResultFromPending(p.ArgsJSON, a.Keys, a.Text)
+		if err != nil {
+			return err
+		}
+		if !result.OK {
+			return fmt.Errorf("%s", result.Error)
+		}
+		prepared[i] = result
+	}
+	for i, p := range batch {
+		result := prepared[i]
+		_ = r.store.DeleteAgentPending(p.ID)
+		st, summary := toolStatus(p.ToolName, result)
+		body, _ := json.Marshal(result)
+		rid, _, _ := r.harness.PutToolResult(p.ThreadID, taskID, p.ID, p.ToolName, string(body))
+		if rid > 0 {
+			summary = fmt.Sprintf("%s · #%d", summary, rid)
+		}
+		_ = history.Append(root, p.ThreadID, history.Msg{
+			Role: "tool", ToolCallID: p.ID, TaskID: taskID,
+			Content:         formatToolMessage(result, rid),
+			ResourceIDsJSON: history.EncodeResourceIDs([]int64{rid}),
+		})
+		end := map[string]interface{}{
+			"threadId": p.ThreadID, "tool": p.ToolName,
+			"status": st, "summary": summary, "result": result,
+		}
+		if rid > 0 {
+			end["resourceId"] = rid
+		}
+		r.emit("agent:tool_end", end)
+	}
+	go r.runTurn(seed.ThreadID, "", "", true, nil)
+	return nil
+}
+
+func filterConfirmPendings(batch []model.AgentPendingDO) []model.AgentPendingDO {
+	out := make([]model.AgentPendingDO, 0, len(batch))
+	for _, p := range batch {
+		if p.ToolName == workbench.CapOfferChoices {
+			continue
+		}
+		out = append(out, p)
+	}
+	return out
+}
+
+func filterChoicePendings(batch []model.AgentPendingDO) []model.AgentPendingDO {
+	out := make([]model.AgentPendingDO, 0, len(batch))
+	for _, p := range batch {
+		if p.ToolName == workbench.CapOfferChoices {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func (r *Runner) emitOfferChoicesIfPending(threadID, taskID string) bool {
+	batch, err := r.store.ListAgentPendingSameTask(threadID, taskID, "")
+	if err != nil || len(batch) == 0 {
+		// task 空时 List 可能只靠 seed；再扫 thread
+		all, err2 := r.store.ListAgentPendingByThread(threadID)
+		if err2 != nil {
+			return false
+		}
+		batch = filterChoicePendings(all)
+	} else {
+		batch = filterChoicePendings(batch)
+	}
+	if len(batch) == 0 {
+		return false
+	}
+	r.emitOfferChoices(threadID, batch)
+	return true
+}
+
+func (r *Runner) emitOfferChoices(threadID string, batch []model.AgentPendingDO) {
+	items := make([]map[string]interface{}, 0, len(batch))
+	for i, p := range batch {
+		var payload workbenchtools.OfferChoicesPayload
+		_ = json.Unmarshal([]byte(p.ArgsJSON), &payload)
+		if payload.Prompt == "" {
+			payload.Prompt = p.Summary
+		}
+		if payload.Mode == "" {
+			payload.Mode = "single"
+		}
+		items = append(items, map[string]interface{}{
+			"pendingId":   p.ID,
+			"n":           i + 1,
+			"prompt":      payload.Prompt,
+			"mode":        payload.Mode,
+			"options":     payload.Options,
+			"placeholder": payload.Placeholder,
+			"summary":     p.Summary,
+		})
+	}
+	first := batch[0]
+	r.emit("agent:offer_choices", map[string]interface{}{
+		"threadId":  threadID,
+		"pendingId": first.ID,
+		"summary":   first.Summary,
+		"items":     items,
+	})
+	r.emit("agent:done", map[string]interface{}{"threadId": threadID, "waitingChoice": true})
 }
 
 func (r *Runner) executeConfirmed(toolName, argsJSON string) workbenchtools.ToolResult {
@@ -426,6 +601,9 @@ func toolStatusFromHistoryContent(toolName, content string) (status, summary str
 	if json.Unmarshal([]byte(content), &tr) == nil {
 		if tr.NeedsConfirm {
 			return StatusNeedConfirm, firstNonEmpty(tr.ConfirmSummary, toolName+" 待确认")
+		}
+		if tr.NeedsChoice {
+			return StatusNeedChoice, firstNonEmpty(tr.ConfirmSummary, toolName+" 待选择")
 		}
 		if !tr.OK {
 			return StatusError, firstNonEmpty(tr.Error, toolName+" 失败")
@@ -671,6 +849,9 @@ func toolStatus(toolName string, result workbenchtools.ToolResult) (status, summ
 	if result.NeedsConfirm {
 		return StatusNeedConfirm, meaningfulSummary(toolName, result)
 	}
+	if result.NeedsChoice {
+		return StatusNeedChoice, meaningfulSummary(toolName, result)
+	}
 	if result.OK {
 		return StatusOK, meaningfulSummary(toolName, result)
 	}
@@ -713,9 +894,7 @@ func (r *Runner) systemPrompt(mode string) string {
 9b. 工作台是资产容器——凡要可复现的配置必须落盘：HTTP→save_http_request + save_http_environment；SSH→save_ssh_host / save_ssh_forward；数据库→save_connection；日志→save_log_source；Docker→save_docker_context。禁止只临时候参数打完就结束；笔记本是报告旁路，主资产在各产品树。
 10. 本轮工具返回已在上下文中，直接基于其内容作答；不要为本轮结果调用 recall_resource。跨轮或历史被挤出窗口后，用 recall_resource（resource#N / resource_id）取回全文；可用 search_session / get_task_summary 定位。
 11. 技能：用户 / 挂载或消息带 skillIds 时，首轮必须先 get_skill 加载 SKILL.md 与经验；scripts 用 read_file 读 system/skills/<id>/scripts/…，不要臆造流程。改 Skill 正文用 update_agent_skill（不写笔记）或「技能」产品线；首次从笔记发布用 publish_agent_skill（只写关联标记）；抽象报告为方法包用 /skill-to-method-pack。
-11b. 需要用户拍板（选库/选操作/可选下一步）时：在回复末尾挂 fenced 代码块，语言标记 agent-choice（或 desk-choice），JSON 必须完整合法（引号/括号闭合），否则系统会退回让你重写。示例：
-   {"n":1,"mode":"single","prompt":"可选下一步","options":[{"key":"a","label":"列出表"},{"key":"b","label":"查慢查询"}]}
-用户点选后会直接发送选项原文；也可手打选项文案。mode 可为 single / multi / text。勿只写 Markdown 列表代替（对方只能手打）。禁止向用户描述工具管道内部细节或自言自语。禁止在回复中复述用户密码。`
+11b. 需要用户拍板（选库/选操作/可选下一步）时：必须调用工具 offer_choices（prompt + options[{key,label}]，mode=single|multi|text），调用后本轮暂停，用户点选后结果写入该工具返回值并续跑。禁止只用 Markdown 列表代替（对方只能手打）。仅当无法调用工具时，才可在回复末尾挂 agent-choice / desk-choice 围栏作为兜底（JSON 须完整合法）。禁止向用户描述工具管道内部细节或自言自语。禁止在回复中复述用户密码。`
 
 	if mode == ChatModePlan {
 		return langRule + `
@@ -724,7 +903,7 @@ func (r *Runner) systemPrompt(mode string) string {
 产品目标是让用户自己能做，而不是你代劳。
 用只读/探查工具摸清现状，然后给出计划：目标、现状判断、分步（每步人能做或交给 Agent）、风险与需确认的点。
 禁止变更：save_*、启停/删容器、写入 SQL、变更类 HTTP、往笔记本落盘。
-末尾可用 agent-choice 问用户「切到 Agent 执行」还是「我自己按步骤做」。
+末尾可用 offer_choices（或 agent-choice 兜底）问用户「切到 Agent 执行」还是「我自己按步骤做」。
 ` + toolRules + `
 
 【Plan 覆盖】本轮禁止执行变更与资产落盘；只读探查后写计划。`

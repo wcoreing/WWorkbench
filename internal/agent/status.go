@@ -6,6 +6,7 @@ const (
 	StatusError          = "error"
 	StatusDenied         = "denied"
 	StatusNeedConfirm    = "need_confirm"
+	StatusNeedChoice     = "need_choice"
 	StatusWaitingConfirm = "waiting_confirm"
 	StatusStopped        = "stopped"
 )
