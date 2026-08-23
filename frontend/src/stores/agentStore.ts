@@ -233,10 +233,26 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set((s) => {
       const sid = s.streamingLineId
       if (!sid) return s
-      // 工具调用开始时丢弃中间流式旁白（如「继续等待」），避免刷一串空气泡
-      return {
-        streamingLineId: null,
-        lines: s.lines.filter((ln) => ln.id !== sid),
+      const line = s.lines.find((ln) => ln.id === sid)
+      const text = line?.content.trim() ?? ''
+      // 空内容或「继续等待」类空转旁白丢弃；有实质正文（报表等）保留为助手气泡
+      if (!text || isTransientToolNarration(text)) {
+        return {
+          streamingLineId: null,
+          lines: s.lines.filter((ln) => ln.id !== sid),
+        }
       }
+      return { streamingLineId: null }
     }),
 }))
+
+/** 工具调用间隙的空转旁白（无实质内容，可丢弃）。 */
+function isTransientToolNarration(text: string): boolean {
+  const t = text.trim()
+  if (t.length > 80) return false
+  if (/^继续等待|^持续(下载|推进)|^等待(完成|中)|^稍等|^请稍候/m.test(t)) return true
+  if (t.length <= 40 && /等待|下载中|推进中/.test(t) && !/[|`#*]|表|报表|统计|SELECT/i.test(t)) {
+    return true
+  }
+  return false
+}
