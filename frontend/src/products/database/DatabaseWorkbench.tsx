@@ -1189,6 +1189,8 @@ export function DatabaseWorkbench() {
                                       {list.map((c) => (
                                         <li
                                           key={c.id}
+                                          role="button"
+                                          tabIndex={0}
                                           className={`conn-item ${activeConnectionId === c.id ? 'active' : ''} ${session?.connectionId === c.id ? 'connected' : ''}`}
                                           {...pressProps(() => connect(c.id))}
                                           onDoubleClick={() => void reconnect(c.id)}

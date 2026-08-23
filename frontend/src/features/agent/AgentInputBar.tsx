@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { Connection, DockerContext, ShellHost, SSHHost } from '../../api/types'
-import { mergeMentions } from './agentMention'
+import { mergeMentions, mentionKindShort, filterEphemeralAutoMentions } from './agentMention'
 import { useI18n } from '../../i18n'
+import { AgentMentionChips } from './AgentMentionChips'
 import { AgentMentionPicker } from './AgentMentionPicker'
 import { AgentSkillPicker } from './AgentSkillPicker'
+import { AgentSkillChips } from './AgentSkillChips'
 import { useAgentStore } from '../../stores/agentStore'
 import {
   findActiveMentionQuery,
@@ -19,6 +21,7 @@ import {
   parseLeadingSkillCommand,
   type SkillRef,
 } from './agentSkillSlash'
+import { mergeSkillIds, buildSkillLabelMap } from './agentSkillIds'
 
 import {
   collectClipboardImages,
@@ -42,6 +45,8 @@ interface Props {
   onSend: (text: string, mentions: AgentMention[], images: ChatImage[], skillIds?: string[]) => void | Promise<void>
   onStop: () => void
   onUnbindThreadMention?: (id: string, kind: AgentMention['kind']) => void
+  threadSkillIds?: string[]
+  onUnbindThreadSkill?: (id: string) => void
 }
 
 /** AgentInputBar 对话输入区（@ 提及 SSH / 数据库 / Docker）。 */
@@ -58,6 +63,8 @@ export function AgentInputBar({
   onSend,
   onStop,
   onUnbindThreadMention,
+  threadSkillIds = [],
+  onUnbindThreadSkill,
 }: Props) {
   const { t } = useI18n()
   const [input, setInput] = useState('')
@@ -78,14 +85,30 @@ export function AgentInputBar({
   const [skillQueryStart, setSkillQueryStart] = useState(-1)
   const [skillQuery, setSkillQuery] = useState('')
   const [pendingSkills, setPendingSkills] = useState<SkillRef[]>([])
+  const skillLabelMap = useMemo(() => buildSkillLabelMap(skills), [skills])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const draftTick = useAgentStore((s) => s.draftTick)
 
   useEffect(() => {
     if (draftTick === 0) return
-    const { draftInput, draftMentions } = useAgentStore.getState()
+    const { draftInput, draftMentions, draftSkillIds } = useAgentStore.getState()
     setInput(draftInput)
     setMentions(draftMentions)
+    if (draftSkillIds.length > 0) {
+      void api.listEnabledAgentSkills().then((list) => {
+        const refs = list.map((s) => ({ id: s.id, name: s.name, description: s.description }))
+        setSkills(refs)
+        setPendingSkills((prev) => {
+          const merged = [...prev]
+          for (const id of draftSkillIds) {
+            if (merged.some((s) => s.id === id)) continue
+            const sk = refs.find((s) => s.id === id)
+            merged.push(sk ?? { id, name: id })
+          }
+          return merged
+        })
+      })
+    }
     setMenuOpen(false)
     setSkillMenuOpen(false)
     requestAnimationFrame(() => textareaRef.current?.focus())
@@ -278,10 +301,9 @@ export function AgentInputBar({
   }
 
   const pendingAuto = useMemo(() => {
-    return autoMentions.filter(
-      (a) =>
-        !mentions.some((m) => m.kind === a.kind && m.id === a.id) &&
-        !threadMentions.some((m) => m.kind === a.kind && m.id === a.id),
+    return filterEphemeralAutoMentions(
+      autoMentions,
+      mergeMentions(mentions, threadMentions),
     )
   }, [autoMentions, mentions, threadMentions])
 
@@ -318,7 +340,8 @@ export function AgentInputBar({
     if (busy) return
     const parsed = parseLeadingSkillCommand(input, skills)
     const fromPending = pendingSkills.map((s) => s.id)
-    const skillIds = [...new Set([...fromPending, ...parsed.skillIds])]
+    const fromThread = threadSkillIds
+    const skillIds = mergeSkillIds(fromThread, fromPending, parsed.skillIds)
     let text = parsed.skillIds.length ? parsed.message : input.trim()
     if (!text && skillIds.length > 0) {
       const sk = pendingSkills[0] || skills.find((s) => s.id === skillIds[0])
@@ -344,91 +367,46 @@ export function AgentInputBar({
 
   return (
     <footer className="agent-input-bar">
-      {threadMentions.length > 0 && (
-        <div className="agent-mention-chips agent-mention-chips-thread">
-          <span className="agent-thread-mentions-label">{t('agent.threadMentions')}</span>
-          {threadMentions.map((m) => (
-            <span key={`t-${m.kind}-${m.id}`} className={`agent-mention-chip agent-mention-chip-${m.kind}`}>
-              <span className="agent-mention-chip-kind">
-                {m.kind === 'ssh'
-                  ? 'SSH'
-                  : m.kind === 'docker'
-                    ? 'DK'
-                    : m.kind === 'log'
-                      ? 'LOG'
-                      : m.kind === 'http'
-                        ? 'API'
-                        : 'DB'}
-              </span>
-              <span className="agent-mention-chip-label">{m.label}</span>
-              <button
-                type="button"
-                className="agent-mention-chip-remove"
-                aria-label={t('agent.mentionRemove')}
-                onClick={() => onUnbindThreadMention?.(m.id, m.kind)}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
+      {threadSkillIds.length > 0 && (
+        <AgentSkillChips
+          skillIds={threadSkillIds}
+          labels={skillLabelMap}
+          thread
+          threadLabel={t('agent.threadSkills')}
+          onRemove={onUnbindThreadSkill}
+          removeLabel={t('agent.mentionRemove')}
+        />
       )}
+      <AgentMentionChips
+        mentions={threadMentions}
+        thread
+        threadLabel={t('agent.threadMentions')}
+        onRemove={onUnbindThreadMention}
+        removeLabel={t('agent.mentionRemove')}
+      />
       {pendingAuto.length > 0 && (
         <p className="agent-auto-hint">
           {t('agent.attachOnSend')}:{' '}
           {pendingAuto.map((m) => (
             <span key={`${m.kind}-${m.id}`} className="agent-auto-hint-item">
-              {m.kind === 'ssh' ? 'SSH' : m.kind === 'docker' ? 'DK' : 'DB'} {m.label}
+              {mentionKindShort(m.kind)} {m.label}
             </span>
           ))}
         </p>
       )}
       {pendingSkills.length > 0 && (
-        <div className="agent-mention-chips agent-mention-chips-skills">
-          {pendingSkills.map((s) => (
-            <span key={s.id} className="agent-mention-chip agent-mention-chip-skill">
-              <span className="agent-mention-chip-kind">/</span>
-              <span className="agent-mention-chip-label">{s.name}</span>
-              <button
-                type="button"
-                className="agent-mention-chip-remove"
-                aria-label={t('agent.mentionRemove')}
-                onClick={() => removePendingSkill(s.id)}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
+        <AgentSkillChips
+          skillIds={pendingSkills.map((s) => s.id)}
+          labels={buildSkillLabelMap(pendingSkills)}
+          onRemove={removePendingSkill}
+          removeLabel={t('agent.mentionRemove')}
+        />
       )}
-      {mentions.length > 0 && (
-        <div className="agent-mention-chips">
-          {mentions.map((m) => (
-            <span key={`${m.kind}-${m.id}`} className={`agent-mention-chip agent-mention-chip-${m.kind}`}>
-              <span className="agent-mention-chip-kind">
-                {m.kind === 'ssh'
-                  ? 'SSH'
-                  : m.kind === 'docker'
-                    ? 'DK'
-                    : m.kind === 'log'
-                      ? 'LOG'
-                      : m.kind === 'http'
-                        ? 'API'
-                        : 'DB'}
-              </span>
-              <span className="agent-mention-chip-label">{m.label}</span>
-              <button
-                type="button"
-                className="agent-mention-chip-remove"
-                aria-label={t('agent.mentionRemove')}
-                onClick={() => removeMention(m.id, m.kind)}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+      <AgentMentionChips
+        mentions={mentions}
+        onRemove={removeMention}
+        removeLabel={t('agent.mentionRemove')}
+      />
       <div className="agent-composer">
       {images.length > 0 && (
         <div className="agent-image-drafts">

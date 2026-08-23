@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import { askConfirm } from '../../utils/askConfirm'
 import { subscribeAgentEvents } from '../../api/agentEvents'
@@ -11,22 +11,22 @@ import type { AgentPanelView, CapabilityRow } from './agentTypes'
 import { AgentConfigView, saveAgentAPIConfig } from './AgentConfigView'
 import { rememberRecentModel } from './agentChatMode'
 import { AgentPermissionsView, saveAgentPermissions } from './AgentPermissionsView'
-import { AgentMessageContent } from './AgentMessageContent'
 import { useAgentPanelResize } from './useAgentPanelResize'
 import { ResizeHandle } from '../../components/layout'
 import { useAgentChatScroll } from './useAgentChatScroll'
 import { subscribeCommandResults } from './agentUiActions'
-import { AgentInputBar } from './AgentInputBar'
-import { AgentToolTrace } from './AgentToolTrace'
+import { AgentChatPane } from './AgentChatPane'
+import { AgentThreadHistory } from './AgentThreadHistory'
 import {
   buildAutoMentions,
+  filterEphemeralAutoMentions,
   mergeMentions,
   parseMentionsFromEvent,
   toContextMentions,
   type AgentMention,
 } from './agentMention'
 import { saveReplyToNotebook, savedToNotebookMessage } from './saveReplyToNotebook'
-import { AgentConfirmPanel } from './AgentConfirmPanel'
+import { buildSkillLabelMap, mergeSkillIds } from './agentSkillIds'
 
 interface AgentThreadItem {
   id: string
@@ -62,6 +62,9 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   const finishToolStep = useAgentStore((s) => s.finishToolStep)
   const clearToolSteps = useAgentStore((s) => s.clearToolSteps)
   const threadMentions = useAgentStore((s) => s.threadMentions)
+  const threadSkillIds = useAgentStore((s) => s.threadSkillIds)
+  const setThreadSkillIds = useAgentStore((s) => s.setThreadSkillIds)
+  const setPendingTurnSkillIds = useAgentStore((s) => s.setPendingTurnSkillIds)
   const setThreadMentions = useAgentStore((s) => s.setThreadMentions)
   const chatMode = useAgentStore((s) => s.chatMode)
   const setChatMode = useAgentStore((s) => s.setChatMode)
@@ -71,6 +74,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
 
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState<AgentConfirmEvent | null>(null)
+  const [skillCatalog, setSkillCatalog] = useState<Record<string, string>>({})
 
   const [apiBase, setApiBase] = useState('https://dashscope.aliyuncs.com/compatible-mode/v1')
   const [apiKey, setApiKey] = useState('')
@@ -143,6 +147,9 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
 
   useEffect(() => {
     void loadSettings().catch((e) => setConfigError((e as Error).message))
+    void api.listEnabledAgentSkills().then((list) => {
+      setSkillCatalog(buildSkillLabelMap(list))
+    })
   }, [loadSettings])
 
   const loadThreadList = useCallback(async () => {
@@ -165,6 +172,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       setThreadId(id)
       setPending(null)
       setBusy(false)
+      setThreadSkillIds([])
       pinToBottom()
       try {
         const [msgs, detail] = await Promise.all([
@@ -176,36 +184,43 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
             id: nextAgentLineId(),
             role: (m.role === 'assistant' ? 'assistant' : m.role === 'system' ? 'system' : 'user') as AgentChatLine['role'],
             content: m.content ?? '',
+            skillIds: Array.isArray(m.skillIds) ? m.skillIds.filter(Boolean) : undefined,
             images: Array.isArray(m.images)
               ? m.images.map((img) => ({ mime: img.mime ?? '', data: img.data ?? '' })).filter((img) => img.data)
               : undefined,
             seq: typeof m.seq === 'number' && m.seq > 0 ? m.seq : undefined,
           })),
         )
-        const ctxMentions = detail?.context?.mentions
-        setThreadMentions(
-          Array.isArray(ctxMentions)
-            ? ctxMentions.map((m) => ({
-                kind: (m.kind === 'ssh' ||
-                m.kind === 'database' ||
-                m.kind === 'docker' ||
-                m.kind === 'log' ||
-                m.kind === 'http'
-                  ? m.kind
-                  : 'ssh') as AgentMention['kind'],
-                id: m.id ?? '',
-                label: m.label ?? '',
-              }))
-            : [],
-        )
+        const ctxSkills = detail?.context?.skillIds
+        if (Array.isArray(ctxSkills) && ctxSkills.length > 0) {
+          setThreadSkillIds(ctxSkills.filter(Boolean))
+        } else {
+          const lastUser = [...msgs]
+            .reverse()
+            .find((m) => m.role === 'user' && Array.isArray(m.skillIds) && m.skillIds.length)
+          if (lastUser?.skillIds?.length) setThreadSkillIds(lastUser.skillIds.filter(Boolean))
+        }
+        setThreadMentions(parseMentionsFromEvent(detail?.context?.mentions))
       } catch (e) {
         setStatusMessage((e as Error).message)
       }
       setShowHistory(false)
       setView('chat')
     },
-    [setThreadId, setLines, setView, setStatusMessage, setThreadMentions, pinToBottom],
+    [setThreadId, setLines, setView, setStatusMessage, setThreadMentions, setThreadSkillIds, pinToBottom],
   )
+
+  const threadBooted = useRef(false)
+  useEffect(() => {
+    if (collapsed || threadBooted.current) return
+    const id = useAgentStore.getState().threadId
+    if (!id || lines.length > 0) {
+      threadBooted.current = true
+      return
+    }
+    threadBooted.current = true
+    void openThread(id)
+  }, [collapsed, lines.length, openThread])
 
   useEffect(() => {
     if (view === 'chat' && showHistory) void loadThreadList()
@@ -250,6 +265,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
           images: evt.images,
           seq: evt.seq,
         })
+        if (evt.skillIds?.length) setThreadSkillIds(evt.skillIds)
       },
       onAssistantDelta: (tid, delta) => {
         if (!isActiveThread(tid)) return
@@ -263,7 +279,13 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
         if (streamingLineId) {
           finishStreaming(evt.content, evt.seq)
         } else if (evt.content) {
-          appendLine({ id: nextAgentLineId(), role: 'assistant', content: evt.content, seq: evt.seq })
+          appendLine({
+            id: nextAgentLineId(),
+            role: 'assistant',
+            content: evt.content,
+            skillIds: evt.skillIds,
+            seq: evt.seq,
+          })
         }
       },
       onToolStart: (evt) => {
@@ -372,21 +394,38 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     setCapabilities((prev) => prev.map((c) => (c.name === name ? { ...c, enabled: !c.enabled } : c)))
   }
 
-  const send = async (text: string, mentions: AgentMention[], images: { mime: string; data: string }[] = [], skillIds: string[] = []) => {
+  const unbindThreadSkill = (id: string) => {
+    const next = threadSkillIds.filter((s) => s !== id)
+    setThreadSkillIds(next)
+    if (!threadId) return
+    void api.setAgentThreadSkillIds(threadId, next).catch((e) => setStatusMessage((e as Error).message))
+  }
+
+  const send = async (
+    text: string,
+    mentions: AgentMention[],
+    images: { mime: string; data: string }[] = [],
+    skillIds: string[] = [],
+  ) => {
     if ((!text.trim() && images.length === 0) || busy) return
+    const allSkillIds = mergeSkillIds(threadSkillIds, skillIds)
     clearToolSteps()
     setBusy(true)
     setPending(null)
+    setPendingTurnSkillIds(allSkillIds)
+    if (allSkillIds.length > 0) setThreadSkillIds(allSkillIds)
     pinToBottom()
     try {
+      const ephemeralAuto = filterEphemeralAutoMentions(autoMentions, mentions)
+      const contextMentions = mergeMentions(mentions, ephemeralAuto)
       const res = await api.agentChat(
         model.AgentChatRequestDO.createFrom({
           threadId,
           message: text.trim(),
           images: images.map((img) => ({ mime: img.mime, data: img.data })),
           mode: chatMode,
-          skillIds: skillIds.length ? skillIds : undefined,
-          context: buildContext(mentions),
+          skillIds: allSkillIds.length ? allSkillIds : undefined,
+          context: buildContext(contextMentions),
         }),
       )
       if (res.threadId) setThreadId(res.threadId)
@@ -616,140 +655,52 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       )}
 
       {view === 'chat' && showHistory && (
-        <div className="agent-history">
-          {threads.length === 0 && <div className="empty-hint">{t('agent.noHistory')}</div>}
-          {threads.map((th) => (
-            <button
-              key={th.id}
-              type="button"
-              className={`agent-history-item${threadId === th.id ? ' is-active' : ''}`}
-              onClick={() => void openThread(th.id)}
-            >
-              <span className="agent-history-title">{th.title}</span>
-            </button>
-          ))}
-        </div>
+        <AgentThreadHistory
+          threads={threads}
+          activeThreadId={threadId}
+          emptyHint={t('agent.noHistory')}
+          onOpen={(id) => void openThread(id)}
+        />
       )}
 
       {view === 'chat' && !showHistory && (
-        <div className="agent-chat-pane">
-          <AgentToolTrace steps={toolSteps} />
-          <div className="agent-messages" ref={scrollRef} onScroll={onMessagesScroll}>
-            {lines.length === 0 && <div className="agent-empty">{t('agent.hint')}</div>}
-            {lines.map((line, idx) => {
-              const isLastAssistant =
-                line.role === 'assistant' &&
-                !lines.slice(idx + 1).some((l) => l.role === 'assistant')
-              return (
-              <div key={line.id} className={`agent-turn agent-turn-${line.role}`}>
-                {line.role === 'assistant' && (
-                  <span className="agent-turn-label">{t('agent.assistantLabel')}</span>
-                )}
-                {line.role === 'user' && (
-                  <span className="agent-turn-label agent-turn-label-user">{t('agent.youLabel')}</span>
-                )}
-                <div
-                  className={
-                    line.role === 'system'
-                      ? 'agent-bubble agent-bubble-system'
-                      : `agent-bubble agent-bubble-${line.role}`
-                  }
-                >
-                  <AgentMessageContent
-                    content={line.content}
-                    role={line.role}
-                    mentions={line.mentions}
-                    skillIds={line.skillIds}
-                    images={line.images}
-                    choiceDisabled={busy || !isLastAssistant}
-                    onChoiceDraft={
-                      line.role === 'assistant'
-                        ? (text) => {
-                            useAgentStore.getState().applyDraft({
-                              message: text,
-                              mentions: threadMentions,
-                            })
-                          }
-                        : undefined
-                    }
-                  />
-                  {(line.role === 'assistant' || line.role === 'user') &&
-                    (line.content.trim() || (line.images && line.images.length > 0) || (line.skillIds && line.skillIds.length > 0)) &&
-                    !busy && (
-                    <div className="agent-turn-actions">
-                      {line.role === 'assistant' && (
-                        <button
-                          type="button"
-                          className="wn-btn wn-btn-xs wn-btn-ghost"
-                          onClick={() =>
-                            void saveReplyToNotebook(
-                              line.content,
-                              mergeMentions(threadMentions, autoMentions),
-                            )
-                              .then(() => setStatusMessage(t(`agent.${savedToNotebookMessage()}`)))
-                              .catch((e) => setStatusMessage((e as Error).message))
-                          }
-                        >
-                          {t('agent.saveToNotebook')}
-                        </button>
-                      )}
-                      {!!line.seq && (
-                        <button
-                          type="button"
-                          className="wn-btn wn-btn-xs wn-btn-ghost"
-                          title={t('agent.rewindConfirm')}
-                          onClick={() => void rewindTo(line.seq!)}
-                        >
-                          {t('agent.rewindHere')}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              )
-            })}
-            {busy && (
-              <div className="agent-turn agent-turn-system">
-                <span className="agent-thinking">
-                  <span className="agent-thinking-dot" />
-                  <span className="agent-thinking-dot" />
-                  <span className="agent-thinking-dot" />
-                  {chatMode === 'ask'
-                    ? t('agent.modeAsk')
-                    : chatMode === 'plan'
-                      ? t('agent.modePlan')
-                      : t('agent.modeAgent')}
-                  {' · '}
-                  {t('agent.thinking')}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {pending && (
-            <AgentConfirmPanel
-              pending={pending}
-              onApprove={() => void confirmPending(true)}
-              onReject={() => void confirmPending(false)}
-            />
-          )}
-
-          <AgentInputBar
-            busy={busy}
-            threadId={threadId}
-            autoMentions={autoMentions}
-            threadMentions={threadMentions}
-            mode={chatMode}
-            onModeChange={setChatMode}
-            modelName={modelName}
-            provider={provider}
-            onModelChange={(id) => void switchModel(id)}
-            onSend={(text, mentions, images) => send(text, mentions, images)}
-            onStop={() => void stopGeneration()}
-            onUnbindThreadMention={(id, kind) => void unbindThreadMention(id, kind)}
-          />
-        </div>
+        <AgentChatPane
+          t={t}
+          lines={lines}
+          busy={busy}
+          chatMode={chatMode}
+          toolSteps={toolSteps}
+          skillCatalog={skillCatalog}
+          threadMentions={threadMentions}
+          threadSkillIds={threadSkillIds}
+          autoMentions={autoMentions}
+          pending={pending}
+          threadId={threadId}
+          modelName={modelName}
+          provider={provider}
+          scrollRef={scrollRef}
+          onMessagesScroll={onMessagesScroll}
+          onChoiceDraft={(text) => {
+            useAgentStore.getState().applyDraft({
+              message: text,
+              mentions: threadMentions,
+              skillIds: threadSkillIds,
+            })
+          }}
+          onSaveToNotebook={(content) => {
+            void saveReplyToNotebook(content, mergeMentions(threadMentions, autoMentions))
+              .then(() => setStatusMessage(t(`agent.${savedToNotebookMessage()}`)))
+              .catch((e) => setStatusMessage((e as Error).message))
+          }}
+          onRewind={(seq) => void rewindTo(seq)}
+          onConfirm={(ok) => void confirmPending(ok)}
+          onModeChange={setChatMode}
+          onModelChange={(id) => void switchModel(id)}
+          onSend={(text, mentions, images, skillIds) => send(text, mentions, images, skillIds ?? [])}
+          onStop={() => void stopGeneration()}
+          onUnbindThreadMention={(id, kind) => void unbindThreadMention(id, kind)}
+          onUnbindThreadSkill={unbindThreadSkill}
+        />
       )}
     </aside>
   )

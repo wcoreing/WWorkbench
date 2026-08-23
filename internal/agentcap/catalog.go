@@ -251,7 +251,12 @@ func Catalog() []Item {
 		},
 		{
 			Name: "publish_agent_skill", Label: "发布技能", Risk: RiskWrite,
-			Description:    "将笔记或正文发布为 / 可调用的 Skill；须 noteId，不写自动匹配",
+			Description:    "首次从笔记发布为 / 可调用的 Skill；须 noteId 写关联标记",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "update_agent_skill", Label: "更新技能", Risk: RiskWrite,
+			Description:    "更新已有 Skill 正文或元数据；不写笔记",
 			DefaultEnabled: true,
 		},
 	}

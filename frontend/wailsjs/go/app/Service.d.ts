@@ -73,6 +73,8 @@ export function DeleteNote(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteNotebookGroup(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function DeleteNotes(arg1:Array<string>):Promise<app.ApiResult_int_>;
+
 export function DeleteSFTPBookmark(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteSFTPPath(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
@@ -328,6 +330,8 @@ export function SearchNotes(arg1:string):Promise<app.ApiResult___WWorkbench_inte
 export function SetAgentSkillEnabled(arg1:model.AgentSkillEnabledDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
 
 export function SetAgentThreadBindings(arg1:string,arg2:Array<model.AgentMentionDO>):Promise<app.ApiResult_bool_>;
+
+export function SetAgentThreadSkillIDs(arg1:string,arg2:Array<string>):Promise<app.ApiResult_bool_>;
 
 export function SetAppSetting(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 

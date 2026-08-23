@@ -49,12 +49,39 @@ var skillSeeds = []skillSeed{
 3. 从笔记标题推断 id（小写、连字符、字母数字开头）、显示名、一句话 description；用户消息里的补充要求优先。
 4. 简要展示推断结果；用户已在消息里写清 id/名称时可跳过确认，否则请其确认或补充（可选）。
 5. 调用 publish_agent_skill：content 为去掉 wwb-skill 标记后的正文；noteId 必填。
-6. 完成后告知：以后用 /{id} 调用；改正文请到左侧「技能」产品线编辑，或再 /skill-creator 从笔记同步。
+6. 完成后告知：以后用 /{id} 调用；改正文用 update_agent_skill 或左侧「技能」产品线编辑。
 
 ## 不要
 
 - 不要配置 globs / 自动匹配（产品仅支持 / 手动调用）。
-- 不要把 HTML 注释写进 skill content。
+- 不要把 HTML 注释写进 skill content（wwb-skill 关联标记除外，发布时会剥除）。
+- 不要用 notebook_append_content 写 SKILL 草稿；已有关联的 skill 勿再用 publish 覆盖正文，用 update_agent_skill。
+`,
+	},
+	{
+		id:          "skill-to-method-pack",
+		name:        "抽象为通用方法包",
+		description: "把报告笔记抽象为可复用 Skill（/ 手动调用）",
+		body: `# 抽象为通用方法包
+
+## 何时用
+
+用户输入 /skill-to-method-pack，或从笔记点「抽象为方法包」，要把**一次性报告**整理成**可复用 Skill**。
+
+## 流程
+
+1. 用 get_workbench_context 取 noteId；没有则请用户说明来源报告笔记。
+2. get_note(noteId) **只读**来源笔记。正文 <!-- wwb-skill: id --> 表示已有关联 skill id。
+3. 若已有关联：get_skill(id) 读当前 SKILL.md，在此基础上抽象；完成后 **update_agent_skill** 写入（只写 Skill 文件）。
+4. 若无关联：从报告推断 id / name / description，整理可复用正文后 **publish_agent_skill**（noteId 必填，仅写关联标记）。
+5. 抽象规则：保留流程、SQL、输出结构、禁止项；去掉某次运行的真实数字表、实例 echarts 数据、运行记录；禁止省略号占位符。
+6. 完成后告知：执行用 /{id}；来源报告笔记正文保持不变（关联标记可保留）。
+
+## 不要
+
+- **禁止** notebook_append_content 向来源笔记追加 SKILL 草稿、报表模板或 ECharts option 模板。
+- 不要用 publish_agent_skill 覆盖已有关联 skill 的正文（用 update_agent_skill）。
+- 不要配置 globs / 自动匹配。
 `,
 	},
 	{

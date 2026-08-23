@@ -184,6 +184,9 @@ export function buildSftpSurface(input: {
 export function buildDockerSurface(input: {
   contextId?: string
   contextLabel?: string
+  /** 远程 Docker 上下文关联的 SSH 主机（供 auto @ / 前馈） */
+  sshHostId?: string
+  sshHostLabel?: string
   view?: string
   containerId?: string
   containerName?: string
@@ -194,8 +197,12 @@ export function buildDockerSurface(input: {
 }): AgentSurface {
   const ctx = input.contextLabel || input.contextId || 'Docker'
   const view = input.view || 'containers'
+  const sshHostId = input.sshHostId?.trim() || ''
+  const sshHostLabel = input.sshHostLabel?.trim() || sshHostId
+  const withSSHHost = <T extends AgentSurface>(surface: T): T =>
+    sshHostId ? { ...surface, hostId: sshHostId, selectionBrief: surface.selectionBrief || `ssh ${sshHostId}` } : surface
   if (view === 'compose') {
-    return {
+    return withSSHHost({
       focusKind: 'docker.compose',
       focusLabel: input.composeDir ? `${ctx} · ${input.composeDir}` : `${ctx} · Compose`,
       tabTitle: 'Compose',
@@ -203,20 +210,20 @@ export function buildDockerSurface(input: {
       selectionBrief: [input.contextId ? `context ${input.contextId}` : '', input.composeDir ? `dir ${input.composeDir}` : '']
         .filter(Boolean)
         .join(' · '),
-    }
+    })
   }
   if (view === 'images') {
-    return {
+    return withSSHHost({
       focusKind: 'docker.images',
       focusLabel: `${ctx} · 镜像${input.imageCount != null ? ` (${input.imageCount})` : ''}`,
       tabTitle: 'Images',
       openTabsBrief: input.openTabsBrief,
       selectionBrief: input.contextId ? `context ${input.contextId}` : undefined,
-    }
+    })
   }
   if (input.containerId || input.containerName) {
     const name = input.containerName || input.containerId || ''
-    return {
+    return withSSHHost({
       focusKind: 'docker.container',
       focusLabel: `${ctx} · ${name}${input.containerState ? ` (${input.containerState})` : ''}`,
       tabTitle: name,
@@ -224,15 +231,15 @@ export function buildDockerSurface(input: {
       selectionBrief: [input.contextId ? `context ${input.contextId}` : '', input.containerId ? `container ${input.containerId}` : '']
         .filter(Boolean)
         .join(' · '),
-    }
+    })
   }
-  return {
+  return withSSHHost({
     focusKind: 'docker',
-    focusLabel: ctx,
+    focusLabel: sshHostId ? `${ctx} · ${sshHostLabel}` : ctx,
     tabTitle: 'Containers',
     openTabsBrief: input.openTabsBrief,
     selectionBrief: input.contextId ? `context ${input.contextId}` : undefined,
-  }
+  })
 }
 
 /** buildNotebookSurface 从笔记本打开标签推导界面焦点。 */

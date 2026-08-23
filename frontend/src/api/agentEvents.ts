@@ -3,6 +3,7 @@ import { EventsOn } from '../../wailsjs/runtime/runtime'
 export interface AgentAssistantEvent {
   threadId: string
   content: string
+  skillIds?: string[]
   seq?: number
 }
 
@@ -99,6 +100,7 @@ export function subscribeAgentEvents(handlers: {
         handlers.onAssistant!({
           threadId: String(raw.threadId ?? ''),
           content: String(raw.content ?? ''),
+          skillIds: parseEventSkillIds(raw.skillIds),
           seq: optionalSeq(raw),
         })
       }),

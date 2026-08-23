@@ -142,6 +142,10 @@ export function DeleteNotebookGroup(arg1) {
   return window['go']['app']['Service']['DeleteNotebookGroup'](arg1);
 }
 
+export function DeleteNotes(arg1) {
+  return window['go']['app']['Service']['DeleteNotes'](arg1);
+}
+
 export function DeleteSFTPBookmark(arg1) {
   return window['go']['app']['Service']['DeleteSFTPBookmark'](arg1);
 }
@@ -652,6 +656,10 @@ export function SetAgentSkillEnabled(arg1) {
 
 export function SetAgentThreadBindings(arg1, arg2) {
   return window['go']['app']['Service']['SetAgentThreadBindings'](arg1, arg2);
+}
+
+export function SetAgentThreadSkillIDs(arg1, arg2) {
+  return window['go']['app']['Service']['SetAgentThreadSkillIDs'](arg1, arg2);
 }
 
 export function SetAppSetting(arg1, arg2) {

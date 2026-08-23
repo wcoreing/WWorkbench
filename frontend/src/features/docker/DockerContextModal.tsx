@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { SSHHost } from '../../api/types'
-import { shellHostAsSSH } from '../../api/types'
+import type { DockerContext, SSHHost } from '../../api/types'
 import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
 import { model } from '../../../wailsjs/go/models'
@@ -12,12 +11,7 @@ interface DockerContextModalProps {
   open: boolean
   initialHostId?: string
   onClose: () => void
-  onSaved: () => void
-}
-
-/** toSSHHostList 从统一 Shell 主机抽出 SSH 主机。 */
-function toSSHHostList(raw: Awaited<ReturnType<typeof api.listShellHosts>>): SSHHost[] {
-  return raw.map((h) => shellHostAsSSH(h)).filter((h): h is SSHHost => Boolean(h))
+  onSaved: (ctx: DockerContext) => void
 }
 
 /** DockerContextModal 添加 SSH 远程 Docker 上下文。 */
@@ -49,7 +43,7 @@ export function DockerContextModal({ open, initialHostId, onClose, onSaved }: Do
     async (preferId?: string) => {
       setLoadingHosts(true)
       try {
-        const list = toSSHHostList(await api.listShellHosts())
+        const list = await api.listSSHHosts()
         applyHosts(list, preferId)
         return list
       } catch (e) {
@@ -95,8 +89,8 @@ export function DockerContextModal({ open, initialHostId, onClose, onSaved }: Do
         kind: 'ssh',
         sshHostId: hostId,
       })
-      await api.saveDockerContext(payload)
-      onSaved()
+      const saved = (await api.saveDockerContext(payload)) as DockerContext
+      onSaved(saved)
       onClose()
     } catch (e) {
       setError((e as Error).message)

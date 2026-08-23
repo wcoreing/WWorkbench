@@ -666,7 +666,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapPublishAgentSkill,
-		Description: "发布或更新 Agent 技能（仅 / 手动调用）。从笔记发布时须传 noteId，并在 content 中去掉 wwb-skill 标记。",
+		Description: "首次从笔记发布 Skill（/ 手动调用）。写入 SKILL.md 并在来源笔记加 wwb-skill 关联标记；已有关联的 skill 请用 update_agent_skill 改正文。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -679,6 +679,24 @@ func (r *Registry) registerBuiltins() {
 			"required": []interface{}{"id", "content", "noteId"},
 		},
 		Handler: toolPublishAgentSkill,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapUpdateAgentSkill,
+		Description: "更新已有 Skill 正文或元数据（/ 手动调用）。只写 system/skills/<id>/SKILL.md，不修改任何笔记。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"id":            map[string]interface{}{"type": "string", "description": "技能 id"},
+				"content":       map[string]interface{}{"type": "string", "description": "SKILL.md 正文（不含 frontmatter）"},
+				"name":          map[string]interface{}{"type": "string", "description": "显示名"},
+				"description":   map[string]interface{}{"type": "string", "description": "/ 菜单一句话说明"},
+				"updateContent": map[string]interface{}{"type": "boolean", "description": "是否更新正文，content 非空时默认 true"},
+				"updateGlobs":   map[string]interface{}{"type": "boolean", "description": "是否更新 globs"},
+				"globs":         map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
+			},
+			"required": []interface{}{"id"},
+		},
+		Handler: toolUpdateAgentSkill,
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapAgentChat,

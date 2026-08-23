@@ -28,6 +28,7 @@ export const Capability = {
   EnvironmentOpen: 'environment_open',
   SSHForwardOpen: 'ssh_forward_open',
   PublishAgentSkill: 'publish_agent_skill',
+  UpdateAgentSkill: 'update_agent_skill',
 } as const
 
 export type WorkbenchCapability = (typeof Capability)[keyof typeof Capability]

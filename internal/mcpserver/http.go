@@ -26,7 +26,7 @@ const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据�
 - 容器启停/删除用 start_container / stop_container / remove_container，勿用 shell_probe 跑 docker rm/start/stop。
 - 问终端输出用 get_shell_output（分页读可见 PTY scrollback；offsetFromEnd=0 最新页，nextOffsetFromEnd 向历史翻）。shell_run=给人看（注入 pip/下载/训练/脚本，不返回 stdout）。shell_probe=无头只读短探针，禁止改机器；看磁盘文件用 cat，不要 sed/awk。
 - HTTP：先 save_http_request / save_http_environment，再 execute_http(requestId / envId)。
-- 笔记本：list_notes / search_notes / get_note(noteId) 读正文；notebook_append_content 写入；发布技能用 publish_agent_skill（/ 手动调用）。
+- 笔记本：list_notes / search_notes / get_note(noteId) 读正文；notebook_append_content 写入；首次发布技能 publish_agent_skill；改已有技能 update_agent_skill（不写笔记）；抽象为方法包 /skill-to-method-pack。
 - Agent 对话：agent_chat 同步发消息并等回复（支持 /skill-id、mentions、sshHostId）；待确认用 agent_confirm。
 - SSH / 数据库 / 日志 / Docker：save_ssh_host、save_ssh_forward、save_connection、save_log_source、save_docker_context 落盘后再引用 ID。
 - 工具受「AI 能力权限」开关约束；关闭的能力会拒绝调用。

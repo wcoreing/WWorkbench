@@ -109,6 +109,39 @@ func (s *Service) DeleteNote(id string) ApiResult[bool] {
 	return OkResult(true)
 }
 
+// DeleteNotes 批量删除笔记。
+func (s *Service) DeleteNotes(ids []string) ApiResult[int] {
+	deleted, err := s.notebook.DeleteNotes(ids)
+	if err != nil {
+		return ErrResult[int](err)
+	}
+	if s.radar != nil {
+		cleaned := make([]string, 0, len(ids))
+		seen := make(map[string]struct{}, len(ids))
+		for _, id := range ids {
+			id = strings.TrimSpace(id)
+			if id == "" {
+				continue
+			}
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			cleaned = append(cleaned, id)
+		}
+		if len(cleaned) > 0 {
+			s.radar.Emit(workbench.RadarEvent{
+				Domain:  workbench.RadarDomainNotebookNote,
+				Op:      workbench.RadarOpDelete,
+				IDs:     cleaned,
+				WriteID: "ui-notebook-batch-delete",
+				Product: "notebook",
+			})
+		}
+	}
+	return OkResult(deleted)
+}
+
 // DuplicateNote 复制笔记。
 func (s *Service) DuplicateNote(id string) ApiResult[model.NoteDO] {
 	n, err := s.notebook.DuplicateNote(id)

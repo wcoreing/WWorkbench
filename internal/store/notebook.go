@@ -234,6 +234,41 @@ func (s *Store) DeleteNote(id string) error {
 	return nil
 }
 
+// DeleteNotes 批量删除笔记（忽略不存在的 id；全部无效时返回错误）。
+func (s *Store) DeleteNotes(ids []string) (int, error) {
+	seen := make(map[string]struct{}, len(ids))
+	unique := make([]string, 0, len(ids))
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		unique = append(unique, id)
+	}
+	if len(unique) == 0 {
+		return 0, errno.New(errno.CodeInvalidArg, "请选择要删除的笔记", "")
+	}
+	deleted := 0
+	for _, id := range unique {
+		res, err := s.db.Exec(`DELETE FROM notes WHERE id = ?`, id)
+		if err != nil {
+			return deleted, errno.Wrap(errno.CodeStoreFailed, "批量删除笔记失败", err)
+		}
+		n, _ := res.RowsAffected()
+		if n > 0 {
+			deleted++
+		}
+	}
+	if deleted == 0 {
+		return 0, errno.New(errno.CodeNotFound, "没有可删除的笔记", "")
+	}
+	return deleted, nil
+}
+
 // scanNotebookGroup 扫描笔记本分组行。
 func scanNotebookGroup(scan func(dest ...any) error) (model.NotebookGroupDO, error) {
 	var g model.NotebookGroupDO

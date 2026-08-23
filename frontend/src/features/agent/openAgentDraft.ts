@@ -5,6 +5,7 @@ import { useAgentStore } from '../../stores/agentStore'
 export interface AgentDraftPayload {
   mentions: AgentMention[]
   message?: string
+  skillIds?: string[]
 }
 
 /** openAgentDraft 打开 AI 侧栏并填入 @ 资源与提示语。 */

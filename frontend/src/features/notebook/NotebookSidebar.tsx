@@ -1,400 +1,414 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { NoteLanguage, NoteSummary, NotebookGroup } from '../../api/types'
-import { IconNotebook, IconPlus } from '../../components/Icons'
+import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { IconRefresh } from '../../components/Icons'
 import { ContextMenu } from '../../components/ContextMenu'
 import { useI18n } from '../../i18n'
+import { useAppStore } from '../../stores/appStore'
 import { pressProps } from '../../components/compat'
-import {
-  NOTEBOOK_DRAG_MIME,
-  NOTEBOOK_ROOT_ID,
-  buildNotebookLayout,
-  moveGroupBefore,
-  moveNoteInTree,
-  notesInGroup,
-  orderedGroups,
-  parseNotebookDrag,
-  type NotebookDragPayload,
-} from './notebookTree'
+import { NOTEBOOK_ROOT_ID } from './notebookTree'
 
-export type NotebookDropHint =
-  | { kind: 'group-before'; groupId: string }
-  | { kind: 'note-before'; groupId: string; noteId: string }
-  | { kind: 'group-append'; groupId: string }
+const PAGE_SIZE = 40
+
+function formatUpdatedAt(ts: number): string {
+  if (!ts) return '—'
+  const d = new Date(ts * 1000)
+  if (Number.isNaN(d.getTime())) return '—'
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 interface Props {
   groups: NotebookGroup[]
   summaries: NoteSummary[]
-  searching: boolean
   search: string
   activeTabId: string | null
-  collapsedGroups: Set<string>
   languages: { id: NoteLanguage; label: string }[]
   onSearchChange: (q: string) => void
-  onToggleGroup: (id: string) => void
   onOpenNote: (id: string) => void
-  onGroupsChange: (groups: NotebookGroup[]) => void
-  onSummariesChange: (summaries: NoteSummary[]) => void
-  onPersistLayout: (layout: ReturnType<typeof buildNotebookLayout>) => Promise<void>
-  onCreateNoteInGroup: (groupId: string) => void
   onEditGroup: (g: NotebookGroup) => void
   onDeleteGroup: (id: string, title: string) => void
   onDeleteNote: (id: string, title: string) => void
   onMoveNoteToGroup: (noteId: string, groupId: string) => void
+  onBatchDelete: (ids: string[]) => Promise<void>
+  onRefresh: () => void | Promise<void>
+  refreshing?: boolean
 }
 
 type NoteCtxMenu = { x: number; y: number; note: NoteSummary }
-type GroupCtxMenu = { x: number; y: number; group: NotebookGroup }
 
-/** NotebookSidebar 笔记本侧栏（分组树 + 拖拽排序/跨组移动）。 */
+function paginateList<T>(items: T[], page: number, pageSize: number) {
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
+  const safePage = Math.min(Math.max(1, page), totalPages)
+  const start = (safePage - 1) * pageSize
+  return {
+    items: items.slice(start, start + pageSize),
+    page: safePage,
+    totalPages,
+    total: items.length,
+  }
+}
+
+/** NotebookSidebar 笔记本侧栏（筛选 + 表格列表 + 分页 + 批量删除）。 */
 export function NotebookSidebar({
   groups,
   summaries,
-  searching,
   search,
   activeTabId,
-  collapsedGroups,
   languages,
   onSearchChange,
-  onToggleGroup,
   onOpenNote,
-  onGroupsChange,
-  onSummariesChange,
-  onPersistLayout,
-  onCreateNoteInGroup,
   onEditGroup,
   onDeleteGroup,
   onDeleteNote,
   onMoveNoteToGroup,
+  onBatchDelete,
+  onRefresh,
+  refreshing = false,
 }: Props) {
   const { t } = useI18n()
-  const [dropHint, setDropHint] = useState<NotebookDropHint | null>(null)
-  const [dragging, setDragging] = useState<NotebookDragPayload | null>(null)
+  const { setStatusMessage } = useAppStore()
+  const [groupFilter, setGroupFilter] = useState('')
+  const [langFilter, setLangFilter] = useState<NoteLanguage | ''>('')
+  const [page, setPage] = useState(1)
   const [noteMenu, setNoteMenu] = useState<NoteCtxMenu | null>(null)
-  const [groupMenu, setGroupMenu] = useState<GroupCtxMenu | null>(null)
+  const [selectedNotes, setSelectedNotes] = useState<Record<string, boolean>>({})
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
-    if (!noteMenu && !groupMenu) return
-    const close = () => {
-      setNoteMenu(null)
-      setGroupMenu(null)
-    }
-    window.addEventListener('pointerdown', close)
-    return () => window.removeEventListener('pointerdown', close)
-  }, [noteMenu, groupMenu])
-
-  const sortedGroups = useMemo(() => orderedGroups(groups), [groups])
-
-  const clearDrop = useCallback(() => setDropHint(null), [])
-
-  const applyTree = useCallback(
-    async (nextGroups: NotebookGroup[], nextSummaries: NoteSummary[]) => {
-      onGroupsChange(nextGroups)
-      onSummariesChange(nextSummaries)
-      const layout = buildNotebookLayout(nextGroups, nextSummaries)
-      await onPersistLayout(layout)
-    },
-    [onGroupsChange, onSummariesChange, onPersistLayout],
+  const sortedGroups = useMemo(
+    () => [...groups].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)),
+    [groups],
   )
 
-  const onDragStart = (payload: NotebookDragPayload) => (e: React.DragEvent) => {
-    e.dataTransfer.setData(NOTEBOOK_DRAG_MIME, JSON.stringify(payload))
-    e.dataTransfer.effectAllowed = 'move'
-    setDragging(payload)
+  const groupLabel = useCallback(
+    (groupId: string) => {
+      if (groupId === NOTEBOOK_ROOT_ID) return t('notebook.rootGroup')
+      return sortedGroups.find((g) => g.id === groupId)?.name ?? '—'
+    },
+    [sortedGroups, t],
+  )
+
+  const langLabel = useCallback(
+    (id: NoteLanguage) => languages.find((l) => l.id === id)?.label ?? id,
+    [languages],
+  )
+
+  const linkLabel = (n: NoteSummary) => {
+    const parts: string[] = []
+    if (n.sshHostId) parts.push('SSH')
+    if (n.connectionId) parts.push('DB')
+    return parts.length ? parts.join('·') : '—'
   }
 
-  const onDragEnd = () => {
-    setDragging(null)
-    clearDrop()
-  }
+  const filtered = useMemo(() => {
+    return summaries.filter((n) => {
+      if (groupFilter && n.groupId !== groupFilter) return false
+      if (langFilter && n.language !== langFilter) return false
+      return true
+    })
+  }, [summaries, groupFilter, langFilter])
 
-  const readPayload = (e: React.DragEvent): NotebookDragPayload | null => {
-    const raw = e.dataTransfer.getData(NOTEBOOK_DRAG_MIME)
-    return parseNotebookDrag(raw)
-  }
+  const paged = useMemo(() => paginateList(filtered, page, PAGE_SIZE), [filtered, page])
+  const pageItems = paged.items
+  const selectionCount = useMemo(
+    () => Object.keys(selectedNotes).filter((id) => selectedNotes[id]).length,
+    [selectedNotes],
+  )
+  const pageSelectedCount = useMemo(
+    () => pageItems.filter((n) => selectedNotes[n.id]).length,
+    [pageItems, selectedNotes],
+  )
+  const pageAllSelected = pageItems.length > 0 && pageSelectedCount === pageItems.length
+  const pageSomeSelected = pageSelectedCount > 0 && !pageAllSelected
 
-  const handleGroupDropBefore = async (e: React.DragEvent, beforeGroupId: string) => {
-    e.preventDefault()
-    const payload = readPayload(e)
-    if (!payload) return
-    clearDrop()
-    setDragging(null)
-    if (payload.kind === 'group') {
-      const nextGroups = moveGroupBefore(groups, payload.id, beforeGroupId)
-      await applyTree(nextGroups, summaries)
+  const pageSelectRef = useCallback(
+    (el: HTMLInputElement | null) => {
+      if (el) el.indeterminate = pageSomeSelected
+    },
+    [pageSomeSelected],
+  )
+
+  useEffect(() => {
+    setPage(1)
+  }, [search, groupFilter, langFilter, summaries.length])
+
+  useEffect(() => {
+    setPage((p) => Math.min(p, paged.totalPages))
+  }, [paged.totalPages])
+
+  const togglePageSelected = () => {
+    if (pageAllSelected) {
+      setSelectedNotes((m) => {
+        const next = { ...m }
+        for (const n of pageItems) delete next[n.id]
+        return next
+      })
       return
     }
-    const first = notesInGroup(summaries, beforeGroupId)[0]?.id ?? null
-    const nextSummaries = moveNoteInTree(summaries, payload.id, beforeGroupId, first)
-    await applyTree(groups, nextSummaries)
+    setSelectedNotes((m) => {
+      const next = { ...m }
+      for (const n of pageItems) next[n.id] = true
+      return next
+    })
   }
 
-  const handleNoteDropBefore = async (
-    e: React.DragEvent,
-    groupId: string,
-    beforeNoteId: string,
-  ) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const payload = readPayload(e)
-    if (!payload || payload.kind !== 'note') return
-    clearDrop()
-    setDragging(null)
-    if (payload.id === beforeNoteId) return
-    const nextSummaries = moveNoteInTree(summaries, payload.id, groupId, beforeNoteId)
-    await applyTree(groups, nextSummaries)
+  const toggleNoteSelected = (noteId: string) => {
+    setSelectedNotes((m) => {
+      const next = { ...m }
+      if (next[noteId]) delete next[noteId]
+      else next[noteId] = true
+      return next
+    })
   }
 
-  const handleGroupAppend = async (e: React.DragEvent, groupId: string) => {
-    e.preventDefault()
-    const payload = readPayload(e)
-    if (!payload || payload.kind !== 'note') return
-    clearDrop()
-    setDragging(null)
-    const nextSummaries = moveNoteInTree(summaries, payload.id, groupId, null)
-    await applyTree(groups, nextSummaries)
+  const selectAllFiltered = () => {
+    const next: Record<string, boolean> = {}
+    for (const n of filtered) next[n.id] = true
+    setSelectedNotes(next)
   }
 
-  const renderNoteItem = (n: NoteSummary, groupId: string) => {
-    const hintBefore =
-      dropHint?.kind === 'note-before' &&
-      dropHint.groupId === groupId &&
-      dropHint.noteId === n.id
-    return (
-      <li
-        key={n.id}
-        className={`conn-item notebook-note-item${activeTabId === n.id ? ' active' : ''}${
-          dragging?.kind === 'note' && dragging.id === n.id ? ' is-dragging' : ''
-        }${hintBefore ? ' drop-before' : ''}`}
-        draggable
-        onDragStart={onDragStart({ kind: 'note', id: n.id })}
-        onDragEnd={onDragEnd}
-        onDragOver={(e) => {
-          if (!dragging || dragging.kind !== 'note') return
-          e.preventDefault()
-          e.dataTransfer.dropEffect = 'move'
-          setDropHint({ kind: 'note-before', groupId, noteId: n.id })
-        }}
-        onDragLeave={(e) => {
-          if (e.currentTarget.contains(e.relatedTarget as Node)) return
-          if (dropHint?.kind === 'note-before' && dropHint.noteId === n.id) clearDrop()
-        }}
-        onDrop={(e) => void handleNoteDropBefore(e, groupId, n.id)}
-        onClick={() => onOpenNote(n.id)}
-        onContextMenu={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          setGroupMenu(null)
-          setNoteMenu({ x: e.clientX, y: e.clientY, note: n })
-        }}
-      >
-        <span className="notebook-drag-handle" title={t('notebook.dragHint')} aria-hidden>
-          ⋮⋮
-        </span>
-        <IconNotebook size={14} className="mock-icon" />
-        <div className="conn-meta">
-          <span className="conn-name">{n.title}</span>
-          <span className="conn-host">
-            {languages.find((l) => l.id === n.language)?.label}
-            {n.sshHostId ? ' · SSH' : ''}
-            {n.connectionId ? ' · DB' : ''}
-          </span>
-        </div>
-      </li>
-    )
+  const clearSelection = () => setSelectedNotes({})
+
+  const runBatchDelete = async () => {
+    const ids = Object.keys(selectedNotes).filter((id) => selectedNotes[id])
+    if (ids.length === 0) {
+      setStatusMessage(t('notebook.batchNone'))
+      return
+    }
+    setDeleting(true)
+    try {
+      await onBatchDelete(ids)
+      setStatusMessage(t('notebook.batchDeleted', { count: ids.length }))
+      setSelectedNotes({})
+    } catch (e) {
+      setStatusMessage((e as Error).message)
+    } finally {
+      setDeleting(false)
+      setDeleteConfirmOpen(false)
+    }
   }
+
+  useEffect(() => {
+    if (!noteMenu) return
+    const close = () => setNoteMenu(null)
+    window.addEventListener('pointerdown', close)
+    return () => window.removeEventListener('pointerdown', close)
+  }, [noteMenu])
+
+  const selectedGroup = groupFilter && groupFilter !== NOTEBOOK_ROOT_ID
+    ? sortedGroups.find((g) => g.id === groupFilter)
+    : undefined
+
+  const canPrev = paged.total > 0 && paged.page > 1
+  const canNext = paged.total > 0 && paged.page < paged.totalPages
 
   return (
-    <aside className="app-sidebar notebook-sidebar">
-      <div className="notebook-search">
+    <section className="sidebar-section notebook-list-section">
+      <div className="sidebar-header">
+        <span className="sidebar-header-title">{t('notebook.listTitle')}</span>
+        <div className="sidebar-header-actions">
+          <button
+            type="button"
+            className="wn-btn wn-btn-icon wn-btn-sm"
+            title={t('notebook.refresh')}
+            disabled={refreshing}
+            {...pressProps(() => void onRefresh(), { disabled: refreshing })}
+          >
+            <IconRefresh size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="notebook-filter-bar">
         <input
           type="search"
+          className="notebook-filter-search"
           placeholder={t('notebook.searchPlaceholder')}
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
         />
+        <div className="notebook-filter-row">
+          <select
+            className="notebook-filter-select"
+            value={groupFilter}
+            onChange={(e) => setGroupFilter(e.target.value)}
+            title={t('notebook.colGroup')}
+          >
+            <option value="">{t('notebook.filterAllGroups')}</option>
+            <option value={NOTEBOOK_ROOT_ID}>{t('notebook.rootGroup')}</option>
+            {sortedGroups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+          {selectedGroup && (
+            <>
+              <button
+                type="button"
+                className="wn-btn wn-btn-icon wn-btn-xs"
+                title={t('notebook.renameGroup')}
+                {...pressProps(() => onEditGroup(selectedGroup))}
+              >
+                ✎
+              </button>
+              <button
+                type="button"
+                className="wn-btn wn-btn-icon wn-btn-xs notebook-group-delete"
+                title={t('notebook.deleteGroup')}
+                {...pressProps(() => onDeleteGroup(selectedGroup.id, selectedGroup.name))}
+              >
+                ×
+              </button>
+            </>
+          )}
+          <select
+            className="notebook-filter-select"
+            value={langFilter}
+            onChange={(e) => setLangFilter(e.target.value as NoteLanguage | '')}
+            title={t('notebook.language')}
+          >
+            <option value="">{t('notebook.filterAllLanguages')}</option>
+            {languages.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {searching ? (
-        <section className="sidebar-section">
-          <div className="sidebar-header">
-            <span>{t('notebook.searchResults', { count: summaries.length })}</span>
-          </div>
-          <div className="sidebar-body">
-            {summaries.length === 0 ? (
-              <div className="empty-hint">{t('notebook.noMatch')}</div>
-            ) : (
-              <ul className="conn-list notebook-note-list">
-                {summaries.map((n) => renderNoteItem(n, n.groupId))}
-              </ul>
+      {selectionCount > 0 && (
+        <div className="notebook-selection-bar">
+          <span className="pane-meta">{t('notebook.selectedCount', { count: selectionCount })}</span>
+          <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" {...pressProps(selectAllFiltered)}>
+            {t('notebook.batchSelectAll')}
+          </button>
+          <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" {...pressProps(clearSelection)}>
+            {t('notebook.batchClear')}
+          </button>
+          <button
+            type="button"
+            className="wn-btn wn-btn-xs wn-btn-danger"
+            disabled={deleting}
+            {...pressProps(
+              () => setDeleteConfirmOpen(true),
+              { disabled: deleting },
             )}
-          </div>
-          <p className="notebook-dnd-hint">{t('notebook.searchNoDrag')}</p>
-        </section>
-      ) : (
-        <>
-          <p className="notebook-dnd-hint">{t('notebook.dragHint')}</p>
-          {(() => {
-            const rootNotes = notesInGroup(summaries, NOTEBOOK_ROOT_ID)
-            const rootCollapsed = collapsedGroups.has(NOTEBOOK_ROOT_ID)
-            const hintRootAppend =
-              dropHint?.kind === 'group-append' && dropHint.groupId === NOTEBOOK_ROOT_ID
-            return (
-              <section className="sidebar-section notebook-group-section notebook-root-section">
-                <div className="sidebar-header notebook-group-header">
-                  <button
-                    type="button"
-                    className="notebook-group-toggle"
-                    onClick={() => onToggleGroup(NOTEBOOK_ROOT_ID)}
-                  >
-                    <span className={`tree-chevron${rootCollapsed ? '' : ' is-open'}`} aria-hidden />
-                    {t('notebook.rootGroup')}
-                  </button>
-                  <button
-                    type="button"
-                    className="wn-btn wn-btn-icon wn-btn-sm"
-                    title={t('notebook.newInRoot')}
-                    onClick={() => onCreateNoteInGroup(NOTEBOOK_ROOT_ID)}
-                  >
-                    <IconPlus size={14} />
-                  </button>
-                </div>
-                {!rootCollapsed && (
-                  <div
-                    className={`sidebar-body notebook-group-body${hintRootAppend ? ' drop-append' : ''}`}
-                    onDragOver={(e) => {
-                      if (dragging?.kind !== 'note') return
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setDropHint({ kind: 'group-append', groupId: NOTEBOOK_ROOT_ID })
-                    }}
-                    onDragLeave={(e) => {
-                      if (e.currentTarget.contains(e.relatedTarget as Node)) return
-                      if (dropHint?.kind === 'group-append' && dropHint.groupId === NOTEBOOK_ROOT_ID) {
-                        clearDrop()
-                      }
-                    }}
-                    onDrop={(e) => void handleGroupAppend(e, NOTEBOOK_ROOT_ID)}
-                  >
-                    {rootNotes.length === 0 ? (
-                      <div className="empty-hint notebook-group-empty-drop">
-                        {dragging?.kind === 'note' ? t('notebook.dropHere') : t('notebook.noNotes')}
-                      </div>
-                    ) : (
-                      <ul className="conn-list notebook-note-list">
-                        {rootNotes.map((n) => renderNoteItem(n, NOTEBOOK_ROOT_ID))}
-                      </ul>
-                    )}
-                  </div>
-                )}
-              </section>
-            )
-          })()}
-          {sortedGroups.map((g) => {
-            const notes = notesInGroup(summaries, g.id)
-            const collapsed = collapsedGroups.has(g.id)
-            const hintGroupBefore =
-              dropHint?.kind === 'group-before' && dropHint.groupId === g.id
-            const hintAppend =
-              dropHint?.kind === 'group-append' && dropHint.groupId === g.id
-            return (
-              <section
-                key={g.id}
-                className={`sidebar-section notebook-group-section${
-                  dragging?.kind === 'group' && dragging.id === g.id ? ' is-dragging' : ''
-                }`}
-                onDragOver={(e) => {
-                  if (dragging?.kind !== 'group') return
-                  e.preventDefault()
-                  setDropHint({ kind: 'group-before', groupId: g.id })
-                }}
-                onDragLeave={(e) => {
-                  if (e.currentTarget.contains(e.relatedTarget as Node)) return
-                  if (dropHint?.kind === 'group-before' && dropHint.groupId === g.id) clearDrop()
-                }}
-                onDrop={(e) => void handleGroupDropBefore(e, g.id)}
-              >
-                <div
-                  className={`sidebar-header notebook-group-header${hintGroupBefore ? ' drop-before' : ''}`}
-                  onContextMenu={(e) => {
-                    e.preventDefault()
-                    setNoteMenu(null)
-                    setGroupMenu({ x: e.clientX, y: e.clientY, group: g })
-                  }}
-                >
-                  <button type="button" className="notebook-group-toggle" onClick={() => onToggleGroup(g.id)}>
-                    <span className={`tree-chevron${collapsed ? '' : ' is-open'}`} aria-hidden />
-                    {g.name}
-                  </button>
-                  <span
-                    className="notebook-group-drag-handle"
-                    title={t('notebook.dragGroupHint')}
-                    draggable
-                    onDragStart={onDragStart({ kind: 'group', id: g.id })}
-                    onDragEnd={onDragEnd}
-                  >
-                    ⋮⋮
-                  </span>
-                  <button
-                    type="button"
-                    className="wn-btn wn-btn-icon wn-btn-sm"
-                    title={t('notebook.renameGroup')}
-                    onClick={() => onEditGroup(g)}
-                  >
-                    ✎
-                  </button>
-                  <button
-                    type="button"
-                    className="wn-btn wn-btn-icon wn-btn-sm"
-                    title={t('notebook.newInGroup')}
-                    onClick={() => onCreateNoteInGroup(g.id)}
-                  >
-                    <IconPlus size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    className="wn-btn wn-btn-icon wn-btn-sm notebook-group-delete"
-                    title={t('notebook.deleteGroup')}
-                    onClick={() => onDeleteGroup(g.id, g.name)}
-                  >
-                    ×
-                  </button>
-                </div>
-                {!collapsed && (
-                  <div
-                    className={`sidebar-body notebook-group-body${hintAppend ? ' drop-append' : ''}`}
-                    onDragOver={(e) => {
-                      if (dragging?.kind !== 'note') return
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setDropHint({ kind: 'group-append', groupId: g.id })
-                    }}
-                    onDragLeave={(e) => {
-                      if (e.currentTarget.contains(e.relatedTarget as Node)) return
-                      if (dropHint?.kind === 'group-append' && dropHint.groupId === g.id) clearDrop()
-                    }}
-                    onDrop={(e) => void handleGroupAppend(e, g.id)}
-                  >
-                    {notes.length === 0 ? (
-                      <div className="empty-hint notebook-group-empty-drop">
-                        {dragging?.kind === 'note' ? t('notebook.dropHere') : t('notebook.noNotes')}
-                      </div>
-                    ) : (
-                      <ul className="conn-list notebook-note-list">{notes.map((n) => renderNoteItem(n, g.id))}</ul>
-                    )}
-                  </div>
-                )}
-              </section>
-            )
-          })}
-        </>
+          >
+            {t('notebook.batchDelete', { count: selectionCount })}
+          </button>
+        </div>
       )}
 
+      <div className="sidebar-body notebook-table-body">
+        {paged.total === 0 ? (
+          <div className="empty-hint">{search.trim() ? t('notebook.noMatch') : t('notebook.noNotes')}</div>
+        ) : (
+          <table className="notebook-note-table">
+            <colgroup>
+              <col className="notebook-col-check" />
+              <col className="notebook-col-title" />
+              <col className="notebook-col-group" />
+              <col className="notebook-col-lang" />
+              <col className="notebook-col-links" />
+              <col className="notebook-col-updated" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th className="notebook-col-check">
+                  <input
+                    type="checkbox"
+                    className="notebook-note-check"
+                    checked={pageAllSelected}
+                    ref={pageSelectRef}
+                    onChange={togglePageSelected}
+                    title={t('notebook.batchPage')}
+                  />
+                </th>
+                <th className="notebook-col-title">{t('notebook.colTitle')}</th>
+                <th className="notebook-col-group">{t('notebook.colGroup')}</th>
+                <th className="notebook-col-lang">{t('notebook.colLang')}</th>
+                <th className="notebook-col-links">{t('notebook.colLinks')}</th>
+                <th className="notebook-col-updated">{t('notebook.colUpdated')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.map((n) => {
+                const checked = !!selectedNotes[n.id]
+                return (
+                  <tr
+                    key={n.id}
+                    className={`notebook-note-row${activeTabId === n.id ? ' is-active' : ''}${
+                      checked ? ' is-batch-selected' : ''
+                    }`}
+                    onClick={() => onOpenNote(n.id)}
+                    onContextMenu={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setNoteMenu({ x: e.clientX, y: e.clientY, note: n })
+                    }}
+                  >
+                    <td className="notebook-col-check" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="notebook-note-check"
+                        checked={checked}
+                        onChange={() => toggleNoteSelected(n.id)}
+                      />
+                    </td>
+                    <td className="notebook-col-title" title={n.title}>
+                      {n.title}
+                    </td>
+                    <td className="notebook-col-group" title={groupLabel(n.groupId)}>
+                      {groupLabel(n.groupId)}
+                    </td>
+                    <td className="notebook-col-lang">{langLabel(n.language)}</td>
+                    <td className="notebook-col-links">{linkLabel(n)}</td>
+                    <td className="notebook-col-updated" title={formatUpdatedAt(n.updatedAt)}>
+                      {formatUpdatedAt(n.updatedAt)}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="pane-toolbar notebook-list-pager">
+        <div className="pane-toolbar-start">
+          <span className="pane-meta">
+            {paged.total > 0
+              ? t('common.listMeta', { total: paged.total, page: paged.page, totalPages: paged.totalPages })
+              : t('common.noData')}
+          </span>
+        </div>
+        {paged.total > 0 && (
+          <div className="pane-toolbar-end">
+            <button
+              type="button"
+              className="wn-btn wn-btn-tool wn-btn-xs"
+              disabled={!canPrev}
+              {...pressProps(() => setPage((p) => p - 1), { disabled: !canPrev })}
+            >
+              {t('common.prevPage')}
+            </button>
+            <button
+              type="button"
+              className="wn-btn wn-btn-tool wn-btn-xs"
+              disabled={!canNext}
+              {...pressProps(() => setPage((p) => p + 1), { disabled: !canNext })}
+            >
+              {t('common.nextPage')}
+            </button>
+          </div>
+        )}
+      </div>
+
       {noteMenu && (
-        <ContextMenu
-          x={noteMenu.x}
-          y={noteMenu.y}
-          onClick={(e) => e.stopPropagation()}
-        >
+        <ContextMenu x={noteMenu.x} y={noteMenu.y} onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             className="wn-context-item"
@@ -448,47 +462,15 @@ export function NotebookSidebar({
         </ContextMenu>
       )}
 
-      {groupMenu && (
-        <ContextMenu
-          x={groupMenu.x}
-          y={groupMenu.y}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            className="wn-context-item"
-            {...pressProps(() => {
-              const { group } = groupMenu
-              setGroupMenu(null)
-              onEditGroup(group)
-            })}
-          >
-            {t('notebook.ctxRenameGroup')}
-          </button>
-          <button
-            type="button"
-            className="wn-context-item"
-            {...pressProps(() => {
-              const { group } = groupMenu
-              setGroupMenu(null)
-              onCreateNoteInGroup(group.id)
-            })}
-          >
-            {t('notebook.newInGroup')}
-          </button>
-          <button
-            type="button"
-            className="wn-context-item wn-context-item-danger"
-            {...pressProps(() => {
-              const { group } = groupMenu
-              setGroupMenu(null)
-              onDeleteGroup(group.id, group.name)
-            })}
-          >
-            {t('notebook.deleteGroup')}
-          </button>
-        </ContextMenu>
-      )}
-    </aside>
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title={t('notebook.batchDeleteTitle')}
+        message={t('notebook.batchDeleteMsg', { count: selectionCount })}
+        confirmLabel={t('common.delete')}
+        danger
+        onConfirm={() => void runBatchDelete()}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
+    </section>
   )
 }

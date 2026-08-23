@@ -27,6 +27,8 @@ import (
 const (
 	maxAgentSteps        = 30
 	maxChoiceJSONRetries = 3
+	/** 同一轮连续进度轮询上限：超过则结束本轮，交给用户继续。 */
+	maxProgressPolls = 3
 )
 
 // workbenchGuest：history + harness.Complete（框架流式）+ Gateway 工具。
@@ -56,6 +58,7 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 	}
 
 	choiceJSONRetries := 0
+	progressPolls := 0
 	for step := 0; step < maxAgentSteps; step++ {
 		if ctx.Err() != nil {
 			g.r.emit("agent:done", map[string]interface{}{"threadId": g.threadID, "stopped": true})
@@ -108,9 +111,13 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 				Role: "assistant", Content: asstContent, TaskID: g.taskID,
 			})
 			if asstContent != "" {
-				g.r.emit("agent:assistant", map[string]interface{}{
+				payload := map[string]interface{}{
 					"threadId": g.threadID, "content": asstContent,
-				})
+				}
+				if ids := g.r.threadSkillIDs(g.threadID); len(ids) > 0 {
+					payload["skillIds"] = ids
+				}
+				g.r.emit("agent:assistant", payload)
 			}
 			g.r.emit("agent:done", map[string]interface{}{"threadId": g.threadID})
 			return asstContent, nil
@@ -178,6 +185,20 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 				return "", nil
 			}
 
+			if isProgressPollTool(name) {
+				progressPolls++
+			} else {
+				progressPolls = 0
+			}
+			if progressPolls >= maxProgressPolls {
+				nudge := "【系统】已连续多次查看终端/进度。长任务请向用户汇报当前进度并结束本轮；请用户到终端面板看进度，完成后说「继续」或「查进度」。禁止本轮继续空转等待。"
+				if result.OK {
+					result.Data = appendJSONNote(result.Data, nudge)
+				} else {
+					result.Error = strings.TrimSpace(result.Error + "\n" + nudge)
+				}
+			}
+
 			body, _ := json.Marshal(result)
 			rid, _, _ := g.r.harness.PutToolResult(g.threadID, g.taskID, callID, name, string(body))
 			st, summary := toolStatus(name, result)
@@ -200,6 +221,18 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 				payload["resourceId"] = rid
 			}
 			g.r.emit("agent:tool_end", payload)
+
+			if progressPolls >= maxProgressPolls {
+				msg := "长任务仍在进行中。请到终端面板查看实时进度；完成后告诉我「继续」，或再说「查一下进度」。本轮不再空转等待。"
+				_ = history.Append(root, g.threadID, history.Msg{
+					Role: "assistant", Content: msg, TaskID: g.taskID,
+				})
+				g.r.emit("agent:assistant", map[string]interface{}{
+					"threadId": g.threadID, "content": msg,
+				})
+				g.r.emit("agent:done", map[string]interface{}{"threadId": g.threadID})
+				return msg, nil
+			}
 		}
 	}
 	return "", fmt.Errorf("已达到最大工具调用步数")
@@ -258,6 +291,31 @@ func mergeNoteID(args json.RawMessage, snap model.AgentContextDO) json.RawMessag
 		merged["noteId"] = snap.NoteID
 	}
 	out, _ := json.Marshal(merged)
+	return out
+}
+
+func isProgressPollTool(name string) bool {
+	return name == "get_shell_output"
+}
+
+func appendJSONNote(data json.RawMessage, note string) json.RawMessage {
+	note = strings.TrimSpace(note)
+	if note == "" {
+		return data
+	}
+	var obj map[string]interface{}
+	if len(data) > 0 && json.Unmarshal(data, &obj) == nil && obj != nil {
+		obj["_agentHint"] = note
+		out, err := json.Marshal(obj)
+		if err == nil {
+			return out
+		}
+	}
+	wrapped := map[string]interface{}{
+		"result":     json.RawMessage(data),
+		"_agentHint": note,
+	}
+	out, _ := json.Marshal(wrapped)
 	return out
 }
 

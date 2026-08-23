@@ -1327,6 +1327,7 @@ button.wn-select-trigger {
   border-radius: var(--radius-sm);
   border: none;
   transition: background 0.12s;
+  user-select: none;
 }
 
 .conn-item:hover {

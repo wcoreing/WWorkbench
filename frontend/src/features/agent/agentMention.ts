@@ -62,6 +62,22 @@ export function mergeMentions(...groups: AgentMention[][]): AgentMention[] {
   return out
 }
 
+/** mentionKindShort @ chip 上的类型缩写。 */
+export function mentionKindShort(kind: AgentMentionKind): string {
+  switch (kind) {
+    case 'ssh':
+      return 'SSH'
+    case 'docker':
+      return 'DK'
+    case 'log':
+      return 'LOG'
+    case 'http':
+      return 'API'
+    default:
+      return 'DB'
+  }
+}
+
 export interface AgentAutoMentionInput {
   activeProduct: string
   surface: {
@@ -75,18 +91,29 @@ export interface AgentAutoMentionInput {
   connections: { id: string; name: string; host: string; dbType: string }[]
 }
 
+/** filterEphemeralAutoMentions 本轮自动附加（已在 mentions 中的剔除）。 */
+export function filterEphemeralAutoMentions(
+  autoMentions: AgentMention[],
+  mentions: AgentMention[],
+): AgentMention[] {
+  return autoMentions.filter(
+    (a) => !mentions.some((m) => m.kind === a.kind && m.id === a.id),
+  )
+}
+
 /** buildAutoMentions 根据界面快照与当前产品线生成默认 @ 资源。 */
 export function buildAutoMentions(input: AgentAutoMentionInput): AgentMention[] {
   const out: AgentMention[] = []
   const s = input.surface
   if (
     (input.activeProduct === 'terminal' && s.focusKind === 'terminal.ssh' && s.hostId) ||
-    (input.activeProduct === 'sftp' && s.focusKind === 'sftp' && s.hostId)
+    (input.activeProduct === 'sftp' && s.focusKind === 'sftp' && s.hostId) ||
+    (input.activeProduct === 'docker' && s.hostId)
   ) {
     out.push({
       kind: 'ssh',
-      id: s.hostId,
-      label: s.focusLabel || s.hostId,
+      id: s.hostId!,
+      label: s.focusLabel || s.hostId!,
     })
   }
   const connId = input.sessionConnectionId || input.activeConnectionId || s.connectionId || ''

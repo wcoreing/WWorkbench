@@ -159,11 +159,8 @@ func (m *Manager) ListContexts(ctx context.Context) ([]model.DockerContextDO, er
 		return nil, err
 	}
 	for _, c := range stored {
-		connected, ep, pingErr := m.pingContext(ctx, c.ID)
-		if ep != "" {
-			c.Endpoint = ep
-		}
-		c.Connected = connected && pingErr == nil
+		// 列表阶段不做 SSH 探测，避免不可达远端拖垮整表；连通性在 TestContext / 选中上下文时再验。
+		c.Connected = false
 		out = append(out, c)
 	}
 	return out, nil

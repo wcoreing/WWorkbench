@@ -162,6 +162,7 @@ import {
   ListAgentThreads,
   GetAgentThread,
   SetAgentThreadBindings,
+  SetAgentThreadSkillIDs,
   ListAgentSkills,
   ListSkillsDir,
   ListEnabledAgentSkills,
@@ -200,6 +201,7 @@ import {
   GetNote,
   SaveNote,
   DeleteNote,
+  DeleteNotes,
   GetNotebookUI,
   SaveNotebookUI,
   DuplicateNote,
@@ -665,6 +667,7 @@ export const api = {
   getNote: async (id: string) => unwrap(() => GetNote(id)),
   saveNote: (n: model.NoteDO) => unwrap(() => SaveNote(n)),
   deleteNote: (id: string) => unwrap(() => DeleteNote(id)),
+  deleteNotes: (ids: string[]) => unwrap(() => DeleteNotes(ids)),
   getNotebookUI: async () => unwrap(() => GetNotebookUI()),
   saveNotebookUI: (ui: model.NotebookUIDO) => unwrap(() => SaveNotebookUI(ui)),
   duplicateNote: async (id: string) => unwrap(() => DuplicateNote(id)),
@@ -700,4 +703,6 @@ export const api = {
     threadId: string,
     mentions: { kind: string; id: string; label: string }[],
   ) => unwrap(() => SetAgentThreadBindings(threadId, mentions)),
+  setAgentThreadSkillIds: async (threadId: string, skillIds: string[]) =>
+    unwrap(() => SetAgentThreadSkillIDs(threadId, skillIds)),
 }

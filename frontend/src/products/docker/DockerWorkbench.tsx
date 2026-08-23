@@ -1,18 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { ContainerEnvVar, DockerContainer, DockerContext, DockerImage, SSHHost } from '../../api/types'
-import { shellHostAsSSH } from '../../api/types'
 import { IconDocker, IconPlus } from '../../components/Icons'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ContextMenu } from '../../components/ContextMenu'
 import { DockerContextModal } from '../../features/docker/DockerContextModal'
 import { DockerComposePanel } from '../../features/docker/DockerComposePanel'
+import {
+  canDeleteDockerContext,
+  contextDisplayName,
+  contextEndpointLabel,
+  DEFAULT_LOCAL_DOCKER_CONTEXT,
+  LOCAL_DOCKER_CONTEXT,
+  upsertDockerContext,
+} from '../../features/docker/dockerContextDisplay'
+import { clampPage, DOCKER_PAGE_SIZE, DockerListBar, mayHaveDatabase, paginateList } from '../../features/docker/dockerListUtils'
 import { DockerRunModal } from '../../features/docker/DockerRunModal'
+import { useDockerContainerShell, type DockerDetailTab } from '../../features/docker/useDockerContainerShell'
+import { TerminalPane, terminalBackground } from '../../features/terminal/TerminalPane'
 import { READY_MESSAGES, useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildDockerSurface } from '../../stores/agentSurface'
 import { openAgentDraft, mentionSSH } from '../../features/agent/openAgentDraft'
-import { openTerminal, openSftp, openDatabase, openNotebook, openLogs, useWorkbenchCommand } from '../../stores/productLink'
+import { openSftp, openDatabase, openNotebook, openLogs, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
@@ -24,29 +34,6 @@ import {
   toDockerWorkspaceSnapshot,
   type DockerView,
 } from '../../stores/dockerWorkspacePersist'
-
-const LOCAL_CONTEXT = 'local'
-const PAGE_SIZE = 20
-
-/** canDeleteDockerContext 是否允许删除（本地默认上下文不可删）。 */
-function canDeleteDockerContext(ctx: DockerContext | undefined): boolean {
-  if (!ctx) return false
-  return ctx.id !== LOCAL_CONTEXT && ctx.kind !== 'local'
-}
-
-const DEFAULT_LOCAL_CONTEXT: DockerContext = {
-  id: LOCAL_CONTEXT,
-  name: 'Local Docker',
-  kind: 'local',
-  endpoint: 'unix:///var/run/docker.sock',
-  connected: false,
-}
-
-/** contextDisplayName 本地化上下文显示名。 */
-function contextDisplayName(ctx: DockerContext, localLabel: string) {
-  if (ctx.id === LOCAL_CONTEXT && ctx.kind === 'local') return localLabel
-  return ctx.name
-}
 
 /** formatUptime 格式化容器运行时长。 */
 function formatUptime(state: string, createdAt: number): string {
@@ -119,111 +106,19 @@ function DockerImageCell({ image, onCopied }: DockerImageCellProps) {
   )
 }
 
-interface DockerListBarProps {
-  page: number
-  total: number
-  pageSize: number
-  loading?: boolean
-  acting?: boolean
-  onPageChange: (page: number) => void
-  onRefresh: () => void
-}
-
-/** DockerListBar 列表工具栏（刷新 + 分页）。 */
-function DockerListBar({
-  page,
-  total,
-  pageSize,
-  loading,
-  acting,
-  onPageChange,
-  onRefresh,
-}: DockerListBarProps) {
-  const { t } = useI18n()
-  const totalPages = Math.max(1, Math.ceil(Math.max(total, 1) / pageSize))
-  const canPrev = total > 0 && page > 1
-  const canNext = total > 0 && page < totalPages
-
-  return (
-    <div className="pane-toolbar docker-list-bar">
-      <div className="pane-toolbar-start">
-        <button
-          type="button"
-          className="wn-btn wn-btn-tool wn-btn-sm"
-          disabled={loading || acting}
-          {...pressProps(onRefresh, { disabled: loading || acting })}
-        >
-          {t('common.refresh')}
-        </button>
-        <span className="pane-meta">
-          {total > 0
-            ? t('common.listMeta', { total, page, totalPages })
-            : t('common.noData')}
-          {loading ? ` · ${t('common.loading')}` : ''}
-        </span>
-      </div>
-      {total > 0 && (
-        <div className="pane-toolbar-end">
-          <button
-            type="button"
-            className="wn-btn wn-btn-tool wn-btn-sm"
-            disabled={!canPrev || loading}
-            {...pressProps(() => onPageChange(page - 1), { disabled: !canPrev || loading })}
-          >
-            {t('common.prevPage')}
-          </button>
-          <button
-            type="button"
-            className="wn-btn wn-btn-tool wn-btn-sm"
-            disabled={!canNext || loading}
-            {...pressProps(() => onPageChange(page + 1), { disabled: !canNext || loading })}
-          >
-            {t('common.nextPage')}
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-/** paginateList 对列表分页切片。 */
-function paginateList<T>(items: T[], page: number, pageSize: number) {
-  const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
-  const safePage = Math.min(Math.max(1, page), totalPages)
-  const start = (safePage - 1) * pageSize
-  return {
-    items: items.slice(start, start + pageSize),
-    page: safePage,
-    totalPages,
-  }
-}
-
-/** mayHaveDatabase 启发式判断容器是否可能暴露数据库端口。 */
-function mayHaveDatabase(c: DockerContainer): boolean {
-  const img = c.image.toLowerCase()
-  if (img.includes('mysql') || img.includes('mariadb') || img.includes('postgres')) return true
-  return c.ports.includes('3306') || c.ports.includes('5432') || c.ports.includes('3307')
-}
-
-/** clampPage 将页码限制在有效范围。 */
-function clampPage(page: number, total: number, pageSize: number) {
-  const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  return Math.min(Math.max(1, page), totalPages)
-}
-
 /** DockerWorkbench Docker 容器与镜像管理工作区。 */
 export function DockerWorkbench() {
-  const { setStatusMessage, setActiveProduct, statusMessage, setAgentSurface, activeProduct } = useAppStore()
+  const { setStatusMessage, statusMessage, setAgentSurface, activeProduct, terminalOpacity } = useAppStore()
   const { t } = useI18n()
-  const [contexts, setContexts] = useState<DockerContext[]>([DEFAULT_LOCAL_CONTEXT])
-  const [activeContextId, setActiveContextId] = useState(LOCAL_CONTEXT)
+  const [contexts, setContexts] = useState<DockerContext[]>([DEFAULT_LOCAL_DOCKER_CONTEXT])
+  const [activeContextId, setActiveContextId] = useState(LOCAL_DOCKER_CONTEXT)
   const [view, setView] = useState<DockerView>('containers')
   const [containers, setContainers] = useState<DockerContainer[]>([])
   const [images, setImages] = useState<DockerImage[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [logs, setLogs] = useState('')
   const [containerEnv, setContainerEnv] = useState<ContainerEnvVar[]>([])
-  const [detailTab, setDetailTab] = useState<'logs' | 'env'>('logs')
+  const [detailTab, setDetailTab] = useState<DockerDetailTab>('logs')
   const [envLoading, setEnvLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [acting, setActing] = useState(false)
@@ -249,15 +144,35 @@ export function DockerWorkbench() {
 
   const activeContext = contexts.find((c) => c.id === activeContextId)
   const selected = containers.find((c) => c.id === selectedId) ?? null
-  const dockerReady = Boolean(activeContext?.connected)
-  const isRemoteContext = activeContext != null && activeContext.id !== LOCAL_CONTEXT
+  const dockerReady =
+    Boolean(activeContext?.connected) || (!loading && (containers.length > 0 || images.length > 0))
+  const isRemoteContext = activeContext != null && activeContext.id !== LOCAL_DOCKER_CONTEXT
+  const shellActionLabel = isRemoteContext ? t('docker.shellRemote') : t('docker.shell')
+
+  const {
+    shellSessionId,
+    shellLoading,
+    shellError,
+    openContainerShell,
+    popOutContainerShell,
+  } = useDockerContainerShell({
+    activeContextId,
+    detailTab,
+    setDetailTab,
+    setStatusMessage,
+    t,
+  })
 
   useEffect(() => {
     if (activeProduct !== 'docker') return
+    const sshHostId = activeContext?.sshHostId?.trim() || ''
+    const sshHost = sshHostId ? sshHosts.find((h) => h.id === sshHostId) : undefined
     setAgentSurface(
       buildDockerSurface({
         contextId: activeContextId,
         contextLabel: activeContext ? contextDisplayName(activeContext, t('docker.localContext')) : activeContextId,
+        sshHostId,
+        sshHostLabel: sshHost?.name?.trim() || sshHost?.host || sshHostId,
         view,
         containerId: selected?.id,
         containerName: selected?.name || selected?.shortId,
@@ -271,6 +186,7 @@ export function DockerWorkbench() {
     activeProduct,
     activeContextId,
     activeContext,
+    sshHosts,
     view,
     selected,
     composeProjectDir,
@@ -281,28 +197,26 @@ export function DockerWorkbench() {
   ])
 
   const pagedContainers = useMemo(
-    () => paginateList(containers, containerPage, PAGE_SIZE),
+    () => paginateList(containers, containerPage, DOCKER_PAGE_SIZE),
     [containers, containerPage]
   )
-  const pagedImages = useMemo(() => paginateList(images, imagePage, PAGE_SIZE), [images, imagePage])
+  const pagedImages = useMemo(() => paginateList(images, imagePage, DOCKER_PAGE_SIZE), [images, imagePage])
 
   const refreshContexts = useCallback(async () => {
     try {
       const list = await api.listDockerContexts()
       setContexts(list)
-      setActiveContextId((current) => (list.some((c) => c.id === current) ? current : LOCAL_CONTEXT))
+      setActiveContextId((current) => (list.some((c) => c.id === current) ? current : LOCAL_DOCKER_CONTEXT))
     } catch (e) {
-      setContexts([{ ...DEFAULT_LOCAL_CONTEXT, connected: false }])
-      setActiveContextId(LOCAL_CONTEXT)
       setStatusMessage((e as Error).message)
     }
   }, [setStatusMessage])
 
-  /** loadSSHHosts 拉取终端已保存的 SSH 主机，供远程 Docker / 提及使用。 */
+  /** loadSSHHosts 拉取 SSH 主机，用于远程上下文展示与 Agent 提及。 */
   const loadSSHHosts = useCallback(async () => {
     try {
-      const list = await api.listShellHosts()
-      setSSHHosts(list.map((h) => shellHostAsSSH(h)).filter((h): h is SSHHost => Boolean(h)))
+      const list = await api.listSSHHosts()
+      setSSHHosts(list)
     } catch (e) {
       setSSHHosts([])
       setStatusMessage((e as Error).message)
@@ -347,13 +261,13 @@ export function DockerWorkbench() {
       if (view === 'images') {
         const list = await api.listImages(activeContextId)
         setImages(list)
-        setImagePage((p) => clampPage(p, list.length, PAGE_SIZE))
+        setImagePage((p) => clampPage(p, list.length, DOCKER_PAGE_SIZE))
         setStatusMessage(t('docker.loadedImages', { count: list.length }))
         return
       }
       const list = await api.listContainers(activeContextId)
       setContainers(list)
-      setContainerPage((p) => clampPage(p, list.length, PAGE_SIZE))
+      setContainerPage((p) => clampPage(p, list.length, DOCKER_PAGE_SIZE))
       if (selectedId && list.some((c) => c.id === selectedId)) {
         await Promise.all([
           loadLogs(activeContextId, selectedId),
@@ -554,18 +468,6 @@ export function DockerWorkbench() {
     }
   }
 
-  const openContainerShell = async (container: DockerContainer) => {
-    if (container.state !== 'running') return
-    setStatusMessage(t('docker.preparingShell'))
-    try {
-      const host = await api.ensureDockerHost(activeContextId, container.id)
-      openTerminal({ hostId: host.id }, 'docker')
-      setStatusMessage(t('docker.openingShell', { name: container.name || container.shortId }))
-    } catch (e) {
-      setStatusMessage((e as Error).message)
-    }
-  }
-
   const openContainerFiles = async (container: DockerContainer) => {
     if (container.state !== 'running') return
     setStatusMessage(t('docker.preparingFiles'))
@@ -623,7 +525,7 @@ export function DockerWorkbench() {
       const list = await api.listContainers(activeContextId)
       setContainers(list)
       const idx = list.findIndex((c) => c.id === container.id)
-      const page = idx >= 0 ? clampPage(Math.floor(idx / PAGE_SIZE) + 1, list.length, PAGE_SIZE) : 1
+      const page = idx >= 0 ? clampPage(Math.floor(idx / DOCKER_PAGE_SIZE) + 1, list.length, DOCKER_PAGE_SIZE) : 1
       setContainerPage(page)
       setSelectedId(container.id)
       setDetailTab('env')
@@ -661,7 +563,7 @@ export function DockerWorkbench() {
       setContainerEnv([])
       setSelectedId(null)
       if (activeContextId === ctx.id) {
-        setActiveContextId(LOCAL_CONTEXT)
+        setActiveContextId(LOCAL_DOCKER_CONTEXT)
       }
       await refreshContexts()
       setStatusMessage(t('docker.contextDeleted', { name: ctx.name }))
@@ -745,7 +647,7 @@ export function DockerWorkbench() {
                     <IconDocker size={14} className="mock-icon" />
                     <div className="conn-meta">
                       <span className="conn-name">{contextDisplayName(ctx, localContextLabel)}</span>
-                      <span className="conn-host">{ctx.endpoint}</span>
+                      <span className="conn-host">{contextEndpointLabel(ctx, sshHosts)}</span>
                     </div>
                     {canDeleteDockerContext(ctx) && (
                       <button
@@ -835,7 +737,7 @@ export function DockerWorkbench() {
               <DockerListBar
                 page={pagedImages.page}
                 total={images.length}
-                pageSize={PAGE_SIZE}
+                pageSize={DOCKER_PAGE_SIZE}
                 loading={loading}
                 acting={acting}
                 onPageChange={setImagePage}
@@ -898,12 +800,61 @@ export function DockerWorkbench() {
                 <DockerListBar
                   page={pagedContainers.page}
                   total={containers.length}
-                  pageSize={PAGE_SIZE}
+                  pageSize={DOCKER_PAGE_SIZE}
                   loading={loading}
                   acting={acting}
                   onPageChange={setContainerPage}
                   onRefresh={() => void refreshData()}
                 />
+                {selected && dockerReady && (
+                  <div className="docker-selection-bar">
+                    <span className="docker-selection-label" title={selected.name || selected.shortId}>
+                      {selected.name || selected.shortId}
+                    </span>
+                    <div className="docker-selection-actions">
+                      {selected.state === 'running' && (
+                        <>
+                          <button
+                            type="button"
+                            className="wn-btn wn-btn-sm wn-btn-primary"
+                            disabled={acting}
+                            {...pressProps(() => void openContainerShell(selected), { disabled: acting })}
+                          >
+                            {shellActionLabel}
+                          </button>
+                          <button
+                            type="button"
+                            className="wn-btn wn-btn-sm wn-btn-tool"
+                            disabled={acting}
+                            {...pressProps(() => void openContainerFiles(selected), { disabled: acting })}
+                          >
+                            {t('docker.files')}
+                          </button>
+                        </>
+                      )}
+                      {selected.state !== 'running' && (
+                        <button
+                          type="button"
+                          className="wn-btn wn-btn-sm wn-btn-tool"
+                          disabled={acting}
+                          {...pressProps(() => void startContainer(selected), { disabled: acting })}
+                        >
+                          {t('docker.start')}
+                        </button>
+                      )}
+                      {mayHaveDatabase(selected) && (
+                        <button
+                          type="button"
+                          className="wn-btn wn-btn-sm wn-btn-tool"
+                          disabled={acting}
+                          {...pressProps(() => void openDatabaseLink(selected), { disabled: acting })}
+                        >
+                          {t('docker.databaseShort')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <div className="docker-table-wrap">
                 <table className="docker-table docker-table-containers">
                   <colgroup>
@@ -1003,13 +954,13 @@ export function DockerWorkbench() {
                                       type="button"
                                       className="docker-act-btn"
                                       disabled={!dockerReady || acting}
-                                      title={t('docker.shell')}
+                                      title={shellActionLabel}
                                       {...pressProps(() => void openContainerShell(c), {
                                         disabled: !dockerReady || acting,
                                         stop: true,
                                       })}
                                     >
-                                      {t('docker.shell')}
+                                      {shellActionLabel}
                                     </button>
                                     <button
                                       type="button"
@@ -1061,7 +1012,7 @@ export function DockerWorkbench() {
                 </table>
                 </div>
               </div>
-              <div className="docker-log-panel">
+              <div className={`docker-log-panel${detailTab === 'shell' ? ' is-shell' : ''}`}>
                 <header className="docker-log-header">
                   <div className="docker-detail-tabs">
                     <button
@@ -1070,6 +1021,18 @@ export function DockerWorkbench() {
                       {...pressProps(() => setDetailTab('logs'))}
                     >
                       {t('docker.tabLogs')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`docker-detail-tab${detailTab === 'shell' ? ' is-active' : ''}`}
+                      disabled={!selected || selected.state !== 'running'}
+                      {...pressProps(() => {
+                        if (!selected || selected.state !== 'running') return
+                        setDetailTab('shell')
+                        void openContainerShell(selected, { showTab: false })
+                      }, { disabled: !selected || selected.state !== 'running' })}
+                    >
+                      {t('docker.tabShell')}
                     </button>
                     <button
                       type="button"
@@ -1090,6 +1053,16 @@ export function DockerWorkbench() {
                       {t('common.refresh')}
                     </button>
                   )}
+                  {selected && detailTab === 'shell' && selected.state === 'running' && (
+                    <button
+                      type="button"
+                      className="wn-btn wn-btn-tool wn-btn-sm"
+                      disabled={acting || shellLoading}
+                      {...pressProps(() => void popOutContainerShell(selected), { disabled: acting || shellLoading })}
+                    >
+                      {t('docker.popOutShell')}
+                    </button>
+                  )}
                   {selected && detailTab === 'env' && (
                     <button
                       type="button"
@@ -1105,6 +1078,32 @@ export function DockerWorkbench() {
                 </header>
                 {detailTab === 'logs' ? (
                   <pre className="docker-log-body">{logs || (loading ? t('common.loading') : t('docker.selectLogs'))}</pre>
+                ) : detailTab === 'shell' ? (
+                  <div
+                    className="docker-shell-body"
+                    style={{ backgroundColor: terminalBackground(terminalOpacity) }}
+                  >
+                    {!selected ? (
+                      <p className="docker-env-empty">{t('docker.selectShell')}</p>
+                    ) : selected.state !== 'running' ? (
+                      <p className="docker-env-empty">{t('docker.shellNeedsRunning')}</p>
+                    ) : shellLoading ? (
+                      <p className="docker-env-empty">{t('docker.preparingShell')}</p>
+                    ) : shellError ? (
+                      <p className="docker-env-empty">{shellError}</p>
+                    ) : shellSessionId ? (
+                      <div className="docker-shell-pane">
+                        <TerminalPane
+                          sessionId={shellSessionId}
+                          active={activeProduct === 'docker' && detailTab === 'shell'}
+                          focused
+                          opacity={terminalOpacity}
+                        />
+                      </div>
+                    ) : (
+                      <p className="docker-env-empty">{t('docker.selectShell')}</p>
+                    )}
+                  </div>
                 ) : (
                   <div className="docker-env-body">
                     {!selected ? (
@@ -1160,7 +1159,10 @@ export function DockerWorkbench() {
           setContextModalOpen(false)
           setContextModalHostId(undefined)
         }}
-        onSaved={() => {
+        onSaved={(ctx) => {
+          setContexts((prev) => upsertDockerContext(prev, ctx))
+          setActiveContextId(ctx.id)
+          setStatusMessage(t('docker.contextSaved', { name: ctx.name }))
           void refreshContexts()
           void loadSSHHosts()
         }}

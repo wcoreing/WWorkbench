@@ -32,6 +32,7 @@ const (
 	CapEnvironmentOpen      = "environment_open"
 	CapSSHForwardOpen       = "ssh_forward_open"
 	CapPublishAgentSkill    = "publish_agent_skill"
+	CapUpdateAgentSkill     = "update_agent_skill"
 	CapAgentChat            = "agent_chat"
 	CapAgentConfirm         = "agent_confirm"
 )

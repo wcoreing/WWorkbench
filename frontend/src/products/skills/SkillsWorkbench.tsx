@@ -190,7 +190,7 @@ export function SkillsWorkbench() {
 
   const tryInvoke = () => {
     if (!activeSkillId) return
-    openAgentDraft({ mentions: [], message: `/${activeSkillId} ` })
+    openAgentDraft({ mentions: [], skillIds: [activeSkillId] })
   }
 
   const createSkill = () => {

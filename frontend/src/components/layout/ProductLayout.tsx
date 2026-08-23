@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { CollapseRail } from './CollapseRail'
 import { ResizeHandle } from './ResizeHandle'
 import { useResizable } from './useResizable'
 import './layout.css'
@@ -16,6 +17,11 @@ type Props = {
   /** 受控侧栏宽度（与 onResizeStart 成对传入） */
   width?: number
   onResizeStart?: (e: React.MouseEvent) => void
+  /** 侧栏已收起：主区前显示展开轨 */
+  sidebarCollapsed?: boolean
+  onToggleSidebarCollapse?: () => void
+  sidebarRailLabel?: string
+  sidebarExpandTitle?: string
 }
 
 /** 产品线通用：可拖宽度侧栏 + 主区 */
@@ -31,6 +37,10 @@ export function ProductLayout({
   sidebarClassName,
   width: widthProp,
   onResizeStart: onResizeStartProp,
+  sidebarCollapsed = false,
+  onToggleSidebarCollapse,
+  sidebarRailLabel,
+  sidebarExpandTitle,
 }: Props) {
   const internal = useResizable({
     axis: 'x',
@@ -43,8 +53,20 @@ export function ProductLayout({
   const size = controlled ? widthProp : internal.size
   const onResizeStart = controlled ? onResizeStartProp : internal.onResizeStart
 
-  if (!showSidebar) {
-    return <div className="product-body wn-product-layout">{children}</div>
+  if (!showSidebar || sidebarCollapsed) {
+    return (
+      <div className="product-body wn-product-layout">
+        {sidebarCollapsed && onToggleSidebarCollapse ? (
+          <CollapseRail
+            axis="x"
+            onToggle={onToggleSidebarCollapse}
+            label={sidebarRailLabel}
+            title={sidebarExpandTitle}
+          />
+        ) : null}
+        <div className="wn-product-main">{children}</div>
+      </div>
+    )
   }
 
   return (
@@ -55,7 +77,19 @@ export function ProductLayout({
       >
         {sidebar}
       </aside>
-      <ResizeHandle axis="x" onMouseDown={onResizeStart} title={resizeTitle} />
+      <ResizeHandle
+        axis="x"
+        onMouseDown={onResizeStart}
+        onDoubleClick={
+          onToggleSidebarCollapse
+            ? (e) => {
+                e.preventDefault()
+                onToggleSidebarCollapse()
+              }
+            : undefined
+        }
+        title={resizeTitle}
+      />
       <div className="wn-product-main">{children}</div>
     </div>
   )

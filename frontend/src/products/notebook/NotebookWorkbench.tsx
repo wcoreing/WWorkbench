@@ -2,17 +2,20 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { Connection, Note, NoteLanguage, NoteSummary, NotebookGroup, ShellHost } from '../../api/types'
 import { model } from '../../../wailsjs/go/models'
-import { IconDatabase, IconDocker, IconNotebook, IconPlay, IconPlus, IconServer } from '../../components/Icons'
+import { IconDatabase, IconNotebook, IconPlay, IconPlus } from '../../components/Icons'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { ProductLayout, rememberScalarSize, recallScalarSize, useResizable } from '../../components/layout'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { MarkdownPreview } from '../../features/notebook/MarkdownPreview'
+import { NotebookMdViewToggle, type NotebookMdViewMode } from '../../features/notebook/NotebookMdViewToggle'
+import { NotebookNoteSettingsMenu } from '../../features/notebook/NotebookNoteSettingsMenu'
 import { NoteEditor, type NoteEditorHandle } from '../../features/notebook/NoteEditor'
 import { NotebookGroupModal } from '../../features/notebook/NotebookGroupModal'
 import { NotebookSidebar } from '../../features/notebook/NotebookSidebar'
 import { openAgentDraft } from '../../features/agent/openAgentDraft'
 import { readLinkedSkillId } from '../../features/notebook/noteSkillLink'
 import { buildNotebookLayout, moveNoteInTree, nextNoteSortOrder } from '../../features/notebook/notebookTree'
-import { Select, pressProps, useDismissOverlays } from '../../components/compat'
+import { pressProps, useDismissOverlays } from '../../components/compat'
 import {
   buildConnectionTemplate,
   buildServerChecklistTemplate,
@@ -83,10 +86,27 @@ export function NotebookWorkbench() {
   const [connections, setConnections] = useState<Connection[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const NOTEBOOK_SIDEBAR_WIDTH_KEY = 'notebook_sidebar_width'
+  const NOTEBOOK_SIDEBAR_EXPANDED_KEY = 'notebook_sidebar_width__expanded'
+  const NOTEBOOK_SIDEBAR_COLLAPSED_KEY = 'notebook_sidebar__collapsed'
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem(NOTEBOOK_SIDEBAR_COLLAPSED_KEY) === '1',
+  )
+  const {
+    size: notebookSidebarWidth,
+    setSizeAndSave: setNotebookSidebarWidth,
+    onResizeStart: onNotebookSidebarResizeStart,
+  } = useResizable({
+    axis: 'x',
+    storageKey: NOTEBOOK_SIDEBAR_WIDTH_KEY,
+    defaultSize: 280,
+    min: 220,
+    max: 520,
+  })
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'note' | 'group'; id: string; title: string } | null>(null)
   const [groupModal, setGroupModal] = useState<NotebookGroup | null | undefined>(undefined)
-  const [showPreview, setShowPreview] = useState(false)
+  const [listRefreshing, setListRefreshing] = useState(false)
+  const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('source')
   const [saveByNote, setSaveByNote] = useState<Record<string, 'saved' | 'dirty' | 'saving'>>({})
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
   useDismissOverlays(() => setTabCtxMenu(null))
@@ -140,6 +160,25 @@ export function NotebookWorkbench() {
   }, [tabCtxMenu])
 
   const activeSaveStatus = activeTabId ? saveByNote[activeTabId] ?? 'saved' : 'saved'
+
+  const toggleSidebarCollapse = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(NOTEBOOK_SIDEBAR_COLLAPSED_KEY, next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      if (next) rememberScalarSize(NOTEBOOK_SIDEBAR_EXPANDED_KEY, notebookSidebarWidth)
+      else {
+        setNotebookSidebarWidth(
+          recallScalarSize(NOTEBOOK_SIDEBAR_EXPANDED_KEY, notebookSidebarWidth, 220, 520),
+        )
+      }
+      return next
+    })
+  }, [notebookSidebarWidth, setNotebookSidebarWidth])
+
   const searching = Boolean(search.trim())
 
   const noteSnapshot = (note: Note) =>
@@ -186,6 +225,39 @@ export function NotebookWorkbench() {
       connList: connList as Connection[],
     }
   }, [])
+
+  const handleRefreshList = useCallback(async () => {
+    setListRefreshing(true)
+    try {
+      await refreshAll()
+      if (searching) await refreshSummaries()
+      for (const id of openTabIds) {
+        const status = saveByNote[id]
+        if (status === 'dirty' || status === 'saving') continue
+        try {
+          const note = (await api.getNote(id)) as Note
+          markNoteSaved(note)
+          setOpenNotes((prev) => ({ ...prev, [id]: note }))
+        } catch {
+          /* 笔记已删除 */
+        }
+      }
+      setStatusMessage(t('notebook.listRefreshed'))
+    } catch (e) {
+      setStatusMessage((e as Error).message)
+    } finally {
+      setListRefreshing(false)
+    }
+  }, [
+    refreshAll,
+    refreshSummaries,
+    searching,
+    openTabIds,
+    saveByNote,
+    markNoteSaved,
+    setStatusMessage,
+    t,
+  ])
 
   const persistUI = useCallback((tabIds: string[], activeId: string | null) => {
     if (uiTimer.current) clearTimeout(uiTimer.current)
@@ -252,14 +324,26 @@ export function NotebookWorkbench() {
         useAppStore.getState().setStatusMessage(
           evt.label ? `已落笔记本资产：${evt.label}` : `已打开笔记 ${noteId}`,
         )
-      } else if (evt.op === 'delete' && noteId) {
-        setOpenTabIds((prev) => prev.filter((id) => id !== noteId))
-        setOpenNotes((prev) => {
-          const next = { ...prev }
-          delete next[noteId]
+      } else if (evt.op === 'delete') {
+        const deletedIds = evt.ids.filter(Boolean)
+        if (deletedIds.length === 0) return
+        setOpenTabIds((prev) => {
+          const next = prev.filter((id) => !deletedIds.includes(id))
+          setActiveTabId((cur) =>
+            cur && deletedIds.includes(cur) ? next[next.length - 1] ?? null : cur,
+          )
           return next
         })
-        setActiveTabId((cur) => (cur === noteId ? null : cur))
+        setOpenNotes((prev) => {
+          const next = { ...prev }
+          for (const id of deletedIds) delete next[id]
+          return next
+        })
+        setSaveByNote((prev) => {
+          const next = { ...prev }
+          for (const id of deletedIds) delete next[id]
+          return next
+        })
       } else if (noteId && openNotesRef.current[noteId] && evt.op !== 'delete') {
         try {
           const note = (await api.getNote(noteId)) as Note
@@ -503,10 +587,18 @@ export function NotebookWorkbench() {
   const publishSkill = () => {
     if (!activeNote) return
     const linked = readLinkedSkillId(activeNote.content)
-    const linkedHint = linked ? ` 已关联 /${linked}，更新时请沿用 id。` : ''
+    const linkedHint = linked ? ` 已关联 /${linked}，发布时沿用 id。` : ''
     openAgentDraft({
       mentions: [],
       message: `/skill-creator 请把当前笔记发布为技能。${linkedHint}（可在发送前补充 id、名称等要求）`,
+    })
+  }
+
+  const toMethodPack = () => {
+    if (!activeNote) return
+    openAgentDraft({
+      mentions: [],
+      message: `/skill-to-method-pack 请把当前笔记抽象为通用方法包。（可在发送前补充 id、名称等要求）`,
     })
   }
 
@@ -602,6 +694,11 @@ export function NotebookWorkbench() {
           delete next[deleteTarget.id]
           return next
         })
+        setSaveByNote((prev) => {
+          const next = { ...prev }
+          delete next[deleteTarget.id]
+          return next
+        })
         if (activeTabId === deleteTarget.id) setActiveTabId(null)
       } else {
         await api.deleteNotebookGroup(deleteTarget.id)
@@ -613,15 +710,6 @@ export function NotebookWorkbench() {
     } finally {
       setDeleteTarget(null)
     }
-  }
-
-  const toggleGroup = (id: string) => {
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
   }
 
   const persistNotebookLayout = useCallback(
@@ -689,6 +777,47 @@ export function NotebookWorkbench() {
     [summaries, groups, persistNotebookLayout, openNotes],
   )
 
+  const handleBatchDeleteNotes = async (ids: string[]) => {
+    const known = new Set(summaries.map((s) => s.id))
+    const toDelete = [...new Set(ids.filter((id) => known.has(id)))]
+    if (toDelete.length === 0) {
+      throw new Error(t('notebook.batchNone'))
+    }
+    const idSet = new Set(toDelete)
+
+    for (const id of toDelete) {
+      if (saveTimers.current[id]) {
+        clearTimeout(saveTimers.current[id])
+        delete saveTimers.current[id]
+      }
+      delete noteSnapshots.current[id]
+    }
+
+    const nextSummaries = summaries.filter((s) => !idSet.has(s.id))
+    await api.deleteNotes(toDelete)
+    try {
+      await persistNotebookLayout(buildNotebookLayout(groups, nextSummaries))
+    } catch {
+      setSummaries(nextSummaries)
+    }
+
+    setOpenTabIds((prev) => {
+      const next = prev.filter((id) => !idSet.has(id))
+      setActiveTabId((current) => (current && idSet.has(current) ? next[next.length - 1] ?? null : current))
+      return next
+    })
+    setOpenNotes((prev) => {
+      const next = { ...prev }
+      for (const id of toDelete) delete next[id]
+      return next
+    })
+    setSaveByNote((prev) => {
+      const next = { ...prev }
+      for (const id of toDelete) delete next[id]
+      return next
+    })
+  }
+
   if (loading) {
     return (
       <div className="product-workbench notebook-workbench">
@@ -721,21 +850,15 @@ export function NotebookWorkbench() {
               <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(publishSkill)}>
                 {t('notebook.publishSkill')}
               </button>
+              <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(toMethodPack)}>
+                {t('notebook.toMethodPack')}
+              </button>
               <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(runInTerminal)}>
                 <IconPlay size={14} /> {t('notebook.runTerminal')}
               </button>
               {activeNote.connectionId && (
                 <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => openDatabase(true))}>
                   <IconDatabase size={14} /> {t('notebook.openAndRun')}
-                </button>
-              )}
-              {activeNote.language === 'markdown' && (
-                <button
-                  type="button"
-                  className={`wn-btn wn-btn-sm wn-btn-tool ${showPreview ? 'active' : ''}`}
-                  {...pressProps(() => setShowPreview((v) => !v))}
-                >
-                  {t('notebook.preview')}
                 </button>
               )}
               <button
@@ -754,28 +877,38 @@ export function NotebookWorkbench() {
         </div>
       </header>
 
-      <div className="product-body">
-        <NotebookSidebar
-          groups={groups}
-          summaries={summaries}
-          searching={searching}
-          search={search}
-          activeTabId={activeTabId}
-          collapsedGroups={collapsedGroups}
-          languages={languages}
-          onSearchChange={setSearch}
-          onToggleGroup={toggleGroup}
-          onOpenNote={(id) => void openNoteById(id)}
-          onGroupsChange={setGroups}
-          onSummariesChange={setSummaries}
-          onPersistLayout={persistNotebookLayout}
-          onCreateNoteInGroup={(gid) => void createNote(gid)}
-          onEditGroup={setGroupModal}
-          onDeleteGroup={(id, title) => setDeleteTarget({ kind: 'group', id, title })}
-          onDeleteNote={(id, title) => setDeleteTarget({ kind: 'note', id, title })}
-          onMoveNoteToGroup={(noteId, groupId) => void moveNoteToGroup(noteId, groupId)}
-        />
-
+      <ProductLayout
+        storageKey={NOTEBOOK_SIDEBAR_WIDTH_KEY}
+        resizeTitle={t('common.resizeWidth')}
+        defaultWidth={280}
+        minWidth={220}
+        maxWidth={520}
+        width={notebookSidebarWidth}
+        onResizeStart={onNotebookSidebarResizeStart}
+        sidebarClassName="notebook-sidebar"
+        sidebarCollapsed={sidebarCollapsed}
+        onToggleSidebarCollapse={toggleSidebarCollapse}
+        sidebarRailLabel={t('notebook.sidebarRail')}
+        sidebarExpandTitle={t('notebook.expandSidebar')}
+        sidebar={
+          <NotebookSidebar
+            groups={groups}
+            summaries={summaries}
+            search={search}
+            activeTabId={activeTabId}
+            languages={languages}
+            onSearchChange={setSearch}
+            onOpenNote={(id) => void openNoteById(id)}
+            onEditGroup={setGroupModal}
+            onDeleteGroup={(id, title) => setDeleteTarget({ kind: 'group', id, title })}
+            onDeleteNote={(id, title) => setDeleteTarget({ kind: 'note', id, title })}
+            onMoveNoteToGroup={(noteId, groupId) => void moveNoteToGroup(noteId, groupId)}
+            onBatchDelete={handleBatchDeleteNotes}
+            onRefresh={handleRefreshList}
+            refreshing={listRefreshing}
+          />
+        }
+      >
         <main className="app-main notebook-main">
           <div className="editor-chrome">
             <div className="wn-tabs" ref={tabsRef}>
@@ -813,85 +946,61 @@ export function NotebookWorkbench() {
                   onChange={(e) => updateActiveNote({ title: e.target.value })}
                   placeholder={t('notebook.titlePlaceholder')}
                 />
-                <Select
-                  className="notebook-lang-select"
-                  value={activeNote.groupId}
-                  title={t('notebook.groupTitle')}
-                  options={[
-                    { value: '', label: t('notebook.rootGroup') },
-                    ...groups.map((g) => ({ value: g.id, label: g.name })),
-                  ]}
-                  onChange={(v) => updateActiveNote({ groupId: v })}
-                />
-                <Select
-                  className="notebook-lang-select"
-                  value={activeNote.language}
-                  options={languages.map((l) => ({ value: l.id, label: l.label }))}
-                  onChange={(v) => updateActiveNote({ language: v as NoteLanguage })}
-                />
-                <Select
-                  className="notebook-host-select"
-                  value={activeNote.sshHostId}
-                  options={[
-                    { value: '', label: t('notebook.sshHost') },
-                    ...hosts.map((h) => ({
-                      value: h.id,
-                      label: h.kind === 'docker' ? `[Docker] ${h.name}` : h.name,
-                    })),
-                  ]}
-                  onChange={(v) => updateActiveNote({ sshHostId: v })}
-                />
-                <Select
-                  className="notebook-host-select"
-                  value={activeNote.connectionId}
-                  title={t('notebook.dbLinkHint')}
-                  options={[
-                    { value: '', label: t('notebook.dbConnection') },
-                    ...connections.map((c) => ({ value: c.id, label: c.name })),
-                  ]}
-                  onChange={onConnectionLinkChange}
-                />
-                {activeNote.sshHostId && (
-                  <span className="notebook-host-badge">
-                    {hosts.find((h) => h.id === activeNote.sshHostId)?.kind === 'docker' ? (
-                      <><IconDocker size={12} /> Docker</>
-                    ) : (
-                      <><IconServer size={12} /> SSH</>
+                <div className="notebook-meta-bar-right">
+                  {activeNote.language === 'markdown' && (
+                    <NotebookMdViewToggle mode={mdViewMode} onChange={setMdViewMode} />
+                  )}
+                  <NotebookNoteSettingsMenu
+                    note={activeNote}
+                    groups={groups}
+                    hosts={hosts}
+                    connections={connections}
+                    languages={languages}
+                    onPatch={updateActiveNote}
+                    onConnectionLink={onConnectionLinkChange}
+                  />
+                  <div className="notebook-save-actions">
+                    {(activeSaveStatus === 'dirty' || activeSaveStatus === 'saving') && (
+                      <button
+                        type="button"
+                        className={`wn-btn wn-btn-sm ${activeSaveStatus === 'dirty' ? 'wn-btn-primary' : 'wn-btn-tool'}`}
+                        disabled={activeSaveStatus === 'saving'}
+                        title={t('notebook.saveShortcut')}
+                        {...pressProps(() => void flushSaveActive(), { disabled: activeSaveStatus === 'saving' })}
+                      >
+                        {activeSaveStatus === 'saving' ? t('notebook.saving') : t('notebook.save')}
+                      </button>
                     )}
-                  </span>
-                )}
-                <div className="notebook-save-actions">
-                  <button
-                    type="button"
-                    className={`wn-btn wn-btn-sm ${activeSaveStatus === 'dirty' ? 'wn-btn-primary' : 'wn-btn-tool'}`}
-                    disabled={activeSaveStatus === 'saving'}
-                    title={t('notebook.saveShortcut')}
-                    {...pressProps(() => void flushSaveActive(), { disabled: activeSaveStatus === 'saving' })}
-                  >
-                    {activeSaveStatus === 'saving' ? t('notebook.saving') : t('notebook.save')}
-                  </button>
-                  <span
-                    className={`notebook-save-status${activeSaveStatus === 'dirty' ? ' is-dirty' : ''}`}
-                    aria-live="polite"
-                  >
-                    {activeSaveStatus === 'saving'
-                      ? t('notebook.saving')
-                      : activeSaveStatus === 'dirty'
-                        ? t('notebook.unsaved')
-                        : t('notebook.saved')}
-                  </span>
+                    <span
+                      className={`notebook-save-status${activeSaveStatus === 'dirty' ? ' is-dirty' : ''}`}
+                      aria-live="polite"
+                      title={t('notebook.saveShortcut')}
+                    >
+                      {activeSaveStatus === 'saving'
+                        ? t('notebook.saving')
+                        : activeSaveStatus === 'dirty'
+                          ? t('notebook.unsaved')
+                          : t('notebook.saved')}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className={`notebook-editor-split${showPreview ? ' with-preview' : ''}`}>
-                <NoteEditor
-                  ref={editorRef}
-                  noteId={activeNote.id}
-                  language={activeNote.language}
-                  content={activeNote.content}
-                  onChange={(content) => updateActiveNote({ content })}
-                  onRunSelection={runInTerminal}
-                />
-                {showPreview && activeNote.language === 'markdown' && (
+              <div
+                className={`notebook-editor-split${
+                  mdViewMode === 'split' ? ' with-preview' : mdViewMode === 'preview' ? ' preview-only' : ''
+                }`}
+              >
+                {mdViewMode !== 'preview' && (
+                  <NoteEditor
+                    ref={editorRef}
+                    noteId={activeNote.id}
+                    language={activeNote.language}
+                    content={activeNote.content}
+                    onChange={(content) => updateActiveNote({ content })}
+                    onRunSelection={runInTerminal}
+                  />
+                )}
+                {mdViewMode !== 'source' && activeNote.language === 'markdown' && (
                   <div className="notebook-preview-pane">
                     <MarkdownPreview content={activeNote.content} />
                   </div>
@@ -902,7 +1011,7 @@ export function NotebookWorkbench() {
             <div className="pane-empty"><span>{t('notebook.emptyWorkspace')}</span></div>
           )}
         </main>
-      </div>
+      </ProductLayout>
 
       {tabCtxMenu && (
         <TabContextMenu

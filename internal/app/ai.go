@@ -183,14 +183,34 @@ func (s *Service) GetAgentThread(threadID string) ApiResult[model.AgentThreadDet
 	if s.harnessHost == nil {
 		return ErrResult[model.AgentThreadDetailDO](errAgentNotReady())
 	}
-	info, mentions, _, err := s.harnessHost.GetSession(threadID)
+	info, mentions, _, skillIDs, err := s.harnessHost.GetSession(threadID)
 	if err != nil {
 		return ErrResult[model.AgentThreadDetailDO](errno.New(errno.CodeNotFound, err.Error(), threadID))
 	}
 	return OkResult(model.AgentThreadDetailDO{
 		ID: info.ID, Title: info.Title, UpdatedAt: info.UpdatedAt,
-		Context: model.AgentContextDO{Mentions: mentions},
+		Context: model.AgentContextDO{Mentions: mentions, SkillIDs: skillIDs},
 	})
+}
+
+// SetAgentThreadSkillIDs 更新对话绑定的 skill（解绑不发消息）。
+func (s *Service) SetAgentThreadSkillIDs(threadID string, skillIDs []string) ApiResult[bool] {
+	if threadID == "" {
+		return ErrResult[bool](errno.New(errno.CodeInvalidArg, "threadId 不能为空", ""))
+	}
+	if s.harnessHost == nil {
+		return ErrResult[bool](errAgentNotReady())
+	}
+	if skillIDs == nil {
+		skillIDs = []string{}
+	}
+	if err := s.harnessHost.SetSessionSkillIDs(threadID, skillIDs); err != nil {
+		return ErrResult[bool](err)
+	}
+	if s.agentRunner != nil {
+		s.agentRunner.InvalidateThread(threadID)
+	}
+	return OkResult(true)
 }
 
 // SetAgentThreadBindings 更新对话 @ 绑定（解绑不发消息）。

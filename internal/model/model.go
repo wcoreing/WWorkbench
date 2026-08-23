@@ -817,6 +817,7 @@ type AgentContextDO struct {
 	TerminalSessionID string           `json:"terminalSessionId,omitempty"`
 	NoteID            string           `json:"noteId,omitempty"` // 当前打开的笔记
 	Mentions          []AgentMentionDO `json:"mentions"`
+	SkillIDs          []string         `json:"skillIds,omitempty"` // 本对话绑定的 / 技能
 }
 
 // AgentChatImageDO 对话附件图片（data 为无前缀 base64，或 data URL）。
@@ -913,10 +914,11 @@ type AgentPendingDO struct {
 
 // AgentMessageDO 对话消息。
 type AgentMessageDO struct {
-	Role    string             `json:"role"`
-	Content string             `json:"content"`
-	Images  []AgentChatImageDO `json:"images,omitempty"`
-	Seq     int                `json:"seq,omitempty"`
+	Role     string             `json:"role"`
+	Content  string             `json:"content"`
+	Images   []AgentChatImageDO `json:"images,omitempty"`
+	SkillIDs []string           `json:"skillIds,omitempty"`
+	Seq      int                `json:"seq,omitempty"`
 }
 
 // AgentRewindRequestDO 截断工作记忆。

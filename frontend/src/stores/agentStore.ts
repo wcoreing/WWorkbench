@@ -4,6 +4,7 @@ import type { AgentPanelView } from '../features/agent/agentTypes'
 import { loadChatMode, persistChatMode, type AgentChatMode } from '../features/agent/agentChatMode'
 
 const STORAGE_OPEN = 'agent_panel_open'
+const STORAGE_THREAD = 'agent_thread_id'
 
 export interface AgentChatLine {
   id: string
@@ -42,6 +43,25 @@ function persistAgentPanelOpen(open: boolean) {
   }
 }
 
+/** loadAgentThreadId 读取上次对话 threadId。 */
+function loadAgentThreadId(): string {
+  try {
+    return localStorage.getItem(STORAGE_THREAD) || ''
+  } catch {
+    return ''
+  }
+}
+
+/** persistAgentThreadId 持久化当前对话 threadId。 */
+function persistAgentThreadId(threadId: string) {
+  try {
+    if (threadId) localStorage.setItem(STORAGE_THREAD, threadId)
+    else localStorage.removeItem(STORAGE_THREAD)
+  } catch {
+    /* ignore */
+  }
+}
+
 /** AgentToolStep 工具调用轨迹步骤。 */
 export interface AgentToolStep {
   id: string
@@ -59,9 +79,12 @@ interface AgentStore {
   streamingLineId: string | null
   draftInput: string
   draftMentions: AgentMention[]
+  draftSkillIds: string[]
   draftTick: number
   toolSteps: AgentToolStep[]
   threadMentions: AgentMention[]
+  threadSkillIds: string[]
+  pendingTurnSkillIds: string[]
   chatMode: AgentChatMode
   setPanelOpen: (open: boolean) => void
   togglePanel: () => void
@@ -74,11 +97,13 @@ interface AgentStore {
   appendStreamDelta: (delta: string) => void
   finishStreaming: (fullContent: string, seq?: number) => void
   cancelStreaming: () => void
-  applyDraft: (payload: { message?: string; mentions: AgentMention[] }) => void
+  applyDraft: (payload: { message?: string; mentions: AgentMention[]; skillIds?: string[] }) => void
   pushToolStep: (tool: string, argsPreview?: string) => string
   finishToolStep: (tool: string, status?: AgentToolStep['status'], summary?: string) => void
   clearToolSteps: () => void
   setThreadMentions: (mentions: AgentMention[]) => void
+  setThreadSkillIds: (ids: string[]) => void
+  setPendingTurnSkillIds: (ids: string[]) => void
   setChatMode: (mode: AgentChatMode) => void
 }
 
@@ -86,14 +111,17 @@ interface AgentStore {
 export const useAgentStore = create<AgentStore>((set) => ({
   panelOpen: loadAgentPanelOpen(),
   view: 'chat',
-  threadId: '',
+  threadId: loadAgentThreadId(),
   lines: [],
   streamingLineId: null,
   draftInput: '',
   draftMentions: [],
+  draftSkillIds: [],
   draftTick: 0,
   toolSteps: [],
   threadMentions: [],
+  threadSkillIds: [],
+  pendingTurnSkillIds: [],
   chatMode: loadChatMode(),
   setPanelOpen: (open) => {
     persistAgentPanelOpen(open)
@@ -106,15 +134,31 @@ export const useAgentStore = create<AgentStore>((set) => ({
       return { panelOpen: open }
     }),
   setView: (view) => set({ view }),
-  setThreadId: (threadId) => set({ threadId }),
+  setThreadId: (threadId) => {
+    persistAgentThreadId(threadId)
+    set({ threadId })
+  },
   appendLine: (line) => set((s) => ({ lines: [...s.lines, line] })),
   setLines: (lines) =>
     set((s) => ({
       lines: typeof lines === 'function' ? lines(s.lines) : lines,
     })),
-  resetThread: () =>
-    set({ threadId: '', lines: [], streamingLineId: null, view: 'chat', toolSteps: [], threadMentions: [] }),
+  resetThread: () => {
+    persistAgentThreadId('')
+    set({
+      threadId: '',
+      lines: [],
+      streamingLineId: null,
+      view: 'chat',
+      toolSteps: [],
+      threadMentions: [],
+      threadSkillIds: [],
+      pendingTurnSkillIds: [],
+    })
+  },
   setThreadMentions: (threadMentions) => set({ threadMentions }),
+  setThreadSkillIds: (threadSkillIds) => set({ threadSkillIds }),
+  setPendingTurnSkillIds: (pendingTurnSkillIds) => set({ pendingTurnSkillIds }),
   setChatMode: (chatMode) => {
     persistChatMode(chatMode)
     set({ chatMode })
@@ -125,6 +169,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
       view: 'chat',
       draftInput: payload.message ?? '',
       draftMentions: payload.mentions,
+      draftSkillIds: payload.skillIds ?? [],
       draftTick: s.draftTick + 1,
     })),
   pushToolStep: (tool, argsPreview) => {
@@ -168,11 +213,18 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set((s) => {
       const sid = s.streamingLineId
       if (!sid) return { streamingLineId: null }
+      const turnSkills = s.pendingTurnSkillIds.length ? [...s.pendingTurnSkillIds] : undefined
       return {
         streamingLineId: null,
+        pendingTurnSkillIds: [],
         lines: s.lines.map((ln) =>
           ln.id === sid
-            ? { ...ln, content: fullContent || ln.content, seq: seq ?? ln.seq }
+            ? {
+                ...ln,
+                content: fullContent || ln.content,
+                seq: seq ?? ln.seq,
+                skillIds: turnSkills ?? ln.skillIds,
+              }
             : ln,
         ),
       }
@@ -181,13 +233,10 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set((s) => {
       const sid = s.streamingLineId
       if (!sid) return s
-      const line = s.lines.find((ln) => ln.id === sid)
-      if (!line?.content.trim()) {
-        return {
-          streamingLineId: null,
-          lines: s.lines.filter((ln) => ln.id !== sid),
-        }
+      // 工具调用开始时丢弃中间流式旁白（如「继续等待」），避免刷一串空气泡
+      return {
+        streamingLineId: null,
+        lines: s.lines.filter((ln) => ln.id !== sid),
       }
-      return { streamingLineId: null }
     }),
 }))

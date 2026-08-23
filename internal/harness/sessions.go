@@ -20,8 +20,9 @@ type SessionInfo struct {
 }
 
 type sessionBindings struct {
-	Mentions []model.AgentMentionDO `json:"mentions"`
-	FocusRef string                 `json:"focusRef"`
+	Mentions  []model.AgentMentionDO `json:"mentions"`
+	FocusRef  string                 `json:"focusRef"`
+	SkillIDs  []string               `json:"skillIds,omitempty"`
 }
 
 func bindKey(sessionID string) string {
@@ -99,15 +100,15 @@ func (h *Host) ListSessions(limit int) ([]SessionInfo, error) {
 	return out, rows.Err()
 }
 
-// GetSession 读会话壳 + bindings。
-func (h *Host) GetSession(id string) (*SessionInfo, []model.AgentMentionDO, string, error) {
+// GetSession 读会话壳 + bindings（@ 与 skill）。
+func (h *Host) GetSession(id string) (*SessionInfo, []model.AgentMentionDO, string, []string, error) {
 	if h == nil || h.Root == "" {
-		return nil, nil, "", fmt.Errorf("harness: not open")
+		return nil, nil, "", nil, fmt.Errorf("harness: not open")
 	}
 	id = strings.TrimSpace(id)
 	db, err := nhstore.OpenProject(h.Root)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, "", nil, err
 	}
 	pid := nhstore.ProjectID(h.Root)
 	var title string
@@ -115,16 +116,16 @@ func (h *Host) GetSession(id string) (*SessionInfo, []model.AgentMentionDO, stri
 	err = db.QueryRow(nhstore.R(`SELECT title, updated_at_ms FROM sessions WHERE project_id=? AND id=?`), pid, id).
 		Scan(&title, &updated)
 	if err == sql.ErrNoRows {
-		return nil, nil, "", fmt.Errorf("对话不存在")
+		return nil, nil, "", nil, fmt.Errorf("对话不存在")
 	}
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, "", nil, err
 	}
-	mentions, focus := loadBindings(db, pid, id)
-	return &SessionInfo{ID: id, Title: title, UpdatedAt: updated / 1000}, mentions, focus, nil
+	mentions, focus, skillIDs := loadBindings(db, pid, id)
+	return &SessionInfo{ID: id, Title: title, UpdatedAt: updated / 1000}, mentions, focus, skillIDs, nil
 }
 
-// SetBindings 写入 @ 绑定（meta）。
+// SetBindings 写入 @ 绑定（meta）；保留已绑 skill。
 func (h *Host) SetBindings(id string, mentions []model.AgentMentionDO, focusRef string) error {
 	if h == nil || h.Root == "" {
 		return fmt.Errorf("harness: not open")
@@ -134,21 +135,68 @@ func (h *Host) SetBindings(id string, mentions []model.AgentMentionDO, focusRef 
 		return err
 	}
 	pid := nhstore.ProjectID(h.Root)
-	raw, _ := json.Marshal(sessionBindings{Mentions: mentions, FocusRef: focusRef})
-	if err := nhstore.MetaSet(db, pid, bindKey(id), string(raw)); err != nil {
+	_, _, skillIDs := loadBindings(db, pid, id)
+	return h.saveBindingsAndTouch(id, sessionBindings{Mentions: mentions, FocusRef: focusRef, SkillIDs: skillIDs})
+}
+
+func (h *Host) saveBindingsAndTouch(id string, b sessionBindings) error {
+	if h == nil || h.Root == "" {
+		return fmt.Errorf("harness: not open")
+	}
+	db, err := nhstore.OpenProject(h.Root)
+	if err != nil {
+		return err
+	}
+	pid := nhstore.ProjectID(h.Root)
+	if err := saveBindings(db, pid, id, b); err != nil {
 		return err
 	}
 	return h.TouchSession(id, "")
 }
 
-func loadBindings(db *sql.DB, pid, id string) ([]model.AgentMentionDO, string) {
+// SetSessionSkillIDs 写入本对话绑定的 skill id（meta）。
+func (h *Host) SetSessionSkillIDs(id string, skillIDs []string) error {
+	if h == nil || h.Root == "" {
+		return fmt.Errorf("harness: not open")
+	}
+	db, err := nhstore.OpenProject(h.Root)
+	if err != nil {
+		return err
+	}
+	pid := nhstore.ProjectID(h.Root)
+	mentions, focus, _ := loadBindings(db, pid, id)
+	out := make([]string, 0, len(skillIDs))
+	seen := map[string]struct{}{}
+	for _, s := range skillIDs {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		if _, ok := seen[s]; ok {
+			continue
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	return h.saveBindingsAndTouch(id, sessionBindings{Mentions: mentions, FocusRef: focus, SkillIDs: out})
+}
+
+func saveBindings(db *sql.DB, pid, id string, b sessionBindings) error {
+	raw, _ := json.Marshal(b)
+	if err := nhstore.MetaSet(db, pid, bindKey(id), string(raw)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func loadBindings(db *sql.DB, pid, id string) ([]model.AgentMentionDO, string, []string) {
 	raw, err := nhstore.MetaGet(db, pid, bindKey(id))
 	if err != nil || strings.TrimSpace(raw) == "" {
-		return nil, ""
+		return nil, "", nil
 	}
 	var b sessionBindings
 	if json.Unmarshal([]byte(raw), &b) != nil {
-		return nil, ""
+		return nil, "", nil
 	}
-	return b.Mentions, b.FocusRef
+	return b.Mentions, b.FocusRef, b.SkillIDs
 }

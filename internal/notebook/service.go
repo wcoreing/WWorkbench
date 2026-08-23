@@ -99,6 +99,11 @@ func (s *Service) DeleteNote(id string) error {
 	return s.store.DeleteNote(id)
 }
 
+// DeleteNotes 批量删除笔记。
+func (s *Service) DeleteNotes(ids []string) (int, error) {
+	return s.store.DeleteNotes(ids)
+}
+
 // DuplicateNote 复制笔记。
 func (s *Service) DuplicateNote(id string) (*model.NoteDO, error) {
 	n, err := s.store.GetNote(id)

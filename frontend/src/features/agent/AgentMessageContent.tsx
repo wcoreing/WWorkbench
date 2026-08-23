@@ -3,6 +3,7 @@ import type { AgentMention } from './agentMention'
 import { AgentRichContent } from './AgentRichContent'
 import { AgentUserContent } from './AgentUserContent'
 import { AgentChoicePanel } from './AgentChoicePanel'
+import { AgentSkillChips } from './AgentSkillChips'
 import { extractAgentChoices } from './agentChoice'
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
   role: 'user' | 'assistant' | 'system'
   mentions?: AgentMention[]
   skillIds?: string[]
+  skillLabels?: Record<string, string>
   images?: { mime: string; data: string }[]
   /** 可点选项：仅最新助手气泡启用 */
   choiceDisabled?: boolean
@@ -22,6 +24,7 @@ export function AgentMessageContent({
   role,
   mentions,
   skillIds,
+  skillLabels,
   images,
   choiceDisabled,
   onChoiceDraft,
@@ -34,6 +37,12 @@ export function AgentMessageContent({
   if (role === 'assistant') {
     return (
       <>
+        <AgentSkillChips
+          skillIds={skillIds ?? []}
+          labels={skillLabels}
+          muted
+          className="agent-turn-skills"
+        />
         <AgentRichContent content={choice?.body || content} />
         {choice && choice.questions.length > 0 && onChoiceDraft && (
           <AgentChoicePanel
@@ -47,7 +56,15 @@ export function AgentMessageContent({
   }
 
   if (role === 'user') {
-    return <AgentUserContent content={content} mentions={mentions} skillIds={skillIds} images={images} />
+    return (
+      <AgentUserContent
+        content={content}
+        mentions={mentions}
+        skillIds={skillIds}
+        skillLabels={skillLabels}
+        images={images}
+      />
+    )
   }
 
   return <p className="agent-plain agent-plain-muted">{content}</p>

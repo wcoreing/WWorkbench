@@ -19,6 +19,11 @@ export function escapeHtml(text: string): string {
 function enhanceMarkdownHtml(html: string): string {
   let out = html.replace(/<table>/g, '<table class="md-table">')
   out = out.replace(
+    /<table class="md-table">/g,
+    '<div class="md-table-wrap"><table class="md-table">',
+  )
+  out = out.replace(/<\/table>/g, '</table></div>')
+  out = out.replace(
     /<blockquote>\s*<p>(✅[\s\S]*?)<\/p>\s*<\/blockquote>/g,
     '<blockquote class="md-callout md-callout-ok"><p>$1</p></blockquote>',
   )

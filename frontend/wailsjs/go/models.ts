@@ -2761,6 +2761,7 @@ export namespace model {
 	    terminalSessionId?: string;
 	    noteId?: string;
 	    mentions: AgentMentionDO[];
+	    skillIds?: string[];
 	
 	    static createFrom(source: any = {}) {
 	        return new AgentContextDO(source);
@@ -2782,6 +2783,7 @@ export namespace model {
 	        this.terminalSessionId = source["terminalSessionId"];
 	        this.noteId = source["noteId"];
 	        this.mentions = this.convertValues(source["mentions"], AgentMentionDO);
+	        this.skillIds = source["skillIds"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -2860,6 +2862,7 @@ export namespace model {
 	    role: string;
 	    content: string;
 	    images?: AgentChatImageDO[];
+	    skillIds?: string[];
 	    seq?: number;
 	
 	    static createFrom(source: any = {}) {
@@ -2871,6 +2874,7 @@ export namespace model {
 	        this.role = source["role"];
 	        this.content = source["content"];
 	        this.images = this.convertValues(source["images"], AgentChatImageDO);
+	        this.skillIds = source["skillIds"];
 	        this.seq = source["seq"];
 	    }
 	

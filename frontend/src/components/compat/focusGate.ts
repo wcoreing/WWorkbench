@@ -10,7 +10,7 @@ const CHROME_POINT_SEL = `[${CHROME_ATTR}]`
 const HOG_SEL = `[${FOCUS_HOG_ATTR}]`
 /** 命令控件：首击应执行，不能只用来失焦。 */
 const COMMAND_SEL =
-  'button, [role="button"], [data-product-id], .wn-select-trigger, a[href]'
+  'button, [role="button"], [data-product-id], .wn-select-trigger, a[href], .conn-item'
 
 /** chromeProps 挂在命令壳根节点。 */
 export function chromeProps(): Record<string, string> {
