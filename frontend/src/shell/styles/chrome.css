@@ -1,0 +1,397 @@
+/* 壳层：玻璃态、顶栏、产品轨、工作区通用 */
+/* 多产品线工作台壳 */
+
+.workbench-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+  zoom: var(--ui-zoom, 1);
+}
+
+/* 终端产品：窗口可透桌面；仅 xterm 画布半透明，顶栏/侧栏/标签条保持实底 */
+.workbench-shell.is-terminal-glass {
+  background: transparent;
+}
+
+.workbench-shell.is-terminal-glass .workbench-content,
+.workbench-shell.is-terminal-glass .product-view-host,
+.workbench-shell.is-terminal-glass .terminal-workbench,
+.workbench-shell.is-terminal-glass .terminal-workbench .product-body,
+.workbench-shell.is-terminal-glass .terminal-workbench .app-main,
+.workbench-shell.is-terminal-glass .terminal-pane-wrap,
+.workbench-shell.is-terminal-glass .terminal-split-node,
+.workbench-shell.is-terminal-glass .terminal-split-pane {
+  background: transparent;
+}
+
+.workbench-shell.is-terminal-glass .terminal-workspace.workspace {
+  background: transparent;
+}
+
+.workbench-shell.is-terminal-glass .terminal-workbench .product-toolbar {
+  background: var(--color-toolbar);
+}
+
+.workbench-shell.is-terminal-glass .terminal-workbench .app-sidebar {
+  background: var(--color-sidebar);
+}
+
+/* 侧栏|主区拖拽缝：默认 handle 透明，glass 下会透桌面；铺实底并改用暗色分隔线 */
+.workbench-shell.is-terminal-glass .terminal-workbench .wn-resize-handle {
+  background: var(--color-sidebar);
+}
+
+.workbench-shell.is-terminal-glass .terminal-workbench .wn-resize-handle-x::after {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.workbench-shell.is-terminal-glass .terminal-workbench .wn-resize-handle:hover::after {
+  background: var(--accent);
+}
+
+body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-resize-handle-x::after {
+  background: var(--accent);
+}
+
+.workbench-shell.is-terminal-glass .terminal-workbench .editor-chrome {
+  background: var(--color-tab-bar);
+}
+
+.workbench-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workbench-body.agent-open .workbench-content {
+  flex: 1;
+}
+
+/* 顶栏 */
+.shell-chrome {
+  display: flex;
+  align-items: center;
+  height: var(--chrome-height);
+  padding: 0 var(--chrome-pad-x);
+  background: var(--color-chrome);
+  border-bottom: 1px solid var(--color-border);
+  gap: var(--chrome-gap);
+  flex-shrink: 0;
+}
+
+.shell-chrome .chrome-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.shell-chrome .logo-mark-img {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.shell-chrome .logo-text {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.chrome-product {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.shell-locale-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.shell-locale-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  min-width: 132px;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-chrome);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 200;
+}
+
+.shell-locale-item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 12px;
+  text-align: left;
+  cursor: default;
+}
+
+.shell-locale-item:hover {
+  background: var(--accent-muted);
+}
+
+.shell-locale-item.active {
+  color: var(--accent);
+  background: var(--accent-muted);
+}
+
+.shell-fontsize-dropdown {
+  min-width: 148px;
+}
+
+.shell-fontsize-dropdown .shell-locale-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.shell-fontsize-label {
+  line-height: 1.2;
+  font-weight: 500;
+}
+
+.shell-fontsize-tag {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.chrome-spacer {
+  flex: 1;
+  min-width: 8px;
+}
+
+.chrome-product-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.chrome-product-desc {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 产品线轨 */
+.product-rail {
+  width: var(--product-rail-width, 52px);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-chrome);
+  border-right: 1px solid var(--color-border);
+  padding: var(--space-2) 0;
+  position: relative;
+  z-index: 3;
+}
+
+.product-rail-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+}
+
+.product-rail-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  height: 48px;
+  margin: 0;
+  padding: var(--space-1) 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.product-rail-btn:hover {
+  background: var(--color-tree-hover);
+  color: var(--color-text-secondary);
+}
+
+.product-rail-btn.active {
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+
+.product-rail-btn.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+}
+
+.product-rail-label {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.product-rail-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+/* 产品工作区通用 */
+.product-workbench {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.product-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--chrome-gap);
+  height: var(--toolbar-height);
+  padding: 0 var(--chrome-pad-x);
+  background: var(--color-toolbar);
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+}
+
+.product-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.product-toolbar-status {
+  display: flex;
+  align-items: center;
+  gap: var(--chrome-gap);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.db-export-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 360px;
+  margin-right: 8px;
+}
+
+.db-export-progress-track {
+  width: 72px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.db-export-progress-fill {
+  height: 100%;
+  background: var(--accent, #5b8def);
+  border-radius: inherit;
+  transition: width 0.2s ease;
+}
+
+.db-export-progress-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.product-toolbar-status .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.product-toolbar-status .status-dot.online {
+  background: var(--color-success);
+  opacity: 1;
+}
+
+.product-toolbar-status .status-dot.pending {
+  background: var(--color-accent, #5b8def);
+  opacity: 1;
+  animation: terminal-status-pulse 1.2s ease-in-out infinite;
+}
+
+.product-toolbar-status .status-dot.error {
+  background: var(--color-danger, #c44);
+  opacity: 1;
+}
+
+@keyframes terminal-status-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.product-coming-tag {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--color-warning-muted);
+  color: var(--color-warning);
+}
+
+.product-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-statusbar .status-right {
+  flex-shrink: 0;
+}
+

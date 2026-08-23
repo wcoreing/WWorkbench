@@ -2858,12 +2858,33 @@ export namespace model {
 	}
 	
 	
+	export class AgentMessageToolDO {
+	    id?: string;
+	    name: string;
+	    args?: string;
+	    status?: string;
+	    summary?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentMessageToolDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.args = source["args"];
+	        this.status = source["status"];
+	        this.summary = source["summary"];
+	    }
+	}
 	export class AgentMessageDO {
 	    role: string;
 	    content: string;
 	    images?: AgentChatImageDO[];
 	    skillIds?: string[];
 	    seq?: number;
+	    tools?: AgentMessageToolDO[];
 	
 	    static createFrom(source: any = {}) {
 	        return new AgentMessageDO(source);
@@ -2876,6 +2897,7 @@ export namespace model {
 	        this.images = this.convertValues(source["images"], AgentChatImageDO);
 	        this.skillIds = source["skillIds"];
 	        this.seq = source["seq"];
+	        this.tools = this.convertValues(source["tools"], AgentMessageToolDO);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -2896,6 +2918,7 @@ export namespace model {
 		    return a;
 		}
 	}
+	
 	export class AgentPermissionsSaveDO {
 	    allowWrite: boolean;
 	    toolPermissionsJson: string;

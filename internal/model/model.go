@@ -912,13 +912,23 @@ type AgentPendingDO struct {
 	CreatedAt int64  `json:"createdAt"`
 }
 
+// AgentMessageToolDO 挂在 assistant 气泡下的可折叠工具调用。
+type AgentMessageToolDO struct {
+	ID      string `json:"id,omitempty"`
+	Name    string `json:"name"`
+	Args    string `json:"args,omitempty"`
+	Status  string `json:"status,omitempty"` // ok|error|denied|need_confirm|running
+	Summary string `json:"summary,omitempty"`
+}
+
 // AgentMessageDO 对话消息。
 type AgentMessageDO struct {
-	Role     string             `json:"role"`
-	Content  string             `json:"content"`
-	Images   []AgentChatImageDO `json:"images,omitempty"`
-	SkillIDs []string           `json:"skillIds,omitempty"`
-	Seq      int                `json:"seq,omitempty"`
+	Role     string               `json:"role"`
+	Content  string               `json:"content"`
+	Images   []AgentChatImageDO   `json:"images,omitempty"`
+	SkillIDs []string             `json:"skillIds,omitempty"`
+	Seq      int                  `json:"seq,omitempty"`
+	Tools    []AgentMessageToolDO `json:"tools,omitempty"`
 }
 
 // AgentRewindRequestDO 截断工作记忆。

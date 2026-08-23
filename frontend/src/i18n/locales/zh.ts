@@ -67,6 +67,7 @@ export const zh: MessageTree = {
     stop: '停止',
     stopped: '已停止生成',
     rewindHere: '截到此处',
+    copyHistoryId: '复制历史 id（thread#seq），方便查日志',
     rewindTitle: '截断对话',
     rewindConfirm: '将删除此条之后的对话，模型上下文也会截断。确定？',
     rewindDone: '已截断对话',

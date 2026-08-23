@@ -1,0 +1,103 @@
+/* 日志中心 */
+.logs-workbench .product-body {
+  min-height: 0;
+}
+
+.logs-main {
+  display: grid;
+  grid-template-rows: minmax(180px, 38vh) minmax(160px, 1fr);
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.logs-config {
+  padding: 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.logs-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.logs-row-2 {
+  flex-direction: row;
+  gap: 12px;
+}
+
+.logs-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.logs-field-narrow {
+  flex: 0 0 100px;
+}
+
+.logs-row-compose-dir {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.logs-row-compose-dir .wn-input {
+  flex: 1;
+}
+
+.logs-auto-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-left: 8px;
+}
+
+.logs-viewer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.logs-viewer .pane-empty {
+  flex: 1;
+  min-height: 80px;
+}
+
+.logs-viewer-head {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  flex-shrink: 0;
+}
+
+.logs-viewer .logs-pre {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.logs-pre {
+  flex: 1;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+

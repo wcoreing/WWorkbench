@@ -1,0 +1,496 @@
+/* 环境 / 工具链 */
+/* 工具链 / 环境原型 */
+.toolchain-main {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px 20px;
+  background: var(--color-surface);
+}
+
+.toolchain-section {
+  margin-bottom: 20px;
+}
+
+.toolchain-section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: var(--color-text-muted);
+}
+
+.toolchain-section-header.compact {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toolchain-section-header h2 {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.toolchain-section-header h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.toolchain-section-header p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.toolchain-hint {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.toolchain-preset-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toolchain-preset-item {
+  padding: 8px 8px;
+  border-radius: var(--radius-sm);
+  cursor: default;
+  margin-bottom: 2px;
+}
+
+.toolchain-preset-item:hover {
+  background: var(--color-tree-hover);
+}
+
+.toolchain-preset-item.active {
+  background: var(--accent-muted);
+}
+
+.toolchain-preset-name {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+
+.toolchain-preset-meta {
+  display: block;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolchain-runtime-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.toolchain-runtime-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.toolchain-runtime-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolchain-runtime-head .wn-btn {
+  margin-left: auto;
+}
+
+.toolchain-lang-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.toolchain-runtime-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.toolchain-runtime-version {
+  font-size: 18px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+  letter-spacing: -0.02em;
+}
+
+.toolchain-runtime-meta {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.toolchain-runtime-path {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolchain-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.toolchain-table th {
+  text-align: left;
+  padding: 7px 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.toolchain-table td {
+  padding: 6px 12px;
+  color: var(--color-text-secondary);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.toolchain-table tr:last-child td {
+  border-bottom: none;
+}
+
+.toolchain-lang-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.toolchain-mono {
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.toolchain-status {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.toolchain-status-ok {
+  background: var(--color-success-muted);
+  color: var(--color-success);
+}
+
+.toolchain-status-warn {
+  background: var(--color-warning-muted);
+  color: var(--color-warning);
+}
+
+.toolchain-status-skip {
+  background: var(--color-surface-3);
+  color: var(--color-text-muted);
+}
+
+.toolchain-project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toolchain-project-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto auto;
+  gap: 4px 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-2);
+}
+
+.toolchain-project-path {
+  grid-column: 1;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.toolchain-project-card > .wn-btn {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+}
+
+.toolchain-project-hints {
+  grid-column: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.toolchain-hint-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--color-surface-3);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+}
+
+.toolchain-project-suggest {
+  grid-column: 1;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
+.toolchain-project-lang-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.env-version-install {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.env-version-install-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.env-version-installed .wn-label {
+  margin-bottom: 6px;
+}
+
+.env-version-modal {
+  width: min(640px, 92vw);
+  max-width: 640px;
+}
+
+.env-version-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.env-version-modal-head {
+  min-width: 0;
+  flex: 1;
+}
+
+.env-version-refresh-btn {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.env-version-table-wrap.is-refreshing {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.env-version-modal .wn-modal-body {
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+}
+
+.env-version-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: var(--color-success, #22c55e);
+  background: color-mix(in srgb, var(--color-success, #22c55e) 15%, transparent);
+}
+
+.env-version-log {
+  margin-bottom: 12px;
+}
+
+.env-version-log-body {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  max-height: 160px;
+  overflow-y: auto;
+  background: var(--color-bg-elevated, #1a1d23);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.env-version-waiting {
+  margin: 0 0 10px;
+  color: var(--color-text-muted);
+}
+
+.env-version-table-wrap {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated, rgba(255, 255, 255, 0.02));
+}
+
+.env-version-table {
+  width: 100%;
+  min-width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.env-version-table th,
+.env-version-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: middle;
+}
+
+.env-version-table th {
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: var(--color-surface-raised, var(--color-surface));
+}
+
+.env-version-table .col-source {
+  width: 42%;
+}
+
+.env-version-table .col-version {
+  width: 22%;
+}
+
+.env-version-table .col-installed {
+  width: 12%;
+  text-align: center;
+}
+
+.env-version-table .col-actions {
+  width: 24%;
+}
+
+.env-version-table tr:last-child td {
+  border-bottom: none;
+}
+
+.env-version-table tr.is-active {
+  background: color-mix(in srgb, var(--color-accent, #3b82f6) 10%, transparent);
+}
+
+.env-version-source {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+}
+
+.env-version-ver {
+  font-variant-numeric: tabular-nums;
+}
+
+.env-version-installed-cell {
+  text-align: center;
+}
+
+.env-version-check {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.env-version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.env-version-text-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-accent, #3b82f6);
+  cursor: pointer;
+}
+
+.env-version-text-btn:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.env-version-text-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.env-version-text-btn.is-danger {
+  color: #ef4444;
+}
+
+.env-manager-install {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.env-manager-install .wn-btn {
+  margin-top: 8px;
+}
+
+.toolchain-runtime-warn {
+  margin-left: 8px;
+  color: var(--color-warning, #e9a23b);
+  font-size: 11px;
+}
+

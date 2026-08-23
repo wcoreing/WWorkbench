@@ -120,12 +120,15 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 				})
 				continue
 			}
-			_ = history.Append(root, g.threadID, history.Msg{
+			seq, _ := history.AppendSeq(root, g.threadID, history.Msg{
 				Role: "assistant", Content: asstContent, TaskID: g.taskID,
 			})
 			if asstContent != "" {
 				payload := map[string]interface{}{
 					"threadId": g.threadID, "content": asstContent,
+				}
+				if seq > 0 {
+					payload["seq"] = seq
 				}
 				if ids := g.r.threadSkillIDs(g.threadID); len(ids) > 0 {
 					payload["skillIds"] = ids
@@ -226,12 +229,16 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 
 			if progressPolls >= maxProgressPolls {
 				msg := "长任务仍在进行中。请到终端面板查看实时进度；完成后告诉我「继续」，或再说「查一下进度」。本轮不再空转等待。"
-				_ = history.Append(root, g.threadID, history.Msg{
+				seq, _ := history.AppendSeq(root, g.threadID, history.Msg{
 					Role: "assistant", Content: msg, TaskID: g.taskID,
 				})
-				g.r.emit("agent:assistant", map[string]interface{}{
+				payload := map[string]interface{}{
 					"threadId": g.threadID, "content": msg,
-				})
+				}
+				if seq > 0 {
+					payload["seq"] = seq
+				}
+				g.r.emit("agent:assistant", payload)
 				g.r.emit("agent:done", map[string]interface{}{"threadId": g.threadID})
 				return msg, nil
 			}

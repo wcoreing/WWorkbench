@@ -15,6 +15,8 @@ export interface AgentChatLine {
   images?: { mime: string; data: string }[]
   /** history_message.seq；有值时可「截到此处」 */
   seq?: number
+  /** 本条 assistant 下挂的工具（可折叠，对齐 Cursor） */
+  tools?: AgentToolStep[]
 }
 
 let lineSeq = 0
@@ -66,7 +68,7 @@ function persistAgentThreadId(threadId: string) {
 export interface AgentToolStep {
   id: string
   tool: string
-  status: 'running' | 'ok' | 'error' | 'denied' | 'need_confirm'
+  status: 'running' | 'ok' | 'error' | 'denied' | 'need_confirm' | ''
   argsPreview?: string
   summary?: string
 }
@@ -174,29 +176,57 @@ export const useAgentStore = create<AgentStore>((set) => ({
     })),
   pushToolStep: (tool, argsPreview) => {
     const id = `tool-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-    set((s) => ({
-      toolSteps: [...s.toolSteps, { id, tool, status: 'running', argsPreview }],
-    }))
+    set((s) => {
+      let lines = [...s.lines]
+      let streamingLineId = s.streamingLineId
+      if (streamingLineId) {
+        const cur = lines.find((ln) => ln.id === streamingLineId)
+        if (!cur?.content.trim() && !(cur?.tools && cur.tools.length)) {
+          lines = lines.filter((ln) => ln.id !== streamingLineId)
+        }
+        streamingLineId = null
+      }
+      let idx = -1
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (lines[i].role === 'assistant') {
+          idx = i
+          break
+        }
+      }
+      if (idx < 0) {
+        const nid = nextAgentLineId()
+        lines.push({ id: nid, role: 'assistant', content: '', tools: [] })
+        idx = lines.length - 1
+      }
+      const ln = lines[idx]
+      lines[idx] = {
+        ...ln,
+        tools: [...(ln.tools || []), { id, tool, status: 'running', argsPreview }],
+      }
+      return { lines, streamingLineId, toolSteps: [] }
+    })
     return id
   },
   finishToolStep: (tool, status = 'ok', summary) =>
     set((s) => {
-      let matched = false
-      const toolSteps = s.toolSteps.map((step) => {
-        if (!matched && step.tool === tool && step.status === 'running') {
-          matched = true
-          return { ...step, status, summary }
-        }
-        return step
-      })
-      return { toolSteps }
+      const lines = s.lines.map((ln) => ({ ...ln, tools: ln.tools ? [...ln.tools] : undefined }))
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const tools = lines[i].tools
+        if (!tools?.length) continue
+        const ti = tools.findIndex((step) => step.tool === tool && step.status === 'running')
+        if (ti < 0) continue
+        tools[ti] = { ...tools[ti], status, summary }
+        lines[i] = { ...lines[i], tools }
+        break
+      }
+      return { lines, toolSteps: [] }
     }),
   clearToolSteps: () => set({ toolSteps: [] }),
   beginStreaming: () => {
     const id = nextAgentLineId()
     set((s) => ({
       streamingLineId: id,
-      lines: [...s.lines, { id, role: 'assistant', content: '' }],
+      lines: [...s.lines, { id, role: 'assistant', content: '', tools: [] }],
     }))
   },
   appendStreamDelta: (delta) =>
@@ -235,8 +265,9 @@ export const useAgentStore = create<AgentStore>((set) => ({
       if (!sid) return s
       const line = s.lines.find((ln) => ln.id === sid)
       const text = line?.content.trim() ?? ''
-      // 空内容或「继续等待」类空转旁白丢弃；有实质正文（报表等）保留为助手气泡
-      if (!text || isTransientToolNarration(text)) {
+      const hasTools = !!(line?.tools && line.tools.length)
+      // 工具开始：有正文则保留为气泡（Cursor 风）；空旁白丢弃
+      if (!text && !hasTools) {
         return {
           streamingLineId: null,
           lines: s.lines.filter((ln) => ln.id !== sid),
@@ -246,13 +277,3 @@ export const useAgentStore = create<AgentStore>((set) => ({
     }),
 }))
 
-/** 工具调用间隙的空转旁白（无实质内容，可丢弃）。 */
-function isTransientToolNarration(text: string): boolean {
-  const t = text.trim()
-  if (t.length > 80) return false
-  if (/^继续等待|^持续(下载|推进)|^等待(完成|中)|^稍等|^请稍候/m.test(t)) return true
-  if (t.length <= 40 && /等待|下载中|推进中/.test(t) && !/[|`#*]|表|报表|统计|SELECT/i.test(t)) {
-    return true
-  }
-  return false
-}

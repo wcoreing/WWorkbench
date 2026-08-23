@@ -67,6 +67,7 @@ export const en: MessageTree = {
     stop: 'Stop',
     stopped: 'Generation stopped',
     rewindHere: 'Trim to here',
+    copyHistoryId: 'Copy history id (thread#seq) for log lookup',
     rewindTitle: 'Trim conversation',
     rewindConfirm: 'Messages after this will be deleted and the model context truncated. Continue?',
     rewindDone: 'Conversation trimmed',

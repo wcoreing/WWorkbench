@@ -322,6 +322,7 @@ func (r *Runner) TestConnection() (string, error) {
 }
 
 // ListMessages 列出线程消息（UI；SSOT=ningharness history）。
+// assistant 正文一律展示；同条上的 tool_calls 附在 Tools 供前端折叠（Cursor / AgentDesk 风）。
 func (r *Runner) ListMessages(threadID string) []model.AgentMessageDO {
 	if r.harness == nil {
 		return nil
@@ -331,12 +332,11 @@ func (r *Runner) ListMessages(threadID string) []model.AgentMessageDO {
 		return nil
 	}
 	out := make([]model.AgentMessageDO, 0, len(msgs))
-	for _, m := range msgs {
+	for i, m := range msgs {
 		if !history.IsUIRole(m) {
 			continue
 		}
 		content := history.ContentForUI(m.Content)
-		// 兼容旧 ningharness：确认续跑曾落盘 "(context)" 占位。
 		content, images := messageImagesFromContent(r.harness.Root, content)
 		if m.Role == "user" && (content == "" || content == "(context)") && len(images) == 0 {
 			continue
@@ -349,12 +349,107 @@ func (r *Runner) ListMessages(threadID string) []model.AgentMessageDO {
 				item.SkillIDs = ids
 			}
 		}
+		if m.Role == "assistant" {
+			item.Tools = toolsForAssistant(msgs, i)
+		}
 		if len(images) > 0 {
 			item.Images = images
 		}
 		out = append(out, item)
 	}
 	return out
+}
+
+// toolsForAssistant 解析 assistant.tool_calls，并配上紧随其后的 tool 结果。
+func toolsForAssistant(msgs []history.Msg, asstIdx int) []model.AgentMessageToolDO {
+	raw := strings.TrimSpace(msgs[asstIdx].ToolCallsJSON)
+	if raw == "" {
+		return nil
+	}
+	var specs []history.ToolCallSpec
+	if err := json.Unmarshal([]byte(raw), &specs); err != nil || len(specs) == 0 {
+		return nil
+	}
+	results := map[string]history.Msg{}
+	for j := asstIdx + 1; j < len(msgs); j++ {
+		if strings.TrimSpace(msgs[j].Role) != "tool" {
+			break
+		}
+		id := strings.TrimSpace(msgs[j].ToolCallID)
+		if id == "" {
+			continue
+		}
+		results[id] = msgs[j]
+	}
+	out := make([]model.AgentMessageToolDO, 0, len(specs))
+	for _, sp := range specs {
+		name := strings.TrimSpace(sp.Name)
+		if name == "" {
+			continue
+		}
+		id := strings.TrimSpace(sp.ID)
+		t := model.AgentMessageToolDO{
+			ID:   id,
+			Name: name,
+			Args: trimToolPreview(sp.Arguments, 120),
+		}
+		if id != "" {
+			if res, ok := results[id]; ok {
+				st, sum := toolStatusFromHistoryContent(name, res.Content)
+				t.Status = st
+				t.Summary = trimToolPreview(sum, 160)
+			} else {
+				t.Status = ""
+			}
+		}
+		out = append(out, t)
+	}
+	return out
+}
+
+func trimToolPreview(s string, max int) string {
+	s = strings.TrimSpace(s)
+	if max <= 0 || utf8.RuneCountInString(s) <= max {
+		return s
+	}
+	r := []rune(s)
+	return string(r[:max]) + "…"
+}
+
+func toolStatusFromHistoryContent(toolName, content string) (status, summary string) {
+	content = strings.TrimSpace(content)
+	summary = content
+	if content == "" {
+		return StatusOK, toolName
+	}
+	var tr workbenchtools.ToolResult
+	if json.Unmarshal([]byte(content), &tr) == nil {
+		if tr.NeedsConfirm {
+			return StatusNeedConfirm, firstNonEmpty(tr.ConfirmSummary, toolName+" 待确认")
+		}
+		if !tr.OK {
+			return StatusError, firstNonEmpty(tr.Error, toolName+" 失败")
+		}
+		if strings.Contains(content, "用户已拒绝") {
+			return StatusDenied, "用户已拒绝"
+		}
+		return StatusOK, firstNonEmpty(tr.ConfirmSummary, toolName)
+	}
+	low := strings.ToLower(content)
+	if strings.Contains(content, "用户已拒绝") {
+		return StatusDenied, "用户已拒绝"
+	}
+	if strings.Contains(low, "error") || strings.Contains(content, "失败") {
+		return StatusError, trimToolPreview(content, 120)
+	}
+	return StatusOK, trimToolPreview(content, 120)
+}
+
+func firstNonEmpty(a, b string) string {
+	if strings.TrimSpace(a) != "" {
+		return strings.TrimSpace(a)
+	}
+	return strings.TrimSpace(b)
 }
 
 func (r *Runner) threadSkillIDs(threadID string) []string {

@@ -14,7 +14,7 @@ require (
 	github.com/pkg/sftp v1.13.10
 	github.com/redis/go-redis/v9 v9.20.0
 	github.com/wailsapp/wails/v2 v2.12.0
-	github.com/wcoreing/ningharness v0.0.0-20260823040519-596531615b82
+	github.com/wcoreing/ningharness v0.0.0-20260823071431-38ea638305b8
 	github.com/xuri/excelize/v2 v2.10.1
 	golang.org/x/crypto v0.51.0
 	golang.org/x/sys v0.46.0

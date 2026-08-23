@@ -4,7 +4,7 @@ import { askConfirm } from '../../utils/askConfirm'
 import { subscribeAgentEvents } from '../../api/agentEvents'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
-import { nextAgentLineId, useAgentStore, type AgentChatLine } from '../../stores/agentStore'
+import { nextAgentLineId, useAgentStore, type AgentChatLine, type AgentToolStep } from '../../stores/agentStore'
 import { model } from '../../../wailsjs/go/models'
 import type { AgentConfirmEvent } from '../../api/agentEvents'
 import type { AgentPanelView, CapabilityRow } from './agentTypes'
@@ -57,7 +57,6 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   const appendStreamDelta = useAgentStore((s) => s.appendStreamDelta)
   const finishStreaming = useAgentStore((s) => s.finishStreaming)
   const cancelStreaming = useAgentStore((s) => s.cancelStreaming)
-  const toolSteps = useAgentStore((s) => s.toolSteps)
   const pushToolStep = useAgentStore((s) => s.pushToolStep)
   const finishToolStep = useAgentStore((s) => s.finishToolStep)
   const clearToolSteps = useAgentStore((s) => s.clearToolSteps)
@@ -93,8 +92,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   const { width, onResizeStart } = useAgentPanelResize()
 
   const scrollContentKey = [
-    lines.map((l) => `${l.id}:${l.content.length}`).join('|'),
-    toolSteps.map((s) => `${s.id}:${s.status}`).join('|'),
+    lines.map((l) => `${l.id}:${l.content.length}:${(l.tools || []).map((t) => t.status).join(',')}`).join('|'),
     pending?.pendingId ?? '',
     busy ? '1' : '0',
   ].join('#')
@@ -189,6 +187,17 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
               ? m.images.map((img) => ({ mime: img.mime ?? '', data: img.data ?? '' })).filter((img) => img.data)
               : undefined,
             seq: typeof m.seq === 'number' && m.seq > 0 ? m.seq : undefined,
+            tools: Array.isArray(m.tools)
+              ? m.tools
+                  .map((t, i) => ({
+                    id: String(t.id || `${m.seq || 0}-tool-${i}`),
+                    tool: String(t.name || ''),
+                    status: (t.status || '') as AgentToolStep['status'],
+                    argsPreview: t.args ? String(t.args) : undefined,
+                    summary: t.summary ? String(t.summary) : undefined,
+                  }))
+                  .filter((t) => t.tool)
+              : undefined,
           })),
         )
         const ctxSkills = detail?.context?.skillIds
@@ -309,8 +318,12 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
         if (!isActiveThread(evt.threadId)) return
         setBusy(false)
         cancelStreaming()
-        for (const step of useAgentStore.getState().toolSteps) {
-          if (step.status === 'running') finishToolStep(step.tool, evt.error ? 'error' : 'ok', evt.error)
+        for (const ln of useAgentStore.getState().lines) {
+          for (const step of ln.tools || []) {
+            if (step.status === 'running') {
+              finishToolStep(step.tool, evt.error ? 'error' : 'ok', evt.error)
+            }
+          }
         }
         if (evt.stopped) {
           appendLine({ id: nextAgentLineId(), role: 'system', content: t('agent.stopped') })
@@ -669,7 +682,6 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
           lines={lines}
           busy={busy}
           chatMode={chatMode}
-          toolSteps={toolSteps}
           skillCatalog={skillCatalog}
           threadMentions={threadMentions}
           threadSkillIds={threadSkillIds}

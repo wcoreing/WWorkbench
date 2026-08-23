@@ -12,7 +12,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/wcoreing/WWorkbench)](https://github.com/wcoreing/WWorkbench/releases/latest)
 
-> 当前版本：**v0.54.131**（界面右下角可查看）
+> 当前版本：**v0.54.134**（界面右下角可查看）
 
 ### 下载（解压即用）
 
