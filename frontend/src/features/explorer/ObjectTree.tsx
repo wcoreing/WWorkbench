@@ -4,7 +4,7 @@ import { api } from '../../api/client'
 import { ContextMenu } from '../../components/ContextMenu'
 import { Icon, type IconName } from '../../components/Icons'
 import { useI18n } from '../../i18n'
-import { isMysqlSystemDatabase } from './mysqlSystemDb'
+import { isMysqlSystemDatabase, isProtectedDatabase } from './mysqlSystemDb'
 import '../../components/ui.css'
 import { pressProps, useDismissOverlays } from '../../components/compat'
 
@@ -32,6 +32,7 @@ interface Props {
   onDesignTable: (database: string, table: string) => void
   onTruncateTable: (database: string, table: string) => void
   onDropTable: (database: string, table: string) => void
+  onDropDatabase?: (database: string) => void
   onExportTableSQL: (database: string, table: string) => void
   onExportDatabaseSQL?: (database: string) => void
   onImportSQL?: (database: string) => void
@@ -41,6 +42,8 @@ interface Props {
   /** canDesignTable 表节点右键「设计表」。 */
   canDesignTable?: boolean
   isRedis?: boolean
+  /** dbType 用于系统库保护（删库菜单）。 */
+  dbType?: string
 }
 
 /** ObjectTree 数据库对象树（库/表/列均懒加载）。 */
@@ -59,6 +62,7 @@ export function ObjectTree({
   onDesignTable,
   onTruncateTable,
   onDropTable,
+  onDropDatabase,
   onExportTableSQL,
   onExportDatabaseSQL,
   onImportSQL,
@@ -66,6 +70,7 @@ export function ObjectTree({
   canCreateTable = false,
   canDesignTable = false,
   isRedis = false,
+  dbType,
 }: Props) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -485,6 +490,24 @@ export function ObjectTree({
               {t('objectTree.exportDatabaseSql')}
             </button>
           )}
+          {onDropDatabase &&
+            menu.node.nodeType === 'database' &&
+            menu.node.database &&
+            !isProtectedDatabase(menu.node.database, dbType) && (
+              <>
+                <div className="wn-context-sep" />
+                <button
+                  type="button"
+                  className="wn-context-item danger"
+                  {...pressProps(() => {
+                    onDropDatabase(menu.node.database!)
+                    setMenu(null)
+                  })}
+                >
+                  {t('objectTree.dropDatabase')}
+                </button>
+              </>
+            )}
           {(menu.node.nodeType === 'table' || menu.node.nodeType === 'view') && (
             <>
           <button

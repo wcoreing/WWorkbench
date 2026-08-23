@@ -10,3 +10,12 @@ export function isMysqlSystemDatabase(name: string): boolean {
       return false
   }
 }
+
+/** isProtectedDatabase 禁止删除的系统库（按引擎）。 */
+export function isProtectedDatabase(name: string, dbType?: string): boolean {
+  const n = name.toLowerCase()
+  if (dbType === 'postgresql') {
+    return n === 'postgres' || n === 'template0' || n === 'template1'
+  }
+  return isMysqlSystemDatabase(name)
+}

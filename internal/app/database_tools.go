@@ -102,6 +102,16 @@ func (s *Service) CreateDatabase(sessionID, name, charset, collation string) Api
 	return OkResult(true)
 }
 
+// DropDatabase 删除数据库。
+func (s *Service) DropDatabase(sessionID, name string) ApiResult[bool] {
+	ctx, cancel := session.WithTimeout(s.ctx, 60)
+	defer cancel()
+	if err := s.meta.DropDatabase(ctx, sessionID, name); err != nil {
+		return ErrResult[bool](err)
+	}
+	return OkResult(true)
+}
+
 // ExportTableInsertSQL 导出表 INSERT 语句到文件（兼容旧调用；新入口请用 ExportTableSQL）。
 func (s *Service) ExportTableInsertSQL(sessionID, database, table string, maxRows int) ApiResult[model.ExportResultDO] {
 	ctx, cancel := session.WithTimeout(s.ctx, 300)

@@ -109,7 +109,9 @@ export function DatabaseWorkbench() {
   const [treeFilter, setTreeFilter] = useState('')
   const [treeRefreshNonce, setTreeRefreshNonce] = useState(0)
   const [ddlConfirm, setDdlConfirm] = useState<
-    { type: 'truncate' | 'drop'; database: string; table: string } | null
+    | { type: 'truncate' | 'drop'; database: string; table: string }
+    | { type: 'drop-database'; database: string }
+    | null
   >(null)
   const [deleteConnTarget, setDeleteConnTarget] = useState<Connection | null>(null)
   const [createDbOpen, setCreateDbOpen] = useState(false)
@@ -719,10 +721,47 @@ export function DatabaseWorkbench() {
     setDdlConfirm({ type: 'drop', database, table })
   }
 
+  const dropDatabase = (database: string) => {
+    if (!session || !canCreateDatabase) return
+    setDdlConfirm({ type: 'drop-database', database })
+  }
+
+  /** closeTabsForDatabase 关闭该库下全部相关 Tab。 */
+  const closeTabsForDatabase = (database: string) => {
+    const belongs = (t: (typeof tabs)[number]) =>
+      (t.kind === 'table' || t.kind === 'design' || t.kind === 'ddl') && t.database === database
+    const next = tabs.filter((t) => !belongs(t))
+    if (next.length === tabs.length) return
+    for (const t of tabs) {
+      if (belongs(t) && t.id.startsWith('design-')) clearDesignDraft(t.id)
+    }
+    useAppStore.getState().setTabs(
+      next.length ? next : [{ id: 'sql-1', kind: 'sql', title: t('database.untitledQuery'), sql: defaultUntitledSql() }],
+    )
+    if (activeTab && belongs(activeTab)) {
+      setActiveTabId((next[0] || { id: 'sql-1' }).id)
+    }
+  }
+
   const confirmTableDDL = async () => {
     if (!session || !ddlConfirm) return
-    const { type, database, table } = ddlConfirm
+    const confirm = ddlConfirm
     setDdlConfirm(null)
+    if (confirm.type === 'drop-database') {
+      try {
+        await api.dropDatabase(session.sessionId, confirm.database)
+        closeTabsForDatabase(confirm.database)
+        if (session.database === confirm.database) {
+          setSession({ ...session, database: '' })
+        }
+        await reloadObjectTree(session.sessionId)
+        setStatusMessage(t('database.databaseDropped', { name: confirm.database }))
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+      return
+    }
+    const { type, database, table } = confirm
     if (type === 'truncate') {
       const ok = await runTableDDL(
         `TRUNCATE TABLE \`${database}\`.\`${table}\``,
@@ -1284,6 +1323,7 @@ export function DatabaseWorkbench() {
                                   canCreateTable={canCreateTable}
                                   canDesignTable={canDesignTable}
                                   isRedis={isRedis}
+                                  dbType={activeConn?.dbType}
                                   onTableDoubleClick={openTableTab}
                                   onDatabaseSelect={(db) => void selectDatabase(db)}
                                   onShowDDL={showDDL}
@@ -1292,6 +1332,7 @@ export function DatabaseWorkbench() {
                                   onDesignTable={openDesignTableTab}
                                   onTruncateTable={truncateTable}
                                   onDropTable={dropTable}
+                                  onDropDatabase={canCreateDatabase ? dropDatabase : undefined}
                                   onExportTableSQL={exportTableSQL}
                                   onExportDatabaseSQL={exportDatabaseSQL}
                                   onImportSQL={(db) => void runSqlFile(db)}
@@ -1592,15 +1633,27 @@ export function DatabaseWorkbench() {
       />
       <ConfirmDialog
         open={ddlConfirm != null}
-        title={ddlConfirm?.type === 'drop' ? t('database.dropTableTitle') : t('database.truncateTableTitle')}
+        title={
+          ddlConfirm?.type === 'drop-database'
+            ? t('database.dropDatabaseTitle')
+            : ddlConfirm?.type === 'drop'
+              ? t('database.dropTableTitle')
+              : t('database.truncateTableTitle')
+        }
         message={
           ddlConfirm
-            ? ddlConfirm.type === 'drop'
-              ? t('database.dropTableMsg', { database: ddlConfirm.database, table: ddlConfirm.table })
-              : t('database.truncateTableMsg', { database: ddlConfirm.database, table: ddlConfirm.table })
+            ? ddlConfirm.type === 'drop-database'
+              ? t('database.dropDatabaseMsg', { database: ddlConfirm.database })
+              : ddlConfirm.type === 'drop'
+                ? t('database.dropTableMsg', { database: ddlConfirm.database, table: ddlConfirm.table })
+                : t('database.truncateTableMsg', { database: ddlConfirm.database, table: ddlConfirm.table })
             : undefined
         }
-        confirmLabel={ddlConfirm?.type === 'drop' ? t('common.delete') : t('database.truncate')}
+        confirmLabel={
+          ddlConfirm?.type === 'drop' || ddlConfirm?.type === 'drop-database'
+            ? t('common.delete')
+            : t('database.truncate')
+        }
         danger
         onConfirm={() => void confirmTableDDL()}
         onCancel={() => setDdlConfirm(null)}

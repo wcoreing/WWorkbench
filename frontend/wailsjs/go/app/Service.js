@@ -166,6 +166,10 @@ export function DownloadSFTPFile(arg1, arg2) {
   return window['go']['app']['Service']['DownloadSFTPFile'](arg1, arg2);
 }
 
+export function DropDatabase(arg1, arg2) {
+  return window['go']['app']['Service']['DropDatabase'](arg1, arg2);
+}
+
 export function DuplicateNote(arg1) {
   return window['go']['app']['Service']['DuplicateNote'](arg1);
 }

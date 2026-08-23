@@ -96,7 +96,11 @@ func Gather(ctx model.AgentContextDO, userText string) string {
 		}
 	}
 	if hasSSHMention {
+		b.WriteString("- **默认目标主机**：本轮已绑定 SSH，用户未改口时优先按该主机做 shell / 远程 Docker / 部署；列出其它连接可作对照。若任务目标仍不明确（例如用户明确说「本地」或绑定与需求冲突），再向用户确认。\n")
 		b.WriteString("- SSH 连不上时先核对绑定里的 user@host:port 是否与控制台一致；握手 EOF 表示该端口没有 SSH（区域名/端口填错或实例关机），不是 known_hosts。\n")
+	} else if strings.HasPrefix(strings.TrimSpace(ctx.FocusKind), "terminal.ssh") ||
+		strings.Contains(strings.ToLower(ctx.SelectionBrief), "ssh ") {
+		b.WriteString("- 界面焦点在 SSH 主机；用户说「这台 / 当前主机」时优先指该焦点。\n")
 	}
 	if hint := userSSHHint(userText, ctx.Mentions); hint != "" {
 		b.WriteString(hint)

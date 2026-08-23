@@ -619,11 +619,15 @@ export const en: MessageTree = {
     message: 'Message',
     connectFirst: 'Connect to a database first',
     dropTableTitle: 'Drop table',
+    dropDatabaseTitle: 'Drop database',
     truncateTableTitle: 'Truncate table',
     dropTableMsg: 'Drop table {database}.{table}?\n(DROP TABLE — cannot be undone)',
+    dropDatabaseMsg:
+      'Drop database {database}?\nAll tables and data inside will be deleted (DROP DATABASE — cannot be undone)',
     truncateTableMsg: 'Truncate all rows in {database}.{table}?\n(TRUNCATE — cannot be undone)',
     truncate: 'Truncate',
     tableMissingClosed: 'Table {table} not found — tab closed',
+    databaseDropped: 'Database {name} dropped',
   },
   connection: {
     editTitle: 'Edit connection',
@@ -697,6 +701,7 @@ export const en: MessageTree = {
     exportDatabaseSql: 'Export database SQL',
     truncateTable: 'Truncate table',
     dropTable: 'Drop table',
+    dropDatabase: 'Drop database',
     copyTableName: 'Copy table name',
     tableHint: 'Click to open · right-click for more',
     viewHint: 'Click to open view · right-click for DDL',

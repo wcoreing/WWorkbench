@@ -258,6 +258,18 @@ func (m *Manager) SwitchDatabase(ctx context.Context, sessionID, database string
 	return &model.SessionInfoDO{SessionID: s.ID, ConnectionID: s.ConnectionID, Database: database}, nil
 }
 
+// ClearDatabase 清空会话当前库标记（不关连接；用于 DROP 当前库后）。
+func (m *Manager) ClearDatabase(sessionID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, ok := m.sessions[sessionID]
+	if !ok {
+		return errno.New(errno.CodeSessionClosed, "会话已关闭", sessionID)
+	}
+	s.Database = ""
+	return nil
+}
+
 // DBForDatabase 返回访问指定库的 *sql.DB。
 // PostgreSQL 跨库时打开临时连接，调用方必须执行 release；同库或其它引擎返回会话连接且 release 为空操作。
 func (m *Manager) DBForDatabase(ctx context.Context, sessionID, database string) (*sql.DB, func(), error) {

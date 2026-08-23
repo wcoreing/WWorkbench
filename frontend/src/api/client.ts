@@ -86,6 +86,7 @@ import {
   ImportConnectionsFromFile,
   ExecuteSQLFile,
   CreateDatabase,
+  DropDatabase,
   ExportTableInsertSQL,
   ExportTableSQL,
   ExportDatabaseSQL,
@@ -549,6 +550,7 @@ export const api = {
     unwrap(() => ExecuteSQLFile(sessionId, database)),
   createDatabase: (sessionId: string, name: string, charset: string, collation: string) =>
     unwrap(() => CreateDatabase(sessionId, name, charset, collation)),
+  dropDatabase: (sessionId: string, name: string) => unwrap(() => DropDatabase(sessionId, name)),
   exportTableInsertSQL: async (sessionId: string, database: string, table: string, maxRows: number) =>
     (await unwrap(() => ExportTableInsertSQL(sessionId, database, table, maxRows))).path,
   exportTableSQL: async (sessionId: string, database: string, table: string, taskId: string, maxRows: number) =>

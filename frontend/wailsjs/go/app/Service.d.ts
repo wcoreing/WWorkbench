@@ -85,6 +85,8 @@ export function DeleteSSHHost(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DownloadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferResultDO_>;
 
+export function DropDatabase(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
 export function DuplicateNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_NoteDO_>;
 
 export function EnsureDockerHost(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_ShellHostDO_>;
