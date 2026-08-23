@@ -1264,6 +1264,50 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   margin: 0 0 8px;
 }
 
+.agent-confirm-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.agent-confirm-item {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08));
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.agent-confirm-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.agent-confirm-item-label {
+  word-break: break-all;
+}
+
+.agent-confirm-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.agent-confirm-sql-compact {
+  margin-top: 6px;
+  max-height: 80px;
+}
+
 .agent-confirm-actions {
   display: flex;
   gap: 8px;

@@ -131,6 +131,8 @@ export const zh: MessageTree = {
     toolRun: '正在调用 {tool}…',
     approve: '批准执行',
     reject: '拒绝',
+    approveAll: '全部批准',
+    rejectAll: '全部拒绝',
     capabilitiesTitle: '能力权限',
     riskRead: '只读',
     riskSession: '会话',

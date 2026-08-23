@@ -131,6 +131,8 @@ export const en: MessageTree = {
     toolRun: 'Running {tool}…',
     approve: 'Approve',
     reject: 'Reject',
+    approveAll: 'Approve all',
+    rejectAll: 'Reject all',
     capabilitiesTitle: 'Capabilities',
     riskRead: 'Read',
     riskSession: 'Session',

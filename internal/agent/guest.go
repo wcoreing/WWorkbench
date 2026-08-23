@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"unicode/utf8"
 
 	"WWorkbench/internal/agent/agentchoice"
 	"WWorkbench/internal/agentcap"
@@ -84,19 +83,33 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			return "", guest.RewriteGenerateError(err, hadMedia)
 		}
 
+		type plannedCall struct {
+			id, name string
+			args     json.RawMessage
+		}
+		planned := make([]plannedCall, 0, len(out.ToolCalls))
 		var specs []history.ToolCallSpec
 		for _, tc := range out.ToolCalls {
+			name := tc.Function.Name
+			if name == "" {
+				continue
+			}
+			id := strings.TrimSpace(tc.ID)
+			if id == "" {
+				id = uuid.NewString()
+			}
 			args := "{}"
 			if tc.Function.Arguments != "" {
 				args = tc.Function.Arguments
 			}
+			planned = append(planned, plannedCall{id: id, name: name, args: json.RawMessage(args)})
 			specs = append(specs, history.ToolCallSpec{
-				ID: tc.ID, Name: tc.Function.Name, Arguments: args,
+				ID: id, Name: name, Arguments: args,
 			})
 		}
 		asstContent := out.Content
 
-		if len(out.ToolCalls) == 0 {
+		if len(planned) == 0 {
 			if retry, valErr := choiceJSONRetry(asstContent, choiceJSONRetries, maxChoiceJSONRetries); retry {
 				choiceJSONRetries++
 				_ = history.Append(root, g.threadID, history.Msg{
@@ -128,16 +141,11 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			ToolCallsJSON: history.EncodeToolCalls(specs), TaskID: g.taskID,
 		})
 
-		for _, tc := range out.ToolCalls {
-			callID := tc.ID
-			if callID == "" {
-				callID = uuid.NewString()
-			}
-			name := tc.Function.Name
-			if name == "" {
-				continue
-			}
-			args := json.RawMessage(tc.Function.Arguments)
+		var awaiting []confirmAwaitItem
+
+		for _, pc := range planned {
+			callID, name := pc.id, pc.name
+			args := pc.args
 			if len(args) == 0 {
 				args = json.RawMessage("{}")
 			}
@@ -147,11 +155,6 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			if name == "get_note" {
 				args = mergeNoteID(args, g.ctxSnap)
 			}
-			argsPreview := string(args)
-			if utf8.RuneCountInString(argsPreview) > 96 {
-				argsPreview = string([]rune(argsPreview)[:93]) + "…"
-			}
-			_ = argsPreview
 			_, _, _ = g.r.harness.PutToolCall(g.threadID, g.taskID, callID, name, string(args))
 			g.r.emit("agent:tool_start", map[string]interface{}{
 				"threadId": g.threadID, "tool": name, "args": string(args), "taskId": g.taskID,
@@ -173,16 +176,15 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			result := g.r.harness.CallTool(ctx, name, args)
 			if result.NeedsConfirm {
 				_ = g.r.store.SaveAgentPendingFull(callID, g.threadID, g.taskID, name, string(args), result.ConfirmSummary)
-				g.waiting = true
-				g.r.emit("agent:needs_confirm", map[string]interface{}{
-					"threadId": g.threadID, "pendingId": callID, "tool": name,
-					"summary": result.ConfirmSummary, "preview": json.RawMessage(result.Data),
+				awaiting = append(awaiting, confirmAwaitItem{
+					callID: callID, name: name, summary: result.ConfirmSummary,
+					preview: json.RawMessage(result.Data),
 				})
-				g.r.emit("agent:done", map[string]interface{}{"threadId": g.threadID, "waitingConfirm": true})
-				if st := lifecycle.RunStateFrom(ctx); st != nil {
-					st.Set("waiting_confirm", true)
-				}
-				return "", nil
+				g.r.emit("agent:tool_end", map[string]interface{}{
+					"threadId": g.threadID, "tool": name,
+					"status": StatusNeedConfirm, "summary": result.ConfirmSummary,
+				})
+				continue
 			}
 
 			if isProgressPollTool(name) {
@@ -234,8 +236,73 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 				return msg, nil
 			}
 		}
+
+		if len(awaiting) > 0 {
+			g.waiting = true
+			items := make([]map[string]interface{}, 0, len(awaiting))
+			for _, a := range awaiting {
+				items = append(items, map[string]interface{}{
+					"pendingId": a.callID, "tool": a.name,
+					"summary": a.summary, "preview": a.preview,
+				})
+			}
+			first := awaiting[0]
+			g.r.emit("agent:needs_confirm", map[string]interface{}{
+				"threadId":  g.threadID,
+				"pendingId": first.callID,
+				"tool":      first.name,
+				"summary":   batchConfirmSummary(awaiting),
+				"preview":   first.preview,
+				"items":     items,
+			})
+			g.r.emit("agent:done", map[string]interface{}{"threadId": g.threadID, "waitingConfirm": true})
+			if st := lifecycle.RunStateFrom(ctx); st != nil {
+				st.Set("waiting_confirm", true)
+			}
+			return "", nil
+		}
 	}
 	return "", fmt.Errorf("已达到最大工具调用步数")
+}
+
+type confirmAwaitItem struct {
+	callID, name, summary string
+	preview               json.RawMessage
+}
+
+func batchConfirmSummary(items []confirmAwaitItem) string {
+	if len(items) == 0 {
+		return "有操作待确认"
+	}
+	if len(items) == 1 {
+		if s := strings.TrimSpace(items[0].summary); s != "" {
+			return s
+		}
+		return items[0].name + " 待确认"
+	}
+	byTool := map[string]int{}
+	for _, it := range items {
+		byTool[it.name]++
+	}
+	if len(byTool) == 1 {
+		for name, n := range byTool {
+			switch name {
+			case "remove_container":
+				return fmt.Sprintf("拟删除 %d 个容器（需确认）", n)
+			case "stop_container":
+				return fmt.Sprintf("拟停止 %d 个容器（需确认）", n)
+			case "start_container":
+				return fmt.Sprintf("拟启动 %d 个容器（需确认）", n)
+			case "execute_sql":
+				return fmt.Sprintf("拟执行 %d 条 SQL（需确认）", n)
+			case "execute_http":
+				return fmt.Sprintf("拟执行 %d 个 HTTP 请求（需确认）", n)
+			default:
+				return fmt.Sprintf("拟执行 %d 次 %s（需确认）", n, name)
+			}
+		}
+	}
+	return fmt.Sprintf("拟执行 %d 项需确认操作", len(items))
 }
 
 func (g *workbenchGuest) appendToolResult(root, callID string, result workbenchtools.ToolResult, rid int64) error {

@@ -209,77 +209,88 @@ func (r *Runner) Chat(req model.AgentChatRequestDO) (string, error) {
 	return p.threadID, nil
 }
 
-// Confirm 用户批准待确认操作并继续对话。
+// Confirm 用户批准/拒绝待确认操作；同 task 一批全部处理后再续跑。
 func (r *Runner) Confirm(pendingID string, approved bool) error {
 	if r.harness == nil {
 		return fmt.Errorf("ningharness 未就绪")
 	}
-	p, err := r.store.GetAgentPending(pendingID)
+	seed, err := r.store.GetAgentPending(pendingID)
 	if err != nil {
 		return err
 	}
-	th := r.ensureThread(p.ThreadID)
+	th := r.ensureThread(seed.ThreadID)
 	if th == nil {
 		return fmt.Errorf("对话线程不存在")
 	}
 	taskID := r.store.GetAgentPendingTaskID(pendingID)
-	_ = r.store.DeleteAgentPending(pendingID)
+	batch, err := r.store.ListAgentPendingSameTask(seed.ThreadID, taskID, pendingID)
+	if err != nil {
+		return err
+	}
+	if len(batch) == 0 {
+		batch = []model.AgentPendingDO{*seed}
+	}
+	for _, p := range batch {
+		_ = r.store.DeleteAgentPending(p.ID)
+	}
 	root := r.harness.Root
-
-	if !approved {
-		summary := "用户已拒绝"
-		denied := workbenchtools.Fail(summary)
-		body, _ := json.Marshal(denied)
-		rid, _, _ := r.harness.PutToolResult(p.ThreadID, taskID, pendingID, p.ToolName, string(body))
-		ids := history.EncodeResourceIDs([]int64{rid})
+	for _, p := range batch {
+		if !approved {
+			summary := "用户已拒绝"
+			denied := workbenchtools.Fail(summary)
+			body, _ := json.Marshal(denied)
+			rid, _, _ := r.harness.PutToolResult(p.ThreadID, taskID, p.ID, p.ToolName, string(body))
+			ids := history.EncodeResourceIDs([]int64{rid})
+			_ = history.Append(root, p.ThreadID, history.Msg{
+				Role: "tool", ToolCallID: p.ID, TaskID: taskID,
+				Content: formatToolMessage(denied, rid), ResourceIDsJSON: ids,
+			})
+			r.emit("agent:tool_end", map[string]interface{}{
+				"threadId": p.ThreadID, "tool": p.ToolName,
+				"status": StatusDenied, "summary": summary, "result": denied,
+			})
+			continue
+		}
+		result := r.executeConfirmed(p.ToolName, p.ArgsJSON)
+		st, summary := toolStatus(p.ToolName, result)
+		body, _ := json.Marshal(result)
+		rid, _, _ := r.harness.PutToolResult(p.ThreadID, taskID, p.ID, p.ToolName, string(body))
+		if rid > 0 {
+			summary = fmt.Sprintf("%s · #%d", summary, rid)
+		}
 		_ = history.Append(root, p.ThreadID, history.Msg{
-			Role: "tool", ToolCallID: pendingID, TaskID: taskID,
-			Content: formatToolMessage(denied, rid), ResourceIDsJSON: ids,
+			Role: "tool", ToolCallID: p.ID, TaskID: taskID,
+			Content:         formatToolMessage(result, rid),
+			ResourceIDsJSON: history.EncodeResourceIDs([]int64{rid}),
 		})
-		r.emit("agent:tool_end", map[string]interface{}{
+		end := map[string]interface{}{
 			"threadId": p.ThreadID, "tool": p.ToolName,
-			"status": StatusDenied, "summary": summary, "result": denied,
-		})
-		go r.runTurn(p.ThreadID, "", "", true, nil)
-		return nil
+			"status": st, "summary": summary, "result": result,
+		}
+		if rid > 0 {
+			end["resourceId"] = rid
+		}
+		r.emit("agent:tool_end", end)
 	}
-
-	var result workbenchtools.ToolResult
-	switch p.ToolName {
-	case "execute_sql":
-		result = workbenchtools.ExecuteSQLConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
-	case "execute_http":
-		result = workbenchtools.ExecuteHTTPConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
-	case "start_container":
-		result = workbenchtools.StartContainerConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
-	case "stop_container":
-		result = workbenchtools.StopContainerConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
-	case "remove_container":
-		result = workbenchtools.RemoveContainerConfirmed(r.appCtx, r.tools.Deps(), p.ArgsJSON)
-	default:
-		result = r.harness.CallTool(r.appCtx, p.ToolName, json.RawMessage(p.ArgsJSON))
-	}
-	st, summary := toolStatus(p.ToolName, result)
-	body, _ := json.Marshal(result)
-	rid, _, _ := r.harness.PutToolResult(p.ThreadID, taskID, pendingID, p.ToolName, string(body))
-	if rid > 0 {
-		summary = fmt.Sprintf("%s · #%d", summary, rid)
-	}
-	_ = history.Append(root, p.ThreadID, history.Msg{
-		Role: "tool", ToolCallID: pendingID, TaskID: taskID,
-		Content:         formatToolMessage(result, rid),
-		ResourceIDsJSON: history.EncodeResourceIDs([]int64{rid}),
-	})
-	end := map[string]interface{}{
-		"threadId": p.ThreadID, "tool": p.ToolName,
-		"status": st, "summary": summary, "result": result,
-	}
-	if rid > 0 {
-		end["resourceId"] = rid
-	}
-	r.emit("agent:tool_end", end)
-	go r.runTurn(p.ThreadID, "", "", true, nil)
+	go r.runTurn(seed.ThreadID, "", "", true, nil)
 	return nil
+}
+
+func (r *Runner) executeConfirmed(toolName, argsJSON string) workbenchtools.ToolResult {
+	switch toolName {
+	case "execute_sql":
+		return workbenchtools.ExecuteSQLConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
+	case "execute_http":
+		return workbenchtools.ExecuteHTTPConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
+	case "start_container":
+		return workbenchtools.StartContainerConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
+	case "stop_container":
+		return workbenchtools.StopContainerConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
+	case "remove_container":
+		return workbenchtools.RemoveContainerConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
+	default:
+		return r.harness.CallTool(r.appCtx, toolName, json.RawMessage(argsJSON))
+	}
 }
 
 // TestConnection 测试 LLM 连接（经 harness guest/model）。

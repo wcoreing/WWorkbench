@@ -102,6 +102,78 @@ func (s *Store) DeleteAgentPending(id string) error {
 	return err
 }
 
+// ListAgentPendingByThread 按创建时间列出线程上全部待确认（同批确认用）。
+func (s *Store) ListAgentPendingByThread(threadID string) ([]model.AgentPendingDO, error) {
+	threadID = strings.TrimSpace(threadID)
+	if threadID == "" {
+		return nil, nil
+	}
+	rows, err := s.db.Query(`SELECT id, thread_id, tool_name, args_json, summary, created_at_ms
+		FROM agent_pending WHERE thread_id=? ORDER BY created_at_ms ASC, id ASC`, threadID)
+	if err != nil {
+		return nil, errno.Wrap(errno.CodeStoreFailed, "读取待确认失败", err)
+	}
+	defer rows.Close()
+	var out []model.AgentPendingDO
+	for rows.Next() {
+		var p model.AgentPendingDO
+		var created int64
+		if err := rows.Scan(&p.ID, &p.ThreadID, &p.ToolName, &p.ArgsJSON, &p.Summary, &created); err != nil {
+			return nil, errno.Wrap(errno.CodeStoreFailed, "读取待确认失败", err)
+		}
+		p.CreatedAt = created / 1000
+		out = append(out, p)
+	}
+	return out, rows.Err()
+}
+
+// ListAgentPendingSameTask 列出同线程同 task 的待确认；task 空则仅返回 seed。
+func (s *Store) ListAgentPendingSameTask(threadID, taskID, seedID string) ([]model.AgentPendingDO, error) {
+	threadID = strings.TrimSpace(threadID)
+	taskID = strings.TrimSpace(taskID)
+	seedID = strings.TrimSpace(seedID)
+	if threadID == "" {
+		return nil, nil
+	}
+	if taskID == "" {
+		if seedID == "" {
+			return nil, nil
+		}
+		p, err := s.GetAgentPending(seedID)
+		if err != nil {
+			return nil, err
+		}
+		return []model.AgentPendingDO{*p}, nil
+	}
+	rows, err := s.db.Query(`SELECT id, thread_id, tool_name, args_json, summary, created_at_ms
+		FROM agent_pending WHERE thread_id=? AND task_id=? ORDER BY created_at_ms ASC, id ASC`, threadID, taskID)
+	if err != nil {
+		return nil, errno.Wrap(errno.CodeStoreFailed, "读取待确认失败", err)
+	}
+	defer rows.Close()
+	var out []model.AgentPendingDO
+	for rows.Next() {
+		var p model.AgentPendingDO
+		var created int64
+		if err := rows.Scan(&p.ID, &p.ThreadID, &p.ToolName, &p.ArgsJSON, &p.Summary, &created); err != nil {
+			return nil, errno.Wrap(errno.CodeStoreFailed, "读取待确认失败", err)
+		}
+		p.CreatedAt = created / 1000
+		out = append(out, p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if len(out) == 0 && seedID != "" {
+		p, err := s.GetAgentPending(seedID)
+		if err != nil {
+			return nil, err
+		}
+		return []model.AgentPendingDO{*p}, nil
+	}
+	return out, nil
+}
+
 // FirstPendingByThread 返回线程上最早一条待确认 id（无则空串）。
 func (s *Store) FirstPendingByThread(threadID string) (string, error) {
 	threadID = strings.TrimSpace(threadID)

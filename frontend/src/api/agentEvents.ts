@@ -16,12 +16,20 @@ export interface AgentToolEvent {
   summary?: string
 }
 
+export interface AgentConfirmItem {
+  pendingId: string
+  tool: string
+  summary: string
+  preview?: unknown
+}
+
 export interface AgentConfirmEvent {
   threadId: string
   pendingId: string
   tool: string
   summary: string
   preview?: unknown
+  items?: AgentConfirmItem[]
 }
 
 export interface AgentDoneEvent {
@@ -143,12 +151,32 @@ export function subscribeAgentEvents(handlers: {
   if (handlers.onNeedsConfirm) {
     unsubs.push(
       EventsOn('agent:needs_confirm', (raw: Record<string, unknown>) => {
+        const itemsRaw = raw.items
+        let items: AgentConfirmItem[] | undefined
+        if (Array.isArray(itemsRaw)) {
+          items = itemsRaw
+            .map((row) => {
+              if (!row || typeof row !== 'object') return null
+              const rec = row as Record<string, unknown>
+              const pendingId = String(rec.pendingId ?? '').trim()
+              if (!pendingId) return null
+              return {
+                pendingId,
+                tool: String(rec.tool ?? ''),
+                summary: String(rec.summary ?? ''),
+                preview: rec.preview,
+              } satisfies AgentConfirmItem
+            })
+            .filter((x): x is AgentConfirmItem => x != null)
+          if (items.length === 0) items = undefined
+        }
         handlers.onNeedsConfirm!({
           threadId: String(raw.threadId ?? ''),
           pendingId: String(raw.pendingId ?? ''),
           tool: String(raw.tool ?? ''),
           summary: String(raw.summary ?? ''),
           preview: raw.preview,
+          items,
         })
       }),
     )

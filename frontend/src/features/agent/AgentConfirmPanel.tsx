@@ -1,5 +1,5 @@
 import { useI18n } from '../../i18n'
-import type { AgentConfirmEvent } from '../../api/agentEvents'
+import type { AgentConfirmEvent, AgentConfirmItem } from '../../api/agentEvents'
 
 interface SqlPreview {
   sql?: string
@@ -35,13 +35,23 @@ interface Props {
 
 const DOCKER_MUTATE_TOOLS = new Set(['start_container', 'stop_container', 'remove_container'])
 
-/** AgentConfirmPanel 工具执行前确认（SQL / HTTP / Docker 等预览）。 */
-export function AgentConfirmPanel({ pending, onApprove, onReject }: Props) {
+function dockerActionLabel(
+  tool: string,
+  action: string | undefined,
+  t: (key: string) => string,
+): string {
+  if (action === 'start') return t('agent.confirmDockerStart')
+  if (action === 'stop') return t('agent.confirmDockerStop')
+  if (action === 'remove') return t('agent.confirmDockerRemove')
+  return tool
+}
+
+function ItemDetail({ tool, preview }: { tool: string; preview?: unknown }) {
   const { t } = useI18n()
-  const rec = parseRecordPreview(pending.preview)
+  const rec = parseRecordPreview(preview)
 
   const sqlPreview: SqlPreview | null =
-    pending.tool === 'execute_sql' && rec
+    tool === 'execute_sql' && rec
       ? {
           sql: String(rec.sql ?? ''),
           database: String(rec.database ?? ''),
@@ -51,7 +61,7 @@ export function AgentConfirmPanel({ pending, onApprove, onReject }: Props) {
       : null
 
   const httpPreview: HttpPreview | null =
-    pending.tool === 'execute_http' && rec
+    tool === 'execute_http' && rec
       ? {
           method: String(rec.method ?? 'GET'),
           url: String(rec.url ?? ''),
@@ -60,7 +70,7 @@ export function AgentConfirmPanel({ pending, onApprove, onReject }: Props) {
       : null
 
   const dockerPreview: DockerPreview | null =
-    DOCKER_MUTATE_TOOLS.has(pending.tool) && rec
+    DOCKER_MUTATE_TOOLS.has(tool) && rec
       ? {
           action: String(rec.action ?? ''),
           contextId: String(rec.contextId ?? ''),
@@ -69,73 +79,134 @@ export function AgentConfirmPanel({ pending, onApprove, onReject }: Props) {
         }
       : null
 
-  const dockerActionLabel =
-    dockerPreview?.action === 'start'
-      ? t('agent.confirmDockerStart')
-      : dockerPreview?.action === 'stop'
-        ? t('agent.confirmDockerStop')
-        : dockerPreview?.action === 'remove'
-          ? t('agent.confirmDockerRemove')
-          : pending.tool
+  if (sqlPreview?.sql) {
+    return (
+      <div className="agent-confirm-detail">
+        <div className="agent-confirm-detail-meta">
+          {sqlPreview.database && (
+            <span>
+              {t('agent.confirmDatabase')}: {sqlPreview.database}
+            </span>
+          )}
+          {sqlPreview.sqlKind && (
+            <span className="agent-confirm-badge">{t('agent.confirmSqlWrite')}</span>
+          )}
+        </div>
+        <pre className="agent-confirm-sql">{sqlPreview.sql}</pre>
+      </div>
+    )
+  }
+
+  if (httpPreview?.url) {
+    return (
+      <div className="agent-confirm-detail">
+        <div className="agent-confirm-detail-meta">
+          <span className="agent-confirm-badge">{httpPreview.method}</span>
+          <span className="agent-confirm-url">{httpPreview.url}</span>
+        </div>
+        {httpPreview.body?.trim() && (
+          <pre className="agent-confirm-sql">{httpPreview.body}</pre>
+        )}
+      </div>
+    )
+  }
+
+  if (dockerPreview) {
+    return (
+      <div className="agent-confirm-detail">
+        <div className="agent-confirm-detail-meta">
+          <span className="agent-confirm-badge">
+            {dockerActionLabel(tool, dockerPreview.action, t)}
+          </span>
+          {dockerPreview.containerId && (
+            <span>
+              {t('agent.confirmDockerContainer')}: {dockerPreview.containerId}
+            </span>
+          )}
+          {dockerPreview.contextId && (
+            <span>
+              {t('agent.confirmDockerContext')}: {dockerPreview.contextId}
+            </span>
+          )}
+        </div>
+        {dockerPreview.command && (
+          <>
+            <div className="agent-confirm-detail-label">{t('agent.confirmPendingCommand')}</div>
+            <pre className="agent-confirm-sql">{dockerPreview.command}</pre>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  return null
+}
+
+function BatchItemRow({ item }: { item: AgentConfirmItem }) {
+  const { t } = useI18n()
+  const rec = parseRecordPreview(item.preview)
+  const containerId =
+    DOCKER_MUTATE_TOOLS.has(item.tool) && rec ? String(rec.containerId ?? '') : ''
+  const sql = item.tool === 'execute_sql' && rec ? String(rec.sql ?? '') : ''
+  const httpURL = item.tool === 'execute_http' && rec ? String(rec.url ?? '') : ''
+  const label = containerId || item.summary || item.tool
+  return (
+    <li className="agent-confirm-item">
+      <div className="agent-confirm-item-head">
+        <span className="agent-confirm-badge">
+          {dockerActionLabel(
+            item.tool,
+            rec ? String(rec.action ?? '') : undefined,
+            t,
+          )}
+        </span>
+        <span className="agent-confirm-item-label">{label}</span>
+      </div>
+      {sql ? <pre className="agent-confirm-sql agent-confirm-sql-compact">{sql}</pre> : null}
+      {httpURL ? (
+        <div className="agent-confirm-item-meta">
+          <span className="agent-confirm-badge">{String(rec?.method ?? 'GET')}</span>
+          <span className="agent-confirm-url">{httpURL}</span>
+        </div>
+      ) : null}
+    </li>
+  )
+}
+
+/** AgentConfirmPanel 工具执行前确认（支持同轮多条一批批准/拒绝）。 */
+export function AgentConfirmPanel({ pending, onApprove, onReject }: Props) {
+  const { t } = useI18n()
+  const items =
+    pending.items && pending.items.length > 0
+      ? pending.items
+      : ([
+          {
+            pendingId: pending.pendingId,
+            tool: pending.tool,
+            summary: pending.summary,
+            preview: pending.preview,
+          },
+        ] satisfies AgentConfirmItem[])
+  const batch = items.length > 1
 
   return (
     <div className="agent-confirm">
       <p className="agent-confirm-summary">{pending.summary}</p>
-      {sqlPreview?.sql && (
-        <div className="agent-confirm-detail">
-          <div className="agent-confirm-detail-meta">
-            {sqlPreview.database && (
-              <span>
-                {t('agent.confirmDatabase')}: {sqlPreview.database}
-              </span>
-            )}
-            {sqlPreview.sqlKind && (
-              <span className="agent-confirm-badge">{t('agent.confirmSqlWrite')}</span>
-            )}
-          </div>
-          <pre className="agent-confirm-sql">{sqlPreview.sql}</pre>
-        </div>
-      )}
-      {httpPreview?.url && (
-        <div className="agent-confirm-detail">
-          <div className="agent-confirm-detail-meta">
-            <span className="agent-confirm-badge">{httpPreview.method}</span>
-            <span className="agent-confirm-url">{httpPreview.url}</span>
-          </div>
-          {httpPreview.body?.trim() && (
-            <pre className="agent-confirm-sql">{httpPreview.body}</pre>
-          )}
-        </div>
-      )}
-      {dockerPreview && (
-        <div className="agent-confirm-detail">
-          <div className="agent-confirm-detail-meta">
-            <span className="agent-confirm-badge">{dockerActionLabel}</span>
-            {dockerPreview.contextId && (
-              <span>
-                {t('agent.confirmDockerContext')}: {dockerPreview.contextId}
-              </span>
-            )}
-            {dockerPreview.containerId && (
-              <span>
-                {t('agent.confirmDockerContainer')}: {dockerPreview.containerId}
-              </span>
-            )}
-          </div>
-          {dockerPreview.command && (
-            <>
-              <div className="agent-confirm-detail-label">{t('agent.confirmPendingCommand')}</div>
-              <pre className="agent-confirm-sql">{dockerPreview.command}</pre>
-            </>
-          )}
-        </div>
+      {batch ? (
+        <ul className="agent-confirm-list">
+          {items.map((it) => (
+            <BatchItemRow key={it.pendingId} item={it} />
+          ))}
+        </ul>
+      ) : (
+        <ItemDetail tool={items[0].tool} preview={items[0].preview} />
       )}
       <div className="agent-confirm-actions">
         <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" onClick={onApprove}>
-          {t('agent.approve')}
+          {batch ? t('agent.approveAll') : t('agent.approve')}
         </button>
         <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" onClick={onReject}>
-          {t('agent.reject')}
+          {batch ? t('agent.rejectAll') : t('agent.reject')}
         </button>
       </div>
     </div>
