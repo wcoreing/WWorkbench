@@ -103,9 +103,9 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
       useAppStore.getState().setStatusMessage(ok ? tRef.current('terminal.copied') : tRef.current('terminal.copyFailed'))
       return ok ? text : ''
     }
-    const pasteIn = async () => {
+    const pasteIn = async (text?: string) => {
       try {
-        const ok = await pasteIntoTerminal(sessionId)
+        const ok = await pasteIntoTerminal(sessionId, text)
         if (!ok) useAppStore.getState().setStatusMessage(tRef.current('terminal.copyEmpty'))
         return ok
       } catch (e) {
@@ -129,13 +129,16 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
         void copyOut()
         return false
       }
-      const pasteKey = (ev.metaKey && key === 'v') || (ev.ctrlKey && ev.shiftKey && key === 'v')
-      if (pasteKey) {
-        void pasteIn()
-        return false
-      }
       return true
     })
+
+    const onPaste = (e: ClipboardEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const sync = e.clipboardData?.getData('text/plain')
+      void pasteIn(sync || undefined)
+    }
+    el.addEventListener('paste', onPaste, true)
 
     const resize = () => {
       if (disposed) return
@@ -178,6 +181,7 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
     return () => {
       disposed = true
       el.removeEventListener('contextmenu', onCtx)
+      el.removeEventListener('paste', onPaste, true)
       unbindGuard()
       unregisterClip()
       unregisterTail()

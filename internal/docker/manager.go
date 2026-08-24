@@ -218,24 +218,7 @@ func (m *Manager) ListContainers(ctx context.Context, contextID string) ([]model
 	}
 	out := make([]model.ContainerDO, 0, len(list))
 	for _, c := range list {
-		name := ""
-		if len(c.Names) > 0 {
-			name = strings.TrimPrefix(c.Names[0], "/")
-		}
-		shortID := c.ID
-		if len(shortID) > 12 {
-			shortID = shortID[:12]
-		}
-		out = append(out, model.ContainerDO{
-			ID:        c.ID,
-			ShortID:   shortID,
-			Name:      name,
-			Image:     c.Image,
-			State:     c.State,
-			Status:    c.Status,
-			Ports:     formatPorts(c.Ports),
-			CreatedAt: c.Created,
-		})
+		out = append(out, toContainerDO(c))
 	}
 	return out, nil
 }
@@ -384,6 +367,22 @@ func formatPorts(ports []container.Port) string {
 		parts = append(parts, fmt.Sprintf("%d→%d/%s", p.PublicPort, p.PrivatePort, p.Type))
 	}
 	return strings.Join(parts, ", ")
+}
+
+// toPortMappings 将 Docker 端口信息转为结构化映射，供前端表格展示。
+func toPortMappings(ports []container.Port) []model.ContainerPortMappingDO {
+	if len(ports) == 0 {
+		return nil
+	}
+	out := make([]model.ContainerPortMappingDO, 0, len(ports))
+	for _, p := range ports {
+		out = append(out, model.ContainerPortMappingDO{
+			HostPort:      int(p.PublicPort),
+			ContainerPort: int(p.PrivatePort),
+			Protocol:      p.Type,
+		})
+	}
+	return out
 }
 
 // stripDockerLogStream 去除 Docker 日志流式头（8 字节前缀）。

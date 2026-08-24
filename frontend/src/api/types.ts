@@ -362,6 +362,21 @@ export interface ContainerEnv {
   vars: ContainerEnvVar[]
 }
 
+export interface ContainerPortMapping {
+  hostPort: number
+  containerPort: number
+  protocol: string
+}
+
+export interface ContainerMount {
+  type: string
+  name: string
+  source: string
+  destination: string
+  mode: string
+  rw: boolean
+}
+
 export interface HTTPHeaderKV {
   key: string
   value: string
@@ -450,6 +465,8 @@ export interface DockerContainer {
   state: string
   status: string
   ports: string
+  portMappings?: ContainerPortMapping[]
+  mounts?: ContainerMount[]
   createdAt: number
 }
 

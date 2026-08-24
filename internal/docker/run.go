@@ -104,7 +104,7 @@ func formatRunEnv(env []model.ContainerEnvKVDO) []string {
 	return out
 }
 
-// buildPortMappings 构建暴露端口与绑定映射。
+// buildPortMappings 构建暴露端口与绑定映射；hostPort=0 表示仅暴露不映射。
 func buildPortMappings(ports []model.ContainerPortMappingDO) (nat.PortSet, nat.PortMap, error) {
 	exposed := nat.PortSet{}
 	bindings := nat.PortMap{}
@@ -116,7 +116,7 @@ func buildPortMappings(ports []model.ContainerPortMappingDO) (nat.PortSet, nat.P
 		if proto == "" {
 			proto = "tcp"
 		}
-		if p.HostPort <= 0 || p.HostPort > 65535 || p.ContainerPort > 65535 {
+		if p.ContainerPort > 65535 || p.HostPort < 0 || p.HostPort > 65535 {
 			return nil, nil, errno.New(errno.CodeInvalidArg, "端口范围应为 1-65535", fmt.Sprintf("%d:%d", p.HostPort, p.ContainerPort))
 		}
 		port, err := nat.NewPort(proto, strconv.Itoa(p.ContainerPort))
@@ -124,10 +124,13 @@ func buildPortMappings(ports []model.ContainerPortMappingDO) (nat.PortSet, nat.P
 			return nil, nil, errno.Wrap(errno.CodeInvalidArg, "端口格式无效", err)
 		}
 		exposed[port] = struct{}{}
-		bindings[port] = []nat.PortBinding{{
+		if p.HostPort <= 0 {
+			continue
+		}
+		bindings[port] = append(bindings[port], nat.PortBinding{
 			HostIP:   "0.0.0.0",
 			HostPort: strconv.Itoa(p.HostPort),
-		}}
+		})
 	}
 	return exposed, bindings, nil
 }
@@ -156,24 +159,8 @@ func (m *Manager) containerDOByID(ctx context.Context, handle *dockerClientHandl
 		if c.ID != id && !strings.HasPrefix(c.ID, id) {
 			continue
 		}
-		name := ""
-		if len(c.Names) > 0 {
-			name = strings.TrimPrefix(c.Names[0], "/")
-		}
-		shortID := c.ID
-		if len(shortID) > 12 {
-			shortID = shortID[:12]
-		}
-		return &model.ContainerDO{
-			ID:        c.ID,
-			ShortID:   shortID,
-			Name:      name,
-			Image:     c.Image,
-			State:     c.State,
-			Status:    c.Status,
-			Ports:     formatPorts(c.Ports),
-			CreatedAt: c.Created,
-		}, nil
+		out := toContainerDO(c)
+		return &out, nil
 	}
 	return nil, errno.New(errno.CodeConnFailed, "容器已创建但未在列表中找到", id)
 }

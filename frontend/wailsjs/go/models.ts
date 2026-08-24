@@ -2860,11 +2860,11 @@ export namespace model {
 	    pendingId: string;
 	    keys?: string[];
 	    text?: string;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new AgentChoiceAnswerDO(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.pendingId = source["pendingId"];
@@ -3311,6 +3311,44 @@ export namespace model {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class ContainerMountDO {
+	    type: string;
+	    name: string;
+	    source: string;
+	    destination: string;
+	    mode: string;
+	    rw: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContainerMountDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.name = source["name"];
+	        this.source = source["source"];
+	        this.destination = source["destination"];
+	        this.mode = source["mode"];
+	        this.rw = source["rw"];
+	    }
+	}
+	export class ContainerPortMappingDO {
+	    hostPort: number;
+	    containerPort: number;
+	    protocol: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContainerPortMappingDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hostPort = source["hostPort"];
+	        this.containerPort = source["containerPort"];
+	        this.protocol = source["protocol"];
+	    }
+	}
 	export class ContainerDO {
 	    id: string;
 	    shortId: string;
@@ -3319,6 +3357,8 @@ export namespace model {
 	    state: string;
 	    status: string;
 	    ports: string;
+	    portMappings: ContainerPortMappingDO[];
+	    mounts: ContainerMountDO[];
 	    createdAt: number;
 	
 	    static createFrom(source: any = {}) {
@@ -3334,8 +3374,28 @@ export namespace model {
 	        this.state = source["state"];
 	        this.status = source["status"];
 	        this.ports = source["ports"];
+	        this.portMappings = this.convertValues(source["portMappings"], ContainerPortMappingDO);
+	        this.mounts = this.convertValues(source["mounts"], ContainerMountDO);
 	        this.createdAt = source["createdAt"];
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class ContainerDatabaseLinkDO {
 	    dbType: string;
@@ -3438,22 +3498,8 @@ export namespace model {
 	        this.content = source["content"];
 	    }
 	}
-	export class ContainerPortMappingDO {
-	    hostPort: number;
-	    containerPort: number;
-	    protocol: string;
 	
-	    static createFrom(source: any = {}) {
-	        return new ContainerPortMappingDO(source);
-	    }
 	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.hostPort = source["hostPort"];
-	        this.containerPort = source["containerPort"];
-	        this.protocol = source["protocol"];
-	    }
-	}
 	export class ContainerRunDO {
 	    image: string;
 	    name: string;
@@ -3571,6 +3617,38 @@ export namespace model {
 	        this.containerId = source["containerId"];
 	        this.command = source["command"];
 	    }
+	}
+	export class ContainerUpdateDO {
+	    ports: ContainerPortMappingDO[];
+	    mounts: ContainerMountDO[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ContainerUpdateDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ports = this.convertValues(source["ports"], ContainerPortMappingDO);
+	        this.mounts = this.convertValues(source["mounts"], ContainerMountDO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class DDLResultDO {
 	    content: string;

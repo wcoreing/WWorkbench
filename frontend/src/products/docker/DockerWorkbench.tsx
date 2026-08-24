@@ -16,6 +16,7 @@ import {
 } from '../../features/docker/dockerContextDisplay'
 import { clampPage, DOCKER_PAGE_SIZE, DockerListBar, mayHaveDatabase, paginateList } from '../../features/docker/dockerListUtils'
 import { DockerRunModal } from '../../features/docker/DockerRunModal'
+import { DockerContainerEditModal } from '../../features/docker/DockerContainerEditModal'
 import { useDockerContainerShell, type DockerDetailTab } from '../../features/docker/useDockerContainerShell'
 import { TerminalPane, terminalBackground } from '../../features/terminal/TerminalPane'
 import { READY_MESSAGES, useI18n } from '../../i18n'
@@ -75,6 +76,48 @@ function formatImageShort(image: string, max = 32): string {
   return `${image.slice(0, head)}…`
 }
 
+/** formatPortLine 单条端口：优先 主机:容器，无主机则 容器/协议。 */
+function formatPortLine(hostPort: number, containerPort: number, protocol: string): string {
+  const proto = protocol || 'tcp'
+  if (hostPort > 0) return `${hostPort}:${containerPort}`
+  return `${containerPort}/${proto}`
+}
+
+/** formatMountLine 单条挂载：只强调容器路径。 */
+function formatMountLine(destination: string, type: string, rw: boolean): string {
+  const dest = destination || '-'
+  const kind = type === 'volume' ? 'vol' : type === 'bind' ? 'bind' : type || 'mnt'
+  return `${kind}:${dest}${rw === false ? ':ro' : ''}`
+}
+
+/** sortPortMappings 公开映射排前，便于列表摘要。 */
+function sortPortMappings(container: DockerContainer) {
+  const list = [...(container.portMappings ?? [])]
+  list.sort((a, b) => Number(b.hostPort > 0) - Number(a.hostPort > 0) || a.containerPort - b.containerPort)
+  return list
+}
+
+/** portCellTitle 悬停展示全部端口。 */
+function portCellTitle(container: DockerContainer): string {
+  const mappings = sortPortMappings(container)
+  if (mappings.length > 0) {
+    return mappings.map((p) => formatPortLine(p.hostPort, p.containerPort, p.protocol)).join('\n')
+  }
+  return container.ports || '-'
+}
+
+/** mountCellTitle 悬停展示全部挂载。 */
+function mountCellTitle(container: DockerContainer): string {
+  const mounts = container.mounts ?? []
+  if (mounts.length === 0) return '-'
+  return mounts
+    .map((m) => {
+      const src = m.name || m.source || '-'
+      return `${src} → ${m.destination || '-'}${m.rw === false ? ' (ro)' : ''}`
+    })
+    .join('\n')
+}
+
 interface DockerImageCellProps {
   image: string
   onCopied: () => void
@@ -87,7 +130,7 @@ function DockerImageCell({ image, onCopied }: DockerImageCellProps) {
   return (
     <div className="docker-image-cell">
       <span className="docker-image-text" title={image}>
-        {formatImageShort(image)}
+        {formatImageShort(image, 40)}
       </span>
       <button
         type="button"
@@ -103,6 +146,72 @@ function DockerImageCell({ image, onCopied }: DockerImageCellProps) {
         {t('common.copy')}
       </button>
     </div>
+  )
+}
+
+interface DockerSummaryCellProps {
+  title: string
+  primary: string
+  extra: number
+  empty: string
+  onEdit: () => void
+}
+
+/** DockerSummaryCell 单行摘要：主值 + 其余条数，点击编辑。 */
+function DockerSummaryCell({ title, primary, extra, empty, onEdit }: DockerSummaryCellProps) {
+  const { t } = useI18n()
+  const has = primary !== ''
+  return (
+    <button type="button" className="docker-summary-cell" title={title} {...pressProps(onEdit, { stop: true })}>
+      {has ? (
+        <>
+          <span className="docker-summary-primary">{primary}</span>
+          {extra > 0 && <span className="docker-summary-extra">{t('docker.summaryExtra', { count: extra })}</span>}
+        </>
+      ) : (
+        <span className="docker-summary-empty">{empty}</span>
+      )}
+    </button>
+  )
+}
+
+interface DockerPortCellProps {
+  container: DockerContainer
+  onEdit: () => void
+}
+
+/** DockerPortCell 端口单行摘要。 */
+function DockerPortCell({ container, onEdit }: DockerPortCellProps) {
+  const mappings = sortPortMappings(container)
+  const primary = mappings[0]
+  return (
+    <DockerSummaryCell
+      title={portCellTitle(container)}
+      primary={primary ? formatPortLine(primary.hostPort, primary.containerPort, primary.protocol) : ''}
+      extra={Math.max(0, mappings.length - 1)}
+      empty={container.ports && container.ports !== '-' ? container.ports : '-'}
+      onEdit={onEdit}
+    />
+  )
+}
+
+interface DockerMountCellProps {
+  container: DockerContainer
+  onEdit: () => void
+}
+
+/** DockerMountCell 挂载单行摘要。 */
+function DockerMountCell({ container, onEdit }: DockerMountCellProps) {
+  const mounts = container.mounts ?? []
+  const primary = mounts[0]
+  return (
+    <DockerSummaryCell
+      title={mountCellTitle(container)}
+      primary={primary ? formatMountLine(primary.destination, primary.type, primary.rw) : ''}
+      extra={Math.max(0, mounts.length - 1)}
+      empty="-"
+      onEdit={onEdit}
+    />
   )
 }
 
@@ -126,6 +235,7 @@ export function DockerWorkbench() {
   const [contextModalOpen, setContextModalOpen] = useState(false)
   const [contextModalHostId, setContextModalHostId] = useState<string | undefined>()
   const [runModalImage, setRunModalImage] = useState<string | null>(null)
+  const [editContainer, setEditContainer] = useState<DockerContainer | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; container: DockerContainer } | null>(null)
   const [contextCtxMenu, setContextCtxMenu] = useState<{ x: number; y: number; context: DockerContext } | null>(null)
   useDismissOverlays(() => {
@@ -862,6 +972,7 @@ export function DockerWorkbench() {
                     <col className="docker-col-image" />
                     <col className="docker-col-state" />
                     <col className="docker-col-ports" />
+                    <col className="docker-col-mounts" />
                     <col className="docker-col-uptime" />
                     <col className="docker-col-actions" />
                   </colgroup>
@@ -871,6 +982,7 @@ export function DockerWorkbench() {
                       <th>{t('docker.colImage')}</th>
                       <th>{t('docker.colState')}</th>
                       <th>{t('docker.colPorts')}</th>
+                      <th>{t('docker.colMounts')}</th>
                       <th>{t('docker.colUptime')}</th>
                       <th className="docker-th-actions">{t('docker.colActions')}</th>
                     </tr>
@@ -878,7 +990,7 @@ export function DockerWorkbench() {
                   <tbody>
                     {containers.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="grid-empty">
+                        <td colSpan={7} className="grid-empty">
                           {loading ? t('common.loading') : t('docker.noContainers')}
                         </td>
                       </tr>
@@ -904,13 +1016,28 @@ export function DockerWorkbench() {
                             <td>
                               <span className={`docker-status docker-status-${c.state}`}>{c.state}</span>
                             </td>
-                            <td className="docker-mono docker-ellipsis" title={c.ports}>
-                              {c.ports}
+                            <td className="docker-col-port-maps">
+                              <DockerPortCell container={c} onEdit={() => setEditContainer(c)} />
+                            </td>
+                            <td className="docker-col-mount-maps">
+                              <DockerMountCell container={c} onEdit={() => setEditContainer(c)} />
                             </td>
                             <td className="docker-col-uptime">{formatUptime(c.state, c.createdAt)}</td>
                             <td className="docker-col-actions" onPointerDown={stopRowClick}>
                               <div className="docker-row-actions">
-                                {!running && (
+                                <button
+                                  type="button"
+                                  className="docker-act-btn"
+                                  disabled={!dockerReady || acting}
+                                  title={t('docker.editModal.title')}
+                                  {...pressProps(() => setEditContainer(c), {
+                                    disabled: !dockerReady || acting,
+                                    stop: true,
+                                  })}
+                                >
+                                  {t('common.edit')}
+                                </button>
+                                {!running ? (
                                   <button
                                     type="button"
                                     className="docker-act-btn"
@@ -923,84 +1050,53 @@ export function DockerWorkbench() {
                                   >
                                     {t('docker.start')}
                                   </button>
-                                )}
-                                {running && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      className="docker-act-btn"
-                                      disabled={!dockerReady || acting}
-                                      title={t('docker.stop')}
-                                      {...pressProps(() => void stopContainer(c), {
-                                        disabled: !dockerReady || acting,
-                                        stop: true,
-                                      })}
-                                    >
-                                      {t('docker.stop')}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="docker-act-btn"
-                                      disabled={!dockerReady || acting}
-                                      title={t('docker.restart')}
-                                      {...pressProps(() => void restartContainer(c), {
-                                        disabled: !dockerReady || acting,
-                                        stop: true,
-                                      })}
-                                    >
-                                      {t('docker.restart')}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="docker-act-btn"
-                                      disabled={!dockerReady || acting}
-                                      title={shellActionLabel}
-                                      {...pressProps(() => void openContainerShell(c), {
-                                        disabled: !dockerReady || acting,
-                                        stop: true,
-                                      })}
-                                    >
-                                      {shellActionLabel}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="docker-act-btn"
-                                      disabled={!dockerReady || acting}
-                                      title={t('docker.files')}
-                                      {...pressProps(() => void openContainerFiles(c), {
-                                        disabled: !dockerReady || acting,
-                                        stop: true,
-                                      })}
-                                    >
-                                      {t('docker.files')}
-                                    </button>
-                                  </>
-                                )}
-                                {mayHaveDatabase(c) && (
+                                ) : (
                                   <button
                                     type="button"
-                                    className="docker-act-btn accent"
+                                    className="docker-act-btn"
                                     disabled={!dockerReady || acting}
-                                    title={t('docker.openDatabase')}
-                                    {...pressProps(() => void openDatabaseLink(c), {
+                                    title={t('docker.stop')}
+                                    {...pressProps(() => void stopContainer(c), {
                                       disabled: !dockerReady || acting,
                                       stop: true,
                                     })}
                                   >
-                                    {t('docker.databaseShort')}
+                                    {t('docker.stop')}
+                                  </button>
+                                )}
+                                {running && (
+                                  <button
+                                    type="button"
+                                    className="docker-act-btn"
+                                    disabled={!dockerReady || acting}
+                                    title={shellActionLabel}
+                                    {...pressProps(() => void openContainerShell(c), {
+                                      disabled: !dockerReady || acting,
+                                      stop: true,
+                                    })}
+                                  >
+                                    {t('docker.shell')}
                                   </button>
                                 )}
                                 <button
                                   type="button"
-                                  className="docker-act-btn danger"
+                                  className="docker-act-btn docker-act-more"
                                   disabled={!dockerReady || acting}
-                                  title={t('common.delete')}
-                                  {...pressProps(() => void removeContainer(c), {
-                                    disabled: !dockerReady || acting,
-                                    stop: true,
-                                  })}
+                                  title={t('docker.moreActions')}
+                                  {...pressProps(
+                                    (e) => {
+                                      const el = e.currentTarget as HTMLElement
+                                      const rect = el.getBoundingClientRect()
+                                      setCtxMenu({
+                                        x: Math.round(rect.right - 8),
+                                        y: Math.round(rect.bottom + 4),
+                                        container: c,
+                                      })
+                                    },
+                                    { disabled: !dockerReady || acting, stop: true },
+                                  )}
                                 >
-                                  {t('common.delete')}
+                                  ···
                                 </button>
                               </div>
                             </td>
@@ -1176,6 +1272,18 @@ export function DockerWorkbench() {
         onCreated={(container) => void handleRunCreated(container)}
       />
 
+      <DockerContainerEditModal
+        open={editContainer != null}
+        contextId={activeContextId}
+        container={editContainer}
+        onClose={() => setEditContainer(null)}
+        onUpdated={(container) => {
+          setSelectedId(container.id)
+          setStatusMessage(t('docker.updated', { name: container.name || container.shortId }))
+          void refreshData()
+        }}
+      />
+
       {contextCtxMenu && (
         <ContextMenu
           x={contextCtxMenu.x}
@@ -1198,6 +1306,16 @@ export function DockerWorkbench() {
           y={ctxMenu.y}
           onClick={(e) => e.stopPropagation()}
         >
+          <button
+            type="button"
+            className="wn-context-item"
+            {...pressProps(() => {
+              setCtxMenu(null)
+              setEditContainer(ctxMenu.container)
+            })}
+          >
+            {t('docker.editModal.title')}
+          </button>
           <button
             type="button"
             className="wn-context-item"
@@ -1237,6 +1355,16 @@ export function DockerWorkbench() {
           )}
           {ctxMenu.container.state === 'running' && (
             <>
+              <button
+                type="button"
+                className="wn-context-item"
+                {...pressProps(() => {
+                  setCtxMenu(null)
+                  void restartContainer(ctxMenu.container)
+                })}
+              >
+                {t('docker.restart')}
+              </button>
               <button
                 type="button"
                 className="wn-context-item"
@@ -1308,6 +1436,16 @@ export function DockerWorkbench() {
             })}
           >
             {t('docker.ctxMenuCopyImage')}
+          </button>
+          <button
+            type="button"
+            className="wn-context-item danger"
+            {...pressProps(() => {
+              setCtxMenu(null)
+              void removeContainer(ctxMenu.container)
+            })}
+          >
+            {t('common.delete')}
           </button>
         </ContextMenu>
       )}

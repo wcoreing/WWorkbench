@@ -126,10 +126,10 @@ export function terminalClipboard(sessionId: string): TermClipApi | undefined {
   return apis.get(sessionId)
 }
 
-/** pasteIntoTerminal 把剪贴板写入 PTY。 */
-export async function pasteIntoTerminal(sessionId: string): Promise<boolean> {
-  const text = await readAppClipboard()
-  if (!text) return false
-  await api.writeTerminal(sessionId, text)
+/** pasteIntoTerminal 把剪贴板写入 PTY；text 优先（paste 事件同步数据）。 */
+export async function pasteIntoTerminal(sessionId: string, text?: string): Promise<boolean> {
+  const payload = text ?? (await readAppClipboard())
+  if (!payload) return false
+  await api.writeTerminal(sessionId, payload)
   return true
 }

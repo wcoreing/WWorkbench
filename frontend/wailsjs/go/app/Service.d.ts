@@ -369,6 +369,8 @@ export function TrustSSHHost(arg1:string,arg2:number):Promise<app.ApiResult_bool
 
 export function UninstallEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
+export function UpdateContainerSpec(arg1:string,arg2:string,arg3:model.ContainerUpdateDO):Promise<app.ApiResult_WWorkbench_internal_model_ContainerDO_>;
+
 export function UploadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferResultDO_>;
 
 export function UseEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;

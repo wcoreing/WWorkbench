@@ -9,13 +9,16 @@
 @container docker-main (max-width: 720px) {
   .docker-table-containers .docker-col-state,
   .docker-table-containers .docker-col-ports,
+  .docker-table-containers .docker-col-mounts,
   .docker-table-containers .docker-col-uptime,
   .docker-table-containers th:nth-child(3),
   .docker-table-containers th:nth-child(4),
   .docker-table-containers th:nth-child(5),
+  .docker-table-containers th:nth-child(6),
   .docker-table-containers td:nth-child(3),
   .docker-table-containers td:nth-child(4),
-  .docker-table-containers td:nth-child(5) {
+  .docker-table-containers td:nth-child(5),
+  .docker-table-containers td:nth-child(6) {
     display: none;
   }
 
@@ -32,37 +35,40 @@
 .docker-table-containers {
   table-layout: fixed;
   width: 100%;
-  min-width: 720px;
+  min-width: 760px;
 }
 
 .docker-table-containers .docker-col-name {
   width: 14%;
-  min-width: 88px;
 }
 
 .docker-table-containers .docker-col-image {
-  width: 22%;
-  min-width: 100px;
+  width: 18%;
 }
 
 .docker-table-containers .docker-col-state {
-  width: 64px;
-  min-width: 64px;
+  width: 78px;
 }
 
 .docker-table-containers .docker-col-ports {
-  width: 16%;
-  min-width: 72px;
+  width: 15%;
+}
+
+.docker-table-containers .docker-col-mounts {
+  width: 18%;
+}
+
+.docker-col-port-maps,
+.docker-col-mount-maps {
+  max-width: 0;
 }
 
 .docker-table-containers .docker-col-uptime {
-  width: 56px;
-  min-width: 56px;
+  width: 64px;
 }
 
 .docker-table-containers .docker-col-actions {
-  width: 200px;
-  min-width: 200px;
+  width: 148px;
 }
 
 .docker-table-containers th.docker-th-actions,
@@ -111,7 +117,68 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.docker-summary-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.docker-summary-cell:hover .docker-summary-primary {
+  color: var(--accent);
+}
+
+.docker-summary-primary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text);
+}
+
+.docker-summary-extra {
+  flex-shrink: 0;
   font-size: 10px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.docker-summary-empty {
+  color: var(--color-text-muted);
+}
+
+.docker-edit-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.docker-edit-mount-row {
+  flex-wrap: wrap;
+}
+
+.docker-edit-rw {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--color-text-2);
+  white-space: nowrap;
 }
 
 .docker-copy-btn {
@@ -137,13 +204,16 @@
 }
 
 .docker-col-actions {
-  width: 200px;
-  min-width: 200px;
-  max-width: 200px;
+  width: 148px;
   white-space: nowrap;
   text-align: right;
   padding-left: 4px;
   padding-right: 8px;
+}
+
+.docker-table-containers th,
+.docker-table-containers td {
+  vertical-align: middle;
 }
 
 .docker-selection-bar {
@@ -178,12 +248,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0;
+  gap: 2px;
   flex-wrap: nowrap;
 }
 
 .docker-act-btn {
-  padding: 2px 5px;
+  padding: 2px 6px;
   border: none;
   border-radius: 4px;
   background: transparent;
@@ -216,6 +286,16 @@
 
 .docker-act-btn.accent:hover:not(:disabled) {
   background: var(--color-success-muted);
+}
+
+.docker-act-more {
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.docker-act-more:hover:not(:disabled) {
+  color: var(--color-text);
 }
 
 .docker-chrome-status {

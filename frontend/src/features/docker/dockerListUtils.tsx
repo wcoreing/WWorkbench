@@ -26,6 +26,8 @@ export function clampPage(page: number, total: number, pageSize: number) {
 export function mayHaveDatabase(c: DockerContainer): boolean {
   const img = c.image.toLowerCase()
   if (img.includes('mysql') || img.includes('mariadb') || img.includes('postgres')) return true
+  if (c.portMappings?.some((p) => p.hostPort === 3306 || p.hostPort === 3307 || p.hostPort === 5432)) return true
+  if (c.portMappings?.some((p) => p.containerPort === 3306 || p.containerPort === 3307 || p.containerPort === 5432)) return true
   return c.ports.includes('3306') || c.ports.includes('5432') || c.ports.includes('3307')
 }
 

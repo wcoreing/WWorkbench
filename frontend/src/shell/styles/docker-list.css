@@ -26,15 +26,19 @@
   top: 0;
   z-index: 1;
   text-align: left;
-  padding: 7px 12px;
+  padding: 6px 10px;
   font-weight: 500;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
   background: var(--color-surface-2);
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .docker-table td {
-  padding: 6px 12px;
+  padding: 5px 10px;
+  height: 32px;
   color: var(--color-text-secondary);
   border-bottom: 1px solid var(--color-border-subtle);
 }

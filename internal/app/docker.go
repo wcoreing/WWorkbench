@@ -204,6 +204,17 @@ func (s *Service) RunContainer(contextID string, spec model.ContainerRunDO) ApiR
 	return OkResult(*out)
 }
 
+// UpdateContainerSpec 通过重建更新容器端口映射与挂载。
+func (s *Service) UpdateContainerSpec(contextID, containerID string, update model.ContainerUpdateDO) ApiResult[model.ContainerDO] {
+	ctx, cancel := session.WithTimeout(s.ctx, 180)
+	defer cancel()
+	out, err := s.docker.UpdateContainerSpec(ctx, contextID, containerID, update)
+	if err != nil {
+		return ErrResult[model.ContainerDO](err)
+	}
+	return OkResult(*out)
+}
+
 // composeDirKey 按上下文存储 Compose 项目目录。
 func composeDirKey(contextID string) string {
 	return fmt.Sprintf("%s:%s", store.SettingDockerComposeDir, contextID)

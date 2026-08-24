@@ -108,6 +108,7 @@ import {
   GetContainerShell,
   ResolveContainerDatabaseLink,
   RunContainer,
+  UpdateContainerSpec,
   PickDockerComposeDirectory,
   GetDockerComposeDirectory,
   ListComposeServices,
@@ -577,6 +578,8 @@ export const api = {
   getContainerRunPreset: async (image: string) => unwrap(() => GetContainerRunPreset(image)),
   runContainer: async (contextId: string, spec: model.ContainerRunDO) =>
     unwrap(() => RunContainer(contextId, spec)),
+  updateContainerSpec: async (contextId: string, containerId: string, update: model.ContainerUpdateDO) =>
+    unwrap(() => UpdateContainerSpec(contextId, containerId, update)),
   getContainerShell: async (contextId: string, containerId: string) =>
     unwrap(() => GetContainerShell(contextId, containerId)),
   resolveContainerDatabaseLink: async (contextId: string, containerId: string) =>

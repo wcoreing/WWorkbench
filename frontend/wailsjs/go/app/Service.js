@@ -734,6 +734,10 @@ export function UninstallEnvVersion(arg1, arg2) {
   return window['go']['app']['Service']['UninstallEnvVersion'](arg1, arg2);
 }
 
+export function UpdateContainerSpec(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['UpdateContainerSpec'](arg1, arg2, arg3);
+}
+
 export function UploadSFTPFile(arg1, arg2) {
   return window['go']['app']['Service']['UploadSFTPFile'](arg1, arg2);
 }

@@ -413,16 +413,34 @@ type ContainerEnvDO struct {
 	Vars []ContainerEnvVarDO `json:"vars"`
 }
 
+// ContainerMountDO 容器挂载点。
+type ContainerMountDO struct {
+	Type        string `json:"type"`
+	Name        string `json:"name"`
+	Source      string `json:"source"`
+	Destination string `json:"destination"`
+	Mode        string `json:"mode"`
+	RW          bool   `json:"rw"`
+}
+
 // ContainerDO 容器摘要。
 type ContainerDO struct {
-	ID        string `json:"id"`
-	ShortID   string `json:"shortId"`
-	Name      string `json:"name"`
-	Image     string `json:"image"`
-	State     string `json:"state"`
-	Status    string `json:"status"`
-	Ports     string `json:"ports"`
-	CreatedAt int64  `json:"createdAt"`
+	ID        string                   `json:"id"`
+	ShortID   string                   `json:"shortId"`
+	Name      string                   `json:"name"`
+	Image     string                   `json:"image"`
+	State     string                   `json:"state"`
+	Status    string                   `json:"status"`
+	Ports     string                   `json:"ports"`
+	PortMaps  []ContainerPortMappingDO `json:"portMappings"`
+	Mounts    []ContainerMountDO       `json:"mounts"`
+	CreatedAt int64                    `json:"createdAt"`
+}
+
+// ContainerUpdateDO 更新容器端口/挂载（通过重建生效）。
+type ContainerUpdateDO struct {
+	Ports  []ContainerPortMappingDO `json:"ports"`
+	Mounts []ContainerMountDO       `json:"mounts"`
 }
 
 // SSHForwardPresetDO SSH 端口转发预设（本地 → 远端）。
@@ -828,12 +846,12 @@ type AgentChatImageDO struct {
 
 // AgentChatRequestDO 发起对话请求。
 type AgentChatRequestDO struct {
-	ThreadID  string             `json:"threadId"`
-	Message   string             `json:"message"`
-	Images    []AgentChatImageDO `json:"images,omitempty"`
-	Mode      string             `json:"mode,omitempty"` // ask | agent | plan
-	SkillIDs  []string           `json:"skillIds,omitempty"`
-	Context   AgentContextDO     `json:"context"`
+	ThreadID string             `json:"threadId"`
+	Message  string             `json:"message"`
+	Images   []AgentChatImageDO `json:"images,omitempty"`
+	Mode     string             `json:"mode,omitempty"` // ask | agent | plan
+	SkillIDs []string           `json:"skillIds,omitempty"`
+	Context  AgentContextDO     `json:"context"`
 }
 
 // AgentSkillDO Agent 技能（Skill）。
