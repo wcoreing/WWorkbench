@@ -14,29 +14,47 @@ const LANG_LABELS: Record<RuntimeLang, string> = {
 interface EnvPresetModalProps {
   open: boolean
   initial?: EnvPreset | null
+  /** 新建时从当前运行时快照填入（可再微调） */
+  seedRuntimes?: Record<string, string>
+  defaultName?: string
   onClose: () => void
   onSaved: () => void
 }
 
-/** EnvPresetModal 新建/编辑环境预设。 */
-export function EnvPresetModal({ open, initial, onClose, onSaved }: EnvPresetModalProps) {
+/** EnvPresetModal 保存当前 / 编辑环境预设。 */
+export function EnvPresetModal({
+  open,
+  initial,
+  seedRuntimes,
+  defaultName = '',
+  onClose,
+  onSaved,
+}: EnvPresetModalProps) {
   const [name, setName] = useState('')
   const [runtimes, setRuntimes] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const isEdit = Boolean(initial)
 
   useEffect(() => {
     if (!open) return
     setError('')
-    setName(initial?.name ?? '')
-    setRuntimes({ ...(initial?.runtimes ?? {}) })
-  }, [open, initial])
+    setName(initial?.name ?? defaultName)
+    setRuntimes({ ...(initial?.runtimes ?? seedRuntimes ?? {}) })
+  }, [open, initial, seedRuntimes, defaultName])
 
   if (!open) return null
 
   const submit = async () => {
     if (!name.trim()) {
       setError('请输入预设名称')
+      return
+    }
+    const filled = Object.fromEntries(
+      Object.entries(runtimes).filter(([, v]) => String(v ?? '').trim() !== ''),
+    )
+    if (Object.keys(filled).length === 0) {
+      setError('至少保留一项已检测到的版本')
       return
     }
     setSaving(true)
@@ -46,7 +64,7 @@ export function EnvPresetModal({ open, initial, onClose, onSaved }: EnvPresetMod
         id: initial?.id ?? crypto.randomUUID(),
         name: name.trim(),
         active: initial?.active ?? false,
-        runtimes,
+        runtimes: filled,
       })
       onSaved()
       onClose()
@@ -61,8 +79,12 @@ export function EnvPresetModal({ open, initial, onClose, onSaved }: EnvPresetMod
     <div className="wn-modal-backdrop" onClick={onClose}>
       <div className="wn-modal wn-modal-compact" onClick={(e) => e.stopPropagation()} role="dialog">
         <header className="wn-modal-header">
-          <h2 className="wn-modal-title">{initial ? '编辑预设' : '新建预设'}</h2>
-          <p className="wn-modal-desc">为各语言指定目标版本，应用时将尝试切换</p>
+          <h2 className="wn-modal-title">{isEdit ? '编辑预设' : '保存当前预设'}</h2>
+          <p className="wn-modal-desc">
+            {isEdit
+              ? '修改后应用预设时将按新版本切换'
+              : '已填入当前目标机上检测到的版本，可按需微调后保存'}
+          </p>
         </header>
         <div className="wn-modal-body">
           <div className="wn-form">
@@ -93,7 +115,7 @@ export function EnvPresetModal({ open, initial, onClose, onSaved }: EnvPresetMod
                       [lang]: e.target.value,
                     }))
                   }
-                  placeholder="留空表示不切换"
+                  placeholder="留空表示应用预设时不切换此项"
                 />
               </div>
             ))}

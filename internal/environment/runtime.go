@@ -1,7 +1,6 @@
 package environment
 
 import (
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -98,7 +97,7 @@ func installGoVersion(version string, emit func(string)) error {
 			return err
 		}
 		emit("执行 goenv install -q " + ver + "（使用国内镜像）")
-		_, err = runLoginShellStream(goenvInstallScript(ver), 20*time.Minute, filterEmit(emit))
+		_, err = runLoginShellStream(goenvInstallScript(ver), 20*time.Minute, bindStreamEmit(emit))
 		return err
 	}
 	return installGoWorkbench(version, emit)
@@ -119,17 +118,16 @@ func listPHPVersions() []model.RuntimeVersionDO {
 	if isWindows() {
 		return listPHPWorkbenchVersions()
 	}
-	current, _ := detectPHPFromBrew()
-	if current == "" {
-		current = detectPHP().Version
-	}
-	if current != "" {
-		return []model.RuntimeVersionDO{{Version: current, Installed: true, Active: true}}
-	}
-	return nil
+	return listPHPSystemVersions()
+}
+
+// listPHPSystemVersions 列出系统 PHP（Linux/macOS 无 brew 时）。
+func listPHPSystemVersions() []model.RuntimeVersionDO {
+	return collectSystemPHPVersions()
 }
 
 // detectPHP 检测 PHP 运行时。
+// macOS：优先 Homebrew 多版本；Linux：系统 PHP，不强制 Homebrew。
 func detectPHP() model.RuntimeDO {
 	if hasBrew() {
 		row := model.RuntimeDO{Lang: langPHP, Label: "PHP", ManagerLabel: "Homebrew"}
@@ -143,29 +141,28 @@ func detectPHP() model.RuntimeDO {
 		}
 		row.CanInstall = true
 		row.Manager = managerBrew
-		bin, err := execLookPath("php")
-		if err != nil {
-			return row
+		if bin, ver := probePHPBinary(); ver != "" {
+			row.Binary = bin
+			row.Version = ver
+			row.Available = true
 		}
-		row.Binary = bin
-		row.Version = strings.TrimSpace(runBinaryOK(bin, "-r", "echo PHP_VERSION;"))
-		row.Available = row.Version != ""
 		return row
 	}
 	if isWindows() {
 		return detectPHPWorkbench()
 	}
-	row := model.RuntimeDO{Lang: langPHP, Label: "PHP", ManagerLabel: "Homebrew"}
-	row.Manager = "system"
-	row.NeedsManager = true
-	row.CanInstallManager = true
-	bin, err := execLookPath("php")
-	if err != nil {
-		return row
+	row := model.RuntimeDO{Lang: langPHP, Label: "PHP", Manager: "system", ManagerLabel: "系统"}
+	if isDarwin() {
+		// 仅 macOS 引导安装 Homebrew 做多版本管理。
+		row.ManagerLabel = "Homebrew"
+		row.NeedsManager = true
+		row.CanInstallManager = true
 	}
-	row.Binary = bin
-	row.Version = strings.TrimSpace(runBinaryOK(bin, "-r", "echo PHP_VERSION;"))
-	row.Available = row.Version != ""
+	if bin, ver := probePHPBinary(); ver != "" {
+		row.Binary = bin
+		row.Version = ver
+		row.Available = true
+	}
 	return row
 }
 
@@ -215,13 +212,18 @@ func installPHPVersion(version string, emit func(string)) error {
 		}
 		return brewInstallFormula(formula, emit)
 	}
-	return installPHPWorkbench(version, emit)
+	if isWindows() {
+		return installPHPWorkbench(version, emit)
+	}
+	if isDarwin() {
+		return errno.New(errno.CodeInvalidArg, "请先安装 Homebrew，再安装 PHP 版本", version)
+	}
+	return errno.New(errno.CodeInvalidArg, "Linux 请用系统包管理器安装 PHP（如 apt install php），暂不支持在此多版本安装", version)
 }
 
-// sdkmanScript 返回 sdkman 初始化脚本。
+// sdkmanScript 返回 sdkman 初始化脚本（用 $HOME，兼容 SSH 远端）。
 func sdkmanScript() string {
-	home, _ := os.UserHomeDir()
-	return `source "` + filepath.Join(home, ".sdkman", "bin", "sdkman-init.sh") + `"`
+	return `export SDKMAN_DIR="$HOME/.sdkman" && [ -s "$SDKMAN_DIR/bin/sdkman-init.sh" ] && . "$SDKMAN_DIR/bin/sdkman-init.sh"`
 }
 
 // detectJava 检测 Java 运行时。
@@ -276,10 +278,28 @@ func listJavaVersions() []model.RuntimeVersionDO {
 	return listJavaWorkbenchVersions()
 }
 
+// installJavaVersion 安装 Java 版本。
+func installJavaVersion(version string, emit func(string)) error {
+	if hasSdkman() {
+		ver, err := resolveSdkmanJavaCandidate(version)
+		if err != nil {
+			return err
+		}
+		emit("执行 sdk install java " + ver)
+		_, err = runLoginShellStream(
+			sdkmanScript()+` && export SDKMAN_AUTO_ANSWER=true && sdk install java `+ver+` <<< "Y"`,
+			20*time.Minute,
+			bindStreamEmit(emit),
+		)
+		return err
+	}
+	return installJavaWorkbench(version, emit)
+}
+
 // useJavaVersion 切换 Java 版本。
 func useJavaVersion(version string) error {
 	if hasSdkman() {
-		ver, err := quoteShellVersion(version)
+		ver, err := resolveSdkmanJavaCandidate(version)
 		if err != nil {
 			return err
 		}
@@ -287,20 +307,6 @@ func useJavaVersion(version string) error {
 		return err
 	}
 	return useJavaWorkbench(version)
-}
-
-// installJavaVersion 安装 Java 版本。
-func installJavaVersion(version string, emit func(string)) error {
-	if hasSdkman() {
-		ver, err := quoteShellVersion(version)
-		if err != nil {
-			return err
-		}
-		emit("执行 sdk install java " + ver)
-		_, err = runLoginShellStream(sdkmanScript()+` && sdk install java `+ver, 20*time.Minute, filterEmit(emit))
-		return err
-	}
-	return installJavaWorkbench(version, emit)
 }
 
 // uninstallGoVersion 卸载 Go 版本。
@@ -311,7 +317,7 @@ func uninstallGoVersion(version string, emit func(string)) error {
 			return err
 		}
 		emit("执行 goenv uninstall -f " + ver)
-		_, err = runLoginShellStream(goenvScript()+` && goenv uninstall -f `+ver, 10*time.Minute, filterEmit(emit))
+		_, err = runLoginShellStream(goenvScript()+` && goenv uninstall -f `+ver, 10*time.Minute, bindStreamEmit(emit))
 		return err
 	}
 	return uninstallGoWorkbench(version, emit)
@@ -325,7 +331,7 @@ func uninstallJavaVersion(identifier string, emit func(string)) error {
 			return err
 		}
 		emit("执行 sdk uninstall java " + ver)
-		_, err = runLoginShellStream(sdkmanScript()+` && sdk uninstall java `+ver, 10*time.Minute, filterEmit(emit))
+		_, err = runLoginShellStream(sdkmanScript()+` && sdk uninstall java `+ver, 10*time.Minute, bindStreamEmit(emit))
 		return err
 	}
 	return uninstallJavaWorkbench(identifier, emit)

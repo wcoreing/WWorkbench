@@ -2,7 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { RuntimeInfo, RuntimeLang, RuntimeVersion } from '../../api/types'
 import { api } from '../../api/client'
 import { onEnvInstallLog } from '../../api/envInstallEvents'
+import { LoadingPane } from '../../components/LoadingHost'
+import { useI18n } from '../../i18n'
+import { useLoading } from '../../stores/loadingStore'
 import '../../components/ui.css'
+
+const versionLoadingKey = (lang: RuntimeLang) => `environment.versions.${lang}`
 
 const VERSION_HINT: Record<RuntimeLang, string> = {
   node: '例如 20、20.11.0、lts',
@@ -14,8 +19,8 @@ const VERSION_HINT: Record<RuntimeLang, string> = {
 const MANAGER_DESC: Record<RuntimeLang, string> = {
   node: '通过 nvm / nvm-windows 管理多个 Node.js 版本',
   go: 'WWorkbench 自管官方 Go（或 macOS goenv）',
-  php: 'WWorkbench 安装官方 Windows PHP（或 macOS Homebrew）',
-  java: 'WWorkbench 安装 Temurin JDK（或 macOS sdkman）',
+  php: 'macOS 用 Homebrew 多版本；Linux 用系统包管理器（apt/dnf）；Windows 用官方包',
+  java: '本机/远端均可装 Temurin；有 sdkman 时优先用 sdkman',
 }
 
 interface EnvVersionModalProps {
@@ -23,7 +28,8 @@ interface EnvVersionModalProps {
   lang: RuntimeLang | null
   runtime: RuntimeInfo | undefined
   versions: RuntimeVersion[]
-  loading: boolean
+  /** sshHostId 空字符串表示本机。 */
+  sshHostId?: string
   onClose: () => void
   onRefresh: (opts?: { silent?: boolean; force?: boolean }) => Promise<void>
   onStatus: (msg: string) => void
@@ -58,11 +64,13 @@ export function EnvVersionModal({
   lang,
   runtime,
   versions,
-  loading,
+  sshHostId = '',
   onClose,
   onRefresh,
   onStatus,
 }: EnvVersionModalProps) {
+  const { t } = useI18n()
+  const versionsLoading = useLoading(lang ? versionLoadingKey(lang) : 'environment.versions._')
   const [inputVersion, setInputVersion] = useState('')
   const [installing, setInstalling] = useState(false)
   const [switchingVersion, setSwitchingVersion] = useState<string | null>(null)
@@ -86,7 +94,14 @@ export function EnvVersionModal({
     if (!installing || !lang || !showInstallLog) return
     return onEnvInstallLog((evt) => {
       if (evt.lang !== lang || !evt.line) return
-      setInstallLog((prev) => [...prev, evt.line])
+      setInstallLog((prev) => {
+        if (evt.replaceLast && prev.length > 0) {
+          const next = prev.slice()
+          next[next.length - 1] = evt.line
+          return next
+        }
+        return [...prev, evt.line]
+      })
     })
   }, [installing, lang, showInstallLog])
 
@@ -112,6 +127,7 @@ export function EnvVersionModal({
   const managerLabel = runtime?.managerLabel || runtime?.manager || '版本管理工具'
   const busy = installing || switchingVersion != null || uninstallingKey != null
   const canUninstall = lang === 'php' || lang === 'node' || lang === 'go' || lang === 'java'
+  const listLoading = versionsLoading.active
 
   const runInstall = async (
     label: string,
@@ -144,7 +160,7 @@ export function EnvVersionModal({
     setSwitchingVersion(key)
     onStatus(`正在切换至 ${v.version}…`)
     try {
-      await api.useEnvVersion(lang, target)
+      await api.useEnvVersion(sshHostId, lang, target)
       await onRefresh({ silent: true })
       const shellHint =
         lang === 'php' || lang === 'go' || lang === 'java'
@@ -162,7 +178,7 @@ export function EnvVersionModal({
   const installRowVersion = async (v: RuntimeVersion) => {
     const target = versionActionTarget(v)
     return runInstall(`正在安装 ${v.version}…`, async () => {
-      await api.installEnvVersion(lang, target)
+      await api.installEnvVersion(sshHostId, lang, target)
       onStatus(`已安装并切换至 ${v.version}，请新开终端后执行 go version / java -version 验证`)
     }, false)
   }
@@ -175,7 +191,7 @@ export function EnvVersionModal({
     setUninstallingKey(key)
     onStatus(`正在卸载 ${v.version}…`)
     try {
-      await api.uninstallEnvVersion(lang, target)
+      await api.uninstallEnvVersion(sshHostId, lang, target)
       await onRefresh({ silent: true })
       onStatus(`已卸载 ${v.version}`)
     } catch (e) {
@@ -187,7 +203,7 @@ export function EnvVersionModal({
 
   const installManager = () =>
     runInstall(`正在安装 ${managerLabel}…`, async () => {
-      await api.installEnvManager(lang)
+      await api.installEnvManager(sshHostId, lang)
       onStatus(`${managerLabel} 已安装`)
     })
 
@@ -198,7 +214,7 @@ export function EnvVersionModal({
       return
     }
     return runInstall(`正在安装 ${version}…`, async () => {
-      await api.installEnvVersion(lang, version)
+      await api.installEnvVersion(sshHostId, lang, version)
       setInputVersion('')
       onStatus(`已安装 ${version}`)
     })
@@ -211,7 +227,7 @@ export function EnvVersionModal({
       return
     }
     return runInstall(`正在安装并切换 ${version}…`, async () => {
-      await api.ensureEnvVersion(lang, version)
+      await api.ensureEnvVersion(sshHostId, lang, version)
       setInputVersion('')
       onStatus(`已安装并切换至 ${version}`)
     })
@@ -235,11 +251,11 @@ export function EnvVersionModal({
             <button
               type="button"
               className="wn-btn wn-btn-sm wn-btn-ghost env-version-refresh-btn"
-              disabled={busy || loading}
-              title="强制刷新版本列表"
+              disabled={busy || listLoading}
+              title={t('environment.refreshList')}
               onClick={() => void onRefresh({ force: true })}
             >
-              {loading ? '刷新中…' : '刷新'}
+              {t('common.refresh')}
             </button>
           )}
         </header>
@@ -250,10 +266,10 @@ export function EnvVersionModal({
               <button
                 type="button"
                 className="wn-btn wn-btn-sm wn-btn-primary"
-                disabled={busy || loading}
+                disabled={busy || listLoading}
                 onClick={() => void installManager()}
               >
-                {installing ? '安装中…' : `安装 ${managerLabel}`}
+                {installing ? t('environment.installing') : t('environment.installManager', { manager: managerLabel })}
               </button>
             </div>
           )}
@@ -270,14 +286,14 @@ export function EnvVersionModal({
                   value={inputVersion}
                   onChange={(e) => setInputVersion(e.target.value)}
                   placeholder={VERSION_HINT[lang]}
-                  disabled={busy || loading}
+                  disabled={busy || listLoading}
                 />
               </div>
               <div className="env-version-install-actions">
                 <button
                   type="button"
                   className="wn-btn wn-btn-sm wn-btn-tool"
-                  disabled={busy || loading || !inputVersion.trim()}
+                  disabled={busy || listLoading || !inputVersion.trim()}
                   onClick={() => void installVersion()}
                 >
                   仅安装
@@ -285,10 +301,10 @@ export function EnvVersionModal({
                 <button
                   type="button"
                   className="wn-btn wn-btn-sm wn-btn-primary"
-                  disabled={busy || loading || !inputVersion.trim()}
+                  disabled={busy || listLoading || !inputVersion.trim()}
                   onClick={() => void ensureVersion()}
                 >
-                  {installing ? '安装中…' : '安装并切换'}
+                  {installing ? t('environment.installing') : t('environment.installSwitch')}
                 </button>
               </div>
             </div>
@@ -305,19 +321,29 @@ export function EnvVersionModal({
           )}
 
           {showInstallLog && installing && installLog.length === 0 && (
-            <p className="wn-modal-desc env-version-waiting">正在启动安装，请稍候…（可关闭窗口，安装继续在后台执行）</p>
+            <p className="wn-modal-desc env-version-waiting">{t('environment.installWaiting')}</p>
           )}
 
           {!needsManager && (
             <div className="env-version-installed">
               <div className="wn-label">
-                {hasCatalog ? `可选版本 (${sortedVersions.length})` : `已安装版本 (${installedCount})`}
+                {hasCatalog ? t('environment.catalogVersions', { count: sortedVersions.length }) : t('environment.installedVersions', { count: installedCount })}
               </div>
-              {sortedVersions.length === 0 ? (
-                <p className="wn-modal-desc">{loading ? '加载中…' : '暂无版本'}</p>
-              ) : (
-                <div className={`env-version-table-wrap${loading ? ' is-refreshing' : ''}`}>
-                  <table className="env-version-table">
+              <LoadingPane
+                loadingKey={versionLoadingKey(lang)}
+                label={t('environment.refreshing')}
+                minHeight={200}
+                className="env-version-list-pane"
+              >
+                {sortedVersions.length === 0 ? (
+                  <p className="wn-modal-desc">
+                    {runtime?.manager === 'system'
+                      ? '未检测到系统 PHP。若已安装，请点刷新；否则在远端执行 apt install php / dnf install php'
+                      : t('environment.noVersions')}
+                  </p>
+                ) : (
+                  <div className="env-version-table-wrap">
+                    <table className="env-version-table">
                     <thead>
                       <tr>
                         <th className="col-source">库</th>
@@ -349,19 +375,19 @@ export function EnvVersionModal({
                                     <button
                                       type="button"
                                       className="env-version-text-btn"
-                                      disabled={busy || loading}
+                                      disabled={busy || listLoading}
                                       onClick={() => void switchVersion(v)}
                                     >
-                                      {isSwitching ? '切换中…' : '切换'}
+                                      {isSwitching ? t('environment.switching') : t('environment.switch')}
                                     </button>
                                     {canUninstall && (
                                       <button
                                         type="button"
                                         className="env-version-text-btn is-danger"
-                                        disabled={busy || loading}
+                                        disabled={busy || listLoading}
                                         onClick={() => void uninstallRowVersion(v)}
                                       >
-                                        {isUninstalling ? '卸载中…' : '卸载'}
+                                        {isUninstalling ? t('environment.uninstalling') : t('environment.uninstall')}
                                       </button>
                                     )}
                                   </>
@@ -369,7 +395,7 @@ export function EnvVersionModal({
                                   <button
                                     type="button"
                                     className="env-version-text-btn"
-                                    disabled={busy || loading}
+                                    disabled={busy || listLoading}
                                     onClick={() => void installRowVersion(v)}
                                   >
                                     安装
@@ -382,8 +408,9 @@ export function EnvVersionModal({
                       })}
                     </tbody>
                   </table>
-                </div>
-              )}
+                  </div>
+                )}
+              </LoadingPane>
             </div>
           )}
         </div>

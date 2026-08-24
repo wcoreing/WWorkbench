@@ -5,6 +5,8 @@ import { useI18n } from '../../i18n'
 import { model } from '../../../wailsjs/go/models'
 import '../../components/ui.css'
 import { Select, pressProps } from '../../components/compat'
+import { LoadingPane } from '../../components/LoadingHost'
+import { useLoading, withLoading } from '../../stores/loadingStore'
 
 interface DockerRunModalProps {
   open: boolean
@@ -66,7 +68,6 @@ function parsePort(raw: string): number {
 /** DockerRunModal 从镜像创建并运行容器。 */
 export function DockerRunModal({ open, contextId, image, onClose, onCreated }: DockerRunModalProps) {
   const { t } = useI18n()
-  const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [name, setName] = useState('')
@@ -88,30 +89,43 @@ export function DockerRunModal({ open, contextId, image, onClose, onCreated }: D
 
   useEffect(() => {
     if (!open || !image) return
-    const tag = primaryImageTag(image)
-    if (!tag) {
+    const imageTag = primaryImageTag(image)
+    if (!imageTag) {
       setError(t('docker.runModal.noTag'))
       return
     }
     setError('')
-    setLoading(true)
-    void api
-      .getContainerRunPreset(tag)
-      .then((preset) => {
+    void withLoading(
+      `docker.run.${imageTag}`,
+      async () => {
+        const preset = await api.getContainerRunPreset(imageTag)
         setName(preset.name || '')
         setRestart(preset.restart || 'unless-stopped')
         setPorts(toPortRows(preset.ports))
         setEnvRows(toEnvRows(preset.envFields))
         setExtraEnv([])
         setAutoStart(true)
-      })
-      .catch((e) => setError((e as Error).message))
-      .finally(() => setLoading(false))
+      },
+      {
+        label: t('docker.runModal.loadingPreset'),
+        onBegin: () => {
+          setName('')
+          setPorts([{ hostPort: '', containerPort: '', protocol: 'tcp' }])
+          setEnvRows([])
+          setExtraEnv([])
+        },
+      },
+    ).catch((e) => setError((e as Error).message))
   }, [open, image, t])
+
+  const imageTag = primaryImageTag(image)
+  const presetLoadingKey = imageTag ? `docker.run.${imageTag}` : 'docker.run._'
+  const presetLoading = useLoading(presetLoadingKey)
+  const busy = presetLoading.active || submitting
 
   if (!open) return null
 
-  const tag = primaryImageTag(image)
+  const tag = imageTag
 
   const updatePort = (index: number, patch: Partial<PortRow>) => {
     setPorts((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)))
@@ -209,8 +223,6 @@ export function DockerRunModal({ open, contextId, image, onClose, onCreated }: D
     }
   }
 
-  const busy = loading || submitting
-
   return (
     <div className="wn-modal-backdrop" {...pressProps(onClose)}>
       <div
@@ -233,9 +245,7 @@ export function DockerRunModal({ open, contextId, image, onClose, onCreated }: D
         </header>
 
         <div className="wn-modal-body docker-run-body">
-          {loading ? (
-            <p className="docker-run-hint">{t('docker.runModal.loadingPreset')}</p>
-          ) : (
+          <LoadingPane loadingKey={presetLoadingKey} label={t('docker.runModal.loadingPreset')} minHeight={160}>
             <div className="wn-form docker-run-form">
               <div className="wn-field">
                 <label className="wn-label" htmlFor="docker-run-name">
@@ -403,7 +413,7 @@ export function DockerRunModal({ open, contextId, image, onClose, onCreated }: D
                 </label>
               </div>
             </div>
-          )}
+          </LoadingPane>
           {error && <div className="wn-form-msg error">{error}</div>}
         </div>
 

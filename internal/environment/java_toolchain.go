@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
@@ -133,19 +134,22 @@ func normalizeJavaInstallID(version string) (string, error) {
 	return quoteShellVersion(version)
 }
 
-// installJavaWorkbench 通过 Adoptium 安装 JDK。
+// installJavaWorkbench 通过 Adoptium 安装 JDK（本机落盘或 SSH 远端 curl|tar）。
 func installJavaWorkbench(version string, emit func(string)) error {
 	id, err := normalizeJavaInstallID(version)
 	if err != nil {
 		return err
 	}
+	if !runnerIsLocal() {
+		return installJavaWorkbenchRemote(id, emit)
+	}
 	dest, err := toolchainVersionDir(langJava, id)
 	if err != nil {
 		return err
 	}
-	if fileExists(filepath.Join(dest, "bin", javaExeName())) {
+	if localFileExists(filepath.Join(dest, "bin", javaExeName())) {
 		emit("已安装 Java " + id)
-		return nil
+		return activateJavaToolchain(id)
 	}
 	osName, arch := javaOSArch()
 	ext := "tar.gz"
@@ -172,17 +176,16 @@ func installJavaWorkbench(version string, emit func(string)) error {
 		return errno.Wrap(errno.CodeConnFailed, "解压 JDK 失败", err)
 	}
 	src := staging
-	if !fileExists(filepath.Join(staging, "bin", javaExeName())) {
-		// 偶发未剥顶层时再找一层
+	if !localFileExists(filepath.Join(staging, "bin", javaExeName())) {
 		entries, _ := os.ReadDir(staging)
 		for _, ent := range entries {
-			if ent.IsDir() && fileExists(filepath.Join(staging, ent.Name(), "bin", javaExeName())) {
+			if ent.IsDir() && localFileExists(filepath.Join(staging, ent.Name(), "bin", javaExeName())) {
 				src = filepath.Join(staging, ent.Name())
 				break
 			}
 		}
 	}
-	if !fileExists(filepath.Join(src, "bin", javaExeName())) {
+	if !localFileExists(filepath.Join(src, "bin", javaExeName())) {
 		return errno.New(errno.CodeConnFailed, "解压后未找到 java 可执行文件", id)
 	}
 	_ = os.RemoveAll(dest)
@@ -192,6 +195,58 @@ func installJavaWorkbench(version string, emit func(string)) error {
 		}
 	}
 	emit("已安装到 " + dest)
+	emit("正在切换到 " + id)
+	if err := activateJavaToolchain(id); err != nil {
+		return errno.Wrap(errno.CodeConnFailed, "已安装但切换失败", err)
+	}
+	emit("已切换到 Java " + id + "（请新开终端生效）")
+	return nil
+}
+
+// installJavaWorkbenchRemote 在 SSH 目标机上下载并安装 Temurin。
+func installJavaWorkbenchRemote(id string, emit func(string)) error {
+	osName, arch := javaOSArch()
+	script := `set -euo pipefail
+id=` + posixSingleQuote(id) + `
+os=` + posixSingleQuote(osName) + `
+arch=` + posixSingleQuote(arch) + `
+dest="$HOME/.wworkbench/toolchains/java/versions/$id"
+if [ -x "$dest/bin/java" ]; then
+  echo "已安装 Java $id"
+  exit 0
+fi
+url="https://api.adoptium.net/v3/binary/latest/${id}/ga/${os}/${arch}/jdk/hotspot/normal/eclipse?project=jdk"
+tmp="$(mktemp -d /tmp/wwb-jdk.XXXXXX)"
+trap 'rm -rf "$tmp"' EXIT
+echo "下载 Temurin JDK $id …"
+echo "$url"
+curl -fL --retry 3 -o "$tmp/jdk.tgz" "$url"
+mkdir -p "$tmp/extract"
+tar -xzf "$tmp/jdk.tgz" -C "$tmp/extract"
+src=""
+if [ -x "$tmp/extract/bin/java" ]; then
+  src="$tmp/extract"
+else
+  for d in "$tmp/extract"/*; do
+    if [ -x "$d/bin/java" ]; then
+      src="$d"
+      break
+    fi
+  done
+fi
+if [ -z "$src" ] || [ ! -x "$src/bin/java" ]; then
+  echo "解压后未找到 java 可执行文件" >&2
+  exit 1
+fi
+mkdir -p "$(dirname "$dest")"
+rm -rf "$dest"
+mv "$src" "$dest"
+echo "已安装到 $dest"
+`
+	emit("在远端安装 Temurin JDK " + id + " …")
+	if _, err := runLoginShellStream(script, 20*time.Minute, bindStreamEmit(emit)); err != nil {
+		return errno.Wrap(errno.CodeConnFailed, "远端安装 JDK 失败", err)
+	}
 	emit("正在切换到 " + id)
 	if err := activateJavaToolchain(id); err != nil {
 		return errno.Wrap(errno.CodeConnFailed, "已安装但切换失败", err)
@@ -242,7 +297,6 @@ func uninstallJavaWorkbench(version string, emit func(string)) error {
 	if readToolchainCurrent(langJava) == id || readToolchainCurrent(langJava) == version {
 		return errno.New(errno.CodeInvalidArg, "不能卸载当前正在使用的版本，请先切换到其它版本", version)
 	}
-	// 也允许用 formula/完整 id
 	target := id
 	if fileExists(mustToolchainDir(langJava, version)) {
 		target = version
@@ -252,6 +306,10 @@ func uninstallJavaWorkbench(version string, emit func(string)) error {
 		return err
 	}
 	emit("删除 " + dir)
+	if !runnerIsLocal() {
+		_, err = runLoginShell(`rm -rf ` + posixSingleQuote(dir))
+		return err
+	}
 	return os.RemoveAll(dir)
 }
 

@@ -13,6 +13,10 @@ import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { Select, pressProps, useDismissOverlays } from '../../components/compat'
+import { LoadingPane } from '../../components/LoadingHost'
+import { useLoading, withLoading } from '../../stores/loadingStore'
+
+const HTTPAPI_LOADING_RESPONSE = 'httpapi.response'
 import {
   loadHttpApiWorkspace,
   scheduleHttpApiWorkspacePersist,
@@ -95,7 +99,7 @@ export function HttpApiWorkbench() {
 
   const [response, setResponse] = useState<HTTPResponse | null>(null)
   const [lastSentCurl, setLastSentCurl] = useState('')
-  const [sending, setSending] = useState(false)
+  const responseLoading = useLoading(HTTPAPI_LOADING_RESPONSE)
   const [deleteTarget, setDeleteTarget] = useState<HTTPSavedRequest | null>(null)
   const [ctxMenu, setCtxMenu] = useState<HttpApiContextMenuState | null>(null)
   const [envModalOpen, setEnvModalOpen] = useState(false)
@@ -335,22 +339,28 @@ export function HttpApiWorkbench() {
       body: resolveBody(),
     })
     setLastSentCurl(curl)
-    setSending(true)
     setStatusMessage(t('httpapi.sending'))
     try {
-      const res = (await api.executeHTTPRequest(req)) as HTTPResponse
-      setResponse(res)
-      setResTab('body')
-      setHistory(pushHttpHistory(historyFromResponse(method, url, name, res)))
-      setStatusMessage(
-        res.error
-          ? res.error
-          : `${res.statusCode} ${res.status} · ${t('httpapi.elapsed', { ms: res.elapsedMs })}`,
+      await withLoading(
+        HTTPAPI_LOADING_RESPONSE,
+        async () => {
+          const res = (await api.executeHTTPRequest(req)) as HTTPResponse
+          setResponse(res)
+          setResTab('body')
+          setHistory(pushHttpHistory(historyFromResponse(method, url, name, res)))
+          setStatusMessage(
+            res.error
+              ? res.error
+              : `${res.statusCode} ${res.status} · ${t('httpapi.elapsed', { ms: res.elapsedMs })}`,
+          )
+        },
+        {
+          label: t('httpapi.sending'),
+          onBegin: () => setResponse(null),
+        },
       )
     } catch (e) {
       setStatusMessage((e as Error).message)
-    } finally {
-      setSending(false)
     }
   }
 
@@ -706,8 +716,8 @@ export function HttpApiWorkbench() {
             <button
               type="button"
               className="wn-btn wn-btn-sm httpapi-btn-send"
-              disabled={sending}
-              {...pressProps(() => void send(), { disabled: sending })}
+              disabled={responseLoading.active}
+              {...pressProps(() => void send(), { disabled: responseLoading.active })}
             >
               <IconPlay size={14} /> {t('httpapi.send')}
             </button>
@@ -836,7 +846,7 @@ export function HttpApiWorkbench() {
                   </button>
                 ))}
               </nav>
-              <div className="httpapi-res-panel">
+              <LoadingPane loadingKey={HTTPAPI_LOADING_RESPONSE} label={t('httpapi.sending')} minHeight={160} className="httpapi-res-panel">
                 {!response ? (
                   <div className="httpapi-response-empty">{t('httpapi.noResponse')}</div>
                 ) : resTab === 'header' ? (
@@ -857,7 +867,7 @@ export function HttpApiWorkbench() {
                 ) : (
                   <pre className="httpapi-pre">{responseBodyDisplay || response.error}</pre>
                 )}
-              </div>
+              </LoadingPane>
               {resTab === 'body' && response?.body && (
                 <div className="httpapi-res-toolbar">
                   <button

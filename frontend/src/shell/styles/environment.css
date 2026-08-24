@@ -6,6 +6,30 @@
 
 .toolchain-toolbar {
   border-bottom-color: var(--color-border-strong);
+  overflow: hidden;
+}
+
+.toolchain-toolbar .product-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.toolchain-toolbar .product-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.toolchain-toolbar .env-target-select {
+  width: auto;
+  min-width: 108px;
+  max-width: min(36vw, 280px);
+  flex: 0 0 auto;
+  height: var(--control-height-chrome);
+  font-size: var(--font-size-caption);
 }
 
 .toolchain-toolbar .product-toolbar-status {
@@ -367,6 +391,8 @@
 .env-version-modal {
   width: min(640px, 92vw);
   max-width: 640px;
+  max-height: calc(100vh - 32px);
+  margin: 8px 0;
 }
 
 .env-version-modal-header {
@@ -430,6 +456,7 @@
 }
 
 .env-version-table-wrap {
+  position: relative;
   max-height: 360px;
   overflow: auto;
   border: 1px solid var(--color-border);

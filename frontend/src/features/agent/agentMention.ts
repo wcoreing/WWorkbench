@@ -108,7 +108,8 @@ export function buildAutoMentions(input: AgentAutoMentionInput): AgentMention[] 
   if (
     (input.activeProduct === 'terminal' && s.focusKind === 'terminal.ssh' && s.hostId) ||
     (input.activeProduct === 'sftp' && s.focusKind === 'sftp' && s.hostId) ||
-    (input.activeProduct === 'docker' && s.hostId)
+    (input.activeProduct === 'docker' && s.hostId) ||
+    (input.activeProduct === 'environment' && s.hostId)
   ) {
     out.push({
       kind: 'ssh',

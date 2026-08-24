@@ -17,6 +17,8 @@ import { openAgentDraft } from '../../features/agent/openAgentDraft'
 import { readLinkedSkillId } from '../../features/notebook/noteSkillLink'
 import { buildNotebookLayout, moveNoteInTree, nextNoteSortOrder } from '../../features/notebook/notebookTree'
 import { pressProps, useDismissOverlays } from '../../components/compat'
+import { LoadingPane } from '../../components/LoadingHost'
+import { useLoading, withLoading } from '../../stores/loadingStore'
 import {
   buildConnectionTemplate,
   buildServerChecklistTemplate,
@@ -86,7 +88,8 @@ export function NotebookWorkbench() {
   const [hosts, setHosts] = useState<ShellHost[]>([])
   const [connections, setConnections] = useState<Connection[]>([])
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
+  const bootLoading = useLoading('notebook.boot')
+  const listLoading = useLoading('notebook.list')
   const NOTEBOOK_SIDEBAR_WIDTH_KEY = 'notebook_sidebar_width'
   const NOTEBOOK_SIDEBAR_EXPANDED_KEY = 'notebook_sidebar_width__expanded'
   const NOTEBOOK_SIDEBAR_COLLAPSED_KEY = 'notebook_sidebar__collapsed'
@@ -106,7 +109,6 @@ export function NotebookWorkbench() {
   })
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'note' | 'group'; id: string; title: string } | null>(null)
   const [groupModal, setGroupModal] = useState<NotebookGroup | null | undefined>(undefined)
-  const [listRefreshing, setListRefreshing] = useState(false)
   const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('source')
   const [saveByNote, setSaveByNote] = useState<Record<string, 'saved' | 'dirty' | 'saving'>>({})
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
@@ -228,26 +230,32 @@ export function NotebookWorkbench() {
   }, [])
 
   const handleRefreshList = useCallback(async () => {
-    setListRefreshing(true)
     try {
-      await refreshAll()
-      if (searching) await refreshSummaries()
-      for (const id of openTabIds) {
-        const status = saveByNote[id]
-        if (status === 'dirty' || status === 'saving') continue
-        try {
-          const note = (await api.getNote(id)) as Note
-          markNoteSaved(note)
-          setOpenNotes((prev) => ({ ...prev, [id]: note }))
-        } catch {
-          /* 笔记已删除 */
-        }
-      }
-      setStatusMessage(t('notebook.listRefreshed'))
+      await withLoading(
+        'notebook.list',
+        async () => {
+          await refreshAll()
+          if (searching) await refreshSummaries()
+          for (const id of openTabIds) {
+            const status = saveByNote[id]
+            if (status === 'dirty' || status === 'saving') continue
+            try {
+              const note = (await api.getNote(id)) as Note
+              markNoteSaved(note)
+              setOpenNotes((prev) => ({ ...prev, [id]: note }))
+            } catch {
+              /* 笔记已删除 */
+            }
+          }
+          setStatusMessage(t('notebook.listRefreshed'))
+        },
+        {
+          label: t('common.loading'),
+          onBegin: () => setSummaries([]),
+        },
+      )
     } catch (e) {
       setStatusMessage((e as Error).message)
-    } finally {
-      setListRefreshing(false)
     }
   }, [
     refreshAll,
@@ -363,17 +371,18 @@ export function NotebookWorkbench() {
   }, [refreshSummaries, refreshAll, openNoteById, markNoteSaved])
 
   useEffect(() => {
-    if (!notebookFocusNoteId || loading) return
+    if (!notebookFocusNoteId || bootLoading.active) return
     void openNoteById(notebookFocusNoteId)
       .then(() => refreshSummaries())
       .finally(() => setNotebookFocusNoteId(null))
-  }, [notebookFocusNoteId, loading, openNoteById, setNotebookFocusNoteId, refreshSummaries])
+  }, [notebookFocusNoteId, bootLoading.active, openNoteById, setNotebookFocusNoteId, refreshSummaries])
 
   useEffect(() => {
     if (booted.current) return
     booted.current = true
-    void (async () => {
-      try {
+    void withLoading(
+      'notebook.boot',
+      async () => {
         await refreshAll()
         const ui = await api.getNotebookUI()
         const tabIds = ui.openTabIds ?? []
@@ -390,26 +399,29 @@ export function NotebookWorkbench() {
         for (const n of Object.values(loaded)) markNoteSaved(n)
         setOpenTabIds(validIds)
         setActiveTabId(ui.activeTabId && loaded[ui.activeTabId] ? ui.activeTabId : validIds[0] ?? null)
-      } catch (e) {
-        setStatusMessage((e as Error).message)
-      } finally {
-        setLoading(false)
-      }
-    })()
-  }, [refreshAll, setStatusMessage, markNoteSaved])
+      },
+      {
+        label: t('notebook.loading'),
+        onBegin: () => {
+          setSummaries([])
+          setGroups([])
+        },
+      },
+    ).catch((e) => setStatusMessage((e as Error).message))
+  }, [refreshAll, setStatusMessage, markNoteSaved, t])
 
   useEffect(() => {
-    if (loading) return
+    if (bootLoading.active) return
     const t = setTimeout(() => {
       void refreshSummaries().catch((e) => setStatusMessage((e as Error).message))
     }, 300)
     return () => clearTimeout(t)
-  }, [search, loading, refreshSummaries, setStatusMessage])
+  }, [search, bootLoading.active, refreshSummaries, setStatusMessage])
 
   useEffect(() => {
-    if (loading) return
+    if (bootLoading.active) return
     persistUI(openTabIds, activeTabId)
-  }, [openTabIds, activeTabId, loading, persistUI])
+  }, [openTabIds, activeTabId, bootLoading.active, persistUI])
 
   useWorkbenchCommand(Capability.NotebookOpen, (cmd) => {
     const existingId = payloadStr(cmd.payload, 'noteId')
@@ -819,16 +831,9 @@ export function NotebookWorkbench() {
     })
   }
 
-  if (loading) {
-    return (
-      <div className="product-workbench notebook-workbench">
-        <div className="pane-empty">{t('notebook.loading')}</div>
-      </div>
-    )
-  }
-
   return (
     <div className="product-workbench notebook-workbench">
+      <LoadingPane loadingKey="notebook.boot" label={t('notebook.loading')} minHeight={480}>
       <header className="product-toolbar notebook-toolbar">
         <div className="product-actions">
           <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" {...pressProps(() => void createNote())}>
@@ -906,7 +911,7 @@ export function NotebookWorkbench() {
             onMoveNoteToGroup={(noteId, groupId) => void moveNoteToGroup(noteId, groupId)}
             onBatchDelete={handleBatchDeleteNotes}
             onRefresh={handleRefreshList}
-            refreshing={listRefreshing}
+            refreshing={listLoading.active}
           />
         }
       >
@@ -1017,6 +1022,7 @@ export function NotebookWorkbench() {
           )}
         </main>
       </ProductLayout>
+      </LoadingPane>
 
       {tabCtxMenu && (
         <TabContextMenu

@@ -1,8 +1,6 @@
 package environment
 
 import (
-	"os"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -127,21 +125,56 @@ func listJavaInstalledOnly(current string, installed map[string]bool) []model.Ru
 	return out
 }
 
-// javaInstalledMap 返回已安装 Java identifier 集合。
+// javaInstalledMap 返回已安装 Java identifier 集合（经当前 Runner，兼容 SSH）。
 func javaInstalledMap() map[string]bool {
 	m := map[string]bool{}
-	home, _ := os.UserHomeDir()
-	dir := filepath.Join(home, ".sdkman", "candidates", "java")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return m
-	}
-	for _, ent := range entries {
-		if ent.IsDir() && ent.Name() != "current" {
-			m[ent.Name()] = true
+	for _, name := range linesNonEmpty(runLoginShellOK(`ls -1 "$HOME/.sdkman/candidates/java" 2>/dev/null`)) {
+		if name != "" && name != "current" {
+			m[name] = true
 		}
 	}
 	return m
+}
+
+// resolveSdkmanJavaCandidate 将 17 / 17.0.14-tem 解析为 sdkman identifier。
+func resolveSdkmanJavaCandidate(req string) (string, error) {
+	req = strings.TrimSpace(req)
+	if req == "" {
+		return "", errInvalidVersion
+	}
+	if strings.Contains(req, "-") {
+		return quoteShellVersion(req)
+	}
+	for id := range javaInstalledMap() {
+		if id == req || strings.HasPrefix(id, req+".") {
+			return quoteShellVersion(id)
+		}
+	}
+	raw := runLoginShellOK(sdkmanScript() + ` && sdk list java 2>/dev/null`)
+	best := ""
+	for _, line := range strings.Split(raw, "\n") {
+		_, _, version, dist, _, identifier, ok := parseSDKListLine(line)
+		if !ok {
+			continue
+		}
+		major := version
+		if i := strings.IndexAny(version, ".-+"); i > 0 {
+			major = version[:i]
+		}
+		if major != req && version != req {
+			continue
+		}
+		if best == "" {
+			best = identifier
+		}
+		if dist == "tem" || strings.HasSuffix(identifier, "-tem") {
+			return quoteShellVersion(identifier)
+		}
+	}
+	if best != "" {
+		return quoteShellVersion(best)
+	}
+	return quoteShellVersion(req)
 }
 
 // parseSDKListLine 解析 sdk list 表格行。

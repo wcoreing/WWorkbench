@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api } from '../../api/client'
 import type { ComposeService } from '../../api/types'
 import { pressProps } from '../../components/compat'
+import { LoadingPane } from '../../components/LoadingHost'
 import { useI18n } from '../../i18n'
+import { useLoading, withLoading } from '../../stores/loadingStore'
 
 interface Props {
   contextId: string
@@ -18,8 +20,9 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
   const [services, setServices] = useState<ComposeService[]>([])
   const [selectedService, setSelectedService] = useState<string | null>(null)
   const [logs, setLogs] = useState('')
-  const [loading, setLoading] = useState(false)
   const [acting, setActing] = useState(false)
+  const loadingKey = useMemo(() => `docker.compose.${contextId}`, [contextId])
+  const listLoading = useLoading(loadingKey)
 
   const loadProjectDir = useCallback(async () => {
     try {
@@ -36,19 +39,25 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
 
   const refreshServices = useCallback(async () => {
     if (!dockerReady || !projectDir.trim()) return
-    setLoading(true)
     try {
-      const list = await api.listComposeServices(contextId, projectDir)
-      setServices(list)
-      setSelectedService((cur) => (cur && list.some((s) => s.service === cur) ? cur : list[0]?.service ?? null))
-      onStatus(t('docker.composeLoaded', { count: list.length }))
+      await withLoading(
+        loadingKey,
+        async () => {
+          const list = await api.listComposeServices(contextId, projectDir)
+          setServices(list)
+          setSelectedService((cur) => (cur && list.some((s) => s.service === cur) ? cur : list[0]?.service ?? null))
+          onStatus(t('docker.composeLoaded', { count: list.length }))
+        },
+        {
+          label: t('common.loading'),
+          onBegin: () => setServices([]),
+        },
+      )
     } catch (e) {
       setServices([])
       onStatus((e as Error).message)
-    } finally {
-      setLoading(false)
     }
-  }, [contextId, projectDir, dockerReady, onStatus, t])
+  }, [contextId, projectDir, dockerReady, loadingKey, onStatus, t])
 
   const loadLogs = useCallback(
     async (service: string | null) => {
@@ -153,9 +162,9 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
         <button
           type="button"
           className="wn-btn wn-btn-sm wn-btn-tool"
-          disabled={!dockerReady || loading || acting || !projectDir}
+          disabled={!dockerReady || listLoading.active || acting || !projectDir}
           {...pressProps(() => void refreshServices(), {
-            disabled: !dockerReady || loading || acting || !projectDir,
+            disabled: !dockerReady || listLoading.active || acting || !projectDir,
           })}
         >
           {t('common.refresh')}
@@ -163,7 +172,7 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
       </div>
 
       <div className="docker-compose-body">
-        <div className="docker-table-wrap docker-table-full">
+        <LoadingPane loadingKey={loadingKey} label={t('common.loading')} minHeight={200} className="docker-table-wrap docker-table-full">
           <table className="docker-table">
             <thead>
               <tr>
@@ -178,7 +187,7 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
               {services.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="grid-empty">
-                    {loading ? t('common.loading') : t('docker.composeNoServices')}
+                    {t('docker.composeNoServices')}
                   </td>
                 </tr>
               ) : (
@@ -214,7 +223,7 @@ export function DockerComposePanel({ contextId, dockerReady, projectDir, onProje
               )}
             </tbody>
           </table>
-        </div>
+        </LoadingPane>
         <div className="docker-compose-logs">
           <div className="docker-detail-tabs">
             <span className="docker-detail-tab active">{t('docker.tabLogs')}</span>

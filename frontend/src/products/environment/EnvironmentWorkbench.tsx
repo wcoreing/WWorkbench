@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
-import type { EnvPreset, ProjectEnvHint, RuntimeInfo, RuntimeLang, RuntimeVersion } from '../../api/types'
+import type { EnvPreset, ProjectEnvHint, RuntimeInfo, RuntimeLang, RuntimeVersion, SSHHost } from '../../api/types'
 import { IconLayers, IconPlus } from '../../components/Icons'
 import { ProductLayout } from '../../components/layout'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
@@ -13,7 +13,11 @@ import { useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadBool, payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
-import { pressProps } from '../../components/compat'
+import { pressProps, Select } from '../../components/compat'
+import { LoadingPane } from '../../components/LoadingHost'
+import { useLoadingScope, withLoading } from '../../stores/loadingStore'
+
+const ENV_LOADING_MAIN = 'environment.main'
 
 const RUNTIME_META: Record<RuntimeLang, { label: string; color: string }> = {
   node: { label: 'Node.js', color: '#3c873a' },
@@ -24,7 +28,7 @@ const RUNTIME_META: Record<RuntimeLang, { label: string; color: string }> = {
 
 const LANGS: RuntimeLang[] = ['node', 'go', 'php', 'java']
 
-/** EnvironmentWorkbench 本机开发环境管理。 */
+/** EnvironmentWorkbench 本机 / SSH 远端开发环境管理。 */
 export function EnvironmentWorkbench() {
   const { t } = useI18n()
   const { setStatusMessage, setAgentSurface, activeProduct } = useAppStore()
@@ -32,17 +36,41 @@ export function EnvironmentWorkbench() {
   const [presets, setPresets] = useState<EnvPreset[]>([])
   const [projects, setProjects] = useState<ProjectEnvHint[]>([])
   const [scanPath, setScanPath] = useState('')
-  const [loading, setLoading] = useState(false)
+  const mainLoading = useLoadingScope(ENV_LOADING_MAIN)
   const [presetModal, setPresetModal] = useState<EnvPreset | null | undefined>(undefined)
   const [switchLang, setSwitchLang] = useState<RuntimeLang | null>(null)
   const [versions, setVersions] = useState<RuntimeVersion[]>([])
-  const [versionsLoading, setVersionsLoading] = useState(false)
   const versionRequestRef = useRef(0)
-  const versionCacheRef = useRef<Partial<Record<RuntimeLang, RuntimeVersion[]>>>({})
+  const versionCacheRef = useRef<Record<string, RuntimeVersion[]>>({})
+
   const [deletePreset, setDeletePreset] = useState<EnvPreset | null>(null)
+  const [sshHosts, setSSHHosts] = useState<SSHHost[]>([])
+  const [sshHostId, setSSHHostId] = useState('')
+
+  const versionCacheKey = (lang: RuntimeLang) => `${sshHostId}:${lang}`
 
   const activePreset = useMemo(() => presets.find((p) => p.active) ?? null, [presets])
   const runtimeMap = useMemo(() => Object.fromEntries(runtimes.map((r) => [r.lang, r])), [runtimes])
+  const selectedHost = useMemo(() => sshHosts.find((h) => h.id === sshHostId), [sshHosts, sshHostId])
+
+  const currentPresetRuntimes = useMemo(() => {
+    const out: Record<string, string> = {}
+    for (const r of runtimes) {
+      if (r.available && r.version) out[r.lang] = r.version
+    }
+    return out
+  }, [runtimes])
+
+  const hasCurrentPresetSeed = Object.keys(currentPresetRuntimes).length > 0
+
+  const suggestedPresetName = useMemo(() => {
+    if (sshHostId && selectedHost?.name) return `${selectedHost.name} 环境`
+    return '本机环境'
+  }, [sshHostId, selectedHost?.name])
+
+  useEffect(() => {
+    void api.listSSHHosts().then(setSSHHosts).catch(() => setSSHHosts([]))
+  }, [])
 
   useEffect(() => {
     if (activeProduct !== 'environment') return
@@ -60,39 +88,56 @@ export function EnvironmentWorkbench() {
           presets.map((p) => (p.active ? `${p.name}*` : p.name)),
           8,
         ),
+        sshHostId: sshHostId || undefined,
+        sshHostLabel: selectedHost
+          ? `${selectedHost.name} · ${selectedHost.user}@${selectedHost.host}`
+          : undefined,
       }),
     )
-  }, [activeProduct, activePreset, scanPath, runtimes, presets, setAgentSurface])
+  }, [activeProduct, activePreset, scanPath, runtimes, presets, setAgentSurface, sshHostId, selectedHost])
 
   const refreshRuntimes = useCallback(async () => {
-    const list = await api.listEnvRuntimes()
+    const list = await api.listEnvRuntimes(sshHostId)
     setRuntimes(list as RuntimeInfo[])
-  }, [])
+  }, [sshHostId])
 
   const refreshPresets = useCallback(async () => {
     setPresets(await api.listEnvPresets())
   }, [])
 
+  const refreshAllCore = useCallback(async () => {
+    await Promise.all([refreshRuntimes(), refreshPresets()])
+    const path = await api.getEnvScanPath()
+    setScanPath(path)
+    if (path) {
+      setProjects(await api.scanEnvProjects(path))
+    }
+  }, [refreshRuntimes, refreshPresets])
+
   const refreshAll = useCallback(async () => {
-    setLoading(true)
     try {
-      await Promise.all([refreshRuntimes(), refreshPresets()])
-      const path = await api.getEnvScanPath()
-      setScanPath(path)
-      if (path) {
-        setProjects(await api.scanEnvProjects(path))
-      }
+      await withLoading(ENV_LOADING_MAIN, refreshAllCore, {
+        label: t('common.loading'),
+        onBegin: () => {
+          setRuntimes([])
+          setProjects([])
+        },
+      })
     } catch (e) {
       setStatusMessage((e as Error).message)
-    } finally {
-      setLoading(false)
     }
-  }, [refreshRuntimes, refreshPresets, setStatusMessage])
+  }, [refreshAllCore, setStatusMessage, t])
 
   useEffect(() => {
+    versionCacheRef.current = {}
     void refreshAll()
   }, [refreshAll])
 
+  const onSelectTarget = (id: string) => {
+    setSSHHostId(id)
+    versionCacheRef.current = {}
+    setVersions([])
+  }
   useEffect(() => {
     const apply = async (evt: WorkbenchChangedEvent) => {
       if (evt.domain !== 'environment.preset') return
@@ -109,35 +154,47 @@ export function EnvironmentWorkbench() {
     })
   }, [refreshPresets])
 
+  const versionLoadingKey = (lang: RuntimeLang) => `environment.versions.${lang}`
+
   /** loadVersions 加载某语言版本列表（默认读缓存，force 时强制请求）。 */
   const loadVersions = useCallback(
     async (lang: RuntimeLang, opts?: { force?: boolean; silent?: boolean }) => {
-      const cached = versionCacheRef.current[lang]
+      const cacheKey = versionCacheKey(lang)
+      const cached = versionCacheRef.current[cacheKey]
       if (cached && !opts?.force) {
         setVersions(cached)
         return
       }
 
       const reqId = ++versionRequestRef.current
-      if (!opts?.silent) {
-        setVersions(cached ?? [])
-        setVersionsLoading(true)
-      }
+      const loadingKey = versionLoadingKey(lang)
+
       try {
-        const list = await api.listEnvVersions(lang)
-        if (reqId !== versionRequestRef.current) return
-        versionCacheRef.current[lang] = list
-        setVersions(list)
+        await withLoading(
+          loadingKey,
+          async () => {
+            const list = await api.listEnvVersions(sshHostId, lang)
+            if (reqId !== versionRequestRef.current) return
+            versionCacheRef.current[cacheKey] = list
+            setVersions(list)
+          },
+          {
+            silent: opts?.silent,
+            label: t('environment.refreshing'),
+            onBegin: opts?.silent
+              ? undefined
+              : () => {
+                  if (reqId !== versionRequestRef.current) return
+                  setVersions([])
+                },
+          },
+        )
       } catch (e) {
         if (reqId !== versionRequestRef.current) return
         setStatusMessage((e as Error).message)
-      } finally {
-        if (reqId === versionRequestRef.current && !opts?.silent) {
-          setVersionsLoading(false)
-        }
       }
     },
-    [setStatusMessage],
+    [setStatusMessage, sshHostId, t],
   )
 
   const openSwitch = (lang: RuntimeLang) => {
@@ -173,7 +230,6 @@ export function EnvironmentWorkbench() {
     versionRequestRef.current += 1
     setSwitchLang(null)
     setVersions([])
-    setVersionsLoading(false)
   }
 
   const refreshVersionModal = async (opts?: { silent?: boolean; force?: boolean }) => {
@@ -183,19 +239,28 @@ export function EnvironmentWorkbench() {
   }
 
   const applyPreset = async (preset: EnvPreset) => {
-    setLoading(true)
     try {
-      const result = await api.applyEnvPreset(preset.id)
-      await refreshAll()
-      if (result.warnings?.length) {
-        setStatusMessage(t('environment.presetPartial', { warnings: result.warnings.join('；') }))
-      } else {
-        setStatusMessage(t('environment.presetApplied', { name: preset.name }))
-      }
+      await withLoading(
+        ENV_LOADING_MAIN,
+        async () => {
+          const result = await api.applyEnvPreset(preset.id, sshHostId)
+          await refreshAllCore()
+          if (result.warnings?.length) {
+            setStatusMessage(t('environment.presetPartial', { warnings: result.warnings.join('；') }))
+          } else {
+            setStatusMessage(t('environment.presetApplied', { name: preset.name }))
+          }
+        },
+        {
+          label: t('common.loading'),
+          onBegin: () => {
+            setRuntimes([])
+            setProjects([])
+          },
+        },
+      )
     } catch (e) {
       setStatusMessage((e as Error).message)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -212,24 +277,32 @@ export function EnvironmentWorkbench() {
   }
 
   const alignProject = async (proj: ProjectEnvHint) => {
-    setLoading(true)
     try {
-      const warnings: string[] = []
-      for (const [lang, ver] of Object.entries(proj.suggested)) {
-        try {
-          await api.ensureEnvVersion(lang, ver)
-        } catch (e) {
-          warnings.push(`${lang}: ${(e as Error).message}`)
-        }
-      }
-      await refreshRuntimes()
-      setStatusMessage(
-        warnings.length ? t('environment.alignPartial', { warnings: warnings.join('；') }) : t('environment.alignDone', { path: proj.path }),
+      await withLoading(
+        ENV_LOADING_MAIN,
+        async () => {
+          const warnings: string[] = []
+          for (const [lang, ver] of Object.entries(proj.suggested)) {
+            try {
+              await api.ensureEnvVersion(sshHostId, lang, ver)
+            } catch (e) {
+              warnings.push(`${lang}: ${(e as Error).message}`)
+            }
+          }
+          await refreshRuntimes()
+          setStatusMessage(
+            warnings.length
+              ? t('environment.alignPartial', { warnings: warnings.join('；') })
+              : t('environment.alignDone', { path: proj.path }),
+          )
+        },
+        {
+          label: t('common.loading'),
+          onBegin: () => setRuntimes([]),
+        },
       )
     } catch (e) {
       setStatusMessage((e as Error).message)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -244,25 +317,44 @@ export function EnvironmentWorkbench() {
     <div className="product-workbench toolchain-workbench">
       <div className="product-toolbar toolchain-toolbar">
         <nav className="product-actions">
-          <button type="button" className="wn-btn wn-btn-chrome" {...pressProps(() => setPresetModal(null))}>
-            <IconPlus size={13} />
-            <span>{t('environment.newPreset')}</span>
+          <Select
+            className="env-target-select"
+            value={sshHostId}
+            options={[
+              { value: '', label: t('environment.targetLocal') },
+              ...sshHosts.map((h) => ({
+                value: h.id,
+                label: `${h.name} · ${h.user}@${h.host}`,
+              })),
+            ]}
+            onChange={onSelectTarget}
+            aria-label={t('environment.targetLabel')}
+          />
+          <button
+            type="button"
+            className="wn-btn wn-btn-chrome"
+            disabled={!hasCurrentPresetSeed}
+            title={hasCurrentPresetSeed ? undefined : t('environment.saveCurrentPresetHint')}
+            {...pressProps(() => setPresetModal(null), { disabled: !hasCurrentPresetSeed })}
+          >
+            <IconLayers size={13} />
+            <span>{t('environment.saveCurrentPreset')}</span>
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-chrome"
-            disabled={loading}
-            {...pressProps(() => void pickScanDir(), { disabled: loading })}
+            disabled={mainLoading.active}
+            {...pressProps(() => void pickScanDir(), { disabled: mainLoading.active })}
           >
             {t('environment.pickScanDir')}
           </button>
           <button
             type="button"
             className="wn-btn wn-btn-chrome"
-            disabled={loading || !scanPath}
+            disabled={mainLoading.active || !scanPath}
             {...pressProps(
               () => scanPath && void api.scanEnvProjects(scanPath).then(setProjects),
-              { disabled: loading || !scanPath },
+              { disabled: mainLoading.active || !scanPath },
             )}
           >
             {t('environment.rescan')}
@@ -270,7 +362,11 @@ export function EnvironmentWorkbench() {
         </nav>
         <span className="chrome-spacer" />
         <span className="product-toolbar-status">
-          {loading ? t('common.loading') : scanPath || t('environment.noScanDir')}
+          {sshHostId
+            ? t('environment.targetRemoteStatus', {
+                name: selectedHost?.name || sshHostId,
+              })
+            : scanPath || t('environment.noScanDir')}
         </span>
       </div>
 
@@ -325,12 +421,17 @@ export function EnvironmentWorkbench() {
       >
 
         <main className="toolchain-main">
+          <LoadingPane loadingKey={ENV_LOADING_MAIN} label={t('common.loading')} minHeight={280}>
           <section className="toolchain-section">
             <header className="toolchain-section-header">
               <IconLayers size={16} />
               <div>
                 <h2>{t('environment.activeSection')}</h2>
-                <p>{t('environment.activeDesc')}</p>
+                <p>
+                  {sshHostId
+                    ? t('environment.activeDescRemote', { name: selectedHost?.name || sshHostId })
+                    : t('environment.activeDesc')}
+                </p>
               </div>
             </header>
             <div className="toolchain-runtime-grid">
@@ -480,23 +581,26 @@ export function EnvironmentWorkbench() {
               </div>
             )}
           </section>
+          </LoadingPane>
         </main>
       </ProductLayout>
 
       <EnvPresetModal
         open={presetModal !== undefined}
         initial={presetModal || undefined}
+        seedRuntimes={presetModal ? undefined : currentPresetRuntimes}
+        defaultName={presetModal ? undefined : suggestedPresetName}
         onClose={() => setPresetModal(undefined)}
         onSaved={() => void refreshPresets()}
       />
 
       <EnvVersionModal
-        key={switchLang ?? 'closed'}
+        key={`${switchLang ?? 'closed'}:${sshHostId}`}
         open={switchLang != null}
         lang={switchLang}
         runtime={switchLang ? runtimeMap[switchLang] : undefined}
         versions={versions}
-        loading={versionsLoading}
+        sshHostId={sshHostId}
         onClose={closeVersionModal}
         onRefresh={refreshVersionModal}
         onStatus={setStatusMessage}

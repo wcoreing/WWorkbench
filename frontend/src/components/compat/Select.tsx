@@ -98,10 +98,19 @@ export function Select({
       const spaceAbove = r.top - gap - 8
       const preferBelow = spaceBelow >= 160 || spaceBelow >= spaceAbove
       const maxHeight = Math.max(120, Math.min(280, preferBelow ? spaceBelow : spaceAbove))
+      // 菜单可比触发器更宽，避免长 SSH 标签被裁切；并夹到视口内。
+      const longest = flat.reduce((m, o) => Math.max(m, (o.label || '').length), 0)
+      const contentW = Math.ceil(longest * 7.6 + 36)
+      const maxW = Math.max(160, window.innerWidth - 16)
+      const width = Math.min(maxW, Math.max(r.width, 140, contentW))
+      let left = r.left
+      if (left + width > window.innerWidth - 8) {
+        left = Math.max(8, window.innerWidth - 8 - width)
+      }
       setPos({
         top: preferBelow ? r.bottom + gap : Math.max(8, r.top - gap - maxHeight),
-        left: r.left,
-        width: Math.max(r.width, 140),
+        left,
+        width,
         maxHeight,
       })
     }
@@ -112,7 +121,7 @@ export function Select({
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
     }
-  }, [open])
+  }, [open, flat])
 
   const pick = (next: string) => {
     setOpen(false)

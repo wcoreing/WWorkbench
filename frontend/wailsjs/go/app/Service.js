@@ -26,8 +26,8 @@ export function ApplyAgentProviderPreset(arg1) {
   return window['go']['app']['Service']['ApplyAgentProviderPreset'](arg1);
 }
 
-export function ApplyEnvPreset(arg1) {
-  return window['go']['app']['Service']['ApplyEnvPreset'](arg1);
+export function ApplyEnvPreset(arg1, arg2) {
+  return window['go']['app']['Service']['ApplyEnvPreset'](arg1, arg2);
 }
 
 export function ApplyHTTPApiTreeLayout(arg1) {
@@ -182,8 +182,8 @@ export function EnsureDockerHost(arg1, arg2) {
   return window['go']['app']['Service']['EnsureDockerHost'](arg1, arg2);
 }
 
-export function EnsureEnvVersion(arg1, arg2) {
-  return window['go']['app']['Service']['EnsureEnvVersion'](arg1, arg2);
+export function EnsureEnvVersion(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['EnsureEnvVersion'](arg1, arg2, arg3);
 }
 
 export function EnsureSSHHostFromConnection(arg1) {
@@ -334,12 +334,12 @@ export function ImportConnectionsFromFile() {
   return window['go']['app']['Service']['ImportConnectionsFromFile']();
 }
 
-export function InstallEnvManager(arg1) {
-  return window['go']['app']['Service']['InstallEnvManager'](arg1);
+export function InstallEnvManager(arg1, arg2) {
+  return window['go']['app']['Service']['InstallEnvManager'](arg1, arg2);
 }
 
-export function InstallEnvVersion(arg1, arg2) {
-  return window['go']['app']['Service']['InstallEnvVersion'](arg1, arg2);
+export function InstallEnvVersion(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['InstallEnvVersion'](arg1, arg2, arg3);
 }
 
 export function KillLocalPortProcesses(arg1, arg2) {
@@ -402,12 +402,12 @@ export function ListEnvPresets() {
   return window['go']['app']['Service']['ListEnvPresets']();
 }
 
-export function ListEnvRuntimes() {
-  return window['go']['app']['Service']['ListEnvRuntimes']();
+export function ListEnvRuntimes(arg1) {
+  return window['go']['app']['Service']['ListEnvRuntimes'](arg1);
 }
 
-export function ListEnvVersions(arg1) {
-  return window['go']['app']['Service']['ListEnvVersions'](arg1);
+export function ListEnvVersions(arg1, arg2) {
+  return window['go']['app']['Service']['ListEnvVersions'](arg1, arg2);
 }
 
 export function ListHTTPEnvironments() {
@@ -730,8 +730,8 @@ export function TrustSSHHost(arg1, arg2) {
   return window['go']['app']['Service']['TrustSSHHost'](arg1, arg2);
 }
 
-export function UninstallEnvVersion(arg1, arg2) {
-  return window['go']['app']['Service']['UninstallEnvVersion'](arg1, arg2);
+export function UninstallEnvVersion(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['UninstallEnvVersion'](arg1, arg2, arg3);
 }
 
 export function UpdateContainerSpec(arg1, arg2, arg3) {
@@ -742,8 +742,8 @@ export function UploadSFTPFile(arg1, arg2) {
   return window['go']['app']['Service']['UploadSFTPFile'](arg1, arg2);
 }
 
-export function UseEnvVersion(arg1, arg2) {
-  return window['go']['app']['Service']['UseEnvVersion'](arg1, arg2);
+export function UseEnvVersion(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['UseEnvVersion'](arg1, arg2, arg3);
 }
 
 export function WriteTerminal(arg1, arg2) {

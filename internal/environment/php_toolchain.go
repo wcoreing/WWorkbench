@@ -327,7 +327,10 @@ func guessPHPZip(ver string) (base, name string) {
 // installPHPWorkbench 下载并安装官方 Windows PHP。
 func installPHPWorkbench(version string, emit func(string)) error {
 	if !isWindows() {
-		return errno.New(errno.CodeInvalidArg, "自管 PHP 目前仅支持 Windows；macOS 请使用 Homebrew", version)
+		if isDarwin() {
+			return errno.New(errno.CodeInvalidArg, "自管 PHP 目前仅支持 Windows；macOS 请使用 Homebrew", version)
+		}
+		return errno.New(errno.CodeInvalidArg, "自管 PHP 目前仅支持 Windows；Linux 请用 apt/dnf/yum 安装系统 PHP", version)
 	}
 	ver, err := resolvePHPWorkbenchVersion(version)
 	if err != nil {

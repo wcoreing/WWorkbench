@@ -4,6 +4,7 @@ import { ExportFieldsDialog } from '../export/ExportFieldsDialog'
 import { CellViewerDialog, type CellViewerTarget } from '../cell-viewer/CellViewerDialog'
 import { isLikelyLargeCell } from '../cell-viewer/formatCellValue'
 import { ResizableTh, WnGrid, dataColParts, useColumnWidths } from '../grid/columnResize'
+import { LoadingPane } from '../../components/LoadingHost'
 import '../../components/ui.css'
 import { pressProps } from '../../components/compat'
 
@@ -13,6 +14,7 @@ interface Props {
   onExport?: (columns: string[]) => void | Promise<void>
   onExportExcel?: (columns: string[]) => void | Promise<void>
   onPageChange?: (page: number) => void
+  loadingKey?: string
   loading?: boolean
 }
 
@@ -21,38 +23,30 @@ function isBatchResult(r: QueryPage | ExecuteResult | SQLBatchResult): r is SQLB
   return 'items' in r && Array.isArray((r as SQLBatchResult).items)
 }
 
-export function ResultPanel({ result, message, onExport, onExportExcel, onPageChange, loading }: Props) {
-  if (!result) {
-    return <div className="pane-empty">{message || '执行 SQL 后在此显示结果'}</div>
-  }
-
-  if (isBatchResult(result)) {
-    return (
-      <div className="result-batch">
-        {result.items.map((item, i) => (
-          <div key={i} className="result-batch-item">
-            <div className="result-batch-head">
-              <span className="pane-meta">语句 {i + 1}</span>
-              <code className="result-batch-sql">{item.sql}</code>
-            </div>
-            {item.error ? (
-              <div className="pane-empty result-batch-error">{item.error}</div>
-            ) : item.query ? (
-              <QueryResultView page={item.query} onExport={undefined} onPageChange={undefined} loading={false} />
-            ) : item.execute ? (
-              <ExecuteResultView result={item.execute} />
-            ) : null}
+export function ResultPanel({ result, message, onExport, onExportExcel, onPageChange, loadingKey, loading }: Props) {
+  const body = !result ? (
+    <div className="pane-empty">{message || '执行 SQL 后在此显示结果'}</div>
+  ) : isBatchResult(result) ? (
+    <div className="result-batch">
+      {result.items.map((item, i) => (
+        <div key={i} className="result-batch-item">
+          <div className="result-batch-head">
+            <span className="pane-meta">语句 {i + 1}</span>
+            <code className="result-batch-sql">{item.sql}</code>
           </div>
-        ))}
-      </div>
-    )
-  }
-
-  if ('rowsAffected' in result) {
-    return <ExecuteResultView result={result} />
-  }
-
-  return (
+          {item.error ? (
+            <div className="pane-empty result-batch-error">{item.error}</div>
+          ) : item.query ? (
+            <QueryResultView page={item.query} onExport={undefined} onPageChange={undefined} loading={false} />
+          ) : item.execute ? (
+            <ExecuteResultView result={item.execute} />
+          ) : null}
+        </div>
+      ))}
+    </div>
+  ) : 'rowsAffected' in result ? (
+    <ExecuteResultView result={result} />
+  ) : (
     <QueryResultView
       page={result as QueryPage}
       onExport={onExport}
@@ -61,6 +55,16 @@ export function ResultPanel({ result, message, onExport, onExportExcel, onPageCh
       loading={loading}
     />
   )
+
+  if (loadingKey) {
+    return (
+      <LoadingPane loadingKey={loadingKey} label="加载中…" minHeight={120}>
+        {body}
+      </LoadingPane>
+    )
+  }
+
+  return body
 }
 
 function ExecuteResultView({ result }: { result: ExecuteResult }) {
@@ -108,7 +112,6 @@ function QueryResultView({
         <div className="pane-toolbar-start">
           <span className="pane-meta">
             {rowLen} 行 · 总计 {page.total} · 第 {page.page}/{totalPages} 页 · {page.elapsedMs} ms
-            {loading ? ' · 加载中…' : ''}
           </span>
         </div>
         <div className="pane-toolbar-end">

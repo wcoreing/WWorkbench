@@ -343,14 +343,20 @@ export function buildEnvironmentSurface(input: {
   scanPath?: string
   runtimeBrief?: string
   openTabsBrief?: string
+  sshHostId?: string
+  sshHostLabel?: string
 }): AgentSurface {
+  const hostId = input.sshHostId?.trim() || ''
+  const hostLabel = input.sshHostLabel?.trim() || hostId
   if (input.presetId || input.presetName) {
     return {
       focusKind: 'environment.preset',
       focusLabel: input.presetName || input.presetId || '环境预设',
       tabTitle: input.presetName,
+      hostId: hostId || undefined,
       openTabsBrief: input.openTabsBrief,
       selectionBrief: [
+        hostId ? `ssh ${hostId}` : '',
         input.presetId ? `preset ${input.presetId}` : '',
         input.scanPath ? `scan ${input.scanPath}` : '',
         input.runtimeBrief || '',
@@ -361,9 +367,16 @@ export function buildEnvironmentSurface(input: {
   }
   return {
     focusKind: 'environment',
-    focusLabel: input.scanPath || '本机环境',
+    focusLabel: hostId ? hostLabel || '远端环境' : input.scanPath || '本机环境',
+    hostId: hostId || undefined,
     openTabsBrief: input.openTabsBrief,
-    selectionBrief: [input.scanPath ? `scan ${input.scanPath}` : '', input.runtimeBrief || ''].filter(Boolean).join(' · '),
+    selectionBrief: [
+      hostId ? `ssh ${hostId}` : '',
+      input.scanPath ? `scan ${input.scanPath}` : '',
+      input.runtimeBrief || '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
   }
 }
 

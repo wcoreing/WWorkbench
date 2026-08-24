@@ -60,6 +60,9 @@ func toolchainCurrentPath(lang string) (string, error) {
 
 // readToolchainCurrent 读取当前激活版本 id。
 func readToolchainCurrent(lang string) string {
+	if !runnerIsLocal() {
+		return strings.TrimSpace(runLoginShellOK(`cat "$HOME/.wworkbench/toolchains/` + lang + `/current" 2>/dev/null`))
+	}
 	path, err := toolchainCurrentPath(lang)
 	if err != nil {
 		return ""
@@ -73,15 +76,27 @@ func readToolchainCurrent(lang string) string {
 
 // writeToolchainCurrent 写入当前激活版本 id。
 func writeToolchainCurrent(lang, version string) error {
+	version = strings.TrimSpace(version)
+	if !runnerIsLocal() {
+		_, err := runLoginShell(`mkdir -p "$HOME/.wworkbench/toolchains/` + lang + `" && printf '%s\n' ` + posixSingleQuote(version) + ` > "$HOME/.wworkbench/toolchains/` + lang + `/current"`)
+		return err
+	}
 	path, err := toolchainCurrentPath(lang)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, []byte(strings.TrimSpace(version)+"\n"), 0o644)
+	return os.WriteFile(path, []byte(version+"\n"), 0o644)
 }
 
-// toolchainVersionDir 返回已安装版本目录。
+// toolchainVersionDir 返回已安装版本目录（本机绝对路径或远端 ExpandHome 路径）。
 func toolchainVersionDir(lang, version string) (string, error) {
+	version = strings.TrimSpace(version)
+	if version == "" || strings.Contains(version, "/") || strings.Contains(version, "..") {
+		return "", errInvalidVersion
+	}
+	if !runnerIsLocal() {
+		return expandHome("~/.wworkbench/toolchains/" + lang + "/versions/" + version), nil
+	}
 	base, err := toolchainLangDir(lang)
 	if err != nil {
 		return "", err
@@ -91,6 +106,9 @@ func toolchainVersionDir(lang, version string) (string, error) {
 
 // listInstalledToolchainIDs 列出已安装版本目录名。
 func listInstalledToolchainIDs(lang string) []string {
+	if !runnerIsLocal() {
+		return linesNonEmpty(runLoginShellOK(`ls -1 "$HOME/.wworkbench/toolchains/` + lang + `/versions" 2>/dev/null`))
+	}
 	base, err := toolchainLangDir(lang)
 	if err != nil {
 		return nil
@@ -110,6 +128,9 @@ func listInstalledToolchainIDs(lang string) []string {
 
 // goOSArch 返回 Go 下载用 os-arch。
 func goOSArch() (string, string) {
+	if !runnerIsLocal() {
+		return remoteGoOSArch()
+	}
 	goos := runtime.GOOS
 	goarch := runtime.GOARCH
 	if goarch == "arm" {
@@ -118,21 +139,53 @@ func goOSArch() (string, string) {
 	return goos, goarch
 }
 
-// javaOSArch 返回 Adoptium 用 os/arch。
+// remoteGoOSArch 经 Runner 探测远端 Go 下载用 os/arch。
+func remoteGoOSArch() (string, string) {
+	u := strings.ToLower(strings.TrimSpace(runLoginShellOK(`uname -s 2>/dev/null`)))
+	m := strings.TrimSpace(runLoginShellOK(`uname -m 2>/dev/null`))
+	goos := "linux"
+	if strings.Contains(u, "darwin") {
+		goos = "darwin"
+	}
+	goarch := "amd64"
+	switch m {
+	case "arm64", "aarch64":
+		goarch = "arm64"
+	case "i386", "i686":
+		goarch = "386"
+	case "armv6l", "armv7l":
+		goarch = m
+	}
+	return goos, goarch
+}
+
+// javaOSArch 返回 Adoptium 用 os/arch（跟随当前 Runner 目标机）。
 func javaOSArch() (string, string) {
-	goos, goarch := runtime.GOOS, runtime.GOARCH
-	osName := goos
-	if goos == "darwin" {
+	if isWindows() {
+		goarch := runtime.GOARCH
+		arch := goarch
+		switch goarch {
+		case "amd64":
+			arch = "x64"
+		case "386":
+			arch = "x86"
+		case "arm64":
+			arch = "aarch64"
+		}
+		return "windows", arch
+	}
+	u := strings.ToLower(strings.TrimSpace(runLoginShellOK(`uname -s 2>/dev/null`)))
+	m := strings.TrimSpace(runLoginShellOK(`uname -m 2>/dev/null`))
+	osName := "linux"
+	if strings.Contains(u, "darwin") {
 		osName = "mac"
 	}
-	arch := goarch
-	switch goarch {
-	case "amd64":
-		arch = "x64"
-	case "386":
-		arch = "x86"
-	case "arm64":
+	arch := "x64"
+	switch m {
+	case "arm64", "aarch64":
 		arch = "aarch64"
+	case "i386", "i686", "x86":
+		arch = "x86"
 	}
 	return osName, arch
 }
@@ -178,9 +231,9 @@ func downloadFile(url, dest string, emit func(string)) error {
 			written += int64(n)
 			if emit != nil && time.Since(lastEmit) > time.Second {
 				if total > 0 {
-					emit(fmt.Sprintf("已下载 %.1f / %.1f MB", float64(written)/1e6, float64(total)/1e6))
+					emit("\r" + fmt.Sprintf("已下载 %.1f / %.1f MB", float64(written)/1e6, float64(total)/1e6))
 				} else {
-					emit(fmt.Sprintf("已下载 %.1f MB", float64(written)/1e6))
+					emit("\r" + fmt.Sprintf("已下载 %.1f MB", float64(written)/1e6))
 				}
 				lastEmit = time.Now()
 			}

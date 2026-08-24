@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// workbenchEnvDir 确保并返回 ~/.wworkbench 目录。
+// workbenchEnvDir 确保并返回本机 ~/.wworkbench 目录（仅本机 toolchain 落盘用）。
 func workbenchEnvDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -19,20 +19,24 @@ func workbenchEnvDir() (string, error) {
 	return dir, nil
 }
 
-// applyWorkbenchEnvFile 写入 env 文件并确保 shell 加载。
+// applyWorkbenchEnvFile 经当前 Runner 写入 ~/.wworkbench/<file>，并确保登录 shell 加载（兼容 SSH）。
 func applyWorkbenchEnvFile(marker, envFileName, envContent string) error {
-	dir, err := workbenchEnvDir()
-	if err != nil {
-		return err
+	if isWindows() {
+		return nil
+	}
+	if strings.Contains(envFileName, "/") || strings.Contains(envFileName, "..") {
+		return errInvalidVersion
 	}
 	if !strings.HasSuffix(envContent, "\n") {
 		envContent += "\n"
 	}
-	if err := os.WriteFile(filepath.Join(dir, envFileName), []byte(envContent), 0o644); err != nil {
+	script := `mkdir -p "$HOME/.wworkbench" && cat > "$HOME/.wworkbench/` + envFileName + `" <<'WW_ENV_EOF'
+` + envContent + `WW_ENV_EOF`
+	if _, err := runLoginShell(script); err != nil {
 		return err
 	}
 	loader := `[ -f "$HOME/.wworkbench/` + envFileName + `" ] && . "$HOME/.wworkbench/` + envFileName + `"`
-	return appendShellSnippet(shellProfilePath(), marker, loader)
+	return appendShellSnippet("", marker, loader)
 }
 
 // syncGoShellEnv 将 goenv 环境写入 ~/.wworkbench/go.env。
@@ -41,25 +45,18 @@ func syncGoShellEnv() error {
 	return applyWorkbenchEnvFile("# wworkbench-go", "go.env", goenvShellBlock())
 }
 
-// ensureGoenvRCFile 确保 ~/.goenvrc 含 GOENV_PATH_ORDER=front。
+// ensureGoenvRCFile 确保 ~/.goenvrc 含 GOENV_PATH_ORDER=front（经 Runner）。
 func ensureGoenvRCFile() {
-	path := expandHome("~/.goenvrc")
-	data, err := os.ReadFile(path)
-	content := ""
-	if err == nil {
-		content = string(data)
-	} else if !os.IsNotExist(err) {
+	if isWindows() {
 		return
 	}
-	if strings.Contains(content, "GOENV_PATH_ORDER") {
-		return
-	}
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-	_, _ = f.WriteString("export GOENV_PATH_ORDER=front\n")
+	_, _ = runLoginShell(`
+f="$HOME/.goenvrc"
+if [ -f "$f" ] && grep -qF 'GOENV_PATH_ORDER' "$f" 2>/dev/null; then
+  exit 0
+fi
+printf 'export GOENV_PATH_ORDER=front\n' >> "$f"
+`)
 }
 
 // LocalTerminalInitScript 返回内置终端启动脚本（先加载 ~/.wworkbench/*.env）。

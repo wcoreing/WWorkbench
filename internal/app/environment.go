@@ -8,15 +8,21 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// ListEnvRuntimes 列出本机运行时状态。
-func (s *Service) ListEnvRuntimes() ApiResult[[]model.RuntimeDO] {
-	list := s.env.ListRuntimes()
+// ListEnvRuntimes 列出运行时状态；sshHostId 为空表示本机。
+func (s *Service) ListEnvRuntimes(sshHostId string) ApiResult[[]model.RuntimeDO] {
+	list, err := s.env.ListRuntimes(sshHostId)
+	if err != nil {
+		return ErrResult[[]model.RuntimeDO](err)
+	}
+	if list == nil {
+		list = []model.RuntimeDO{}
+	}
 	return OkResult(list)
 }
 
-// ListEnvVersions 列出某语言可切换版本。
-func (s *Service) ListEnvVersions(lang string) ApiResult[[]model.RuntimeVersionDO] {
-	list, err := s.env.ListVersions(lang)
+// ListEnvVersions 列出某语言可切换版本；sshHostId 为空表示本机。
+func (s *Service) ListEnvVersions(sshHostId, lang string) ApiResult[[]model.RuntimeVersionDO] {
+	list, err := s.env.ListVersions(sshHostId, lang)
 	if err != nil {
 		return ErrResult[[]model.RuntimeVersionDO](err)
 	}
@@ -26,41 +32,41 @@ func (s *Service) ListEnvVersions(lang string) ApiResult[[]model.RuntimeVersionD
 	return OkResult(list)
 }
 
-// UseEnvVersion 切换运行时版本。
-func (s *Service) UseEnvVersion(lang, version string) ApiResult[bool] {
-	if err := s.env.UseVersion(lang, version); err != nil {
+// UseEnvVersion 切换运行时版本；sshHostId 为空表示本机。
+func (s *Service) UseEnvVersion(sshHostId, lang, version string) ApiResult[bool] {
+	if err := s.env.UseVersion(sshHostId, lang, version); err != nil {
 		return ErrResult[bool](err)
 	}
 	return OkResult(true)
 }
 
 // InstallEnvManager 安装语言版本管理工具（nvm / goenv / brew / sdkman）。
-func (s *Service) InstallEnvManager(lang string) ApiResult[bool] {
-	if err := s.env.InstallManager(lang); err != nil {
+func (s *Service) InstallEnvManager(sshHostId, lang string) ApiResult[bool] {
+	if err := s.env.InstallManager(sshHostId, lang); err != nil {
 		return ErrResult[bool](err)
 	}
 	return OkResult(true)
 }
 
 // InstallEnvVersion 安装运行时版本。
-func (s *Service) InstallEnvVersion(lang, version string) ApiResult[bool] {
-	if err := s.env.InstallVersion(lang, version); err != nil {
+func (s *Service) InstallEnvVersion(sshHostId, lang, version string) ApiResult[bool] {
+	if err := s.env.InstallVersion(sshHostId, lang, version); err != nil {
 		return ErrResult[bool](err)
 	}
 	return OkResult(true)
 }
 
 // EnsureEnvVersion 安装（若缺失）并切换运行时版本。
-func (s *Service) EnsureEnvVersion(lang, version string) ApiResult[bool] {
-	if err := s.env.EnsureVersion(lang, version); err != nil {
+func (s *Service) EnsureEnvVersion(sshHostId, lang, version string) ApiResult[bool] {
+	if err := s.env.EnsureVersion(sshHostId, lang, version); err != nil {
 		return ErrResult[bool](err)
 	}
 	return OkResult(true)
 }
 
 // UninstallEnvVersion 卸载运行时版本。
-func (s *Service) UninstallEnvVersion(lang, version string) ApiResult[bool] {
-	if err := s.env.UninstallVersion(lang, version); err != nil {
+func (s *Service) UninstallEnvVersion(sshHostId, lang, version string) ApiResult[bool] {
+	if err := s.env.UninstallVersion(sshHostId, lang, version); err != nil {
 		return ErrResult[bool](err)
 	}
 	return OkResult(true)
@@ -108,8 +114,8 @@ func (s *Service) DeleteEnvPreset(id string) ApiResult[bool] {
 	return OkResult(true)
 }
 
-// ApplyEnvPreset 应用环境预设。
-func (s *Service) ApplyEnvPreset(id string) ApiResult[model.EnvApplyResultDO] {
+// ApplyEnvPreset 应用环境预设到当前目标（sshHostId 空=本机，否则=所选 SSH 主机）。
+func (s *Service) ApplyEnvPreset(id, sshHostId string) ApiResult[model.EnvApplyResultDO] {
 	preset, err := s.store.GetEnvPreset(id)
 	if err != nil {
 		return ErrResult[model.EnvApplyResultDO](err)
@@ -121,7 +127,7 @@ func (s *Service) ApplyEnvPreset(id string) ApiResult[model.EnvApplyResultDO] {
 	if s.radar != nil {
 		s.radar.EmitEnvPreset(workbench.RadarOpUpdate, preset.ID, "ui-env-preset-apply", preset.Name, false)
 	}
-	warnings := s.env.ApplyPreset(*preset)
+	warnings := s.env.ApplyPreset(sshHostId, *preset)
 	return OkResult(model.EnvApplyResultDO{Warnings: warnings})
 }
 
@@ -146,10 +152,11 @@ func (s *Service) ScanEnvProjects(root string) ApiResult[[]model.ProjectEnvHintD
 
 // wireEnvEvents 注册环境安装日志事件。
 func (s *Service) wireEnvEvents() {
-	s.env.SetInstallLogHandler(func(lang, line string) {
-		runtime.EventsEmit(s.ctx, "env:install-log", map[string]string{
-			"lang": lang,
-			"line": line,
+	s.env.SetInstallLogHandler(func(lang, line string, replaceLast bool) {
+		runtime.EventsEmit(s.ctx, "env:install-log", map[string]any{
+			"lang":         lang,
+			"line":         line,
+			"replaceLast":  replaceLast,
 		})
 	})
 }

@@ -65,7 +65,7 @@ func main() {
 	metaSvc := meta.NewService(sessMgr)
 	querySvc := query.NewService(sessMgr, st)
 	dataSvc := data.NewService(sessMgr)
-	envMgr := environment.NewManager()
+	envMgr := environment.NewManager(sshHostSvc)
 	notebookSvc := notebook.NewService(st)
 
 	api := app.NewService(AppVersion, st, connSvc, sshHostSvc, termMgr, forwardMgr, sftpMgr, dockerMgr, envMgr, notebookSvc, sessMgr, metaSvc, querySvc, dataSvc)

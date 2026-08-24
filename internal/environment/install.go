@@ -8,11 +8,17 @@ import (
 )
 
 // InstallVersion 安装指定语言版本（不自动切换）。
-func (m *Manager) InstallVersion(lang, version string) error {
+func (m *Manager) InstallVersion(sshHostID, lang, version string) error {
 	version = strings.TrimSpace(version)
 	if version == "" {
 		return errno.New(errno.CodeInvalidArg, "版本号不能为空", lang)
 	}
+	return m.withHost(sshHostID, func() error {
+		return m.installVersionUnlocked(lang, version)
+	})
+}
+
+func (m *Manager) installVersionUnlocked(lang, version string) error {
 	emit := m.installEmitter(lang)
 	emit("开始安装 " + version + " …")
 	var err error
@@ -37,44 +43,57 @@ func (m *Manager) InstallVersion(lang, version string) error {
 }
 
 // UninstallVersion 卸载指定语言版本。
-func (m *Manager) UninstallVersion(lang, version string) error {
+func (m *Manager) UninstallVersion(sshHostID, lang, version string) error {
 	version = strings.TrimSpace(version)
 	if version == "" {
 		return errno.New(errno.CodeInvalidArg, "版本号不能为空", lang)
 	}
-	emit := m.installEmitter(lang)
-	emit("开始卸载 " + version + " …")
-	var err error
-	switch lang {
-	case langNode:
-		err = uninstallNodeVersion(version, emit)
-	case langGo:
-		err = uninstallGoVersion(version, emit)
-	case langPHP:
-		if hasBrew() {
-			formula, ferr := phpBrewFormula(version)
-			if ferr != nil {
-				return ferr
+	return m.withHost(sshHostID, func() error {
+		emit := m.installEmitter(lang)
+		emit("开始卸载 " + version + " …")
+		var err error
+		switch lang {
+		case langNode:
+			err = uninstallNodeVersion(version, emit)
+		case langGo:
+			err = uninstallGoVersion(version, emit)
+		case langPHP:
+			if hasBrew() {
+				formula, ferr := phpBrewFormula(version)
+				if ferr != nil {
+					return ferr
+				}
+				err = uninstallPHPFormula(formula, emit)
+			} else {
+				err = uninstallPHPWorkbench(version, emit)
 			}
-			err = uninstallPHPFormula(formula, emit)
-		} else {
-			err = uninstallPHPWorkbench(version, emit)
+		case langJava:
+			err = uninstallJavaVersion(version, emit)
+		default:
+			return errno.New(errno.CodeInvalidArg, "该语言暂不支持卸载", lang)
 		}
-	case langJava:
-		err = uninstallJavaVersion(version, emit)
-	default:
-		return errno.New(errno.CodeInvalidArg, "该语言暂不支持卸载", lang)
-	}
-	if err != nil {
-		emit("卸载失败")
-		return errno.Wrap(errno.CodeConnFailed, "卸载版本失败", err)
-	}
-	emit("卸载完成")
-	return nil
+		if err != nil {
+			emit("卸载失败")
+			return errno.Wrap(errno.CodeConnFailed, "卸载版本失败", err)
+		}
+		emit("卸载完成")
+		return nil
+	})
 }
 
 // EnsureVersion 若未安装则先安装，再切换版本。
-func (m *Manager) EnsureVersion(lang, version string) error {
+func (m *Manager) EnsureVersion(sshHostID, lang, version string) error {
+	version = strings.TrimSpace(version)
+	if version == "" {
+		return errno.New(errno.CodeInvalidArg, "版本号不能为空", lang)
+	}
+	return m.withHost(sshHostID, func() error {
+		return m.ensureVersionUnlocked(lang, version)
+	})
+}
+
+// ensureVersionUnlocked 假定当前 Runner 已激活。
+func (m *Manager) ensureVersionUnlocked(lang, version string) error {
 	version = strings.TrimSpace(version)
 	if version == "" {
 		return errno.New(errno.CodeInvalidArg, "版本号不能为空", lang)
@@ -97,11 +116,27 @@ func (m *Manager) EnsureVersion(lang, version string) error {
 		}
 	}
 	if !versionInstalled(lang, version) {
-		if err := m.InstallVersion(lang, version); err != nil {
+		if err := m.installVersionUnlocked(lang, version); err != nil {
 			return err
 		}
 	}
-	return m.UseVersion(lang, version)
+	var err error
+	switch lang {
+	case langNode:
+		err = useNodeVersion(version)
+	case langGo:
+		err = useGoVersion(version)
+	case langPHP:
+		err = usePHPVersion(version)
+	case langJava:
+		err = useJavaVersion(version)
+	default:
+		return errno.New(errno.CodeInvalidArg, "未知语言运行时", lang)
+	}
+	if err != nil {
+		return errno.Wrap(errno.CodeConnFailed, "切换版本失败", err)
+	}
+	return nil
 }
 
 // versionInstalled 判断版本是否已安装。

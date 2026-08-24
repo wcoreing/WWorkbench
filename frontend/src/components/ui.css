@@ -213,6 +213,7 @@ button.wn-select-trigger {
   font-size: var(--font-size-ui);
   text-align: left;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .wn-select-option:hover:not(:disabled),
@@ -1894,6 +1895,78 @@ button.wn-select-trigger {
   padding: 20px;
   font-size: 11px;
   color: var(--color-text-muted);
+}
+
+.wn-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption, 11px);
+  line-height: 1.2;
+}
+
+.wn-loading-pane {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  width: 100%;
+}
+
+.wn-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-overlay);
+  backdrop-filter: blur(1px);
+}
+
+.wn-loading-spinner {
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--color-text-muted) 24%, transparent);
+  border-top-color: var(--accent, var(--color-accent));
+  animation: wn-loading-spin 0.75s linear infinite;
+}
+
+.wn-loading-md .wn-loading-spinner {
+  width: 14px;
+  height: 14px;
+}
+
+.wn-loading-sm .wn-loading-spinner {
+  width: 12px;
+  height: 12px;
+  border-width: 1.5px;
+}
+
+.wn-loading-icon-only {
+  gap: 0;
+}
+
+.wn-loading-label {
+  min-width: 0;
+}
+
+.wn-loading-pane-host {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 120px;
+  width: 100%;
+}
+
+.wn-loading-pane-host .wn-loading-pane {
+  flex: 1;
+}
+
+@keyframes wn-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .wn-empty {

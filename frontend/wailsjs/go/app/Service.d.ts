@@ -15,7 +15,7 @@ export function AgentStop(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function ApplyAgentProviderPreset(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 
-export function ApplyEnvPreset(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_EnvApplyResultDO_>;
+export function ApplyEnvPreset(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_EnvApplyResultDO_>;
 
 export function ApplyHTTPApiTreeLayout(arg1:model.HTTPApiTreeLayoutDO):Promise<app.ApiResult_bool_>;
 
@@ -93,7 +93,7 @@ export function DuplicateNote(arg1:string):Promise<app.ApiResult_WWorkbench_inte
 
 export function EnsureDockerHost(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_ShellHostDO_>;
 
-export function EnsureEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+export function EnsureEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
 
 export function EnsureSSHHostFromConnection(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_SSHHostDO_>;
 
@@ -169,9 +169,9 @@ export function GetVersion():Promise<app.ApiResult_WWorkbench_internal_model_Ver
 
 export function ImportConnectionsFromFile():Promise<app.ApiResult_int_>;
 
-export function InstallEnvManager(arg1:string):Promise<app.ApiResult_bool_>;
+export function InstallEnvManager(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
-export function InstallEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+export function InstallEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
 
 export function KillLocalPortProcesses(arg1:number,arg2:boolean):Promise<app.ApiResult_WWorkbench_internal_model_LocalPortKillResultDO_>;
 
@@ -203,9 +203,9 @@ export function ListEnabledAgentSkills():Promise<app.ApiResult___WWorkbench_inte
 
 export function ListEnvPresets():Promise<app.ApiResult___WWorkbench_internal_model_EnvPresetDO_>;
 
-export function ListEnvRuntimes():Promise<app.ApiResult___WWorkbench_internal_model_RuntimeDO_>;
+export function ListEnvRuntimes(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_RuntimeDO_>;
 
-export function ListEnvVersions(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_RuntimeVersionDO_>;
+export function ListEnvVersions(arg1:string,arg2:string):Promise<app.ApiResult___WWorkbench_internal_model_RuntimeVersionDO_>;
 
 export function ListHTTPEnvironments():Promise<app.ApiResult___WWorkbench_internal_model_HTTPEnvironmentDO_>;
 
@@ -367,12 +367,12 @@ export function TransferSFTPUpload(arg1:string,arg2:string,arg3:string,arg4:stri
 
 export function TrustSSHHost(arg1:string,arg2:number):Promise<app.ApiResult_bool_>;
 
-export function UninstallEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+export function UninstallEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
 
 export function UpdateContainerSpec(arg1:string,arg2:string,arg3:model.ContainerUpdateDO):Promise<app.ApiResult_WWorkbench_internal_model_ContainerDO_>;
 
 export function UploadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferResultDO_>;
 
-export function UseEnvVersion(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+export function UseEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
 
 export function WriteTerminal(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;

@@ -11,7 +11,11 @@ import { buildSkillsSurface, briefList } from '../../stores/agentSurface'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { model } from '../../../wailsjs/go/models'
 import { pressProps, useDismissOverlays } from '../../components/compat'
+import { LoadingPane } from '../../components/LoadingHost'
+import { withLoading } from '../../stores/loadingStore'
 import { isSkillMarkdown, skillIdFromPath } from './skillsPath'
+
+const SKILLS_LOADING_META = 'skills.meta'
 
 const PROTECTED_SKILL_ID = 'skill-creator'
 const SKILLS_ROOT = 'system/skills'
@@ -31,7 +35,6 @@ export function SkillsWorkbench() {
   const [activePath, setActivePath] = useState('')
   const [content, setContent] = useState('')
   const [dirty, setDirty] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('')
   const [treeRefreshKey, setTreeRefreshKey] = useState(0)
@@ -49,37 +52,43 @@ export function SkillsWorkbench() {
 
   const refreshMeta = useCallback(
     async (keepPath?: string) => {
-      setLoading(true)
       try {
-        const skills = await api.listAgentSkills()
-        const meta: Record<string, SkillMeta> = {}
-        for (const s of skills) {
-          meta[s.id] = { id: s.id, name: s.name, enabled: s.enabled, builtin: s.builtin }
-        }
-        setMetaById(meta)
-        setTreeRefreshKey((k) => k + 1)
+        await withLoading(
+          SKILLS_LOADING_META,
+          async () => {
+            const skills = await api.listAgentSkills()
+            const meta: Record<string, SkillMeta> = {}
+            for (const s of skills) {
+              meta[s.id] = { id: s.id, name: s.name, enabled: s.enabled, builtin: s.builtin }
+            }
+            setMetaById(meta)
+            setTreeRefreshKey((k) => k + 1)
 
-        if (keepPath) {
-          if (keepPath !== activePath) {
-            setActivePath(keepPath)
-            loadedRef.current = ''
-          }
-        } else if (!activePath && skills.length > 0) {
-          const pick = skills.find((s) => s.enabled) ?? skills[0]
-          setActivePath(`${pick.id}/SKILL.md`)
-          loadedRef.current = ''
-        } else if (activePath && !meta[skillIdFromPath(activePath)]) {
-          loadedRef.current = ''
-          setActivePath('')
-          setContent('')
-        }
+            if (keepPath) {
+              if (keepPath !== activePath) {
+                setActivePath(keepPath)
+                loadedRef.current = ''
+              }
+            } else if (!activePath && skills.length > 0) {
+              const pick = skills.find((s) => s.enabled) ?? skills[0]
+              setActivePath(`${pick.id}/SKILL.md`)
+              loadedRef.current = ''
+            } else if (activePath && !meta[skillIdFromPath(activePath)]) {
+              loadedRef.current = ''
+              setActivePath('')
+              setContent('')
+            }
+          },
+          {
+            label: t('skills.loading'),
+            onBegin: () => setMetaById({}),
+          },
+        )
       } catch (e) {
         setStatusMessage((e as Error).message)
-      } finally {
-        setLoading(false)
       }
     },
-    [activePath, setStatusMessage],
+    [activePath, setStatusMessage, t],
   )
 
   const loadFile = useCallback(
@@ -262,15 +271,16 @@ export function SkillsWorkbench() {
             />
           </div>
           <div className="skills-sidebar-list">
-            {loading && treeRefreshKey === 0 && <div className="empty-hint">{t('skills.loading')}</div>}
-            <DirTree
-              rootLabel={SKILLS_ROOT}
-              listDir={listSkillsDir}
-              activePath={activePath}
-              onSelectFile={selectFile}
-              filter={filter}
-              refreshKey={treeRefreshKey}
-            />
+            <LoadingPane loadingKey={SKILLS_LOADING_META} label={t('skills.loading')} minHeight={120}>
+              <DirTree
+                rootLabel={SKILLS_ROOT}
+                listDir={listSkillsDir}
+                activePath={activePath}
+                onSelectFile={selectFile}
+                filter={filter}
+                refreshKey={treeRefreshKey}
+              />
+            </LoadingPane>
           </div>
         </aside>
 

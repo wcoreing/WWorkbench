@@ -1,7 +1,6 @@
 package environment
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,39 +16,45 @@ const (
 )
 
 // InstallManager 安装语言对应的版本管理工具。
-func (m *Manager) InstallManager(lang string) error {
-	emit := m.installEmitter(lang)
-	if isWindows() {
-		switch lang {
-		case langGo, langJava, langPHP:
-			emit("WWorkbench 已内置 " + lang + " 版本管理，请直接安装版本即可")
-			return nil
-		case langNode:
-			err := windowsManagerUnsupported(lang)
-			emit(err.Error())
-			return err
+func (m *Manager) InstallManager(sshHostID, lang string) error {
+	return m.withHost(sshHostID, func() error {
+		emit := m.installEmitter(lang)
+		if isWindows() {
+			switch lang {
+			case langGo, langJava, langPHP:
+				emit("WWorkbench 已内置 " + lang + " 版本管理，请直接安装版本即可")
+				return nil
+			case langNode:
+				err := windowsManagerUnsupported(lang)
+				emit(err.Error())
+				return err
+			}
 		}
-	}
-	emit("开始安装版本管理工具…")
-	var err error
-	switch lang {
-	case langNode:
-		err = installNvmManager(emit)
-	case langGo:
-		err = installGoenvManager(emit)
-	case langPHP:
-		err = installBrewManager(emit)
-	case langJava:
-		err = installSdkmanManager(emit)
-	default:
-		return errno.New(errno.CodeInvalidArg, "未知语言运行时", lang)
-	}
-	if err != nil {
-		emit("安装失败")
-		return errno.Wrap(errno.CodeConnFailed, "安装版本管理工具失败", err)
-	}
-	emit("版本管理工具安装完成，请重新打开管理窗口")
-	return nil
+		emit("开始安装版本管理工具…")
+		var err error
+		switch lang {
+		case langNode:
+			err = installNvmManager(emit)
+		case langGo:
+			err = installGoenvManager(emit)
+		case langPHP:
+			if !hasBrew() && !isDarwin() {
+				emit("当前目标为 Linux：请用系统包管理器安装 PHP（如 apt install php / dnf install php），不强制 Homebrew")
+				return errno.New(errno.CodeInvalidArg, "Linux 不通过 Homebrew 管理 PHP，请用 apt/dnf/yum 安装", lang)
+			}
+			err = installBrewManager(emit)
+		case langJava:
+			err = installSdkmanManager(emit)
+		default:
+			return errno.New(errno.CodeInvalidArg, "未知语言运行时", lang)
+		}
+		if err != nil {
+			emit("安装失败")
+			return errno.Wrap(errno.CodeConnFailed, "安装版本管理工具失败", err)
+		}
+		emit("版本管理工具安装完成，请重新打开管理窗口")
+		return nil
+	})
 }
 
 // hasNvm 是否已安装 nvm（含 Homebrew 安装）。
@@ -122,7 +127,7 @@ func installNvmManager(emit func(string)) error {
 	_, err := runLoginShellStream(
 		`curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash`,
 		15*time.Minute,
-		emit,
+		bindStreamEmit(emit),
 	)
 	return err
 }
@@ -149,24 +154,19 @@ func installGoenvManager(emit func(string)) error {
 		}
 		return nil
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	goenvRoot := filepath.Join(home, ".goenv")
-	if !fileExists(goenvRoot) {
+	if !fileExists("~/.goenv") {
 		emit("克隆 goenv 仓库…")
-		_, err = runLoginShellStream(
-			`git clone https://github.com/go-nv/goenv.git "`+goenvRoot+`"`,
+		_, err := runLoginShellStream(
+			`git clone https://github.com/go-nv/goenv.git "$HOME/.goenv"`,
 			15*time.Minute,
-			emit,
+			bindStreamEmit(emit),
 		)
 		if err != nil {
 			return err
 		}
 	}
 	emit("编译 goenv（跳过测试）…")
-	_, err = runLoginShellStream(`cd "`+goenvRoot+`" && src/configure && make -C src`, 10*time.Minute, emit)
+	_, err := runLoginShellStream(`cd "$HOME/.goenv" && src/configure && make -C src`, 10*time.Minute, bindStreamEmit(emit))
 	if err != nil {
 		return err
 	}
@@ -206,11 +206,7 @@ eval "$(goenv init -)"`
 func ensureGoenvRC(emit func(string)) {
 	ensureGoenvRCFile()
 	if emit != nil {
-		path := expandHome("~/.goenvrc")
-		data, _ := os.ReadFile(path)
-		if !strings.Contains(string(data), "GOENV_PATH_ORDER") {
-			emit("已配置 ~/.goenvrc：GOENV_PATH_ORDER=front")
-		}
+		emit("已检查 ~/.goenvrc：GOENV_PATH_ORDER=front")
 	}
 }
 
@@ -224,7 +220,7 @@ func installBrewManager(emit func(string)) error {
 	_, err := runLoginShellStream(
 		`NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`,
 		30*time.Minute,
-		emit,
+		bindStreamEmit(emit),
 	)
 	if err != nil {
 		emit("自动安装可能失败，可手动执行: /bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)\"")
@@ -245,13 +241,13 @@ func installSdkmanManager(emit func(string)) error {
 	}
 	emit("下载并安装 sdkman（使用 " + bash + "）…")
 	script := `set -euo pipefail
-tmp="$(mktemp -t sdkman-install.XXXXXX)"
+tmp="$(mktemp /tmp/sdkman-install.XXXXXX)"
 trap 'rm -f "$tmp"' EXIT
 curl -fsSL https://get.sdkman.io -o "$tmp"
 "` + shellQuotePath(bash) + `" "$tmp"`
-	_, err = runLoginShellStream(script, 15*time.Minute, emit)
+	_, err = runLoginShellStream(script, 15*time.Minute, bindStreamEmit(emit))
 	if err != nil {
-		emit("若仍失败，可在终端执行: brew install bash && curl -fsSL https://get.sdkman.io | $(brew --prefix)/bin/bash")
+		emit("若仍失败，可在终端执行: curl -fsSL https://get.sdkman.io | bash")
 		return err
 	}
 	if !hasSdkman() {
@@ -260,17 +256,21 @@ curl -fsSL https://get.sdkman.io -o "$tmp"
 	return nil
 }
 
-// ensureBash4 返回 Bash ≥4 路径；缺失时尝试 brew install bash。
+// ensureBash4 返回 Bash ≥4 路径；缺失时尝试 brew install bash（仅 macOS）。
 func ensureBash4(emit func(string)) (string, error) {
 	if p := modernBashPath(); p != "" {
 		return p, nil
+	}
+	if !isDarwin() {
+		return "", errno.New(errno.CodeInvalidArg,
+			"sdkman 需要 Bash 4+，当前系统未找到可用 bash（请安装 bash 后重试）", "")
 	}
 	if !hasBrew() {
 		return "", errno.New(errno.CodeInvalidArg,
 			"sdkman 需要 Bash 4+（macOS 自带为 3.2）。请先安装 Homebrew，再执行: brew install bash", "")
 	}
 	emit("sdkman 需要 Bash 4+，正在 brew install bash…")
-	_, err := runLoginShellStream(`brew install bash`, 20*time.Minute, emit)
+	_, err := runLoginShellStream(`brew install bash`, 20*time.Minute, bindStreamEmit(emit))
 	if err != nil {
 		return "", errno.Wrap(errno.CodeConnFailed,
 			"brew install bash 失败（请检查 Homebrew 目录权限，或终端执行: brew install bash）", err)
@@ -284,7 +284,7 @@ func ensureBash4(emit func(string)) (string, error) {
 
 // modernBashPath 返回已安装的 Bash ≥4 可执行文件。
 func modernBashPath() string {
-	for _, p := range []string{"/opt/homebrew/bin/bash", "/usr/local/bin/bash"} {
+	for _, p := range []string{"/opt/homebrew/bin/bash", "/usr/local/bin/bash", "/bin/bash", "/usr/bin/bash"} {
 		if !fileExists(p) {
 			continue
 		}
@@ -303,31 +303,42 @@ func modernBashPath() string {
 	return ""
 }
 
-// shellProfilePath 返回当前用户 shell 配置文件路径。
+// shellProfilePath 返回当前目标机 shell 配置路径（经 Runner ExpandHome）。
 func shellProfilePath() string {
-	shell := os.Getenv("SHELL")
+	shell := strings.TrimSpace(runLoginShellOK(`basename "${SHELL:-bash}"`))
+	if shell == "" {
+		shell = "bash"
+	}
 	if strings.Contains(shell, "zsh") {
 		return expandHome("~/.zshrc")
 	}
 	return expandHome("~/.bash_profile")
 }
 
-// appendShellSnippet 向 shell 配置追加初始化片段（幂等）。
-func appendShellSnippet(path, marker, snippet string) error {
-	data, err := os.ReadFile(path)
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	content := string(data)
-	if strings.Contains(content, marker) {
+// appendShellSnippet 向目标机 shell 配置追加初始化片段（幂等；经 Runner，兼容 SSH）。
+func appendShellSnippet(_path, marker, snippet string) error {
+	if isWindows() {
 		return nil
 	}
-	block := "\n" + marker + "\n" + snippet + "\n"
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-	if err != nil {
-		return err
+	if strings.Contains(marker, "\n") || strings.Contains(snippet, "WW_SNIP_EOF") {
+		return errInvalidVersion
 	}
-	defer f.Close()
-	_, err = f.WriteString(block)
+	script := `
+case "$(basename "${SHELL:-bash}")" in
+  zsh) f="$HOME/.zshrc" ;;
+  *) f="$HOME/.bash_profile" ;;
+esac
+touch "$f"
+if grep -qF ` + posixSingleQuote(marker) + ` "$f" 2>/dev/null; then
+  exit 0
+fi
+{
+  printf '\n%s\n' ` + posixSingleQuote(marker) + `
+  cat <<'WW_SNIP_EOF'
+` + snippet + `
+WW_SNIP_EOF
+} >> "$f"
+`
+	_, err := runLoginShell(script)
 	return err
 }

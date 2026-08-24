@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import '../../components/ui.css'
 import { pressProps } from '../../components/compat'
+import { LoadingPane } from '../../components/LoadingHost'
 
 export type TableDesignTab = 'fields' | 'indexes' | 'sql'
 
@@ -11,7 +12,8 @@ interface Props {
   fieldCount: number
   indexCount: number
   metaBar?: ReactNode
-  loading?: boolean
+  loadingKey?: string
+  loadingLabel?: string
   error?: string
   fieldsPane: ReactNode
   indexesPane: ReactNode
@@ -28,7 +30,8 @@ export function TableDesignPanel({
   fieldCount,
   indexCount,
   metaBar,
-  loading,
+  loadingKey,
+  loadingLabel = '加载表结构…',
   error,
   fieldsPane,
   indexesPane,
@@ -36,6 +39,19 @@ export function TableDesignPanel({
   sqlPlaceholder,
   toolbar,
 }: Props) {
+  const body = (
+    <>
+      {tab === 'fields' && <div className="table-design-pane">{fieldsPane}</div>}
+      {tab === 'indexes' && <div className="table-design-pane">{indexesPane}</div>}
+      {tab === 'sql' && (
+        <div className="table-design-pane table-design-sql-pane">
+          <pre className="table-design-sql-preview">{sqlPreview || sqlPlaceholder}</pre>
+        </div>
+      )}
+      {error && <div className="wn-form-msg error table-design-error">{error}</div>}
+    </>
+  )
+
   return (
     <div className="table-design-panel">
       <div className="table-design-top">
@@ -78,20 +94,13 @@ export function TableDesignPanel({
       </nav>
 
       <div className="table-design-body">
-        {loading ? (
-          <div className="empty-hint table-design-loading">加载表结构…</div>
+        {loadingKey ? (
+          <LoadingPane loadingKey={loadingKey} label={loadingLabel} minHeight={200}>
+            {body}
+          </LoadingPane>
         ) : (
-          <>
-            {tab === 'fields' && <div className="table-design-pane">{fieldsPane}</div>}
-            {tab === 'indexes' && <div className="table-design-pane">{indexesPane}</div>}
-            {tab === 'sql' && (
-              <div className="table-design-pane table-design-sql-pane">
-                <pre className="table-design-sql-preview">{sqlPreview || sqlPlaceholder}</pre>
-              </div>
-            )}
-          </>
+          body
         )}
-        {error && <div className="wn-form-msg error table-design-error">{error}</div>}
       </div>
     </div>
   )

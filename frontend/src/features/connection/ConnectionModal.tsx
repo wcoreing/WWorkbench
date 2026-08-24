@@ -3,6 +3,7 @@ import type { Connection, SSHHost } from '../../api/types'
 import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
 import { ModalPortal, Select, pressProps } from '../../components/compat'
+import { useLoading, withLoading } from '../../stores/loadingStore'
 import '../../components/ui.css'
 
 interface Props {
@@ -78,7 +79,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
   const [sshSource, setSshSource] = useState<SSHSource>('manual')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [testing, setTesting] = useState(false)
+  const testLoading = useLoading('connection.test')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -163,17 +164,20 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
       setError(invalid)
       return
     }
-    setTesting(true)
-    setError('')
-    setSuccess('')
-    try {
-      await api.testConnection(payload)
-      setSuccess(payload.sshEnabled ? t('connection.testOkSsh') : t('connection.testOk'))
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setTesting(false)
-    }
+    await withLoading(
+      'connection.test',
+      async () => {
+        setError('')
+        setSuccess('')
+        try {
+          await api.testConnection(payload)
+          setSuccess(payload.sshEnabled ? t('connection.testOkSsh') : t('connection.testOk'))
+        } catch (e) {
+          setError((e as Error).message)
+        }
+      },
+      { label: t('connection.testing') },
+    )
   }
 
   const handleSave = async () => {
@@ -200,7 +204,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
   }
 
   const isEdit = Boolean(form.id && initial?.id)
-  const busy = testing || saving
+  const busy = testLoading.active || saving
   const selectedHost = sshHosts.find((h) => h.id === form.sshHostId)
 
   return (
@@ -493,7 +497,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
             {t('common.cancel')}
           </button>
           <button type="button" className="wn-btn wn-btn-tool" {...pressProps(handleTest, { disabled: busy })} disabled={busy}>
-            {testing ? t('connection.testing') : t('connection.test')}
+            {testLoading.active ? t('connection.testing') : t('connection.test')}
           </button>
           <button
             type="button"

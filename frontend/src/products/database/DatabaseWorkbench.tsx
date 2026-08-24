@@ -9,6 +9,11 @@ import { loadSizeMap, rememberScalarSize, recallScalarSize, type CollapsedMap } 
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { IconDisconnect, IconDownload, IconEdit, IconExplain, IconFolder, IconImportSql, IconNotebook, IconPlay, IconPlus, IconRefresh, IconSql, IconTerminal, IconTrash } from '../../components/Icons'
 import { Select, pressProps, useDismissOverlays } from '../../components/compat'
+import { LoadingPane } from '../../components/LoadingHost'
+import { useLoading, withLoading } from '../../stores/loadingStore'
+
+const treeLoadingKey = (sessionId: string) => `database.tree.${sessionId}`
+const resultLoadingKey = (sessionId: string) => `database.result.${sessionId}`
 
 import { ConnectionModal } from '../../features/connection/ConnectionModal'
 import { DdlEditor } from '../../features/ddl/DdlEditor'
@@ -106,7 +111,6 @@ export function DatabaseWorkbench() {
   const [bottomTab, setBottomTab] = useState<'result' | 'message'>('result')
   const [history, setHistory] = useState<QueryHistory[]>([])
   const [lastQuery, setLastQuery] = useState<{ sql: string; page: QueryPage } | null>(null)
-  const [resultLoading, setResultLoading] = useState(false)
   const [treeFilter, setTreeFilter] = useState('')
   const [treeRefreshNonce, setTreeRefreshNonce] = useState(0)
   const [ddlConfirm, setDdlConfirm] = useState<
@@ -245,8 +249,17 @@ export function DatabaseWorkbench() {
 
   /** reloadObjectTree 重拉库列表并失效 ObjectTree 懒加载缓存。 */
   const reloadObjectTree = async (sessionId: string) => {
-    setObjectTree(await api.getObjectTree(sessionId))
-    setTreeRefreshNonce((n) => n + 1)
+    await withLoading(
+      treeLoadingKey(sessionId),
+      async () => {
+        setObjectTree(await api.getObjectTree(sessionId))
+        setTreeRefreshNonce((n) => n + 1)
+      },
+      {
+        label: t('common.loading'),
+        onBegin: () => setObjectTree([]),
+      },
+    )
   }
 
   const refreshObjectTree = async () => {
@@ -282,6 +295,8 @@ export function DatabaseWorkbench() {
     return [...map.entries()]
   }, [connectionList, t])
   const activeTab = tabs.find((t) => t.id === activeTabId)
+  const resultLoading = useLoading(session ? resultLoadingKey(session.sessionId) : 'database.result._')
+  const treeLoading = useLoading(session ? treeLoadingKey(session.sessionId) : 'database.tree._')
   const tabsRef = useScrollActiveTabIntoView(activeTabId)
 
   /** applySqlResult 处理 SQL 执行返回值。 */
@@ -400,13 +415,22 @@ export function DatabaseWorkbench() {
             ? t('database.reconnected', { name: conn.name })
             : t('database.connected', { name: conn.name }),
         )
-        const [tree, history] = await Promise.all([
-          api.getObjectTree(info.sessionId),
+        const [history] = await Promise.all([
           api.listQueryHistory(connId, 30),
         ])
-        setObjectTree(tree)
-        setTreeRefreshNonce((n) => n + 1)
         setHistory(history)
+        await withLoading(
+          treeLoadingKey(info.sessionId),
+          async () => {
+            const tree = await api.getObjectTree(info.sessionId)
+            setObjectTree(tree)
+            setTreeRefreshNonce((n) => n + 1)
+          },
+          {
+            label: t('common.loading'),
+            onBegin: () => setObjectTree([]),
+          },
+        )
         await fulfillPendingSql(info)
       } catch (e) {
         pendingSql.current = null
@@ -566,9 +590,21 @@ export function DatabaseWorkbench() {
       setBottomTab('result')
       setStatusMessage(t('database.executing'))
       try {
-        const res = await api.executeSQL(session.sessionId, session.database, sql)
-        applySqlResult(res, sql)
-        setHistory(await api.listQueryHistory(session.connectionId, 30))
+        await withLoading(
+          resultLoadingKey(session.sessionId),
+          async () => {
+            const res = await api.executeSQL(session.sessionId, session.database, sql)
+            applySqlResult(res, sql)
+            setHistory(await api.listQueryHistory(session.connectionId, 30))
+          },
+          {
+            label: t('common.loading'),
+            onBegin: () => {
+              setSqlResult(null)
+              setLastQuery(null)
+            },
+          },
+        )
       } catch (e) {
         setSqlResult(null)
         setLastQuery(null)
@@ -576,7 +612,7 @@ export function DatabaseWorkbench() {
         setBottomTab('message')
       }
     },
-    [session, applySqlResult, setStatusMessage]
+    [session, applySqlResult, setStatusMessage, t],
   )
 
   const runSql = useCallback(async () => {
@@ -598,24 +634,30 @@ export function DatabaseWorkbench() {
   const loadQueryPage = useCallback(
     async (page: number) => {
       if (!session || !lastQuery) return
-      setResultLoading(true)
       try {
-        const pageRes = await api.querySQLPage(
-          session.sessionId,
-          session.database,
-          lastQuery.sql,
-          page,
-          lastQuery.page.pageSize || 200
+        await withLoading(
+          resultLoadingKey(session.sessionId),
+          async () => {
+            const pageRes = await api.querySQLPage(
+              session.sessionId,
+              session.database,
+              lastQuery.sql,
+              page,
+              lastQuery.page.pageSize || 200,
+            )
+            setSqlResult(pageRes)
+            setLastQuery({ sql: lastQuery.sql, page: pageRes })
+          },
+          {
+            label: t('common.loading'),
+            onBegin: () => setSqlResult(null),
+          },
         )
-        setSqlResult(pageRes)
-        setLastQuery({ sql: lastQuery.sql, page: pageRes })
       } catch (e) {
         setStatusMessage((e as Error).message)
-      } finally {
-        setResultLoading(false)
       }
     },
-    [session, lastQuery]
+    [session, lastQuery, setStatusMessage, t],
   )
 
   const openTableTab = async (database: string, table: string) => {
@@ -1294,9 +1336,9 @@ export function DatabaseWorkbench() {
                                 <button
                                   type="button"
                                   className="wn-btn wn-btn-icon wn-btn-sm"
-                                  disabled={!session}
+                                  disabled={!session || treeLoading.active}
                                   title={t('common.refresh')}
-                                  {...pressProps(() => void refreshObjectTree(), { disabled: !session })}
+                                  {...pressProps(() => void refreshObjectTree(), { disabled: !session || treeLoading.active })}
                                 >
                                   <IconRefresh size={14} />
                                 </button>
@@ -1314,7 +1356,12 @@ export function DatabaseWorkbench() {
                             )}
                             <div className="sidebar-body">
                               {session ? (
-                                <ObjectTree
+                                <LoadingPane
+                                  loadingKey={treeLoadingKey(session.sessionId)}
+                                  label={t('common.loading')}
+                                  minHeight={160}
+                                >
+                                  <ObjectTree
                                   sessionId={session.sessionId}
                                   nodes={treeNodes}
                                   filter={treeFilter}
@@ -1345,6 +1392,7 @@ export function DatabaseWorkbench() {
                                   onImportSQL={(db) => void runSqlFile(db)}
                                   onCreateDatabase={canCreateDatabase ? () => setCreateDbOpen(true) : undefined}
                                 />
+                                </LoadingPane>
                               ) : (
                                 <div className="empty-hint">{t('database.connectToBrowse')}</div>
                               )}
@@ -1499,7 +1547,8 @@ export function DatabaseWorkbench() {
                         onExport={lastQuery ? exportResult : undefined}
                         onExportExcel={isMysql && lastQuery ? exportResultExcel : undefined}
                         onPageChange={lastQuery ? loadQueryPage : undefined}
-                        loading={resultLoading}
+                        loadingKey={session ? resultLoadingKey(session.sessionId) : undefined}
+                        loading={resultLoading.active}
                       />
                     ) : (
                       <div className="empty-hint">{statusMessage}</div>

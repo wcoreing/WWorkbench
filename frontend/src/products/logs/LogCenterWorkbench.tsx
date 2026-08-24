@@ -17,6 +17,10 @@ import { loadLogsWorkspace, scheduleLogsWorkspacePersist } from '../../stores/lo
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { model } from '../../../wailsjs/go/models'
 import { Select, pressProps, useDismissOverlays } from '../../components/compat'
+import { LoadingPane } from '../../components/LoadingHost'
+import { useLoading, withLoading } from '../../stores/loadingStore'
+
+const LOGS_LOADING_CONTENT = 'logs.content'
 
 const SOURCE_TYPES: LogSourceType[] = ['local_file', 'ssh_file', 'docker', 'compose']
 
@@ -74,7 +78,7 @@ export function LogCenterWorkbench() {
   const [composeService, setComposeService] = useState('')
   const [tailLines, setTailLines] = useState(200)
   const [content, setContent] = useState('')
-  const [loading, setLoading] = useState(false)
+  const contentLoading = useLoading(LOGS_LOADING_CONTENT)
   const [followLive, setFollowLive] = useState(false)
   const followStreamId = useRef('')
   const [deleteTarget, setDeleteTarget] = useState<LogSource | null>(null)
@@ -272,33 +276,39 @@ export function LogCenterWorkbench() {
           target.containerId,
           target.composeDir,
         )) {
-          setLoading(true)
           try {
-            const res = await api.fetchLogSourceConfig(
-              model.LogSourceDO.createFrom({
-                id: target.id,
-                name: target.name,
-                sourceType: target.sourceType,
-                path: target.path,
-                sshHostId: target.sshHostId,
-                dockerContextId: target.dockerContextId,
-                containerId: target.containerId,
-                composeDir: target.composeDir,
-                composeService: target.composeService,
-                tailLines: target.tailLines > 0 ? target.tailLines : 200,
-                sortOrder: target.sortOrder,
-                createdAt: target.createdAt,
-                updatedAt: target.updatedAt,
-              }),
-              target.tailLines > 0 ? target.tailLines : 200,
+            await withLoading(
+              LOGS_LOADING_CONTENT,
+              async () => {
+                const res = await api.fetchLogSourceConfig(
+                  model.LogSourceDO.createFrom({
+                    id: target.id,
+                    name: target.name,
+                    sourceType: target.sourceType,
+                    path: target.path,
+                    sshHostId: target.sshHostId,
+                    dockerContextId: target.dockerContextId,
+                    containerId: target.containerId,
+                    composeDir: target.composeDir,
+                    composeService: target.composeService,
+                    tailLines: target.tailLines > 0 ? target.tailLines : 200,
+                    sortOrder: target.sortOrder,
+                    createdAt: target.createdAt,
+                    updatedAt: target.updatedAt,
+                  }),
+                  target.tailLines > 0 ? target.tailLines : 200,
+                )
+                setContent(res.content || '')
+                setStatusMessage(t('logs.refresh'))
+              },
+              {
+                label: t('logs.refreshing'),
+                onBegin: () => setContent(''),
+              },
             )
-            setContent(res.content || '')
-            setStatusMessage(t('logs.refresh'))
           } catch (e) {
             setContent((e as Error).message)
             setStatusMessage((e as Error).message)
-          } finally {
-            setLoading(false)
           }
         }
       } catch (e) {
@@ -392,17 +402,23 @@ export function LogCenterWorkbench() {
       setStatusMessage(t('logs.errConfig'))
       return
     }
-    setLoading(true)
     setStatusMessage(t('logs.refreshing'))
     try {
-      const res = await api.fetchLogSourceConfig(buildSourceConfig(), tailLines)
-      setContent(res.content || '')
-      setStatusMessage(t('logs.refresh'))
+      await withLoading(
+        LOGS_LOADING_CONTENT,
+        async () => {
+          const res = await api.fetchLogSourceConfig(buildSourceConfig(), tailLines)
+          setContent(res.content || '')
+          setStatusMessage(t('logs.refresh'))
+        },
+        {
+          label: t('logs.refreshing'),
+          onBegin: () => setContent(''),
+        },
+      )
     } catch (e) {
       setContent((e as Error).message)
       setStatusMessage((e as Error).message)
-    } finally {
-      setLoading(false)
     }
   }, [fetchReady, buildSourceConfig, tailLines, setStatusMessage, t])
 
@@ -502,8 +518,8 @@ export function LogCenterWorkbench() {
           <button
             type="button"
             className="wn-btn wn-btn-sm wn-btn-primary"
-            disabled={loading || !fetchReady}
-            {...pressProps(() => void refreshLogs(), { disabled: loading || !fetchReady })}
+            disabled={contentLoading.active || !fetchReady}
+            {...pressProps(() => void refreshLogs(), { disabled: contentLoading.active || !fetchReady })}
           >
             <IconRefresh size={14} /> {t('logs.refresh')}
           </button>
@@ -524,7 +540,7 @@ export function LogCenterWorkbench() {
               type="checkbox"
               checked={followLive}
               onChange={(e) => setFollowLive(e.target.checked)}
-              disabled={!fetchReady || loading}
+              disabled={!fetchReady || contentLoading.active}
             />
             {t('logs.followLive')}
           </label>
@@ -701,20 +717,22 @@ export function LogCenterWorkbench() {
                 {followLive && <span className="logs-live-badge">{t('logs.followLive')}</span>}
               </div>
             </header>
-            {!content && !loading ? (
-              <div className="pane-empty">{t('logs.noOutput')}</div>
-            ) : (
-              <pre className="logs-pre">
-                {(loading && !content ? t('logs.refreshing') : content).split('\n').map((line, index, lines) => {
-                  const tone = logLineTone(line)
-                  return (
-                    <span key={index} className={`logs-line${tone ? ` is-${tone}` : ''}`}>
-                      {line}{index < lines.length - 1 ? '\n' : null}
-                    </span>
-                  )
-                })}
-              </pre>
-            )}
+            <LoadingPane loadingKey={LOGS_LOADING_CONTENT} label={t('logs.refreshing')} minHeight={280} className="logs-viewer-body">
+              {!content ? (
+                <div className="pane-empty">{t('logs.noOutput')}</div>
+              ) : (
+                <pre className="logs-pre">
+                  {content.split('\n').map((line, index, lines) => {
+                    const tone = logLineTone(line)
+                    return (
+                      <span key={index} className={`logs-line${tone ? ` is-${tone}` : ''}`}>
+                        {line}{index < lines.length - 1 ? '\n' : null}
+                      </span>
+                    )
+                  })}
+                </pre>
+              )}
+            </LoadingPane>
           </div>
         </main>
       </div>

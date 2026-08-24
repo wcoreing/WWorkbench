@@ -4,6 +4,7 @@ import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import { translate, useI18n } from '../../i18n'
 import type { AppLocale } from '../../i18n/types'
+import { useLoading, withLoading } from '../../stores/loadingStore'
 import { useSSHTrustConfirm } from './useSSHTrustConfirm'
 import '../../components/ui.css'
 import { pressProps } from '../../components/compat'
@@ -47,7 +48,7 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
   const [form, setForm] = useState<SSHHost>(emptyHost())
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [testing, setTesting] = useState(false)
+  const testLoading = useLoading('sshHost.test')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -87,17 +88,20 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
       setError(invalid)
       return
     }
-    setTesting(true)
-    setError('')
-    setSuccess('')
-    try {
-      await withSSHHostTrust(form.host, form.port, () => api.testSSHHost(form), confirmTrust)
-      setSuccess(t('sshHost.testOk'))
-    } catch (e) {
-      setError((e as Error).message)
-    } finally {
-      setTesting(false)
-    }
+    await withLoading(
+      'sshHost.test',
+      async () => {
+        setError('')
+        setSuccess('')
+        try {
+          await withSSHHostTrust(form.host, form.port, () => api.testSSHHost(form), confirmTrust)
+          setSuccess(t('sshHost.testOk'))
+        } catch (e) {
+          setError((e as Error).message)
+        }
+      },
+      { label: t('common.testing') },
+    )
   }
 
   const handleSave = async () => {
@@ -123,7 +127,7 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
   }
 
   const isEdit = Boolean(form.id && initial?.id)
-  const busy = testing || saving
+  const busy = testLoading.active || saving
 
   return (
     <>
@@ -243,7 +247,7 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
             {t('common.cancel')}
           </button>
           <button type="button" className="wn-btn wn-btn-tool" {...pressProps(handleTest, { disabled: busy })} disabled={busy}>
-            {testing ? t('common.testing') : t('common.testConnection')}
+            {testLoading.active ? t('common.testing') : t('common.testConnection')}
           </button>
           <button
             type="button"

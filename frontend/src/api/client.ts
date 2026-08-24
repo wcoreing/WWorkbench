@@ -641,13 +641,18 @@ export const api = {
   setAppSetting: (key: string, value: string) => unwrap(() => SetAppSetting(key, value)),
   loadWorkspace: async (product: string) => (await unwrap(() => LoadWorkspace(product))) ?? '',
   saveWorkspace: (product: string, content: string) => unwrap(() => SaveWorkspace(product, content)),
-  listEnvRuntimes: async () => asArray(await unwrap(() => ListEnvRuntimes())),
-  listEnvVersions: async (lang: string) => asArray(await unwrap(() => ListEnvVersions(lang))),
-  useEnvVersion: (lang: string, version: string) => unwrap(() => UseEnvVersion(lang, version)),
-  installEnvVersion: (lang: string, version: string) => unwrap(() => InstallEnvVersion(lang, version)),
-  installEnvManager: (lang: string) => unwrap(() => InstallEnvManager(lang)),
-  ensureEnvVersion: (lang: string, version: string) => unwrap(() => EnsureEnvVersion(lang, version)),
-  uninstallEnvVersion: (lang: string, version: string) => unwrap(() => UninstallEnvVersion(lang, version)),
+  listEnvRuntimes: async (sshHostId = '') => asArray(await unwrap(() => ListEnvRuntimes(sshHostId))),
+  listEnvVersions: async (sshHostId: string, lang: string) =>
+    asArray(await unwrap(() => ListEnvVersions(sshHostId, lang))),
+  useEnvVersion: (sshHostId: string, lang: string, version: string) =>
+    unwrap(() => UseEnvVersion(sshHostId, lang, version)),
+  installEnvVersion: (sshHostId: string, lang: string, version: string) =>
+    unwrap(() => InstallEnvVersion(sshHostId, lang, version)),
+  installEnvManager: (sshHostId: string, lang: string) => unwrap(() => InstallEnvManager(sshHostId, lang)),
+  ensureEnvVersion: (sshHostId: string, lang: string, version: string) =>
+    unwrap(() => EnsureEnvVersion(sshHostId, lang, version)),
+  uninstallEnvVersion: (sshHostId: string, lang: string, version: string) =>
+    unwrap(() => UninstallEnvVersion(sshHostId, lang, version)),
   listEnvPresets: async () => asArray(await unwrap(() => ListEnvPresets())),
   saveEnvPreset: (preset: { id: string; name: string; active: boolean; runtimes: Record<string, string> }) =>
     unwrap(() => SaveEnvPreset(
@@ -660,7 +665,8 @@ export const api = {
       )
     ),
   deleteEnvPreset: (id: string) => unwrap(() => DeleteEnvPreset(id)),
-  applyEnvPreset: async (id: string) => unwrap(() => ApplyEnvPreset(id)),
+  applyEnvPreset: async (id: string, sshHostId = '') =>
+    unwrap(() => ApplyEnvPreset(id, sshHostId)),
   scanEnvProjects: async (root: string) => asArray(await unwrap(() => ScanEnvProjects(root))),
   pickEnvScanDirectory: async () => (await unwrap(() => PickEnvScanDirectory())) ?? '',
   getEnvScanPath: async () => (await unwrap(() => GetEnvScanPath())) ?? '',

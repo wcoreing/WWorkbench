@@ -30,6 +30,10 @@ import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { APP_SETTING_KEYS, saveAppSetting } from '../../stores/appPreferences'
 import { pressProps, useDismissOverlays } from '../../components/compat'
+import { LoadingPane } from '../../components/LoadingHost'
+import { useLoading, withLoading } from '../../stores/loadingStore'
+
+const DOCKER_LOADING_MAIN = 'docker.main'
 import {
   loadDockerWorkspace,
   scheduleDockerWorkspacePersist,
@@ -229,8 +233,7 @@ export function DockerWorkbench() {
   const [logs, setLogs] = useState('')
   const [containerEnv, setContainerEnv] = useState<ContainerEnvVar[]>([])
   const [detailTab, setDetailTab] = useState<DockerDetailTab>('logs')
-  const [envLoading, setEnvLoading] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const mainLoading = useLoading(DOCKER_LOADING_MAIN)
   const [acting, setActing] = useState(false)
   const [sshHosts, setSSHHosts] = useState<SSHHost[]>([])
   const [contextModalOpen, setContextModalOpen] = useState(false)
@@ -263,14 +266,16 @@ export function DockerWorkbench() {
 
   const activeContext = contexts.find((c) => c.id === activeContextId)
   const selected = containers.find((c) => c.id === selectedId) ?? null
+  const envLoadingKey = selected ? `docker.env.${selected.id}` : 'docker.env._'
+  const envPaneLoading = useLoading(envLoadingKey)
   const dockerReady =
-    Boolean(activeContext?.connected) || (!loading && (containers.length > 0 || images.length > 0))
+    Boolean(activeContext?.connected) || (!mainLoading.active && (containers.length > 0 || images.length > 0))
   const isRemoteContext = activeContext != null && activeContext.id !== LOCAL_DOCKER_CONTEXT
   const shellActionLabel = isRemoteContext ? t('docker.shellRemote') : t('docker.shell')
 
   const {
     shellSessionId,
-    shellLoading,
+    shellLoadingKey,
     shellError,
     openContainerShell,
     popOutContainerShell,
@@ -281,6 +286,7 @@ export function DockerWorkbench() {
     setStatusMessage,
     t,
   })
+  const shellPaneLoading = useLoading(shellLoadingKey)
 
   useEffect(() => {
     if (activeProduct !== 'docker') return
@@ -353,58 +359,83 @@ export function DockerWorkbench() {
 
   /** loadContainerEnv 加载容器启动环境变量。 */
   const loadContainerEnv = useCallback(async (contextId: string, containerId: string) => {
-    setEnvLoading(true)
+    const key = `docker.env.${containerId}`
     try {
-      const env = await api.getContainerEnv(contextId, containerId)
-      setContainerEnv(env?.vars ?? [])
+      await withLoading(
+        key,
+        async () => {
+          const env = await api.getContainerEnv(contextId, containerId)
+          setContainerEnv(env?.vars ?? [])
+        },
+        {
+          label: t('common.loading'),
+          onBegin: () => setContainerEnv([]),
+        },
+      )
     } catch (e) {
       setContainerEnv([])
       setStatusMessage((e as Error).message)
-    } finally {
-      setEnvLoading(false)
     }
-  }, [setStatusMessage])
+  }, [setStatusMessage, t])
 
   const refreshData = useCallback(async () => {
     if (!activeContextId) return
-    setLoading(true)
     try {
-      await api.testDockerContext(activeContextId)
-      setContexts((prev) =>
-        prev.map((c) => (c.id === activeContextId ? { ...c, connected: true } : c))
+      await withLoading(
+        DOCKER_LOADING_MAIN,
+        async () => {
+          await api.testDockerContext(activeContextId)
+          setContexts((prev) =>
+            prev.map((c) => (c.id === activeContextId ? { ...c, connected: true } : c))
+          )
+          if (view === 'compose') {
+            setStatusMessage(t('common.ready'))
+            return
+          }
+          if (view === 'images') {
+            const list = await api.listImages(activeContextId)
+            setImages(list)
+            setImagePage((p) => clampPage(p, list.length, DOCKER_PAGE_SIZE))
+            setStatusMessage(t('docker.loadedImages', { count: list.length }))
+            return
+          }
+          const list = await api.listContainers(activeContextId)
+          setContainers(list)
+          setContainerPage((p) => clampPage(p, list.length, DOCKER_PAGE_SIZE))
+          if (selectedId && list.some((c) => c.id === selectedId)) {
+            await Promise.all([
+              loadLogs(activeContextId, selectedId),
+              loadContainerEnv(activeContextId, selectedId),
+            ])
+          } else {
+            setSelectedId(list[0]?.id ?? null)
+            if (list[0]) {
+              await Promise.all([
+                loadLogs(activeContextId, list[0].id),
+                loadContainerEnv(activeContextId, list[0].id),
+              ])
+            } else {
+              setLogs('')
+              setContainerEnv([])
+            }
+          }
+          setStatusMessage(t('docker.loadedContainers', { count: list.length }))
+        },
+        {
+          label: t('common.loading'),
+          onBegin: () => {
+            if (view === 'images') {
+              setImages([])
+              return
+            }
+            if (view !== 'compose') {
+              setContainers([])
+              setLogs('')
+              setContainerEnv([])
+            }
+          },
+        },
       )
-      if (view === 'compose') {
-        setStatusMessage(t('common.ready'))
-        return
-      }
-      if (view === 'images') {
-        const list = await api.listImages(activeContextId)
-        setImages(list)
-        setImagePage((p) => clampPage(p, list.length, DOCKER_PAGE_SIZE))
-        setStatusMessage(t('docker.loadedImages', { count: list.length }))
-        return
-      }
-      const list = await api.listContainers(activeContextId)
-      setContainers(list)
-      setContainerPage((p) => clampPage(p, list.length, DOCKER_PAGE_SIZE))
-      if (selectedId && list.some((c) => c.id === selectedId)) {
-        await Promise.all([
-          loadLogs(activeContextId, selectedId),
-          loadContainerEnv(activeContextId, selectedId),
-        ])
-      } else {
-        setSelectedId(list[0]?.id ?? null)
-        if (list[0]) {
-          await Promise.all([
-            loadLogs(activeContextId, list[0].id),
-            loadContainerEnv(activeContextId, list[0].id),
-          ])
-        } else {
-          setLogs('')
-          setContainerEnv([])
-        }
-      }
-      setStatusMessage(t('docker.loadedContainers', { count: list.length }))
     } catch (e) {
       setContainers([])
       setImages([])
@@ -414,8 +445,6 @@ export function DockerWorkbench() {
         prev.map((c) => (c.id === activeContextId ? { ...c, connected: false } : c))
       )
       setStatusMessage((e as Error).message)
-    } finally {
-      setLoading(false)
     }
   }, [activeContextId, view, selectedId, loadLogs, loadContainerEnv, setStatusMessage, t])
 
@@ -639,24 +668,34 @@ export function DockerWorkbench() {
   const handleRunCreated = async (container: DockerContainer) => {
     setRunModalImage(null)
     setView('containers')
-    setLoading(true)
     try {
-      const list = await api.listContainers(activeContextId)
-      setContainers(list)
-      const idx = list.findIndex((c) => c.id === container.id)
-      const page = idx >= 0 ? clampPage(Math.floor(idx / DOCKER_PAGE_SIZE) + 1, list.length, DOCKER_PAGE_SIZE) : 1
-      setContainerPage(page)
-      setSelectedId(container.id)
-      setDetailTab('env')
-      await Promise.all([
-        loadLogs(activeContextId, container.id),
-        loadContainerEnv(activeContextId, container.id),
-      ])
-      setStatusMessage(t('docker.created', { name: container.name || container.shortId }))
+      await withLoading(
+        DOCKER_LOADING_MAIN,
+        async () => {
+          const list = await api.listContainers(activeContextId)
+          setContainers(list)
+          const idx = list.findIndex((c) => c.id === container.id)
+          const page = idx >= 0 ? clampPage(Math.floor(idx / DOCKER_PAGE_SIZE) + 1, list.length, DOCKER_PAGE_SIZE) : 1
+          setContainerPage(page)
+          setSelectedId(container.id)
+          setDetailTab('env')
+          await Promise.all([
+            loadLogs(activeContextId, container.id),
+            loadContainerEnv(activeContextId, container.id),
+          ])
+          setStatusMessage(t('docker.created', { name: container.name || container.shortId }))
+        },
+        {
+          label: t('common.loading'),
+          onBegin: () => {
+            setContainers([])
+            setLogs('')
+            setContainerEnv([])
+          },
+        },
+      )
     } catch (e) {
       setStatusMessage((e as Error).message)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -827,7 +866,7 @@ export function DockerWorkbench() {
             </span>
           </div>
 
-          {!dockerReady && !loading ? (
+          {!dockerReady && !mainLoading.active ? (
             <div className="pane-empty docker-empty">
               <span>{t('docker.cannotConnect')}</span>
               <span className="docker-empty-hint">
@@ -840,8 +879,8 @@ export function DockerWorkbench() {
               <button
                 type="button"
                 className="wn-btn wn-btn-tool wn-btn-sm"
-                disabled={loading}
-                {...pressProps(() => void refreshData(), { disabled: loading })}
+                disabled={mainLoading.active}
+                {...pressProps(() => void refreshData(), { disabled: mainLoading.active })}
               >
                 {t('common.retry')}
               </button>
@@ -860,11 +899,12 @@ export function DockerWorkbench() {
                 page={pagedImages.page}
                 total={images.length}
                 pageSize={DOCKER_PAGE_SIZE}
-                loading={loading}
+                loading={mainLoading.active}
                 acting={acting}
                 onPageChange={setImagePage}
                 onRefresh={() => void refreshData()}
               />
+              <LoadingPane loadingKey={DOCKER_LOADING_MAIN} label={t('common.loading')} minHeight={240}>
               <div className="docker-table-wrap docker-table-full">
                 <table className="docker-table docker-table-images">
                 <thead>
@@ -880,7 +920,7 @@ export function DockerWorkbench() {
                   {images.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="grid-empty">
-                        {loading ? t('common.loading') : t('docker.noImages')}
+                        {t('docker.noImages')}
                       </td>
                     </tr>
                   ) : (
@@ -915,6 +955,7 @@ export function DockerWorkbench() {
                 </tbody>
               </table>
               </div>
+              </LoadingPane>
             </div>
           ) : (
             <div className="docker-layout">
@@ -923,7 +964,7 @@ export function DockerWorkbench() {
                   page={pagedContainers.page}
                   total={containers.length}
                   pageSize={DOCKER_PAGE_SIZE}
-                  loading={loading}
+                  loading={mainLoading.active}
                   acting={acting}
                   onPageChange={setContainerPage}
                   onRefresh={() => void refreshData()}
@@ -977,6 +1018,7 @@ export function DockerWorkbench() {
                     </div>
                   </div>
                 )}
+                <LoadingPane loadingKey={DOCKER_LOADING_MAIN} label={t('common.loading')} minHeight={240}>
                 <div className="docker-table-wrap">
                 <table className="docker-table docker-table-containers">
                   <colgroup>
@@ -1003,7 +1045,7 @@ export function DockerWorkbench() {
                     {containers.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="grid-empty">
-                          {loading ? t('common.loading') : t('docker.noContainers')}
+                          {t('docker.noContainers')}
                         </td>
                       </tr>
                     ) : (
@@ -1119,6 +1161,7 @@ export function DockerWorkbench() {
                   </tbody>
                 </table>
                 </div>
+                </LoadingPane>
               </div>
               <ResizeHandle
                 axis="y"
@@ -1170,8 +1213,8 @@ export function DockerWorkbench() {
                     <button
                       type="button"
                       className="wn-btn wn-btn-tool wn-btn-sm"
-                      disabled={acting || shellLoading}
-                      {...pressProps(() => void popOutContainerShell(selected), { disabled: acting || shellLoading })}
+                      disabled={acting || shellPaneLoading.active}
+                      {...pressProps(() => void popOutContainerShell(selected), { disabled: acting || shellPaneLoading.active })}
                     >
                       {t('docker.popOutShell')}
                     </button>
@@ -1180,9 +1223,9 @@ export function DockerWorkbench() {
                     <button
                       type="button"
                       className="wn-btn wn-btn-tool wn-btn-sm"
-                      disabled={acting || envLoading}
+                      disabled={acting || envPaneLoading.active}
                       {...pressProps(() => void loadContainerEnv(activeContextId, selected.id), {
-                        disabled: acting || envLoading,
+                        disabled: acting || envPaneLoading.active,
                       })}
                     >
                       {t('common.refresh')}
@@ -1190,63 +1233,63 @@ export function DockerWorkbench() {
                   )}
                 </header>
                 {detailTab === 'logs' ? (
-                  <pre className="docker-log-body">{logs || (loading ? t('common.loading') : t('docker.selectLogs'))}</pre>
+                  <pre className="docker-log-body">{logs || (mainLoading.active ? t('common.loading') : t('docker.selectLogs'))}</pre>
                 ) : detailTab === 'shell' ? (
                   <div
                     className="docker-shell-body"
                     style={{ backgroundColor: terminalBackground(terminalOpacity) }}
                   >
-                    {!selected ? (
-                      <p className="docker-env-empty">{t('docker.selectShell')}</p>
-                    ) : selected.state !== 'running' ? (
-                      <p className="docker-env-empty">{t('docker.shellNeedsRunning')}</p>
-                    ) : shellLoading ? (
-                      <p className="docker-env-empty">{t('docker.preparingShell')}</p>
-                    ) : shellError ? (
-                      <p className="docker-env-empty">{shellError}</p>
-                    ) : shellSessionId ? (
-                      <div className="docker-shell-pane">
-                        <TerminalPane
-                          sessionId={shellSessionId}
-                          active={activeProduct === 'docker' && detailTab === 'shell'}
-                          focused
-                          opacity={terminalOpacity}
-                        />
-                      </div>
-                    ) : (
-                      <p className="docker-env-empty">{t('docker.selectShell')}</p>
-                    )}
+                    <LoadingPane loadingKey={shellLoadingKey} label={t('docker.preparingShell')} minHeight={120}>
+                      {!selected ? (
+                        <p className="docker-env-empty">{t('docker.selectShell')}</p>
+                      ) : selected.state !== 'running' ? (
+                        <p className="docker-env-empty">{t('docker.shellNeedsRunning')}</p>
+                      ) : shellError ? (
+                        <p className="docker-env-empty">{shellError}</p>
+                      ) : shellSessionId ? (
+                        <div className="docker-shell-pane">
+                          <TerminalPane
+                            sessionId={shellSessionId}
+                            active={activeProduct === 'docker' && detailTab === 'shell'}
+                            focused
+                            opacity={terminalOpacity}
+                          />
+                        </div>
+                      ) : (
+                        <p className="docker-env-empty">{t('docker.selectShell')}</p>
+                      )}
+                    </LoadingPane>
                   </div>
                 ) : (
                   <div className="docker-env-body">
-                    {!selected ? (
-                      <p className="docker-env-empty">{t('docker.selectEnv')}</p>
-                    ) : envLoading ? (
-                      <p className="docker-env-empty">{t('common.loading')}</p>
-                    ) : containerEnv.length === 0 ? (
-                      <p className="docker-env-empty">{t('docker.envEmpty')}</p>
-                    ) : (
-                      <table className="docker-env-table">
-                        <thead>
-                          <tr>
-                            <th>{t('docker.envKey')}</th>
-                            <th>{t('docker.envValue')}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {containerEnv.map((item) => (
-                            <tr key={item.key} className={item.highlight ? 'is-highlight' : ''}>
-                              <td className="docker-env-key" title={item.key}>
-                                {item.key}
-                              </td>
-                              <td className="docker-env-value" title={item.value}>
-                                {item.value || '—'}
-                              </td>
+                    <LoadingPane loadingKey={envLoadingKey} label={t('common.loading')} minHeight={120}>
+                      {!selected ? (
+                        <p className="docker-env-empty">{t('docker.selectEnv')}</p>
+                      ) : containerEnv.length === 0 ? (
+                        <p className="docker-env-empty">{t('docker.envEmpty')}</p>
+                      ) : (
+                        <table className="docker-env-table">
+                          <thead>
+                            <tr>
+                              <th>{t('docker.envKey')}</th>
+                              <th>{t('docker.envValue')}</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
+                          </thead>
+                          <tbody>
+                            {containerEnv.map((item) => (
+                              <tr key={item.key} className={item.highlight ? 'is-highlight' : ''}>
+                                <td className="docker-env-key" title={item.key}>
+                                  {item.key}
+                                </td>
+                                <td className="docker-env-value" title={item.value}>
+                                  {item.value || '—'}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </LoadingPane>
                   </div>
                 )}
               </div>

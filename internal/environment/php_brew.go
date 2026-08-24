@@ -97,18 +97,35 @@ func detectPHPFromBrew() (version, binary string) {
 		return "", ""
 	}
 	prefix := strings.TrimSpace(runLoginShellOK(brew + ` --prefix`))
-	if prefix == "" {
-		return "", ""
+	if prefix != "" {
+		phpBin := shellJoin(prefix, "bin", "php")
+		if fileExists(phpBin) {
+			if ver := phpBinaryVersion(phpBin); ver != "" {
+				return ver, phpBin
+			}
+		}
 	}
-	phpBin := filepath.Join(prefix, "bin", "php")
-	if !fileExists(phpBin) {
-		return "", ""
+	for formula, listedVer := range brewPHPInstalledMap() {
+		if !strings.Contains(formula, "php") {
+			continue
+		}
+		qf := quoteBrewFormula(formula)
+		fp := strings.TrimSpace(runLoginShellOK(brew + ` --prefix ` + qf + ` 2>/dev/null`))
+		if fp == "" {
+			continue
+		}
+		phpBin := shellJoin(fp, "bin", "php")
+		if !fileExists(phpBin) {
+			continue
+		}
+		if ver := phpBinaryVersion(phpBin); ver != "" {
+			return ver, phpBin
+		}
+		if listedVer != "" {
+			return listedVer, phpBin
+		}
 	}
-	ver := strings.TrimSpace(runLoginShellOK(phpBin + ` -r 'echo PHP_VERSION;'`))
-	if ver == "" {
-		return "", ""
-	}
-	return ver, phpBin
+	return "", ""
 }
 
 // brewFormulaExists 判断 brew formula 是否存在。
@@ -136,7 +153,7 @@ func brewInstallFormula(formula string, emit func(string)) error {
 	qf := quoteBrewFormula(formula)
 	emit("执行 brew install " + formula)
 	script := `HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 ` + brew + ` install ` + qf
-	_, err = runLoginShellStream(script, 30*time.Minute, filterEmit(emit))
+	_, err = runLoginShellStream(script, 30*time.Minute, bindStreamEmit(emit))
 	return err
 }
 
@@ -233,12 +250,19 @@ func listPHPInstalledOnly(installed map[string]string, activeFormula string) []m
 	var out []model.RuntimeVersionDO
 	for formula, ver := range installed {
 		tag := phpFormulaTag(formula)
+		label := formula
 		if tag == "" {
-			continue
+			if formula != "php" {
+				continue
+			}
+			tag = ver
+			if tag == "" {
+				tag = "system"
+			}
 		}
 		out = append(out, model.RuntimeVersionDO{
 			Version:   ver,
-			Label:     formula,
+			Label:     label,
 			Formula:   formula,
 			Installed: true,
 			Active:    formula == activeFormula,
@@ -427,6 +451,6 @@ func uninstallPHPFormula(formula string, emit func(string)) error {
 	}
 	emit("执行 brew uninstall " + formula)
 	script := `HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_ENV_HINTS=1 ` + brew + ` uninstall ` + qf
-	_, err = runLoginShellStream(script, 15*time.Minute, filterEmit(emit))
+	_, err = runLoginShellStream(script, 15*time.Minute, bindStreamEmit(emit))
 	return err
 }

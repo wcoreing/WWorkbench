@@ -17,6 +17,8 @@ import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { restoreSftpTab } from '../../features/sftp/restoreSftpWorkspace'
 import { pressProps, useDismissOverlays } from '../../components/compat'
+import { LoadingPane } from '../../components/LoadingHost'
+import { useLoading, withLoading } from '../../stores/loadingStore'
 import {
   loadSftpWorkspace,
   scheduleSftpWorkspacePersist,
@@ -89,6 +91,7 @@ export function SftpWorkbench() {
   })
 
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? null
+  const listLoading = useLoading(activeTab ? `sftp.list.${activeTab.id}` : 'sftp.list._')
   const tabsRef = useScrollActiveTabIntoView(activeTabId)
 
   useEffect(() => {
@@ -230,27 +233,60 @@ export function SftpWorkbench() {
 
   const refreshLocal = useCallback(async () => {
     if (!activeTab) return
-    const localPath = await loadLocal(activeTab.localPath)
-    setTabs((prev) => prev.map((t) => (t.id === activeTab.id ? { ...t, localPath } : t)))
-    localSel.clearSelection()
-  }, [activeTab, loadLocal, localSel.clearSelection])
+    const key = `sftp.list.${activeTab.id}`
+    await withLoading(
+      key,
+      async () => {
+        const localPath = await loadLocal(activeTab.localPath)
+        setTabs((prev) => prev.map((t) => (t.id === activeTab.id ? { ...t, localPath } : t)))
+        localSel.clearSelection()
+      },
+      {
+        label: t('common.loading'),
+        onBegin: () => setLocalFiles([]),
+      },
+    )
+  }, [activeTab, loadLocal, localSel.clearSelection, t])
 
   const refreshRemote = useCallback(async () => {
     if (!activeTab) return
-    const remoteList = await loadRemote(activeTab.sessionId, activeTab.remotePath)
-    setRemoteFiles(remoteList)
-    remoteSel.clearSelection()
-  }, [activeTab, loadRemote, remoteSel.clearSelection])
+    const key = `sftp.list.${activeTab.id}`
+    await withLoading(
+      key,
+      async () => {
+        const remoteList = await loadRemote(activeTab.sessionId, activeTab.remotePath)
+        setRemoteFiles(remoteList)
+        remoteSel.clearSelection()
+      },
+      {
+        label: t('common.loading'),
+        onBegin: () => setRemoteFiles([]),
+      },
+    )
+  }, [activeTab, loadRemote, remoteSel.clearSelection, t])
 
   const refreshListings = useCallback(async () => {
     if (!activeTab) return
-    const [localPath, remoteList] = await Promise.all([
-      loadLocal(activeTab.localPath),
-      loadRemote(activeTab.sessionId, activeTab.remotePath),
-    ])
-    setTabs((prev) => prev.map((t) => (t.id === activeTab.id ? { ...t, localPath } : t)))
-    setRemoteFiles(remoteList)
-  }, [activeTab, loadLocal, loadRemote])
+    const key = `sftp.list.${activeTab.id}`
+    await withLoading(
+      key,
+      async () => {
+        const [localPath, remoteList] = await Promise.all([
+          loadLocal(activeTab.localPath),
+          loadRemote(activeTab.sessionId, activeTab.remotePath),
+        ])
+        setTabs((prev) => prev.map((t) => (t.id === activeTab.id ? { ...t, localPath } : t)))
+        setRemoteFiles(remoteList)
+      },
+      {
+        label: t('common.loading'),
+        onBegin: () => {
+          setLocalFiles([])
+          setRemoteFiles([])
+        },
+      },
+    )
+  }, [activeTab, loadLocal, loadRemote, t])
 
   const refreshActive = useCallback(async () => {
     await refreshListings()
@@ -582,8 +618,8 @@ export function SftpWorkbench() {
           <button
             type="button"
             className="wn-btn wn-btn-chrome"
-            disabled={!activeTab || mutating}
-            {...pressProps(() => refreshActive().catch(() => {}), { disabled: !activeTab || mutating })}
+            disabled={!activeTab || mutating || listLoading.active}
+            {...pressProps(() => refreshActive().catch(() => {}), { disabled: !activeTab || mutating || listLoading.active })}
           >
             {t('common.refresh')}
           </button>
@@ -739,6 +775,11 @@ export function SftpWorkbench() {
               }
             />
           ) : (
+            <LoadingPane
+              loadingKey={activeTab ? `sftp.list.${activeTab.id}` : 'sftp.list._'}
+              label={t('common.loading')}
+              minHeight={280}
+            >
             <div className="product-body sftp-panes">
               <FilePane
                 label={t('sftp.local')}
@@ -803,6 +844,7 @@ export function SftpWorkbench() {
                 }}
               />
             </div>
+            </LoadingPane>
           )}
         </main>
       </div>

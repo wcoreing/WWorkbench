@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import { isTableMissing } from '../../api/errors'
 import { useAppStore } from '../../stores/appStore'
+import { useLoading, withLoading } from '../../stores/loadingStore'
 import { ColumnEditorRows } from './ColumnEditorRows'
 import { IndexEditorRows } from './IndexEditorRows'
 import { TableDesignPanel, type TableDesignTab } from './TableDesignPanel'
-import type { TableDesignDraft } from './tableDesignDraft'
+import { draftHasLoadedStructure, type TableDesignDraft } from './tableDesignDraft'
 import { pressProps } from '../../components/compat'
 import {
   activeColumns,
@@ -73,15 +74,18 @@ export function TableDesignEditor({
   const dialect: SqlDialect =
     dbType === 'sqlite' ? 'sqlite' : dbType === 'postgresql' ? 'postgresql' : 'mysql'
   const setDesignDraft = useAppStore((s) => s.setDesignDraft)
+  const clearDesignDraft = useAppStore((s) => s.clearDesignDraft)
   const onTableMissingRef = useRef(onTableMissing)
   onTableMissingRef.current = onTableMissing
   const [tab, setTab] = useState<TableDesignTab>('fields')
   const [tableName, setTableName] = useState('')
   const [original, setOriginal] = useState<TableColumnDraft[]>([])
-  const [columns, setColumns] = useState<TableColumnDraft[]>([newColumnDraft()])
+  const [columns, setColumns] = useState<TableColumnDraft[]>(() => (isCreate ? [newColumnDraft()] : []))
   const [originalIndexes, setOriginalIndexes] = useState<IndexDraft[]>([])
   const [indexes, setIndexes] = useState<IndexDraft[]>([])
-  const [loading, setLoading] = useState(!isCreate)
+  const designLoadingKey = `table.design.${tabId}`
+  const designLoading = useLoading(designLoadingKey)
+  const [structureLoaded, setStructureLoaded] = useState(isCreate)
   const [error, setError] = useState('')
   const [running, setRunning] = useState(false)
 
@@ -106,20 +110,30 @@ export function TableDesignEditor({
         original: patch.original ?? original,
         originalIndexes: patch.originalIndexes ?? originalIndexes,
         hydrated: patch.hydrated ?? true,
+        alterTable: isCreate ? undefined : table,
       })
     },
-    [tabId, tab, tableName, columns, indexes, original, originalIndexes, setDesignDraft]
+    [tabId, tab, tableName, columns, indexes, original, originalIndexes, setDesignDraft, isCreate, table]
   )
 
   useEffect(() => {
     setError('')
     setRunning(false)
+    setStructureLoaded(isCreate)
     const cached = useAppStore.getState().designDrafts[tabId]
-    // 仅当草稿确有字段时复用，避免空草稿把面板锁死
-    if (cached?.hydrated && (cached.columns?.length ?? 0) > 0) {
+    const cacheMatchesTable = !table || cached?.alterTable === table || !cached?.alterTable
+    // 修改表：必须已有 original/既有列，避免占位行草稿跳过加载
+    if (
+      cached?.hydrated &&
+      cacheMatchesTable &&
+      draftHasLoadedStructure(cached, isCreate)
+    ) {
       applyDraft(cached)
-      setLoading(false)
+      setStructureLoaded(true)
       return
+    }
+    if (cached?.hydrated && !isCreate) {
+      clearDesignDraft(tabId)
     }
     if (isCreate) {
       setTab('fields')
@@ -128,23 +142,23 @@ export function TableDesignEditor({
       setIndexes([])
       setOriginal([])
       setOriginalIndexes([])
-      setLoading(false)
       return
     }
     if (!table) {
-      setLoading(false)
       setError('缺少表名')
       return
     }
     let cancelled = false
-    setLoading(true)
-    loadTableStructure(sessionId, database, table)
-      .then((data) => {
+    void withLoading(
+      designLoadingKey,
+      async () => {
+        const data = await loadTableStructure(sessionId, database, table)
         if (cancelled) return
         setOriginal(data.original)
         setColumns(data.columns.length ? data.columns : [newColumnDraft()])
         setOriginalIndexes(data.originalIndexes)
         setIndexes(data.indexes)
+        setStructureLoaded(true)
         setDesignDraft(tabId, {
           tab: 'fields',
           tableName: '',
@@ -153,29 +167,38 @@ export function TableDesignEditor({
           original: data.original,
           originalIndexes: data.originalIndexes,
           hydrated: true,
+          alterTable: table,
         })
-      })
-      .catch((e) => {
-        if (cancelled) return
-        if (isTableMissing(e)) {
-          onTableMissingRef.current?.()
-          return
-        }
-        setError((e as Error).message)
-        setColumns((prev) => (prev.length ? prev : [newColumnDraft()]))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+      },
+      {
+        label: '加载表结构…',
+        onBegin: () => {
+          if (cancelled) return
+          setColumns([])
+          setIndexes([])
+          setOriginal([])
+          setOriginalIndexes([])
+        },
+      },
+    ).catch((e) => {
+      if (cancelled) return
+      if (isTableMissing(e)) {
+        onTableMissingRef.current?.()
+        return
+      }
+      setError((e as Error).message)
+      setColumns((prev) => (prev.length ? prev : [newColumnDraft()]))
+    })
     return () => {
       cancelled = true
     }
-  }, [tabId, sessionId, database, table, isCreate, applyDraft, setDesignDraft])
+  }, [tabId, sessionId, database, table, isCreate, applyDraft, setDesignDraft, clearDesignDraft, designLoadingKey])
 
   useEffect(() => {
-    if (loading) return
+    if (designLoading.active) return
+    if (!isCreate && !structureLoaded) return
     persistDraft({})
-  }, [tab, tableName, columns, indexes, original, originalIndexes, loading, persistDraft])
+  }, [tab, tableName, columns, indexes, original, originalIndexes, designLoading.active, structureLoaded, isCreate, persistDraft])
 
   const preview = useMemo(() => {
     if (isCreate) return buildCreateTableSQL(database, tableName, columns, indexes, dialect)
@@ -202,6 +225,7 @@ export function TableDesignEditor({
       original: data.original,
       originalIndexes: data.originalIndexes,
       hydrated: true,
+      alterTable: table,
     })
   }
 
@@ -271,17 +295,17 @@ export function TableDesignEditor({
       <button
         type="button"
         className="wn-btn wn-btn-tool"
-        disabled={running || loading}
-        {...pressProps(() => openAsDDL(), { disabled: running || loading })}
+        disabled={running || designLoading.active}
+        {...pressProps(() => openAsDDL(), { disabled: running || designLoading.active })}
       >
         打开为 DDL
       </button>
       <button
         type="button"
         className="wn-btn wn-btn-tool wn-btn-accent"
-        disabled={running || loading || (!isCreate && !preview.trim())}
+        disabled={running || designLoading.active || (!isCreate && !preview.trim())}
         {...pressProps(() => void save(), {
-          disabled: running || loading || (!isCreate && !preview.trim()),
+          disabled: running || designLoading.active || (!isCreate && !preview.trim()),
         })}
       >
         {running ? '保存中…' : '保存'}
@@ -311,7 +335,8 @@ export function TableDesignEditor({
       fieldCount={activeColumns(columns).length}
       indexCount={activeIndexes(indexes).length}
       metaBar={metaBar}
-      loading={loading}
+      loadingKey={isCreate ? undefined : designLoadingKey}
+      loadingLabel="加载表结构…"
       error={error}
       sqlPreview={preview}
       sqlPlaceholder={

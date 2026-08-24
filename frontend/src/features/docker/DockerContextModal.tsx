@@ -4,8 +4,12 @@ import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
 import { model } from '../../../wailsjs/go/models'
 import { SSHHostModal } from '../terminal/SSHHostModal'
+import { LoadingPane } from '../../components/LoadingHost'
+import { useLoading, withLoading } from '../../stores/loadingStore'
 import '../../components/ui.css'
 import { Select, pressProps } from '../../components/compat'
+
+const DOCKER_CONTEXT_HOSTS = 'docker.context.hosts'
 
 interface DockerContextModalProps {
   open: boolean
@@ -20,10 +24,10 @@ export function DockerContextModal({ open, initialHostId, onClose, onSaved }: Do
   const [hosts, setHosts] = useState<SSHHost[]>([])
   const [hostId, setHostId] = useState('')
   const [name, setName] = useState('')
-  const [loadingHosts, setLoadingHosts] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [hostModalOpen, setHostModalOpen] = useState(false)
+  const hostsLoading = useLoading(DOCKER_CONTEXT_HOSTS)
 
   const applyHosts = useCallback(
     (list: SSHHost[], preferId?: string) => {
@@ -41,21 +45,28 @@ export function DockerContextModal({ open, initialHostId, onClose, onSaved }: Do
 
   const loadHosts = useCallback(
     async (preferId?: string) => {
-      setLoadingHosts(true)
       try {
-        const list = await api.listSSHHosts()
-        applyHosts(list, preferId)
-        return list
+        await withLoading(
+          DOCKER_CONTEXT_HOSTS,
+          async () => {
+            const list = await api.listSSHHosts()
+            applyHosts(list, preferId)
+          },
+          {
+            label: t('docker.contextModal.loadingHosts'),
+            onBegin: () => {
+              setHosts([])
+              setHostId('')
+            },
+          },
+        )
       } catch (e) {
         setHosts([])
         setHostId('')
         setError((e as Error).message)
-        return []
-      } finally {
-        setLoadingHosts(false)
       }
     },
-    [applyHosts],
+    [applyHosts, t],
   )
 
   useEffect(() => {
@@ -99,7 +110,7 @@ export function DockerContextModal({ open, initialHostId, onClose, onSaved }: Do
     }
   }
 
-  const empty = !loadingHosts && hosts.length === 0
+  const empty = !hostsLoading.active && hosts.length === 0
 
   return (
     <>
@@ -122,49 +133,49 @@ export function DockerContextModal({ open, initialHostId, onClose, onSaved }: Do
           </header>
 
           <div className="wn-modal-body">
-            {loadingHosts ? (
-              <p className="conn-ssh-hint">{t('docker.contextModal.loadingHosts')}</p>
-            ) : empty ? (
-              <div className="wn-form">
-                <p className="conn-ssh-hint">{t('docker.contextModal.noHosts')}</p>
-                <button
-                  type="button"
-                  className="wn-btn wn-btn-primary wn-btn-sm"
-                  {...pressProps(() => setHostModalOpen(true))}
-                >
-                  {t('docker.contextModal.addHost')}
-                </button>
-              </div>
-            ) : (
-              <div className="wn-form">
-                <div className="wn-field">
-                  <label className="wn-label" htmlFor="docker-ctx-host">
-                    {t('docker.contextModal.sshHost')}
-                  </label>
-                  <Select
-                    id="docker-ctx-host"
-                    value={hostId}
-                    options={hosts.map((h) => ({
-                      value: h.id,
-                      label: `${h.name} (${h.user}@${h.host})`,
-                    }))}
-                    onChange={setHostId}
-                  />
+            <LoadingPane loadingKey={DOCKER_CONTEXT_HOSTS} label={t('docker.contextModal.loadingHosts')} minHeight={120}>
+              {empty ? (
+                <div className="wn-form">
+                  <p className="conn-ssh-hint">{t('docker.contextModal.noHosts')}</p>
+                  <button
+                    type="button"
+                    className="wn-btn wn-btn-primary wn-btn-sm"
+                    {...pressProps(() => setHostModalOpen(true))}
+                  >
+                    {t('docker.contextModal.addHost')}
+                  </button>
                 </div>
-                <div className="wn-field">
-                  <label className="wn-label" htmlFor="docker-ctx-name">
-                    {t('docker.contextModal.displayName')}
-                  </label>
-                  <input
-                    id="docker-ctx-name"
-                    className="wn-input"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t('docker.contextModal.namePlaceholder')}
-                  />
+              ) : hosts.length > 0 ? (
+                <div className="wn-form">
+                  <div className="wn-field">
+                    <label className="wn-label" htmlFor="docker-ctx-host">
+                      {t('docker.contextModal.sshHost')}
+                    </label>
+                    <Select
+                      id="docker-ctx-host"
+                      value={hostId}
+                      options={hosts.map((h) => ({
+                        value: h.id,
+                        label: `${h.name} (${h.user}@${h.host})`,
+                      }))}
+                      onChange={setHostId}
+                    />
+                  </div>
+                  <div className="wn-field">
+                    <label className="wn-label" htmlFor="docker-ctx-name">
+                      {t('docker.contextModal.displayName')}
+                    </label>
+                    <input
+                      id="docker-ctx-name"
+                      className="wn-input"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder={t('docker.contextModal.namePlaceholder')}
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : null}
+            </LoadingPane>
             {error && <div className="wn-form-msg error">{error}</div>}
           </div>
 
@@ -185,8 +196,8 @@ export function DockerContextModal({ open, initialHostId, onClose, onSaved }: Do
             <button
               type="button"
               className="wn-btn wn-btn-primary"
-              {...pressProps(() => void submit(), { disabled: saving || empty || loadingHosts })}
-              disabled={saving || empty || loadingHosts}
+              {...pressProps(() => void submit(), { disabled: saving || empty || hostsLoading.active })}
+              disabled={saving || empty || hostsLoading.active}
             >
               {saving ? t('docker.contextModal.saving') : t('common.save')}
             </button>

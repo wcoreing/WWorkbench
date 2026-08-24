@@ -6,6 +6,8 @@ import { ExportFieldsDialog } from '../export/ExportFieldsDialog'
 import { CellViewerDialog, type CellViewerTarget } from '../cell-viewer/CellViewerDialog'
 import { isLikelyLargeCell } from '../cell-viewer/formatCellValue'
 import { pressProps } from '../../components/compat'
+import { LoadingPane } from '../../components/LoadingHost'
+import { useLoading, withLoading } from '../../stores/loadingStore'
 import { useSQLExport } from '../export/useSQLExport'
 import {
   ACTIONS_COL_WIDTH,
@@ -42,7 +44,8 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
   const [page, setPage] = useState<TableDataPage | null>(null)
   const [rows, setRows] = useState<EditableRow[]>([])
   const [pageNum, setPageNum] = useState(1)
-  const [loading, setLoading] = useState(false)
+  const dataLoadingKey = `table.data.${sessionId}.${database}.${table}`
+  const dataLoading = useLoading(dataLoadingKey)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const sqlExport = useSQLExport(setSuccess)
@@ -94,26 +97,38 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
 
   const load = useCallback(async () => {
     const seq = ++loadSeq.current
-    setLoading(true)
     setError('')
     setSuccess('')
     try {
-      const data = await api.getTableDataPage(sessionId, database, table, {
-        page: pageNum,
-        pageSize: PAGE_SIZE,
-        filters: queryFilters,
-        sorts: querySorts,
-      })
-      if (seq !== loadSeq.current) return
-      setPage(data)
-      setSelectedIds(new Set())
-      lastSelectIndexRef.current = -1
-      setRows(
-        data.rows.map((r) => ({
-          ...r,
-          state: 'clean' as RowState,
-          editValues: rowToEdit(r, data.columns),
-        }))
+      await withLoading(
+        dataLoadingKey,
+        async () => {
+          const data = await api.getTableDataPage(sessionId, database, table, {
+            page: pageNum,
+            pageSize: PAGE_SIZE,
+            filters: queryFilters,
+            sorts: querySorts,
+          })
+          if (seq !== loadSeq.current) return
+          setPage(data)
+          setSelectedIds(new Set())
+          lastSelectIndexRef.current = -1
+          setRows(
+            data.rows.map((r) => ({
+              ...r,
+              state: 'clean' as RowState,
+              editValues: rowToEdit(r, data.columns),
+            })),
+          )
+        },
+        {
+          label: '加载表数据…',
+          onBegin: () => {
+            if (seq !== loadSeq.current) return
+            setPage(null)
+            setRows([])
+          },
+        },
       )
     } catch (e) {
       if (seq !== loadSeq.current) return
@@ -126,10 +141,8 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
         setSorts([])
         setAppliedSorts([])
       }
-    } finally {
-      if (seq === loadSeq.current) setLoading(false)
     }
-  }, [sessionId, database, table, pageNum, queryFilters, querySorts])
+  }, [dataLoadingKey, sessionId, database, table, pageNum, queryFilters, querySorts])
 
   useEffect(() => {
     load()
@@ -330,11 +343,7 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
     }
   }
 
-  if (loading && !page) {
-    return <div className="pane-loading">加载表数据…</div>
-  }
-
-  if (error && !page) {
+  if (error && !page && !dataLoading.active) {
     return (
       <div className="pane-loading">
         <div className="wn-form-msg error">{error}</div>
@@ -345,22 +354,24 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
     )
   }
 
-  if (!page) {
-    return <div className="pane-loading">暂无数据</div>
-  }
-
-  const rowCount = page.rows?.length ?? 0
-  const metaParts = [
-    `第 ${page.page} 页`,
-    page.total >= 0 ? `共 ${page.total} 行` : null,
-    selectedIds.size > 0 ? `已选 ${selectedIds.size}` : null,
-    activeFilterCount > 0 ? `筛选 ${activeFilterCount}` : null,
-    activeSortCount > 0 ? `排序 ${activeSortCount}` : null,
-    page.readOnly ? '只读' : null,
-    loading ? '加载中' : null,
-  ].filter(Boolean)
+  const rowCount = page?.rows?.length ?? 0
+  const metaParts = page
+    ? [
+        `第 ${page.page} 页`,
+        page.total >= 0 ? `共 ${page.total} 行` : null,
+        selectedIds.size > 0 ? `已选 ${selectedIds.size}` : null,
+        activeFilterCount > 0 ? `筛选 ${activeFilterCount}` : null,
+        activeSortCount > 0 ? `排序 ${activeSortCount}` : null,
+        page.readOnly ? '只读' : null,
+        dataLoading.active ? '加载中' : null,
+      ].filter(Boolean)
+    : []
 
   return (
+    <LoadingPane loadingKey={dataLoadingKey} label="加载表数据…" minHeight={240}>
+      {!page ? (
+        <div className="pane-empty">暂无数据</div>
+      ) : (
     <div className="table-workspace">
       <div className="pane-head">
         <div className="pane-toolbar">
@@ -408,7 +419,7 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
             <button
               type="button"
               className="wn-btn wn-btn-tool"
-              disabled={pageNum <= 1 || loading}
+              disabled={pageNum <= 1 || dataLoading.active}
               onClick={() => setPageNum((p) => p - 1)}
             >
               上一页
@@ -416,18 +427,18 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
             <button
               type="button"
               className="wn-btn wn-btn-tool"
-              disabled={rowCount < PAGE_SIZE || loading}
+              disabled={rowCount < PAGE_SIZE || dataLoading.active}
               onClick={() => setPageNum((p) => p + 1)}
             >
               下一页
             </button>
-            <button type="button" className="wn-btn wn-btn-tool" {...pressProps(load, { disabled: loading })} disabled={loading}>
+            <button type="button" className="wn-btn wn-btn-tool" {...pressProps(load, { disabled: dataLoading.active })} disabled={dataLoading.active}>
               刷新
             </button>
             <button
               type="button"
               className="wn-btn wn-btn-tool"
-              disabled={loading || sqlExport.exporting}
+              disabled={dataLoading.active || sqlExport.exporting}
               {...pressProps(
                 () => {
                   void sqlExport.exportTableSQL(sessionId, database, table, {
@@ -436,7 +447,7 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
                     cancelled: '已取消导出',
                   })
                 },
-                { disabled: loading || sqlExport.exporting },
+                { disabled: dataLoading.active || sqlExport.exporting },
               )}
             >
               导出 SQL
@@ -450,9 +461,9 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
               <button
                 type="button"
                 className="wn-btn wn-btn-tool wn-btn-accent"
-                disabled={loading || columnNames.length === 0}
+                disabled={dataLoading.active || columnNames.length === 0}
                 {...pressProps(() => setExcelExportOpen(true), {
-                  disabled: loading || columnNames.length === 0,
+                  disabled: dataLoading.active || columnNames.length === 0,
                 })}
               >
                 导出 Excel
@@ -671,6 +682,8 @@ export function TableDataEditor({ sessionId, database, table, excelExport, onTab
         }
       />
     </div>
+      )}
+    </LoadingPane>
   )
 }
 

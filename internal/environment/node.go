@@ -1,9 +1,6 @@
 package environment
 
 import (
-	"os"
-	"os/exec"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -17,25 +14,15 @@ import (
 var nodeVersionRe = regexp.MustCompile(`v?([0-9]+\.[0-9]+\.[0-9]+)`)
 var nodeSemverRe = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
 
-// nvmScript 返回 nvm 初始化脚本前缀。
+// nvmScript 返回 nvm 初始化脚本前缀（路径一律用远端/本机 $HOME，避免 SSH 时塞入本地家目录）。
 func nvmScript() string {
 	if prefix := brewPrefix("nvm"); prefix != "" {
-		nvmSh := filepath.Join(prefix, "nvm.sh")
+		nvmSh := shellJoin(prefix, "nvm.sh")
 		if fileExists(nvmSh) {
-			nvmDir := os.Getenv("NVM_DIR")
-			if nvmDir == "" {
-				home, _ := os.UserHomeDir()
-				nvmDir = filepath.Join(home, ".nvm")
-			}
-			return `export NVM_DIR="` + nvmDir + `" && [ -s "` + nvmSh + `" ] && . "` + nvmSh + `"`
+			return `export NVM_DIR="$HOME/.nvm" && [ -s "` + nvmSh + `" ] && . "` + nvmSh + `"`
 		}
 	}
-	nvmDir := os.Getenv("NVM_DIR")
-	if nvmDir == "" {
-		home, _ := os.UserHomeDir()
-		nvmDir = filepath.Join(home, ".nvm")
-	}
-	return `export NVM_DIR="` + nvmDir + `" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"`
+	return `export NVM_DIR="$HOME/.nvm" && [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"`
 }
 
 // detectNode 检测 Node.js 运行时。
@@ -125,20 +112,12 @@ func listNodeCatalogVersions(current string) []model.RuntimeVersionDO {
 	return out
 }
 
-// listNvmInstalledVersions 从 nvm 目录读取已安装版本。
+// listNvmInstalledVersions 从 nvm 目录读取已安装版本（经当前 Runner，兼容 SSH）。
 func listNvmInstalledVersions(current string) []model.RuntimeVersionDO {
-	home, _ := os.UserHomeDir()
-	dir := filepath.Join(home, ".nvm", "versions", "node")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil
-	}
+	raw := runLoginShellOK(`ls -1 "$HOME/.nvm/versions/node" 2>/dev/null`)
 	var out []model.RuntimeVersionDO
-	for _, ent := range entries {
-		if !ent.IsDir() {
-			continue
-		}
-		ver := normalizeNodeVersion(ent.Name())
+	for _, name := range linesNonEmpty(raw) {
+		ver := normalizeNodeVersion(name)
 		if ver == "" || !nodeSemverRe.MatchString(ver) {
 			continue
 		}
@@ -210,7 +189,7 @@ func installNodeVersion(version string, emit func(string)) error {
 		return err
 	}
 	emit("执行 nvm install " + ver)
-	_, err = runLoginShellStream(nvmScript()+` && nvm install `+ver, 20*time.Minute, filterEmit(emit))
+	_, err = runLoginShellStream(nvmScript()+` && nvm install `+ver, 20*time.Minute, bindStreamEmit(emit))
 	return err
 }
 
@@ -224,7 +203,7 @@ func uninstallNodeVersion(version string, emit func(string)) error {
 		return err
 	}
 	emit("执行 nvm uninstall " + ver)
-	_, err = runLoginShellStream(nvmScript()+` && nvm uninstall `+ver, 10*time.Minute, filterEmit(emit))
+	_, err = runLoginShellStream(nvmScript()+` && nvm uninstall `+ver, 10*time.Minute, bindStreamEmit(emit))
 	return err
 }
 
@@ -250,7 +229,7 @@ func normalizeNodeVersion(raw string) string {
 	return m[1]
 }
 
-// execLookPath 查找可执行文件路径。
+// execLookPath 查找可执行文件路径（经当前 Runner）。
 func execLookPath(name string) (string, error) {
-	return exec.LookPath(name)
+	return currentRunner().LookPath(name)
 }

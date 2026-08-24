@@ -4,6 +4,7 @@ import { askConfirm } from '../../utils/askConfirm'
 import { subscribeAgentEvents } from '../../api/agentEvents'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { useLoading, withLoading } from '../../stores/loadingStore'
 import { nextAgentLineId, useAgentStore, type AgentChatLine, type AgentToolStep } from '../../stores/agentStore'
 import { model } from '../../../wailsjs/go/models'
 import type { AgentConfirmEvent, AgentOfferChoicesEvent } from '../../api/agentEvents'
@@ -89,7 +90,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   const [permError, setPermError] = useState('')
   const [savingConfig, setSavingConfig] = useState(false)
   const [savingPerm, setSavingPerm] = useState(false)
-  const [testing, setTesting] = useState(false)
+  const testLoading = useLoading('agent.testConnection')
   const { width, onResizeStart } = useAgentPanelResize()
 
   const scrollContentKey = [
@@ -569,26 +570,29 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   }
 
   const testConnection = async () => {
-    setTesting(true)
-    setConfigError('')
-    try {
-      if (!hasKey && !apiKey.trim()) {
-        throw new Error(t('agent.needApiKey'))
-      }
-      if (!hasKey && apiKey.trim()) {
-        await saveAgentAPIConfig(apiBase, apiKey, modelName, provider)
-        setApiKey('')
-        await loadSettings()
-      }
-      const msg = await api.testAgentConnection()
-      setStatusMessage(msg)
-    } catch (e) {
-      const msg = (e as Error).message
-      setConfigError(msg)
-      setStatusMessage(msg)
-    } finally {
-      setTesting(false)
-    }
+    await withLoading(
+      'agent.testConnection',
+      async () => {
+        setConfigError('')
+        try {
+          if (!hasKey && !apiKey.trim()) {
+            throw new Error(t('agent.needApiKey'))
+          }
+          if (!hasKey && apiKey.trim()) {
+            await saveAgentAPIConfig(apiBase, apiKey, modelName, provider)
+            setApiKey('')
+            await loadSettings()
+          }
+          const msg = await api.testAgentConnection()
+          setStatusMessage(msg)
+        } catch (e) {
+          const msg = (e as Error).message
+          setConfigError(msg)
+          setStatusMessage(msg)
+        }
+      },
+      { label: t('agent.testing') },
+    )
   }
 
   const applyPreset = async (id: 'bailian' | 'deepseek' | 'minimax') => {
@@ -689,7 +693,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
           provider={provider}
           error={configError}
           saving={savingConfig}
-          testing={testing}
+          testing={testLoading.active}
           onApplyPreset={(id) => void applyPreset(id)}
           onTest={() => void testConnection()}
           onSave={() => void handleSaveConfig()}

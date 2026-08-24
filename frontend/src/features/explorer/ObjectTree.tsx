@@ -4,6 +4,7 @@ import { api } from '../../api/client'
 import { ContextMenu } from '../../components/ContextMenu'
 import { Icon, type IconName } from '../../components/Icons'
 import { useI18n } from '../../i18n'
+import { useLoading, withLoading } from '../../stores/loadingStore'
 import { isMysqlSystemDatabase, isProtectedDatabase } from './mysqlSystemDb'
 import '../../components/ui.css'
 import { pressProps, useDismissOverlays } from '../../components/compat'
@@ -77,7 +78,6 @@ export function ObjectTree({
   const [databaseCache, setDatabaseCache] = useState<Record<string, ObjectTreeNode[]>>({})
   const [columnCache, setColumnCache] = useState<Record<string, ObjectTreeNode[]>>({})
   const [indexCache, setIndexCache] = useState<Record<string, ObjectTreeNode[]>>({})
-  const [loadingId, setLoadingId] = useState<string | null>(null)
   const [menu, setMenu] = useState<ContextMenuState | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   useDismissOverlays(() => setMenu(null))
@@ -215,15 +215,26 @@ export function ObjectTree({
   const loadDatabaseObjects = useCallback(
     async (node: ObjectTreeNode) => {
       if (!node.database || databaseCacheRef.current[node.id]) return
-      setLoadingId(node.id)
-      try {
-        const children = await api.listDatabaseObjects(sessionId, node.database)
-        setDatabaseCache((prev) => ({ ...prev, [node.id]: children }))
-      } catch {
-        setDatabaseCache((prev) => ({ ...prev, [node.id]: [] }))
-      } finally {
-        setLoadingId(null)
-      }
+      const key = treeNodeLoadingKey(sessionId, node.id)
+      await withLoading(
+        key,
+        async () => {
+          try {
+            const children = await api.listDatabaseObjects(sessionId, node.database!)
+            setDatabaseCache((prev) => ({ ...prev, [node.id]: children }))
+          } catch {
+            setDatabaseCache((prev) => ({ ...prev, [node.id]: [] }))
+          }
+        },
+        {
+          onBegin: () =>
+            setDatabaseCache((prev) => {
+              const next = { ...prev }
+              delete next[node.id]
+              return next
+            }),
+        },
+      )
     },
     [sessionId],
   )
@@ -232,15 +243,26 @@ export function ObjectTree({
   const loadColumns = useCallback(
     async (node: ObjectTreeNode, cacheKey: string) => {
       if (!node.database || !node.table || columnCacheRef.current[cacheKey]) return
-      setLoadingId(cacheKey)
-      try {
-        const cols = await api.listColumns(sessionId, node.database, node.table)
-        setColumnCache((prev) => ({ ...prev, [cacheKey]: columnNodesFromMeta(node, cols) }))
-      } catch {
-        setColumnCache((prev) => ({ ...prev, [cacheKey]: [] }))
-      } finally {
-        setLoadingId(null)
-      }
+      const key = treeNodeLoadingKey(sessionId, cacheKey)
+      await withLoading(
+        key,
+        async () => {
+          try {
+            const cols = await api.listColumns(sessionId, node.database!, node.table!)
+            setColumnCache((prev) => ({ ...prev, [cacheKey]: columnNodesFromMeta(node, cols) }))
+          } catch {
+            setColumnCache((prev) => ({ ...prev, [cacheKey]: [] }))
+          }
+        },
+        {
+          onBegin: () =>
+            setColumnCache((prev) => {
+              const next = { ...prev }
+              delete next[cacheKey]
+              return next
+            }),
+        },
+      )
     },
     [sessionId],
   )
@@ -249,15 +271,26 @@ export function ObjectTree({
   const loadIndexes = useCallback(
     async (node: ObjectTreeNode, cacheKey: string) => {
       if (!node.database || !node.table || indexCacheRef.current[cacheKey]) return
-      setLoadingId(cacheKey)
-      try {
-        const idxs = await api.listIndexes(sessionId, node.database, node.table)
-        setIndexCache((prev) => ({ ...prev, [cacheKey]: indexNodesFromMeta(node, idxs) }))
-      } catch {
-        setIndexCache((prev) => ({ ...prev, [cacheKey]: [] }))
-      } finally {
-        setLoadingId(null)
-      }
+      const key = treeNodeLoadingKey(sessionId, cacheKey)
+      await withLoading(
+        key,
+        async () => {
+          try {
+            const idxs = await api.listIndexes(sessionId, node.database!, node.table!)
+            setIndexCache((prev) => ({ ...prev, [cacheKey]: indexNodesFromMeta(node, idxs) }))
+          } catch {
+            setIndexCache((prev) => ({ ...prev, [cacheKey]: [] }))
+          }
+        },
+        {
+          onBegin: () =>
+            setIndexCache((prev) => {
+              const next = { ...prev }
+              delete next[cacheKey]
+              return next
+            }),
+        },
+      )
     },
     [sessionId],
   )
@@ -410,18 +443,13 @@ export function ObjectTree({
           title={treeHint(node)}
         >
           {expandable ? (
-            <button
-              type="button"
-              className="tree-expand"
-              {...pressProps(() => void toggleExpand(node), { stop: true })}
-              aria-label={isOpen ? t('objectTree.collapse') : t('objectTree.expand')}
-            >
-              {loadingId === node.id ? (
-                <span className="tree-expand-loading">…</span>
-              ) : (
-                <span className={`tree-chevron${isOpen ? ' is-open' : ''}`} aria-hidden />
-              )}
-            </button>
+            <TreeExpandButton
+              loadingKey={treeNodeLoadingKey(sessionId, node.id)}
+              isOpen={isOpen}
+              expandLabel={t('objectTree.expand')}
+              collapseLabel={t('objectTree.collapse')}
+              onToggle={() => void toggleExpand(node)}
+            />
           ) : (
             <span className="tree-expand tree-expand-placeholder" />
           )}
@@ -610,6 +638,38 @@ export function ObjectTree({
         </ContextMenu>
       )}
     </>
+  )
+}
+
+/** treeNodeLoadingKey 对象树节点懒加载 key。 */
+function treeNodeLoadingKey(sessionId: string, nodeId: string) {
+  return `database.tree.node.${sessionId}.${nodeId}`
+}
+
+type TreeExpandButtonProps = {
+  loadingKey: string
+  isOpen: boolean
+  expandLabel: string
+  collapseLabel: string
+  onToggle: () => void
+}
+
+/** TreeExpandButton 展开控件；loading 时显示占位符。 */
+function TreeExpandButton({ loadingKey, isOpen, expandLabel, collapseLabel, onToggle }: TreeExpandButtonProps) {
+  const loading = useLoading(loadingKey)
+  return (
+    <button
+      type="button"
+      className="tree-expand"
+      {...pressProps(onToggle, { stop: true })}
+      aria-label={isOpen ? collapseLabel : expandLabel}
+    >
+      {loading.active ? (
+        <span className="tree-expand-loading">…</span>
+      ) : (
+        <span className={`tree-chevron${isOpen ? ' is-open' : ''}`} aria-hidden />
+      )}
+    </button>
   )
 }
 
