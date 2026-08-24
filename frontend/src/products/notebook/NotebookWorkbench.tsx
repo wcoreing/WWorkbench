@@ -829,7 +829,7 @@ export function NotebookWorkbench() {
 
   return (
     <div className="product-workbench notebook-workbench">
-      <header className="product-toolbar">
+      <header className="product-toolbar notebook-toolbar">
         <div className="product-actions">
           <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" {...pressProps(() => void createNote())}>
             <IconPlus size={14} /> {t('notebook.newNote')}
@@ -911,7 +911,7 @@ export function NotebookWorkbench() {
         }
       >
         <main className="app-main notebook-main">
-          <div className="editor-chrome">
+          <div className="editor-chrome notebook-editor-chrome">
             <div className="wn-tabs" ref={tabsRef}>
               {openTabIds.map((id) => {
                 const note = openNotes[id]

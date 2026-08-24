@@ -1,100 +1,161 @@
-/* WWorkbench 设计令牌 */
+/* Workbench UI tokens：克制层级、高密度、数据优先。 */
 :root,
 [data-theme='light'] {
-  --accent: #3b6fd9;
-  --accent-hover: #2f5fc4;
-  --accent-muted: rgba(59, 111, 217, 0.1);
-  --accent-ring: rgba(59, 111, 217, 0.28);
+  color-scheme: light;
 
-  --color-bg: #eceef2;
-  --color-surface: #ffffff;
+  /* 单一品牌操作色；语义色只表达状态。 */
+  --accent: #5e63d3;
+  --accent-hover: #4f54c4;
+  --accent-pressed: #4549b5;
+  --accent-muted: rgba(94, 99, 211, 0.09);
+  --accent-ring: rgba(94, 99, 211, 0.2);
+
+  /* 连续工作台层级：canvas → panel → raised。 */
+  --color-bg: #e9eaee;
+  --color-canvas: #e9eaee;
+  --color-surface: #f8f8fa;
   --color-surface-raised: #ffffff;
-  --color-surface-2: #f6f7f9;
-  --color-surface-3: #eef0f4;
-  --color-editor: #ffffff;
-  --color-sidebar: #f4f5f7;
-  --color-toolbar: #f4f5f7;
-  --color-chrome: #f4f5f7;
-  --color-border: rgba(15, 23, 42, 0.1);
-  --color-border-subtle: rgba(15, 23, 42, 0.06);
-  --color-text: #1a1d24;
-  --color-text-secondary: #4b5568;
-  --color-text-muted: #8b93a1;
+  --color-surface-2: #f1f2f5;
+  --color-surface-3: #e8e9ee;
+  --color-editor: #fbfbfc;
+  --color-sidebar: #f1f2f5;
+  --color-toolbar: #f6f6f8;
+  --color-chrome: #eeeff3;
+  --color-tab-bar: #eeeff3;
+  --color-tab-active: #f8f8fa;
+  --color-overlay: rgba(24, 25, 31, 0.34);
+
+  --color-border-strong: #cfd1d8;
+  --color-border: #d9dbe1;
+  --color-border-subtle: #e6e7eb;
+  --color-divider: rgba(38, 40, 48, 0.09);
+
+  --color-text: #23242a;
+  --color-text-secondary: #5b5e69;
+  --color-text-muted: #898c96;
+  --color-text-disabled: #b4b6be;
+
+  --color-hover: rgba(35, 36, 42, 0.045);
+  --color-active: rgba(94, 99, 211, 0.09);
+  --color-selection: rgba(94, 99, 211, 0.12);
+  --color-focus: var(--accent);
+  --color-tree-hover: var(--color-hover);
+  --color-tree-active: var(--color-active);
+
   --color-primary: var(--accent);
   --color-primary-hover: var(--accent-hover);
-  --color-danger: #dc2626;
-  --color-danger-muted: rgba(220, 38, 38, 0.08);
-  --color-success: #059669;
-  --color-success-muted: rgba(5, 150, 105, 0.08);
-  --color-warning: #d97706;
-  --color-warning-muted: rgba(217, 119, 6, 0.1);
-  --color-tree-hover: rgba(15, 23, 42, 0.04);
-  --color-tree-active: rgba(59, 111, 217, 0.14);
-  --color-tab-bar: #eef0f4;
-  --color-tab-active: #ffffff;
+  --color-danger: #c83d4a;
+  --color-danger-muted: rgba(200, 61, 74, 0.08);
+  --color-success: #16845b;
+  --color-success-muted: rgba(22, 132, 91, 0.08);
+  --color-warning: #a96814;
+  --color-warning-muted: rgba(169, 104, 20, 0.09);
 
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  --radius-sm: 4px;
-  --radius: 5px;
-  --radius-lg: 7px;
-  --shadow-sm: none;
-  --shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 12px 40px rgba(15, 23, 42, 0.12);
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', sans-serif;
+  --font-mono: 'SFMono-Regular', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+  --font-size-caption: 10px;
+  --font-size-ui-sm: 11px;
+  --font-size-ui: 12px;
+  --font-size-title: 13px;
+  --line-height-tight: 1.25;
+  --line-height-ui: 1.4;
 
-  /* 间距语言：全站只准用这 4 档（Chrome 紧、内容略松） */
+  /* 圆角只用于控件与浮层，不用于区域分栏。 */
+  --radius-xs: 2px;
+  --radius-sm: 3px;
+  --radius: 4px;
+  --radius-lg: 6px;
+
+  /* 平面区无阴影，只有浮层有高度。 */
+  --shadow-sm: 0 1px 2px rgba(24, 25, 31, 0.05);
+  --shadow: 0 8px 24px rgba(24, 25, 31, 0.12), 0 1px 3px rgba(24, 25, 31, 0.08);
+  --shadow-lg: 0 18px 50px rgba(24, 25, 31, 0.16), 0 2px 6px rgba(24, 25, 31, 0.08);
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --chrome-pad-x: var(--space-2);
-  --chrome-gap: var(--space-1);
-  --content-pad: var(--space-3);
+  --space-5: 20px;
+  --space-6: 24px;
+  --chrome-pad-x: 10px;
+  --chrome-gap: 4px;
+  --content-pad: 12px;
   --section-gap: 0px;
 
-  /* 图标三档 */
   --icon-sm: 14px;
   --icon-md: 18px;
-  --icon-rail: 22px;
+  --icon-rail: 20px;
 
   --sidebar-width: 220px;
-  --product-rail-width: 52px;
-  --chrome-height: 36px;
+  --product-rail-width: 48px;
+  --chrome-height: 38px;
   --toolbar-height: 32px;
-  --tab-height: 28px;
+  --tab-height: 30px;
   --statusbar-height: 22px;
-  --control-height: 26px;
+  --control-height: 28px;
+  --control-height-sm: 24px;
   --control-height-chrome: 24px;
+
+  --motion-fast: 100ms;
+  --motion-ui: 140ms;
+  --ease-ui: cubic-bezier(0.2, 0, 0, 1);
 }
 
 [data-theme='dark'] {
-  --accent: #6b9fff;
-  --accent-hover: #8ab4ff;
-  --accent-muted: rgba(107, 159, 255, 0.12);
-  --accent-ring: rgba(107, 159, 255, 0.22);
+  color-scheme: dark;
 
-  --color-bg: #09090b;
-  --color-surface: #111113;
-  --color-surface-raised: #18181b;
-  --color-surface-2: #141416;
-  --color-surface-3: #1c1c1f;
-  --color-editor: #0e0e10;
-  --color-sidebar: #0e0e10;
-  --color-toolbar: #0e0e10;
-  --color-chrome: #0e0e10;
-  --color-border: rgba(255, 255, 255, 0.08);
-  --color-border-subtle: rgba(255, 255, 255, 0.04);
-  --color-text: #ececef;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #63636e;
-  --color-danger-muted: rgba(248, 113, 113, 0.1);
-  --color-success-muted: rgba(52, 211, 153, 0.08);
-  --color-warning-muted: rgba(251, 191, 36, 0.08);
-  --color-tree-hover: rgba(255, 255, 255, 0.04);
-  --color-tree-active: rgba(107, 159, 255, 0.18);
-  --color-tab-bar: #0e0e10;
-  --color-tab-active: #161618;
-  --shadow-sm: none;
-  --shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --accent: #8589ee;
+  --accent-hover: #9699f5;
+  --accent-pressed: #7478df;
+  --accent-muted: rgba(133, 137, 238, 0.12);
+  --accent-ring: rgba(133, 137, 238, 0.23);
+
+  --color-bg: #111216;
+  --color-canvas: #111216;
+  --color-surface: #18191e;
+  --color-surface-raised: #202126;
+  --color-surface-2: #15161a;
+  --color-surface-3: #23242a;
+  --color-editor: #15161a;
+  --color-sidebar: #15161a;
+  --color-toolbar: #18191e;
+  --color-chrome: #131419;
+  --color-tab-bar: #131419;
+  --color-tab-active: #1b1c21;
+  --color-overlay: rgba(0, 0, 0, 0.55);
+
+  --color-border-strong: #383a43;
+  --color-border: #2d2f36;
+  --color-border-subtle: #24262c;
+  --color-divider: rgba(255, 255, 255, 0.075);
+
+  --color-text: #ececf0;
+  --color-text-secondary: #a6a7b0;
+  --color-text-muted: #70727d;
+  --color-text-disabled: #4b4d56;
+
+  --color-hover: rgba(255, 255, 255, 0.045);
+  --color-active: rgba(133, 137, 238, 0.12);
+  --color-selection: rgba(133, 137, 238, 0.16);
+  --color-tree-hover: var(--color-hover);
+  --color-tree-active: var(--color-active);
+
+  --color-danger: #ef6b76;
+  --color-danger-muted: rgba(239, 107, 118, 0.1);
+  --color-success: #55bd8b;
+  --color-success-muted: rgba(85, 189, 139, 0.1);
+  --color-warning: #d9a052;
+  --color-warning-muted: rgba(217, 160, 82, 0.1);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.42), 0 1px 3px rgba(0, 0, 0, 0.38);
+  --shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.52), 0 2px 8px rgba(0, 0, 0, 0.38);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-ui: 0ms;
+  }
 }

@@ -1,7 +1,8 @@
 /* Docker 容器列表、详情、Run 弹窗 */
 .docker-list-bar {
   flex-shrink: 0;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-toolbar);
 }
 
 .docker-list-bar .pane-toolbar-start {
@@ -12,13 +13,14 @@
   flex: 1;
   min-height: 120px;
   overflow: auto;
-  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .docker-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 .docker-table th {
@@ -26,21 +28,25 @@
   top: 0;
   z-index: 1;
   text-align: left;
-  padding: 6px 10px;
-  font-weight: 500;
-  font-size: 10px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  height: 30px;
+  padding: 0 10px;
+  font-weight: 550;
+  font-size: var(--font-size-caption);
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--color-text-muted);
-  background: var(--color-surface-2);
-  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-toolbar);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .docker-table td {
-  padding: 5px 10px;
-  height: 32px;
+  height: 34px;
+  padding: 0 10px;
   color: var(--color-text-secondary);
   border-bottom: 1px solid var(--color-border-subtle);
+  transition:
+    background var(--motion-fast) var(--ease-ui),
+    color var(--motion-fast) var(--ease-ui);
 }
 
 .docker-row {
@@ -48,54 +54,62 @@
 }
 
 .docker-row:hover td {
-  background: var(--color-tree-hover);
+  background: var(--color-hover);
 }
 
 .docker-row.selected td {
-  background: var(--accent-muted);
+  background: var(--color-selection);
+}
+
+.docker-row.selected td:first-child {
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .docker-name {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--color-text);
 }
 
 .docker-mono {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .docker-status {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 10px;
-  font-size: 10px;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: var(--font-size-caption);
+  font-weight: 550;
   text-transform: lowercase;
 }
 
+.docker-status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.9;
+}
+
 .docker-status-running {
-  background: var(--color-success-muted);
   color: var(--color-success);
 }
 
 .docker-status-exited {
-  background: var(--color-danger-muted);
-  color: var(--color-danger);
+  color: var(--color-text-muted);
 }
 
 .docker-log-panel {
-  height: 200px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  min-height: 0;
   background: var(--color-surface);
-  border-top: 1px solid var(--color-border-subtle);
-}
-
-.docker-log-panel.is-shell {
-  height: min(42vh, 360px);
-  min-height: 220px;
 }
 
 .docker-shell-body {
@@ -116,33 +130,50 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 6px 12px;
-  font-size: 10px;
-  font-weight: 500;
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: var(--font-size-caption);
+  font-weight: 550;
   color: var(--color-text-muted);
-  background: var(--color-surface-2);
-  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-toolbar);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .docker-detail-tabs {
   display: flex;
-  gap: 4px;
+  align-self: stretch;
+  gap: 0;
   flex-shrink: 0;
 }
 
 .docker-detail-tab {
+  position: relative;
   border: none;
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
+  font-size: var(--font-size-ui-sm);
+  padding: 0 10px;
+  border-radius: 0;
   cursor: pointer;
+}
+
+.docker-detail-tab:hover:not(:disabled) {
+  color: var(--color-text-secondary);
 }
 
 .docker-detail-tab.is-active {
   color: var(--color-text);
-  background: var(--color-surface-3, rgba(255, 255, 255, 0.06));
+  background: transparent;
+}
+
+.docker-detail-tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+  height: 1px;
+  background: var(--accent);
 }
 
 .docker-detail-title {
@@ -152,7 +183,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: center;
-  font-size: 10px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
 }
 
 .docker-env-body {
@@ -173,14 +205,15 @@
 .docker-env-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   font-family: var(--font-mono, ui-monospace, monospace);
   color: var(--color-text);
 }
 
 .docker-env-table th,
 .docker-env-table td {
-  padding: 4px 10px;
+  height: 30px;
+  padding: 0 10px;
   text-align: left;
   border-bottom: 1px solid var(--color-border-subtle);
 }
@@ -188,7 +221,7 @@
 .docker-env-table th {
   position: sticky;
   top: 0;
-  background: var(--color-surface-2);
+  background: var(--color-toolbar);
   color: var(--color-text-muted);
   font-weight: 500;
   z-index: 1;
@@ -215,7 +248,7 @@
 .docker-log-body {
   flex: 1;
   margin: 0;
-  padding: 8px 12px;
+  padding: 10px 12px;
   overflow: auto;
   font-family: var(--font-mono);
   font-size: 11px;
@@ -269,7 +302,7 @@
 }
 
 .docker-run-modal {
-  width: min(520px, calc(100vw - 32px));
+  width: min(620px, calc(100vw - 32px));
 }
 
 .docker-run-image {

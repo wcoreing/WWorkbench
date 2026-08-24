@@ -1,22 +1,55 @@
-/* 环境 / 工具链 */
-/* 工具链 / 环境原型 */
+/* 环境工具链：运行时状态、预设差异和项目建议分层呈现。 */
+.toolchain-workbench {
+  container-type: inline-size;
+  container-name: toolchain-workbench;
+}
+
+.toolchain-toolbar {
+  border-bottom-color: var(--color-border-strong);
+}
+
+.toolchain-toolbar .product-toolbar-status {
+  min-width: 0;
+  max-width: min(44vw, 520px);
+  padding-left: 10px;
+  border-left: 1px solid var(--color-border);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
+}
+
+.toolchain-sidebar {
+  background: var(--color-sidebar);
+  border-right-color: var(--color-border-strong);
+}
+
 .toolchain-main {
   flex: 1;
   min-width: 0;
   overflow: auto;
-  padding: 16px 20px;
-  background: var(--color-surface);
+  padding: 12px 16px 28px;
+  background: var(--color-editor);
 }
 
 .toolchain-section {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.toolchain-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 
 .toolchain-section-header {
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   color: var(--color-text-muted);
 }
 
@@ -27,15 +60,15 @@
 
 .toolchain-section-header h2 {
   margin: 0 0 2px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--font-size-title);
+  font-weight: 650;
   color: var(--color-text);
 }
 
 .toolchain-section-header h3 {
   margin: 0;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-ui);
+  font-weight: 650;
   color: var(--color-text);
 }
 
@@ -57,18 +90,21 @@
 }
 
 .toolchain-preset-item {
-  padding: 8px 8px;
-  border-radius: var(--radius-sm);
+  min-height: 40px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  border-radius: 0;
   cursor: default;
-  margin-bottom: 2px;
+  margin-bottom: 0;
 }
 
 .toolchain-preset-item:hover {
-  background: var(--color-tree-hover);
+  background: var(--color-hover);
 }
 
 .toolchain-preset-item.active {
-  background: var(--accent-muted);
+  background: var(--color-selection);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .toolchain-preset-name {
@@ -92,14 +128,14 @@
 .toolchain-runtime-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .toolchain-runtime-card {
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-2);
-  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -123,12 +159,13 @@
   min-width: 36px;
   height: 18px;
   padding: 0 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 9px;
   font-weight: 700;
   color: #fff;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  filter: saturate(0.72);
 }
 
 .toolchain-runtime-label {
@@ -138,8 +175,8 @@
 }
 
 .toolchain-runtime-version {
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 650;
   font-family: var(--font-mono);
   color: var(--color-text);
   letter-spacing: -0.02em;
@@ -164,21 +201,25 @@
   border-collapse: collapse;
   font-size: 11px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  overflow: hidden;
+  border-radius: 0;
 }
 
 .toolchain-table th {
   text-align: left;
-  padding: 7px 12px;
-  font-weight: 500;
+  height: 28px;
+  padding: 0 10px;
+  font-weight: 650;
+  font-size: var(--font-size-caption);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
   background: var(--color-surface-2);
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .toolchain-table td {
-  padding: 6px 12px;
+  height: 30px;
+  padding: 0 10px;
   color: var(--color-text-secondary);
   border-bottom: 1px solid var(--color-border-subtle);
 }
@@ -202,32 +243,41 @@
 }
 
 .toolchain-status {
-  display: inline-block;
-  padding: 1px 7px;
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border-radius: 0;
   font-size: 10px;
   font-weight: 500;
+  background: transparent;
+}
+
+.toolchain-status::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
 .toolchain-status-ok {
-  background: var(--color-success-muted);
   color: var(--color-success);
 }
 
 .toolchain-status-warn {
-  background: var(--color-warning-muted);
   color: var(--color-warning);
 }
 
 .toolchain-status-skip {
-  background: var(--color-surface-3);
   color: var(--color-text-muted);
 }
 
 .toolchain-project-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
+  border-top: 1px solid var(--color-border);
 }
 
 .toolchain-project-card {
@@ -235,10 +285,11 @@
   grid-template-columns: 1fr auto;
   grid-template-rows: auto auto auto;
   gap: 4px 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface-2);
+  padding: 10px;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  background: var(--color-surface);
 }
 
 .toolchain-project-path {
@@ -247,6 +298,9 @@
   font-size: 11px;
   font-weight: 500;
   color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .toolchain-project-card > .wn-btn {
@@ -265,10 +319,16 @@
 .toolchain-hint-tag {
   font-size: 10px;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--color-surface-3);
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
+}
+
+.toolchain-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .toolchain-project-suggest {
@@ -337,11 +397,11 @@
 }
 
 .env-version-badge {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  color: var(--color-success, #22c55e);
-  background: color-mix(in srgb, var(--color-success, #22c55e) 15%, transparent);
+  font-size: var(--font-size-caption);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  color: var(--color-success);
+  background: var(--color-success-muted);
 }
 
 .env-version-log {
@@ -353,7 +413,7 @@
   padding: 8px 10px;
   max-height: 160px;
   overflow-y: auto;
-  background: var(--color-bg-elevated, #1a1d23);
+  background: var(--color-editor);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
@@ -374,7 +434,7 @@
   overflow: auto;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: var(--color-bg-elevated, rgba(255, 255, 255, 0.02));
+  background: var(--color-surface);
 }
 
 .env-version-table {
@@ -382,12 +442,13 @@
   min-width: 100%;
   table-layout: fixed;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--font-size-ui);
 }
 
 .env-version-table th,
 .env-version-table td {
-  padding: 8px 10px;
+  height: 30px;
+  padding: 0 9px;
   text-align: left;
   border-bottom: 1px solid var(--color-border);
   vertical-align: middle;
@@ -395,7 +456,10 @@
 
 .env-version-table th {
   white-space: nowrap;
-  font-weight: 500;
+  font-weight: 650;
+  font-size: var(--font-size-caption);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
   background: var(--color-surface-raised, var(--color-surface));
 }
@@ -422,7 +486,7 @@
 }
 
 .env-version-table tr.is-active {
-  background: color-mix(in srgb, var(--color-accent, #3b82f6) 10%, transparent);
+  background: var(--color-selection);
 }
 
 .env-version-source {
@@ -442,7 +506,7 @@
 }
 
 .env-version-check {
-  color: #22c55e;
+  color: var(--color-success);
   font-weight: 600;
 }
 
@@ -459,9 +523,9 @@
   padding: 0;
   margin: 0;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--font-size-ui);
   line-height: 1.4;
-  color: var(--color-accent, #3b82f6);
+  color: var(--accent);
   cursor: pointer;
 }
 
@@ -475,7 +539,7 @@
 }
 
 .env-version-text-btn.is-danger {
-  color: #ef4444;
+  color: var(--color-danger);
 }
 
 .env-manager-install {
@@ -490,7 +554,42 @@
 
 .toolchain-runtime-warn {
   margin-left: 8px;
-  color: var(--color-warning, #e9a23b);
+  color: var(--color-warning);
   font-size: 11px;
+}
+
+@container toolchain-workbench (max-width: 920px) {
+  .toolchain-toolbar .product-toolbar-status {
+    display: none;
+  }
+
+  .toolchain-runtime-grid {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
+
+  .toolchain-main {
+    padding-inline: 12px;
+  }
+}
+
+@container toolchain-workbench (max-width: 620px) {
+  .toolchain-runtime-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .toolchain-section-header.compact {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .toolchain-project-card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .toolchain-project-card > .wn-btn {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: start;
+  }
 }
 

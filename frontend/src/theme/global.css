@@ -19,8 +19,8 @@ body,
   margin: 0;
   height: 100%;
   font-family: var(--font-sans);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: var(--font-size-ui);
+  line-height: var(--line-height-ui);
   /* 窗口本身透明；非终端产品由 .workbench-shell 铺实底 */
   background: transparent;
   color: var(--color-text);
@@ -53,7 +53,7 @@ button {
   height: var(--chrome-height);
   padding: 0 var(--chrome-pad-x);
   background: var(--color-chrome);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-strong);
   gap: var(--chrome-gap);
   flex-shrink: 0;
 }
@@ -68,7 +68,7 @@ button {
 .chrome-brand .logo-mark {
   width: 18px;
   height: 18px;
-  border-radius: 4px;
+  border-radius: var(--radius);
   background: var(--accent);
   display: flex;
   align-items: center;
@@ -128,7 +128,7 @@ button {
 .chrome-status .status-dot.online {
   background: var(--color-success);
   opacity: 1;
-  box-shadow: 0 0 0 2px var(--color-success-muted);
+  box-shadow: none;
 }
 
 .chrome-status .conn-label {
@@ -148,7 +148,7 @@ button {
   width: var(--sidebar-width);
   min-width: 188px;
   background: var(--color-sidebar);
-  border-right: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border-strong);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -183,9 +183,12 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 4px;
-  padding: var(--space-2) var(--chrome-pad-x) var(--space-1);
-  font-size: 11px;
-  font-weight: 500;
+  min-height: 30px;
+  padding: 7px var(--chrome-pad-x) 5px;
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
@@ -200,7 +203,7 @@ button {
 .sidebar-body {
   flex: 1;
   overflow: auto;
-  padding: 0 var(--space-2) var(--space-2);
+  padding: 0 0 var(--space-2);
 }
 
 .sidebar-body.connections-body {
@@ -232,7 +235,7 @@ button {
   flex-shrink: 0;
   min-height: var(--tab-height);
   background: var(--color-tab-bar);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-strong);
   position: relative;
   z-index: 2;
   overflow: hidden;
@@ -398,7 +401,7 @@ button {
   font-size: 10px;
   color: var(--color-text-muted);
   background: var(--color-chrome);
-  border-top: 1px solid var(--color-border);
+  border-top: 1px solid var(--color-border-strong);
   flex-shrink: 0;
 }
 

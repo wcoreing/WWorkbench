@@ -242,7 +242,7 @@ export function EnvironmentWorkbench() {
 
   return (
     <div className="product-workbench toolchain-workbench">
-      <div className="product-toolbar">
+      <div className="product-toolbar toolchain-toolbar">
         <nav className="product-actions">
           <button type="button" className="wn-btn wn-btn-chrome" {...pressProps(() => setPresetModal(null))}>
             <IconPlus size={13} />
@@ -372,7 +372,7 @@ export function EnvironmentWorkbench() {
             <section className="toolchain-section">
               <header className="toolchain-section-header compact">
                 <h3>{t('environment.presetTitle', { name: activePreset.name })}</h3>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div className="toolchain-section-actions">
                   <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => setPresetModal(activePreset))}>
                     {t('common.edit')}
                   </button>

@@ -975,7 +975,7 @@ export function DatabaseWorkbench() {
 
   return (
     <div className="product-workbench database-workbench">
-      <div className="product-toolbar">
+      <div className="product-toolbar database-toolbar">
         <nav className="product-actions">
           <button type="button" className="wn-btn wn-btn-chrome" title={t('database.newConnection')} {...pressProps(() => openConnModal())}>
             <IconPlus size={13} />
@@ -1394,8 +1394,8 @@ export function DatabaseWorkbench() {
           />
         }
       >
-        <main className="app-main">
-          <div className="editor-chrome">
+        <main className="app-main database-main">
+          <div className="editor-chrome database-editor-chrome">
             <div className="wn-tabs" ref={tabsRef}>
               {tabs.map((tab) => (
                 <button
@@ -1421,7 +1421,7 @@ export function DatabaseWorkbench() {
               </button>
             </div>
             {session && (
-              <div className="query-bar">
+              <div className="query-bar database-query-bar">
                 <label>{t('database.database')}</label>
                 <Select
                   value={session.database}

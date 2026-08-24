@@ -747,7 +747,7 @@ export function TerminalWorkbench() {
 
   return (
     <div className="product-workbench terminal-workbench">
-      <div className="product-toolbar">
+      <div className="product-toolbar terminal-toolbar">
         <nav className="product-actions">
           <button
             type="button"
@@ -1010,8 +1010,8 @@ export function TerminalWorkbench() {
         }
       >
 
-        <main className="app-main">
-          <div className="editor-chrome">
+        <main className="app-main terminal-main">
+          <div className="editor-chrome terminal-editor-chrome">
             <div className="wn-tabs" ref={tabStripRef}>
               {tabs.map((t) => (
                 <button

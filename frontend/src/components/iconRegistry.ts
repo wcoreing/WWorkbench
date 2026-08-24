@@ -39,11 +39,11 @@ import server from '../assets/icons/server.png'
 import settings from '../assets/icons/settings.png'
 import sftp from '../assets/icons/sftp.png'
 import sql from '../assets/icons/sql.png'
-import ssh from '../assets/icons/ssh.png'
 import stop from '../assets/icons/stop.png'
 import sun from '../assets/icons/sun.png'
 import table from '../assets/icons/table.png'
-import terminal from '../assets/icons/terminal.png'
+/** macOS Terminal；与产品轨其它图标统一留白/体量 */
+import terminal from '../assets/icons/terminal-macos-v2.png'
 import trash from '../assets/icons/trash.png'
 import trigger from '../assets/icons/trigger.png'
 import upload from '../assets/icons/upload.png'
@@ -90,11 +90,11 @@ export const ICON_SRC = {
   settings,
   sftp,
   sql,
-  ssh,
   stop,
   sun,
   table,
   terminal,
+  ssh: terminal,
   trash,
   trigger,
   upload,

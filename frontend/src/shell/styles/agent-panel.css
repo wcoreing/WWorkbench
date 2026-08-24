@@ -4,7 +4,7 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--border-subtle);
+  border-left: 1px solid var(--color-border-strong);
   background: var(--color-surface);
   min-height: 0;
   min-width: 0;
@@ -19,37 +19,51 @@
 .agent-panel-tabs {
   display: flex;
   flex-shrink: 0;
-  gap: 2px;
-  padding: 0 8px 8px;
-  border-bottom: 1px solid var(--border-subtle);
+  gap: 0;
+  min-height: 30px;
+  padding: 0;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-toolbar);
 }
 
 .agent-panel-tab {
   flex: 1;
-  padding: 6px 8px;
-  font-size: 12px;
+  position: relative;
+  padding: 5px 8px;
+  font-size: var(--font-size-ui-sm);
   border: none;
-  border-radius: 6px;
+  border-right: 1px solid var(--color-border-subtle);
+  border-radius: 0;
   background: transparent;
   color: var(--color-text-muted, #888);
   cursor: pointer;
 }
 
 .agent-panel-tab:hover {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--color-text, inherit);
+  background: var(--color-hover);
+  color: var(--color-text);
 }
 
 .agent-panel-tab.is-active {
-  background: rgba(59, 111, 217, 0.15);
-  color: var(--accent, #3b6fd9);
-  font-weight: 600;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-weight: 550;
+}
+
+.agent-panel-tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 1px;
+  background: var(--accent);
 }
 
 .agent-history {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 0;
   min-height: 0;
 }
 
@@ -57,22 +71,25 @@
   display: block;
   width: 100%;
   text-align: left;
+  min-height: 34px;
   padding: 8px 10px;
-  margin-bottom: 4px;
+  margin: 0;
   border: none;
-  border-radius: 6px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  border-radius: 0;
   background: transparent;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   color: inherit;
 }
 
 .agent-history-item:hover {
-  background: rgba(0, 0, 0, 0.06);
+  background: var(--color-hover);
 }
 
 .agent-history-item.is-active {
-  background: rgba(59, 111, 217, 0.12);
+  background: var(--color-selection);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .agent-history-title {
@@ -94,7 +111,7 @@
 }
 
 .agent-panel-resize:hover {
-  background: rgba(59, 111, 217, 0.25);
+  background: var(--accent-ring);
 }
 
 .agent-chat-pane {

@@ -1,5 +1,91 @@
-/* 终端产品线 */
-/* 终端原型 */
+/* 终端产品线：中性工作台包裹低干扰深色终端画布。 */
+.terminal-workbench {
+  container-type: inline-size;
+  container-name: terminal-workbench;
+}
+
+.terminal-toolbar {
+  border-bottom-color: var(--color-border-strong);
+}
+
+.terminal-toolbar .product-actions {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.terminal-toolbar .product-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.terminal-toolbar .product-actions > .chrome-vrule {
+  height: 14px;
+  margin-inline: 3px;
+  background: var(--color-divider);
+}
+
+.terminal-toolbar .wn-btn-run {
+  padding-inline: 9px;
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.terminal-toolbar .wn-btn-run:not(:disabled):hover {
+  color: #fff;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.terminal-toolbar .product-toolbar-status {
+  max-width: 180px;
+  padding-left: 10px;
+  border-left: 1px solid var(--color-divider);
+}
+
+.terminal-sidebar {
+  background: var(--color-sidebar);
+}
+
+.terminal-sidebar > .sidebar-section {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.terminal-sidebar > .sidebar-section:last-child {
+  border-bottom: 0;
+}
+
+.terminal-sidebar .sidebar-header {
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.terminal-sidebar .conn-item {
+  min-height: 36px;
+}
+
+.terminal-sidebar .conn-item .mock-icon {
+  color: var(--color-text-muted);
+  opacity: 0.78;
+}
+
+.terminal-sidebar .conn-item.active .mock-icon {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.terminal-sidebar .conn-item.active {
+  background: var(--color-selection);
+}
+
+.terminal-main {
+  background: #0c0c0f;
+}
+
+.terminal-editor-chrome {
+  background: var(--color-tab-bar);
+}
+
 .terminal-mock {
   background: #0c0c0e;
   padding: 0;
@@ -15,13 +101,13 @@
 .terminal-connect-empty {
   flex-direction: column;
   gap: 10px;
-  padding: 24px;
+  padding: 32px 24px;
   text-align: center;
 }
 
 .terminal-connect-title {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--font-size-title);
   color: #e8e8ed;
 }
 
@@ -45,10 +131,13 @@
 .terminal-connect-error {
   margin: 0;
   max-width: 520px;
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 9px 11px;
+  border-radius: var(--radius);
   background: rgba(196, 68, 68, 0.12);
-  border: 1px solid rgba(196, 68, 68, 0.35);
+  border-left: 2px solid #dd6262;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
   color: #f0a8a8;
   font-size: 12px;
   line-height: 1.5;
@@ -59,7 +148,7 @@
 .terminal-connect-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   justify-content: center;
   margin-top: 4px;
 }
@@ -78,23 +167,23 @@
 }
 
 .tab-status-badge {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
 .tab-status-badge.connecting {
-  background: var(--color-accent, #5b8def);
+  background: var(--accent);
   animation: terminal-status-pulse 1.2s ease-in-out infinite;
 }
 
 .tab-status-badge.failed {
   width: auto;
   height: auto;
-  padding: 0 4px;
-  border-radius: 4px;
-  background: rgba(196, 68, 68, 0.25);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
   color: #f0a8a8;
   font-size: 10px;
   font-weight: 700;
@@ -102,11 +191,11 @@
 }
 
 .terminal-connect-spinner {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.12);
-  border-top-color: var(--color-accent, #5b8def);
+  border-top-color: var(--accent);
   animation: terminal-connect-spin 0.8s linear infinite;
 }
 
@@ -119,35 +208,44 @@
 .terminal-opacity-control {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: var(--text-muted, #8a8a96);
-  margin-right: 12px;
+  gap: 6px;
+  height: var(--control-height-chrome);
+  padding: 0 8px;
+  border-left: 1px solid var(--color-divider);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+  margin-right: 6px;
 }
 
 .terminal-opacity-control input[type='range'] {
-  width: 88px;
-  accent-color: var(--accent, #5b8def);
+  width: 72px;
+  height: 2px;
+  accent-color: var(--accent);
 }
 
 .terminal-opacity-value {
-  min-width: 36px;
+  min-width: 30px;
   text-align: right;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
   font-variant-numeric: tabular-nums;
 }
 
 .terminal-toolbar-glyph {
-  font-size: 13px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   line-height: 1;
 }
 
 .tab-split-badge {
-  font-size: 10px;
-  padding: 0 4px;
-  border-radius: 3px;
-  background: rgba(91, 141, 239, 0.2);
-  color: #8ab4ff;
-  margin-left: 2px;
+  margin-left: 1px;
+  padding-left: 5px;
+  border-left: 1px solid var(--color-divider);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
 }
 
 .terminal-split-node {
@@ -174,21 +272,21 @@
 
 .terminal-split-divider {
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.06);
-  transition: background 0.15s;
+  background: rgba(255, 255, 255, 0.08);
+  transition: background var(--motion-ui) var(--ease-ui);
 }
 
 .terminal-split-divider:hover {
-  background: rgba(91, 141, 239, 0.45);
+  background: color-mix(in srgb, var(--accent) 58%, transparent);
 }
 
 .terminal-split-divider.h {
-  width: 4px;
+  width: 3px;
   cursor: col-resize;
 }
 
 .terminal-split-divider.v {
-  height: 4px;
+  height: 3px;
   cursor: row-resize;
 }
 
@@ -198,27 +296,27 @@
   display: flex;
   flex-direction: column;
   border: 1px solid transparent;
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 .terminal-split-leaf.focused {
-  border-color: rgba(91, 141, 239, 0.35);
+  border-color: color-mix(in srgb, var(--accent) 42%, transparent);
 }
 
 .terminal-split-leaf-bar {
   display: flex;
   justify-content: flex-end;
   flex-shrink: 0;
-  height: 22px;
+  height: 20px;
   padding: 0 4px;
   /* 叠在 leaf 的 terminalBackground 上；勿用近乎透明底（glass 下会透桌面） */
-  background: rgba(255, 255, 255, 0.06);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.045);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.075);
 }
 
 .terminal-split-leaf-close {
   width: 22px;
-  height: 20px;
+  height: 18px;
   border: none;
   border-radius: 3px;
   background: transparent;
@@ -245,7 +343,7 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  padding: 4px 6px;
+  padding: 6px 8px;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -306,5 +404,30 @@
 
 .wn-tab.wn-tab-local svg {
   color: var(--accent);
+}
+
+@container terminal-workbench (max-width: 980px) {
+  .terminal-toolbar .product-actions .wn-btn-chrome span:not(.terminal-toolbar-glyph) {
+    display: none;
+  }
+
+  .terminal-toolbar .product-actions .wn-btn-run span,
+  .terminal-toolbar .product-actions > .wn-btn-chrome:nth-of-type(2) span {
+    display: inline;
+  }
+
+  .terminal-toolbar .terminal-opacity-control > span:first-child {
+    display: none;
+  }
+}
+
+@container terminal-workbench (max-width: 740px) {
+  .terminal-toolbar .terminal-opacity-control {
+    display: none;
+  }
+
+  .terminal-toolbar .product-toolbar-status {
+    display: none;
+  }
 }
 

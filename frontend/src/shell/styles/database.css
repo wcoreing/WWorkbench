@@ -1,0 +1,289 @@
+/* Database 工作台：数据库对象、SQL 编辑和结果数据共用一套仪器面板层级。 */
+.database-workbench {
+  container-type: inline-size;
+  container-name: database-workbench;
+}
+
+.database-toolbar {
+  border-bottom-color: var(--color-border-strong);
+}
+
+.database-toolbar .product-actions {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.database-toolbar .product-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.database-toolbar .product-actions > .chrome-vrule {
+  height: 14px;
+  margin: 0 3px;
+  background: var(--color-divider);
+}
+
+.database-toolbar .wn-btn-run {
+  padding-inline: 9px;
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.database-toolbar .wn-btn-run:not(:disabled):hover {
+  color: #fff;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.database-toolbar .wn-btn-run:disabled {
+  color: var(--color-text-disabled);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.database-toolbar .product-toolbar-status {
+  max-width: 260px;
+  padding-left: 10px;
+  border-left: 1px solid var(--color-divider);
+}
+
+.database-toolbar .product-toolbar-status .status-dot.online {
+  box-shadow: none;
+}
+
+.database-explorer-columns {
+  background: var(--color-sidebar);
+}
+
+.database-explorer-columns .sidebar-section {
+  background: var(--color-sidebar);
+}
+
+.database-explorer-columns .sidebar-header {
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.database-explorer-columns .connections-body {
+  max-height: none;
+}
+
+.database-explorer-columns .conn-group {
+  margin-bottom: 6px;
+}
+
+.database-explorer-columns .conn-group-title {
+  padding: 7px 10px 3px;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.045em;
+  color: var(--color-text-muted);
+}
+
+.database-explorer-columns .conn-item {
+  min-height: 34px;
+}
+
+.database-explorer-columns .conn-item.active {
+  background: var(--color-selection);
+}
+
+.database-explorer-columns .conn-item .conn-name {
+  font-weight: 600;
+}
+
+.database-explorer-columns .conn-item .conn-db-type {
+  margin-right: 5px;
+  font-size: 9px;
+  color: var(--color-text-muted);
+}
+
+.database-explorer-columns .conn-item.active .conn-db-type {
+  color: var(--accent);
+}
+
+.database-explorer-columns .conn-item .conn-ssh-tag {
+  border-radius: var(--radius-xs);
+}
+
+.database-explorer-columns .sidebar-filter {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.database-explorer-columns .sidebar-filter .wn-input {
+  background: var(--color-surface);
+}
+
+.database-explorer-columns .wn-tree-item {
+  min-height: 24px;
+  margin: 0;
+  padding-block: 2px;
+  border-radius: 0;
+}
+
+.database-explorer-columns .wn-tree-item.selected {
+  background: var(--color-selection);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.database-workbench .sidebar-section.history .sidebar-body {
+  padding: 0;
+}
+
+.database-workbench .history-item {
+  min-height: 28px;
+  padding: 6px 10px;
+  border-radius: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-ui);
+}
+
+.database-workbench .history-item:hover {
+  background: var(--color-hover);
+}
+
+.database-main {
+  background: var(--color-editor);
+}
+
+.database-editor-chrome {
+  background: var(--color-tab-bar);
+}
+
+.database-query-bar {
+  min-height: var(--tab-height);
+  padding-inline: 10px;
+  background: var(--color-tab-bar);
+}
+
+.database-query-bar label {
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.database-query-bar .wn-select-trigger {
+  min-width: 132px;
+  border-color: transparent;
+  background: var(--color-tab-active);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
+}
+
+.database-query-bar .wn-select-trigger:hover {
+  border-color: var(--color-border);
+}
+
+.database-workbench .workspace {
+  background: var(--color-editor);
+}
+
+.database-workbench .sql-editor-wrap {
+  border-bottom: 0;
+}
+
+.database-workbench .bottom-panel {
+  border-top-color: var(--color-border-strong);
+}
+
+.database-workbench .bottom-panel-tabs {
+  min-height: 28px;
+  background: var(--color-toolbar);
+  border-bottom-color: var(--color-border);
+}
+
+.database-workbench .bottom-panel-tab {
+  padding-inline: 10px;
+  font-size: var(--font-size-ui-sm);
+}
+
+.database-workbench .bottom-panel-tab.active::after {
+  left: 10px;
+  right: 10px;
+}
+
+.database-workbench .result-workspace > .pane-toolbar {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-toolbar);
+}
+
+.database-workbench .wn-grid-wrap {
+  background: var(--color-editor);
+}
+
+.database-workbench .wn-grid {
+  font-size: var(--font-size-ui-sm);
+}
+
+.database-workbench .wn-grid th,
+.database-workbench .wn-grid td {
+  height: 29px;
+  padding: 4px 9px;
+}
+
+.database-workbench .wn-grid th {
+  background: var(--color-toolbar);
+  border-bottom-color: var(--color-border);
+}
+
+.database-workbench .wn-grid tbody tr:nth-child(even) td {
+  background: transparent;
+}
+
+.database-workbench .wn-grid tbody tr:hover td,
+.database-workbench .wn-grid tbody tr:nth-child(even):hover td {
+  background: var(--color-hover);
+}
+
+.database-workbench .wn-grid tbody tr.is-selected td,
+.database-workbench .wn-grid tbody tr.is-selected:hover td {
+  background: var(--color-selection);
+}
+
+.database-workbench .wn-grid .grid-cell-value {
+  font-size: var(--font-size-ui-sm);
+}
+
+.database-workbench .result-batch-item {
+  border-radius: 0;
+  border-color: var(--color-border);
+}
+
+.database-workbench .database-list-panel {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+
+@container database-workbench (max-width: 1040px) {
+  .database-toolbar .product-actions .wn-btn-chrome span {
+    display: none;
+  }
+
+  .database-toolbar .product-actions .wn-btn-run span,
+  .database-toolbar .product-actions > .wn-btn-chrome:first-child span {
+    display: inline;
+  }
+
+  .database-toolbar .product-toolbar-status {
+    max-width: 180px;
+  }
+}
+
+@container database-workbench (max-width: 760px) {
+  .database-toolbar .product-toolbar-status {
+    display: none;
+  }
+
+  .database-query-bar label {
+    display: none;
+  }
+}

@@ -59,9 +59,9 @@
 .wn-resize-handle-y::after {
   content: '';
   position: absolute;
-  background: var(--color-border);
+  background: var(--color-border-strong);
   opacity: 1;
-  transition: background 0.15s;
+  transition: background var(--motion-ui) var(--ease-ui);
   pointer-events: none;
 }
 
@@ -205,9 +205,9 @@ body.is-col-resizing {
 .wn-pane-gutter-y::before {
   content: '';
   position: absolute;
-  background: var(--color-border);
+  background: var(--color-border-strong);
   pointer-events: none;
-  transition: background 0.15s;
+  transition: background var(--motion-ui) var(--ease-ui);
 }
 
 .wn-pane-gutter-x::before {
@@ -282,7 +282,7 @@ body.is-row-resizing .wn-pane-gutter-y::before {
   bottom: 0;
   right: 0;
   width: 1px;
-  background: var(--color-border);
+  background: var(--color-border-strong);
   pointer-events: none;
 }
 
@@ -293,13 +293,13 @@ body.is-row-resizing .wn-pane-gutter-y::before {
   right: 0;
   bottom: 0;
   height: 1px;
-  background: var(--color-border);
+  background: var(--color-border-strong);
   pointer-events: none;
 }
 
 .wn-collapse-rail:hover {
-  background: var(--color-tree-hover, rgba(0, 0, 0, 0.06));
-  color: var(--color-text-secondary, #555);
+  background: var(--color-hover);
+  color: var(--color-text-secondary);
 }
 
 .wn-pane-collapse-btn {
@@ -319,8 +319,8 @@ body.is-row-resizing .wn-pane-gutter-y::before {
 }
 
 .wn-pane-collapse-btn:hover {
-  background: var(--color-tree-hover, rgba(0, 0, 0, 0.06));
-  color: var(--color-text-secondary, #555);
+  background: var(--color-hover);
+  color: var(--color-text-secondary);
 }
 
 .wn-collapse-chevron.is-x.is-expanded {

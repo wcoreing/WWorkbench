@@ -86,6 +86,8 @@ export function ObjectTree({
   const databaseCacheRef = useRef(databaseCache)
   const columnCacheRef = useRef(columnCache)
   const indexCacheRef = useRef(indexCache)
+  /** 已自动展开过的选中库；避免 nodes 引用变化把用户手动收起顶开。 */
+  const autoExpandedDbRef = useRef<string | null>(null)
   expandedRef.current = expanded
   nodesRef.current = nodes
   databaseCacheRef.current = databaseCache
@@ -98,6 +100,7 @@ export function ObjectTree({
     setColumnCache({})
     setIndexCache({})
     setSelectedId(null)
+    autoExpandedDbRef.current = null
   }, [sessionId])
 
   // 顶部刷新：清空懒加载缓存，并重拉已展开库 + 当前选中库的表/列。
@@ -287,11 +290,16 @@ export function ObjectTree({
     [loadDatabaseObjects, loadColumns, loadIndexes, isRedis],
   )
 
-  // 选中库后默认展开表树（含顶部下拉 / 库列表进入后）。
+  // 选中库变化时默认展开一次；用户手动收起后不因 nodes 引用变化再强行展开。
   useEffect(() => {
-    if (!selectedDatabase) return
+    if (!selectedDatabase) {
+      autoExpandedDbRef.current = null
+      return
+    }
+    if (autoExpandedDbRef.current === selectedDatabase) return
     const dbNode = nodes.find((n) => n.nodeType === 'database' && n.database === selectedDatabase)
     if (!dbNode) return
+    autoExpandedDbRef.current = selectedDatabase
     setSelectedId((prev) => prev ?? dbNode.id)
     void ensureExpanded(dbNode)
   }, [selectedDatabase, nodes, ensureExpanded])

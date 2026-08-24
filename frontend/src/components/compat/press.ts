@@ -33,9 +33,11 @@ export function pressProps(run: PressHandler | undefined, options: PressOptions 
   const { disabled = false, stop = false } = options
   const invoke = (e: ReactPointerEvent | ReactKeyboardEvent | SyntheticEvent) => {
     if (disabled) return
+    // stop 必须在去重短路之前：pointerdown 已处理后 click 仍会冒泡到父级 pressProps
+    //（例如对象树展开钮 → 行点击 ensureExpanded，导致无法收起）。
+    if (stop) e.stopPropagation()
     if (!takePressSlot(e.currentTarget)) return
     if ('preventDefault' in e) e.preventDefault()
-    if (stop) e.stopPropagation()
     run(e)
   }
   return {

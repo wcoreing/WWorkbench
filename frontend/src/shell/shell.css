@@ -7,6 +7,7 @@
 @import './styles/terminal.css';
 @import './styles/sftp.css';
 @import './styles/environment.css';
+@import './styles/database.css';
 @import './styles/docker.css';
 @import './styles/docker-list.css';
 @import './styles/httpapi.css';

@@ -4,6 +4,7 @@ import type { ContainerEnvVar, DockerContainer, DockerContext, DockerImage, SSHH
 import { IconDocker, IconPlus } from '../../components/Icons'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ContextMenu } from '../../components/ContextMenu'
+import { ProductLayout, ResizeHandle, useResizable } from '../../components/layout'
 import { DockerContextModal } from '../../features/docker/DockerContextModal'
 import { DockerComposePanel } from '../../features/docker/DockerComposePanel'
 import {
@@ -251,6 +252,14 @@ export function DockerWorkbench() {
   const [imagePage, setImagePage] = useState(1)
   const [composeProjectDir, setComposeProjectDir] = useState('')
   const workspaceLoaded = useRef(false)
+  const { size: logPanelHeight, onResizeStart: onLogPanelResizeStart } = useResizable({
+    axis: 'y',
+    storageKey: 'docker_log_panel_height',
+    defaultSize: 220,
+    min: 120,
+    max: 560,
+    invert: true,
+  })
 
   const activeContext = contexts.find((c) => c.id === activeContextId)
   const selected = containers.find((c) => c.id === selectedId) ?? null
@@ -722,8 +731,11 @@ export function DockerWorkbench() {
 
   return (
     <div className="product-workbench docker-workbench">
-      <div className="product-body">
-        <aside className="app-sidebar docker-sidebar">
+      <ProductLayout
+        storageKey="docker_sidebar_width"
+        resizeTitle={t('common.resizeWidth')}
+        sidebarClassName="docker-sidebar"
+        sidebar={
           <section className="sidebar-section">
             <div className="sidebar-header">
               <span>{t('docker.sidebarTitle')}</span>
@@ -774,8 +786,8 @@ export function DockerWorkbench() {
               </ul>
             </div>
           </section>
-        </aside>
-
+        }
+      >
         <main className="app-main docker-main">
           <div className="editor-chrome">
             <div className="wn-tabs">
@@ -1108,7 +1120,12 @@ export function DockerWorkbench() {
                 </table>
                 </div>
               </div>
-              <div className={`docker-log-panel${detailTab === 'shell' ? ' is-shell' : ''}`}>
+              <ResizeHandle
+                axis="y"
+                onMouseDown={onLogPanelResizeStart}
+                title={t('common.resizeHeight')}
+              />
+              <div className="docker-log-panel" style={{ height: logPanelHeight }}>
                 <header className="docker-log-header">
                   <div className="docker-detail-tabs">
                     <button
@@ -1236,7 +1253,7 @@ export function DockerWorkbench() {
             </div>
           )}
         </main>
-      </div>
+      </ProductLayout>
 
       <ConfirmDialog
         open={confirmState != null}

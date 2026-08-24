@@ -11,19 +11,25 @@
   height: var(--control-height);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   font-weight: 500;
+  line-height: var(--line-height-tight);
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s, border-color 0.15s, box-shadow 0.15s;
+  transition:
+    background var(--motion-ui) var(--ease-ui),
+    color var(--motion-ui) var(--ease-ui),
+    border-color var(--motion-ui) var(--ease-ui),
+    box-shadow var(--motion-ui) var(--ease-ui);
 }
 
 .wn-btn:hover:not(:disabled) {
-  background: var(--color-tree-hover);
+  background: var(--color-hover);
   color: var(--color-text);
 }
 
 .wn-btn:disabled {
-  opacity: 0.4;
+  color: var(--color-text-disabled);
+  opacity: 0.65;
   cursor: not-allowed;
 }
 
@@ -31,6 +37,7 @@
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+  box-shadow: var(--shadow-sm);
 }
 
 .wn-btn-primary:hover:not(:disabled) {
@@ -39,9 +46,14 @@
   color: #fff;
 }
 
+.wn-btn-primary:active:not(:disabled) {
+  background: var(--accent-pressed);
+  border-color: var(--accent-pressed);
+}
+
 .wn-btn-ghost {
-  border-color: var(--color-border);
-  background: var(--color-surface);
+  border-color: var(--color-border-strong);
+  background: transparent;
 }
 
 .wn-btn-danger {
@@ -63,22 +75,22 @@
 
 .wn-btn-sm {
   padding: 0 var(--space-2);
-  height: var(--control-height);
-  font-size: 11px;
+  height: var(--control-height-sm);
+  font-size: var(--font-size-ui-sm);
 }
 
 .wn-btn-chrome {
   height: var(--control-height-chrome);
   padding: 0 var(--space-2);
   gap: var(--space-1);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   font-weight: 500;
   color: var(--color-text-secondary);
   border-radius: var(--radius-sm);
 }
 
 .wn-btn-chrome:hover:not(:disabled) {
-  background: var(--color-tree-hover);
+  background: var(--color-hover);
   color: var(--color-text);
 }
 
@@ -103,13 +115,27 @@
   width: 100%;
   height: var(--control-height);
   padding: 0 var(--space-2);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  background: var(--color-surface-raised);
   color: var(--color-text);
-  font-size: 12px;
-  line-height: 1.2;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  font-size: var(--font-size-ui);
+  line-height: var(--line-height-tight);
+  transition:
+    border-color var(--motion-ui) var(--ease-ui),
+    box-shadow var(--motion-ui) var(--ease-ui),
+    background var(--motion-ui) var(--ease-ui);
+}
+
+.wn-input:hover:not(:disabled),
+.wn-select:hover:not(:disabled),
+.wn-textarea:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-border-strong) 72%, var(--color-text-muted));
+}
+
+.wn-input::placeholder,
+.wn-textarea::placeholder {
+  color: var(--color-text-muted);
 }
 
 .wn-textarea {
@@ -155,11 +181,11 @@ button.wn-select-trigger {
   position: fixed;
   z-index: 11000;
   overflow: auto;
-  padding: 4px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+  padding: 5px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow);
 }
 
 .wn-select-group + .wn-select-group {
@@ -177,21 +203,22 @@ button.wn-select-trigger {
 .wn-select-option {
   display: block;
   width: 100%;
-  padding: 6px 8px;
+  min-height: var(--control-height);
+  padding: 5px 8px;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   text-align: left;
   cursor: pointer;
 }
 
 .wn-select-option:hover:not(:disabled),
 .wn-select-option.selected {
-  background: var(--accent-soft, rgba(37, 99, 235, 0.1));
-  color: var(--accent);
+  background: var(--color-active);
+  color: var(--color-text);
 }
 
 .wn-select-option:disabled {
@@ -204,7 +231,7 @@ button.wn-select-trigger {
 .wn-select-trigger:focus-visible,
 .wn-textarea:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--color-focus);
   box-shadow: 0 0 0 2px var(--accent-ring);
 }
 
@@ -220,10 +247,10 @@ button.wn-select-trigger {
 
 .wn-label {
   display: block;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  margin-bottom: 4px;
+  font-size: var(--font-size-ui-sm);
+  font-weight: 550;
+  color: var(--color-text-secondary);
+  margin-bottom: 5px;
 }
 
 .wn-field {
@@ -256,8 +283,8 @@ button.wn-select-trigger {
 .wn-form-note {
   padding: 6px 8px;
   background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--color-border-strong);
+  border-radius: 0;
 }
 
 .wn-check {
@@ -326,8 +353,8 @@ button.wn-select-trigger {
 .wn-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(2px);
+  background: var(--color-overlay);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -345,8 +372,8 @@ button.wn-select-trigger {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
 }
@@ -807,7 +834,7 @@ button.wn-select-trigger {
 }
 
 .wn-modal-header {
-  padding: var(--space-3) var(--content-pad) var(--space-2);
+  padding: 14px 16px 12px;
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
@@ -816,15 +843,15 @@ button.wn-select-trigger {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-2) var(--content-pad);
+  padding: 10px 12px;
 }
 
 .wn-modal-header-bar .wn-modal-title {
   margin: 0;
   flex: 1;
   min-width: 0;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--font-size-title);
+  font-weight: 650;
 }
 
 .wn-modal-close-btn {
@@ -833,7 +860,7 @@ button.wn-select-trigger {
   height: 28px;
   padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--color-text-muted);
   font-size: 18px;
@@ -842,7 +869,7 @@ button.wn-select-trigger {
 }
 
 .wn-modal-close-btn:hover {
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--color-hover);
   color: var(--color-text);
 }
 
@@ -854,8 +881,8 @@ button.wn-select-trigger {
 
 .wn-modal-title {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--font-size-title);
+  font-weight: 650;
   letter-spacing: -0.01em;
   color: var(--color-text);
 }
@@ -864,20 +891,21 @@ button.wn-select-trigger {
   font-size: 10px;
   font-weight: 600;
   padding: 2px 6px;
-  border-radius: 3px;
+  border-radius: var(--radius-xs);
   background: var(--accent-muted);
   color: var(--accent);
   letter-spacing: 0.02em;
 }
 
 .wn-modal-desc {
-  margin: 4px 0 0;
-  font-size: 11px;
-  color: var(--color-text-muted);
+  margin: 5px 0 0;
+  font-size: var(--font-size-ui-sm);
+  line-height: var(--line-height-ui);
+  color: var(--color-text-secondary);
 }
 
 .wn-modal-body {
-  padding: var(--space-3) var(--content-pad);
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -888,8 +916,8 @@ button.wn-select-trigger {
   align-items: center;
   gap: var(--chrome-gap);
   justify-content: flex-end;
-  padding: var(--space-2) var(--content-pad);
-  background: var(--color-surface-2);
+  padding: 10px 12px;
+  background: var(--color-surface);
   border-top: 1px solid var(--color-border-subtle);
 }
 
@@ -916,7 +944,7 @@ button.wn-select-trigger {
   overflow-y: auto;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-sm);
-  background: var(--color-surface-1);
+  background: var(--color-surface-raised);
 }
 
 .export-fields-item {
@@ -1003,8 +1031,8 @@ button.wn-select-trigger {
   width: 100%;
   padding: 14px 16px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-1);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
   color: var(--color-text);
   cursor: pointer;
   text-align: left;
@@ -1012,7 +1040,7 @@ button.wn-select-trigger {
 }
 
 .database-list-item:hover {
-  border-color: var(--color-accent);
+  border-color: var(--accent);
   background: var(--color-surface-2);
 }
 
@@ -1128,11 +1156,11 @@ button.wn-select-trigger {
 .wn-context-menu {
   position: fixed;
   z-index: 1100;
-  min-width: 120px;
-  padding: 4px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  min-width: 152px;
+  padding: 5px;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
 }
 
@@ -1140,17 +1168,18 @@ button.wn-select-trigger {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 6px 10px;
+  min-height: var(--control-height);
+  padding: 5px 9px;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
-  font-size: 11px;
-  color: var(--color-text-secondary);
+  font-size: var(--font-size-ui-sm);
+  color: var(--color-text);
   cursor: pointer;
 }
 
 .wn-context-item:hover {
-  background: var(--color-tree-hover);
+  background: var(--color-active);
   color: var(--color-text);
 }
 
@@ -1192,7 +1221,7 @@ button.wn-select-trigger {
 .wn-context-sep {
   height: 1px;
   margin: 4px 6px;
-  background: var(--color-border-subtle);
+  background: var(--color-divider);
 }
 
 /* 标签页 */
@@ -1201,7 +1230,7 @@ button.wn-select-trigger {
   align-items: stretch;
   gap: 0;
   min-height: var(--tab-height);
-  padding: 0 4px;
+  padding: 0;
   overflow-x: auto;
   flex-shrink: 0;
   scroll-padding-inline: 12px;
@@ -1211,24 +1240,29 @@ button.wn-select-trigger {
 .wn-tab {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 0 10px;
+  gap: 6px;
+  padding: 0 12px;
   height: var(--tab-height);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   font-weight: 500;
   cursor: pointer;
   border: none;
+  border-right: 1px solid var(--color-border-subtle);
   border-bottom: 1px solid transparent;
   background: transparent;
   color: var(--color-text-muted);
   white-space: nowrap;
   flex-shrink: 0;
-  transition: color 0.12s, border-color 0.12s;
+  transition:
+    color var(--motion-ui) var(--ease-ui),
+    border-color var(--motion-ui) var(--ease-ui),
+    background var(--motion-ui) var(--ease-ui);
   margin-bottom: -1px;
 }
 
 .wn-tab:hover {
   color: var(--color-text-secondary);
+  background: var(--color-hover);
 }
 
 .wn-tab.active {
@@ -1238,8 +1272,8 @@ button.wn-select-trigger {
 }
 
 .wn-tab .tab-dot {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   background: var(--color-text-muted);
   opacity: 0.45;
@@ -1315,27 +1349,31 @@ button.wn-select-trigger {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
 }
 
 .conn-item {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 8px;
+  min-height: 32px;
+  padding: 5px 10px;
   cursor: pointer;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   border: none;
-  transition: background 0.12s;
+  transition:
+    background var(--motion-ui) var(--ease-ui),
+    color var(--motion-ui) var(--ease-ui);
   user-select: none;
 }
 
 .conn-item:hover {
-  background: var(--color-tree-hover);
+  background: var(--color-hover);
 }
 
 .conn-item.active {
-  background: var(--color-tree-hover);
+  background: var(--color-active);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .conn-item.stopped {
@@ -1348,7 +1386,7 @@ button.wn-select-trigger {
 
 .conn-item.connected .conn-dot {
   background: var(--color-success);
-  box-shadow: 0 0 0 2px var(--color-success-muted);
+  box-shadow: none;
 }
 
 .conn-item .conn-dot {
@@ -1362,7 +1400,7 @@ button.wn-select-trigger {
 
 .conn-item.active .conn-dot {
   opacity: 1;
-  background: var(--accent);
+  background: var(--color-success);
 }
 
 .terminal-sidebar .conn-item {
@@ -1626,7 +1664,7 @@ button.wn-select-trigger {
 .pane-head {
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-2);
+  background: var(--color-toolbar);
 }
 
 .pane-toolbar {
@@ -1634,8 +1672,8 @@ button.wn-select-trigger {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  min-height: 30px;
-  padding: 0 10px;
+  min-height: var(--toolbar-height);
+  padding: 0 var(--chrome-pad-x);
   min-width: 0;
 }
 
@@ -1660,7 +1698,7 @@ button.wn-select-trigger {
 }
 
 .pane-title {
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   font-weight: 600;
   color: var(--color-text);
   font-family: var(--font-mono);
@@ -1672,7 +1710,7 @@ button.wn-select-trigger {
 }
 
 .pane-meta {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
   white-space: nowrap;
 }
@@ -1861,7 +1899,7 @@ button.wn-select-trigger {
 .wn-empty {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 6px;
 }
 
 .wn-empty-pane {
@@ -1877,13 +1915,16 @@ button.wn-select-trigger {
 }
 
 .wn-empty-title {
-  color: var(--color-text-secondary);
-  line-height: 1.5;
+  color: var(--color-text);
+  font-size: var(--font-size-ui);
+  font-weight: 550;
+  line-height: var(--line-height-ui);
 }
 
 .wn-empty-hint {
   color: var(--color-text-muted);
-  line-height: 1.5;
+  font-size: var(--font-size-ui-sm);
+  line-height: var(--line-height-ui);
 }
 
 .wn-empty-actions {
@@ -2049,7 +2090,7 @@ button.wn-select-trigger {
   margin-left: 4px;
   font-size: 10px;
   font-weight: 600;
-  color: var(--color-accent, var(--color-primary));
+  color: var(--accent);
   font-variant-numeric: tabular-nums;
 }
 

@@ -204,7 +204,7 @@ export function SkillsWorkbench() {
 
   return (
     <div className="product-workbench skills-workbench">
-      <header className="product-toolbar">
+      <header className="product-toolbar skills-toolbar">
         <div className="product-actions">
           <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" {...pressProps(createSkill)}>
             <IconPlus size={14} /> {t('skills.new')}
@@ -280,10 +280,13 @@ export function SkillsWorkbench() {
           ) : (
             <>
               <div className="skills-editor-head">
-                <span className="skills-editor-path">
-                  {SKILLS_ROOT}/{activePath}
-                </span>
-                {editingSkillMd && <span className="skills-editor-hint">{t('skills.frontmatterHint')}</span>}
+                <div className="skills-editor-identity">
+                  <span className="skills-editor-path">
+                    {SKILLS_ROOT}/{activePath}
+                  </span>
+                  {editingSkillMd && <span className="skills-editor-hint">{t('skills.frontmatterHint')}</span>}
+                </div>
+                <span className={`skills-editor-save-state${dirty ? ' is-dirty' : ''}`} aria-hidden />
               </div>
               <div className="skills-editor">
                 <NoteEditor

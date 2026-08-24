@@ -572,7 +572,7 @@ export function SftpWorkbench() {
 
   return (
     <div className="product-workbench sftp-workbench">
-      <div className="product-toolbar">
+      <div className="product-toolbar sftp-toolbar">
         <nav className="product-actions">
           <button type="button" className="wn-btn wn-btn-chrome" {...pressProps(() => setHostModalOpen(true))}>
             <IconPlus size={13} />
@@ -593,7 +593,7 @@ export function SftpWorkbench() {
       </div>
 
       <div className="product-body">
-        <aside className="app-sidebar terminal-sidebar">
+        <aside className="app-sidebar sftp-sidebar">
           <section className="sidebar-section">
             <div className="sidebar-header">
               <span>{t('sftp.sshHosts')}</span>
@@ -696,7 +696,7 @@ export function SftpWorkbench() {
 
         <main className="app-main sftp-main">
           {tabs.length > 0 && (
-            <div className="editor-chrome">
+            <div className="editor-chrome sftp-editor-chrome">
               <div className="wn-tabs" ref={tabsRef}>
                 {tabs.map((t) => (
                   <button

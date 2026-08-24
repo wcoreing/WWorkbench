@@ -1,5 +1,4 @@
-/* 壳层：玻璃态、顶栏、产品轨、工作区通用 */
-/* 多产品线工作台壳 */
+/* 壳层：顶栏、产品轨与工作区通用布局。 */
 
 .workbench-shell {
   display: flex;
@@ -77,7 +76,7 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   height: var(--chrome-height);
   padding: 0 var(--chrome-pad-x);
   background: var(--color-chrome);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border-strong);
   gap: var(--chrome-gap);
   flex-shrink: 0;
 }
@@ -90,16 +89,16 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 }
 
 .shell-chrome .logo-mark-img {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius);
   object-fit: contain;
   flex-shrink: 0;
 }
 
 .shell-chrome .logo-text {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-ui);
+  font-weight: 650;
   letter-spacing: -0.02em;
   color: var(--color-text);
 }
@@ -122,10 +121,10 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   right: 0;
   min-width: 132px;
   padding: 4px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-chrome);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow);
   z-index: 200;
 }
 
@@ -134,7 +133,7 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   width: 100%;
   padding: 6px 10px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text);
   font-size: 12px;
@@ -143,7 +142,7 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 }
 
 .shell-locale-item:hover {
-  background: var(--accent-muted);
+  background: var(--color-active);
 }
 
 .shell-locale-item.active {
@@ -178,13 +177,13 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 }
 
 .chrome-product-name {
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   font-weight: 600;
   color: var(--color-text);
 }
 
 .chrome-product-desc {
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -198,8 +197,8 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   display: flex;
   flex-direction: column;
   background: var(--color-chrome);
-  border-right: 1px solid var(--color-border);
-  padding: var(--space-2) 0;
+  border-right: 1px solid var(--color-border-strong);
+  padding: 4px 0;
   position: relative;
   z-index: 3;
 }
@@ -219,7 +218,7 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   justify-content: center;
   gap: 2px;
   width: 100%;
-  height: 48px;
+  height: 44px;
   margin: 0;
   padding: var(--space-1) 0;
   border: none;
@@ -227,16 +226,18 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background var(--motion-ui) var(--ease-ui),
+    color var(--motion-ui) var(--ease-ui);
 }
 
 .product-rail-btn:hover {
-  background: var(--color-tree-hover);
-  color: var(--color-text-secondary);
+  background: var(--color-hover);
+  color: var(--color-text);
 }
 
 .product-rail-btn.active {
-  background: var(--accent-muted);
+  background: transparent;
   color: var(--accent);
 }
 
@@ -244,17 +245,17 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   content: '';
   position: absolute;
   left: 0;
-  top: 10px;
-  bottom: 10px;
+  top: 8px;
+  bottom: 8px;
   width: 2px;
-  border-radius: 0 2px 2px 0;
+  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
   background: var(--accent);
 }
 
 .product-rail-label {
   font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 550;
+  letter-spacing: 0;
   line-height: 1;
 }
 
@@ -284,7 +285,7 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   height: var(--toolbar-height);
   padding: 0 var(--chrome-pad-x);
   background: var(--color-toolbar);
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
@@ -355,13 +356,13 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 }
 
 .product-toolbar-status .status-dot.pending {
-  background: var(--color-accent, #5b8def);
+  background: var(--accent);
   opacity: 1;
   animation: terminal-status-pulse 1.2s ease-in-out infinite;
 }
 
 .product-toolbar-status .status-dot.error {
-  background: var(--color-danger, #c44);
+  background: var(--color-danger);
   opacity: 1;
 }
 

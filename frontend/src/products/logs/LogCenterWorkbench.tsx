@@ -27,6 +27,14 @@ const TYPE_LABEL_KEYS: Record<LogSourceType, string> = {
   compose: 'logs.typeCompose',
 }
 
+function logLineTone(line: string): 'error' | 'warning' | 'debug' | 'info' | '' {
+  if (/\b(fatal|panic|error|exception|failed|failure)\b/i.test(line)) return 'error'
+  if (/\b(warn|warning|deprecated)\b/i.test(line)) return 'warning'
+  if (/\b(debug|trace)\b/i.test(line)) return 'debug'
+  if (/\b(info|notice|success|started|ready)\b/i.test(line)) return 'info'
+  return ''
+}
+
 /** canFetchLogConfig 判断当前表单是否满足拉取日志条件。 */
 function canFetchLogConfig(
   sourceType: LogSourceType,
@@ -489,7 +497,7 @@ export function LogCenterWorkbench() {
 
   return (
     <div className="product-workbench logs-workbench">
-      <header className="product-toolbar">
+      <header className="product-toolbar logs-toolbar">
         <div className="product-actions">
           <button
             type="button"
@@ -688,11 +696,24 @@ export function LogCenterWorkbench() {
           <div className="logs-viewer">
             <header className="logs-viewer-head">
               <span className="wn-label">{t('logs.logOutput')}</span>
+              <div className="logs-viewer-meta">
+                <span>{t('logs.tailLines')}: {tailLines}</span>
+                {followLive && <span className="logs-live-badge">{t('logs.followLive')}</span>}
+              </div>
             </header>
             {!content && !loading ? (
               <div className="pane-empty">{t('logs.noOutput')}</div>
             ) : (
-              <pre className="logs-pre">{loading && !content ? t('logs.refreshing') : content}</pre>
+              <pre className="logs-pre">
+                {(loading && !content ? t('logs.refreshing') : content).split('\n').map((line, index, lines) => {
+                  const tone = logLineTone(line)
+                  return (
+                    <span key={index} className={`logs-line${tone ? ` is-${tone}` : ''}`}>
+                      {line}{index < lines.length - 1 ? '\n' : null}
+                    </span>
+                  )
+                })}
+              </pre>
             )}
           </div>
         </main>

@@ -1,8 +1,10 @@
-/* Apifox 主题与布局 */
+/* HTTP Studio：请求构建器使用 Workbench 自有视觉语言。 */
 .apifox-theme {
-  --apifox-purple: #7c3aed;
-  --apifox-purple-hover: #6d28d9;
-  --apifox-purple-muted: rgba(124, 58, 237, 0.14);
+  --apifox-purple: var(--accent);
+  --apifox-purple-hover: var(--accent-hover);
+  --apifox-purple-muted: var(--accent-muted);
+  container-type: inline-size;
+  container-name: httpapi-workbench;
 }
 
 .httpapi-workspace {
@@ -12,15 +14,17 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--color-surface);
+  background: var(--color-editor);
 }
 
 .httpapi-run-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  min-height: 36px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-toolbar);
   flex-shrink: 0;
   gap: 8px;
 }
@@ -34,9 +38,12 @@
 }
 
 .httpapi-run-mode {
-  font-size: 11px;
-  color: var(--apifox-purple, #7c3aed);
-  font-weight: 600;
+  padding-right: 8px;
+  border-right: 1px solid var(--color-divider);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
+  color: var(--accent);
+  font-weight: 650;
   flex-shrink: 0;
 }
 
@@ -45,7 +52,7 @@
   min-width: 0;
   border: none;
   background: transparent;
-  font-size: 13px;
+  font-size: var(--font-size-title);
   font-weight: 600;
   color: inherit;
   outline: none;
@@ -54,7 +61,7 @@
 .httpapi-run-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -64,18 +71,20 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--color-border-subtle);
-  background: var(--apifox-purple-muted);
-  color: var(--apifox-purple, #7c3aed);
-  font-size: 11px;
+  height: var(--control-height-chrome);
+  padding: 0 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-ui-sm);
   cursor: pointer;
   font: inherit;
 }
 
 .httpapi-env-trigger:hover {
-  border-color: var(--apifox-purple, #7c3aed);
+  border-color: var(--color-border);
+  background: var(--color-hover);
 }
 
 .httpapi-env-icon {
@@ -85,36 +94,37 @@
 .httpapi-url-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 6px;
+  padding: 8px 10px;
   flex-shrink: 0;
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .httpapi-url-input {
   flex: 1;
   min-width: 0;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--font-size-ui);
 }
 
-.httpapi-method.httpapi-method-get { color: #16a34a; border-color: rgba(22, 163, 74, 0.35); }
-.httpapi-method.httpapi-method-post { color: #ca8a04; border-color: rgba(202, 138, 4, 0.35); }
+.httpapi-method.httpapi-method-get { color: var(--color-success); border-color: var(--color-border-strong); }
+.httpapi-method.httpapi-method-post { color: var(--color-warning); border-color: var(--color-border-strong); }
 .httpapi-method.httpapi-method-put,
-.httpapi-method.httpapi-method-patch { color: #2563eb; border-color: rgba(37, 99, 235, 0.35); }
-.httpapi-method.httpapi-method-delete { color: #dc2626; border-color: rgba(220, 38, 38, 0.35); }
+.httpapi-method.httpapi-method-patch { color: var(--accent); border-color: var(--color-border-strong); }
+.httpapi-method.httpapi-method-delete { color: var(--color-danger); border-color: var(--color-border-strong); }
 
 .httpapi-btn-send {
-  background: var(--apifox-purple, #7c3aed) !important;
-  border-color: var(--apifox-purple, #7c3aed) !important;
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
   color: #fff !important;
   font-weight: 600;
-  min-width: 88px;
+  min-width: 76px;
+  box-shadow: var(--shadow-sm);
 }
 
 .httpapi-btn-send:hover:not(:disabled) {
-  background: var(--apifox-purple-hover, #6d28d9) !important;
+  background: var(--accent-hover) !important;
 }
 
 .httpapi-btn-stash {
@@ -138,44 +148,47 @@
 }
 
 .httpapi-res-pane {
-  background: var(--color-bg);
+  background: var(--color-editor);
 }
 
 .httpapi-splitter {
   cursor: row-resize;
-  background: var(--color-border-subtle);
-  transition: background 0.15s;
-  min-height: 8px;
+  background: var(--color-border-strong);
+  transition: background var(--motion-ui) var(--ease-ui);
+  min-height: 6px;
   flex-shrink: 0;
   z-index: 2;
 }
 
 .httpapi-splitter:hover {
-  background: var(--apifox-purple, #7c3aed);
+  background: var(--accent);
 }
 
 .apifox-tabs .httpapi-tab.is-active {
-  color: var(--apifox-purple, #7c3aed);
-  border-bottom-color: var(--apifox-purple, #7c3aed);
+  color: var(--color-text);
+  border-bottom-color: var(--accent);
 }
 
 .httpapi-res-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px 0;
+  min-height: 32px;
+  padding: 0 10px;
+  background: var(--color-toolbar);
   flex-shrink: 0;
 }
 
 .httpapi-res-title {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: var(--font-size-ui-sm);
+  font-weight: 650;
 }
 
 .httpapi-res-meta {
   display: flex;
   gap: 10px;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
 }
 
@@ -186,7 +199,10 @@
 }
 
 .httpapi-res-toolbar {
-  padding: 4px 12px 8px;
+  min-height: 30px;
+  padding: 3px 10px;
+  border-top: 1px solid var(--color-border-subtle);
+  background: var(--color-toolbar);
   display: flex;
   gap: 6px;
   flex-shrink: 0;
@@ -207,9 +223,10 @@
 }
 
 .httpapi-body-type-btn {
-  padding: 3px 10px;
-  font-size: 11px;
-  border-radius: 4px;
+  min-height: 24px;
+  padding: 2px 8px;
+  font-size: var(--font-size-ui-sm);
+  border-radius: var(--radius-sm);
   border: 1px solid var(--color-border-subtle);
   background: transparent;
   color: var(--color-text-muted);
@@ -223,14 +240,14 @@
 }
 
 .httpapi-body-type-btn.is-active {
-  border-color: var(--apifox-purple, #7c3aed);
-  background: var(--apifox-purple-muted);
-  color: var(--apifox-purple, #7c3aed);
+  border-color: var(--accent);
+  background: var(--accent-muted);
+  color: var(--accent);
   font-weight: 600;
 }
 
 .httpapi-tree-toolbar {
-  padding: 8px 8px 4px;
+  padding: 6px 8px;
   flex-shrink: 0;
 }
 
@@ -241,7 +258,7 @@
 .httpapi-tree-action-bar {
   display: flex;
   gap: 6px;
-  padding: 4px 8px 8px;
+  padding: 0 8px 6px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-border-subtle);
 }
@@ -289,15 +306,16 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 5px 8px;
-  border-radius: 4px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 0;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-ui-sm);
 }
 
 .httpapi-tree-api:hover,
 .httpapi-tree-folder:hover {
-  background: rgba(124, 58, 237, 0.08);
+  background: var(--color-hover);
 }
 
 /* 指针拖拽：仅高亮投放目录与拖拽源，禁用路过 hover/active */
@@ -332,8 +350,9 @@ body.httpapi-tree-dragging * {
 }
 
 .httpapi-tree-api.is-active {
-  background: var(--apifox-purple-muted);
-  color: var(--apifox-purple, #7c3aed);
+  background: var(--color-selection);
+  color: var(--color-text);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .httpapi-tree-chevron {
@@ -363,13 +382,13 @@ body.httpapi-tree-dragging * {
   padding: 2px 6px;
   font-size: 14px;
   line-height: 1;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   flex-shrink: 0;
 }
 
 .httpapi-tree-add-api:hover {
-  background: rgba(124, 58, 237, 0.12);
-  color: var(--apifox-purple, #7c3aed);
+  background: var(--color-active);
+  color: var(--accent);
 }
 
 .httpapi-tree-action-bar.is-batch {
@@ -382,18 +401,18 @@ body.httpapi-tree-dragging * {
   height: 14px;
   margin: 0;
   flex-shrink: 0;
-  accent-color: var(--apifox-purple, #7c3aed);
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
 .httpapi-tree-folder.is-batch-selected,
 .httpapi-tree-api.is-batch-selected {
-  background: rgba(124, 58, 237, 0.12);
+  background: var(--color-selection);
 }
 
 .httpapi-tree-folder-wrap.is-drop-target > .httpapi-tree-folder {
-  background: rgba(59, 111, 217, 0.18);
-  outline: 1px dashed var(--apifox-purple, #7c3aed);
+  background: var(--accent-muted);
+  outline: 1px dashed var(--accent);
   outline-offset: -1px;
 }
 
@@ -428,8 +447,8 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
 
 .httpapi-drop-slot.is-active {
   height: 3px;
-  background: var(--apifox-purple, #7c3aed);
-  box-shadow: 0 0 6px rgba(124, 58, 237, 0.55);
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-ring);
 }
 
 .httpapi-drag-ghost.is-folder {
@@ -444,10 +463,10 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
   gap: 6px;
   max-width: 280px;
   padding: 6px 10px;
-  border-radius: 8px;
-  background: var(--color-surface, #1e293b);
-  border: 1px solid var(--apifox-purple, #7c3aed);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--accent);
+  box-shadow: var(--shadow);
   pointer-events: none;
   font-size: 12px;
   transform: translate(0, 0);
@@ -499,10 +518,10 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
   top: 88px;
   width: 300px;
   max-height: min(320px, 50vh);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
   z-index: 50;
   overflow: hidden;
   display: flex;
@@ -529,7 +548,7 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
 .httpapi-history-drawer li {
   padding: 6px 8px;
   font-size: 11px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
   gap: 6px;
@@ -537,14 +556,14 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
 }
 
 .httpapi-history-drawer li:hover {
-  background: rgba(124, 58, 237, 0.08);
+  background: var(--color-hover);
 }
 
 .httpapi-workspace {
   position: relative;
 }
 
-@media (max-width: 960px) {
+@container httpapi-workbench (max-width: 960px) {
   .httpapi-url-bar {
     flex-wrap: wrap;
   }

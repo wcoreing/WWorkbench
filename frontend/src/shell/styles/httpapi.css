@@ -1,5 +1,4 @@
-/* HTTP API 工作区 */
-/* —— HTTP API 工作区 —— */
+/* HTTP API 工作区。 */
 .httpapi-workbench .product-body {
   min-height: 0;
 }
@@ -44,10 +43,12 @@
   min-height: 0;
   overflow: hidden;
   width: var(--sidebar-width, 220px);
+  background: var(--color-sidebar);
 }
 
 .httpapi-sidebar-search {
   padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
 }
 
@@ -59,32 +60,34 @@
 
 .httpapi-method-tag {
   display: inline-block;
+  min-width: 34px;
   font-size: 9px;
   font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 4px;
+  padding: 0;
+  border-radius: 0;
   margin-right: 6px;
   font-family: var(--font-mono);
 }
 
-.httpapi-method-tag.method-get { background: rgba(46, 160, 67, 0.2); color: #3fb950; }
-.httpapi-method-tag.method-post { background: rgba(210, 153, 34, 0.2); color: #d4a72c; }
+.httpapi-method-tag.method-get { background: transparent; color: var(--color-success); }
+.httpapi-method-tag.method-post { background: transparent; color: var(--color-warning); }
 .httpapi-method-tag.method-put,
-.httpapi-method-tag.method-patch { background: rgba(56, 139, 253, 0.2); color: #58a6ff; }
-.httpapi-method-tag.method-delete { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+.httpapi-method-tag.method-patch { background: transparent; color: var(--accent); }
+.httpapi-method-tag.method-delete { background: transparent; color: var(--color-danger); }
 
 .httpapi-history-panel {
   flex-shrink: 0;
   max-height: 180px;
-  border-top: 1px solid var(--color-border-subtle);
+  border-top: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
 .httpapi-history-head {
-  padding: 6px 10px;
-  font-size: 10px;
+  min-height: 28px;
+  padding: 7px 10px 5px;
+  font-size: var(--font-size-caption);
   font-weight: 600;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -93,7 +96,7 @@
 .httpapi-history-list {
   list-style: none;
   margin: 0;
-  padding: 0 4px 6px;
+  padding: 0 0 6px;
   overflow-y: auto;
 }
 
@@ -101,14 +104,15 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 6px;
-  border-radius: 6px;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 0;
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
 }
 
 .httpapi-history-item:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--color-hover);
 }
 
 .httpapi-history-meta {
@@ -140,7 +144,7 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-border-strong);
 }
 
 .httpapi-request-line {
@@ -184,17 +188,19 @@
 
 .httpapi-tabs {
   display: flex;
-  gap: 2px;
-  padding: 0 12px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  gap: 0;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-toolbar);
   flex-shrink: 0;
 }
 
 .httpapi-tab {
-  padding: 6px 12px;
-  font-size: 11px;
+  min-height: 29px;
+  padding: 5px 10px;
+  font-size: var(--font-size-ui-sm);
   border: none;
-  border-bottom: 2px solid transparent;
+  border-bottom: 1px solid transparent;
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
@@ -208,22 +214,22 @@
 }
 
 .httpapi-tab.is-active {
-  color: var(--accent, #3b6fd9);
-  border-bottom-color: var(--accent, #3b6fd9);
-  font-weight: 600;
+  color: var(--color-text);
+  border-bottom-color: var(--accent);
+  font-weight: 550;
 }
 
 .httpapi-tab-panel {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 10px 12px 12px;
+  padding: 10px;
 }
 
 .httpapi-kv-table {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .httpapi-kv-head,
@@ -235,13 +241,13 @@
 }
 
 .httpapi-kv-head {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
   padding-bottom: 4px;
 }
 
 .httpapi-kv-input {
-  font-size: 12px;
+  font-size: var(--font-size-ui-sm);
   font-family: var(--font-mono);
 }
 
@@ -278,7 +284,7 @@
   min-height: 0;
   min-width: 0;
   overflow: hidden;
-  background: var(--color-bg);
+  background: var(--color-editor);
 }
 
 .httpapi-response-head {
@@ -305,26 +311,35 @@
 }
 
 .httpapi-status-pill {
-  font-size: 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--font-size-ui-sm);
   font-weight: 600;
-  padding: 2px 8px;
-  border-radius: 10px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent !important;
   font-family: var(--font-mono);
 }
 
+.httpapi-status-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
 .httpapi-status-pill.tone-ok {
-  background: rgba(46, 160, 67, 0.2);
-  color: #3fb950;
+  color: var(--color-success);
 }
 
 .httpapi-status-pill.tone-warn {
-  background: rgba(210, 153, 34, 0.2);
-  color: #d4a72c;
+  color: var(--color-warning);
 }
 
 .httpapi-status-pill.tone-err {
-  background: rgba(248, 81, 73, 0.2);
-  color: #f85149;
+  color: var(--color-danger);
 }
 
 .httpapi-status {
@@ -351,10 +366,10 @@
 .httpapi-response-pre {
   flex: 1;
   margin: 0;
-  padding: 12px;
+  padding: 10px 12px;
   overflow: auto;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;

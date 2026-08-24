@@ -182,6 +182,7 @@ export function FilePane({
 
   const paneClass = [
     'sftp-pane',
+    `sftp-pane-${paneSide}`,
     wailsDropTarget ? 'sftp-drop-target' : '',
     dragOver ? 'sftp-drop-over' : '',
   ]
