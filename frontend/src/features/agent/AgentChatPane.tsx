@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import type { RefObject } from 'react'
 import type { AgentConfirmEvent, AgentOfferChoicesEvent } from '../../api/agentEvents'
 import type { AgentChatLine } from '../../stores/agentStore'
@@ -7,32 +9,11 @@ import { AgentConfirmPanel } from './AgentConfirmPanel'
 import { AgentChoicePanel, type ChoiceSubmitAnswer } from './AgentChoicePanel'
 import type { AgentChoiceQuestion } from './agentChoice'
 import { AgentInputBar } from './AgentInputBar'
-import { AgentMessageContent } from './AgentMessageContent'
-import { AgentTurnTools } from './AgentTurnTools'
+import { AgentChatTurn } from './AgentChatTurn'
 import type { ChatImage } from './agentImages'
 
-/** historyRef 供查日志：threadId#seq */
-function historyRef(threadId: string, seq?: number): string {
-  const tid = threadId.trim()
-  if (!tid) return seq && seq > 0 ? `#${seq}` : ''
-  if (seq && seq > 0) return `${tid}#${seq}`
-  return tid
-}
-
-function shortThread(threadId: string): string {
-  const t = threadId.trim()
-  if (t.length <= 12) return t
-  return `${t.slice(0, 8)}…`
-}
-
-async function copyText(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    return false
-  }
-}
+const VIRTUALIZE_MIN = 24
+const TURN_ESTIMATE_PX = 108
 
 interface Props {
   t: (key: string, params?: Record<string, string | number>) => string
@@ -78,6 +59,13 @@ function offerEventToQuestions(evt: AgentOfferChoicesEvent): AgentChoiceQuestion
   }))
 }
 
+function lastAssistantIndex(lines: AgentChatLine[]): number {
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (lines[i].role === 'assistant') return i
+  }
+  return -1
+}
+
 /** AgentChatPane 对话区：轨迹、消息、确认、输入栏。 */
 export function AgentChatPane({
   t,
@@ -107,90 +95,64 @@ export function AgentChatPane({
   onUnbindThreadSkill,
 }: Props) {
   const hasToolChoice = Boolean(pendingChoice && pendingChoice.items.length > 0)
+  const lastAssistantIdx = lastAssistantIndex(lines)
+  const useVirtual = lines.length >= VIRTUALIZE_MIN
+  const listRef = useRef<HTMLDivElement>(null)
+
+  const virtualizer = useVirtualizer({
+    count: lines.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => TURN_ESTIMATE_PX,
+    overscan: 6,
+    measureElement: (el) => el.getBoundingClientRect().height,
+  })
+
+  const renderTurn = (line: AgentChatLine, idx: number) => (
+    <AgentChatTurn
+      key={line.id}
+      line={line}
+      threadId={threadId}
+      isLastAssistant={idx === lastAssistantIdx}
+      busy={busy}
+      hasToolChoice={hasToolChoice}
+      skillCatalog={skillCatalog}
+      t={t}
+      onSaveToNotebook={onSaveToNotebook}
+      onChoiceDraft={onChoiceDraft}
+    />
+  )
+
   return (
     <div className="agent-chat-pane">
       <div className="agent-messages" ref={scrollRef} onScroll={onMessagesScroll}>
         {lines.length === 0 && <div className="agent-empty">{t('agent.hint')}</div>}
-        {lines.map((line, idx) => {
-          const isLastAssistant =
-            line.role === 'assistant' && !lines.slice(idx + 1).some((l) => l.role === 'assistant')
-          const href = historyRef(threadId, line.seq)
-          return (
-            <div key={line.id} className={`agent-turn agent-turn-${line.role}`}>
-              {(line.role === 'assistant' || line.role === 'user') && (
-                <div className="agent-turn-meta">
-                  {line.role === 'assistant' && (
-                    <span className="agent-turn-label">{t('agent.assistantLabel')}</span>
-                  )}
-                  {line.role === 'user' && (
-                    <span className="agent-turn-label agent-turn-label-user">{t('agent.youLabel')}</span>
-                  )}
-                  {href ? (
-                    <button
-                      type="button"
-                      className="agent-turn-histid"
-                      title={t('agent.copyHistoryId')}
-                      onClick={() => void copyText(href)}
-                    >
-                      {line.seq && line.seq > 0 ? (
-                        <>
-                          <span className="agent-turn-histid-thread">{shortThread(threadId)}</span>
-                          <span className="agent-turn-histid-seq">#{line.seq}</span>
-                        </>
-                      ) : (
-                        <span className="agent-turn-histid-thread">{shortThread(threadId)}</span>
-                      )}
-                    </button>
-                  ) : null}
-                </div>
-              )}
-              {line.role === 'assistant' && line.tools && line.tools.length > 0 ? (
-                <AgentTurnTools tools={line.tools} />
-              ) : null}
-              {(line.content.trim() ||
-                (line.images && line.images.length > 0) ||
-                (line.skillIds && line.skillIds.length > 0) ||
-                line.role === 'system') && (
-                <div
-                  className={
-                    line.role === 'system'
-                      ? 'agent-bubble agent-bubble-system'
-                      : `agent-bubble agent-bubble-${line.role}`
-                  }
-                >
-                  <AgentMessageContent
-                    content={line.content}
-                    role={line.role}
-                    mentions={line.mentions}
-                    skillIds={line.skillIds}
-                    skillLabels={skillCatalog}
-                    images={line.images}
-                    choiceDisabled={busy || !isLastAssistant}
-                    hideInlineChoice={hasToolChoice && isLastAssistant}
-                    onChoiceDraft={line.role === 'assistant' ? onChoiceDraft : undefined}
-                  />
-                  {(line.role === 'assistant' || line.role === 'user') &&
-                    (line.content.trim() ||
-                      (line.images && line.images.length > 0) ||
-                      (line.skillIds && line.skillIds.length > 0)) &&
-                    !busy && (
-                      <div className="agent-turn-actions">
-                        {line.role === 'assistant' && line.content.trim() && (
-                          <button
-                            type="button"
-                            className="wn-btn wn-btn-xs wn-btn-ghost"
-                            onClick={() => onSaveToNotebook(line.content)}
-                          >
-                            {t('agent.saveToNotebook')}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                </div>
-              )}
-            </div>
-          )
-        })}
+        {useVirtual ? (
+          <div
+            ref={listRef}
+            className="agent-messages-virtual"
+            style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}
+          >
+            {virtualizer.getVirtualItems().map((item) => (
+              <div
+                key={lines[item.index].id}
+                data-index={item.index}
+                ref={virtualizer.measureElement}
+                className="agent-messages-virtual-item"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  transform: `translateY(${item.start}px)`,
+                }}
+              >
+                {renderTurn(lines[item.index], item.index)}
+              </div>
+            ))}
+          </div>
+        ) : (
+          lines.map((line, idx) => renderTurn(line, idx))
+        )}
         {busy && (
           <div className="agent-turn agent-turn-system">
             <span className="agent-thinking">

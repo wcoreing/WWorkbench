@@ -153,6 +153,19 @@
   color: var(--color-text-muted);
 }
 
+.agent-plain-streaming {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.agent-messages-virtual {
+  width: 100%;
+}
+
+.agent-messages-virtual-item {
+  padding-bottom: 12px;
+}
+
 .agent-md {
   font-size: inherit;
   line-height: 1.42;

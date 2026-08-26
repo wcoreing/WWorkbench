@@ -176,6 +176,7 @@ export const en: MessageTree = {
     langZh: '简体中文',
     langEn: 'English',
     booting: 'Restoring workspace…',
+    loadingProduct: 'Loading workbench…',
     productRail: 'Products',
   },
   products: {

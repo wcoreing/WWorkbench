@@ -79,6 +79,8 @@ interface AgentStore {
   threadId: string
   lines: AgentChatLine[]
   streamingLineId: string | null
+  /** 流式正文缓冲：与 lines 分离，避免每 token 复制整表 messages。 */
+  streamingDraft: string
   draftInput: string
   draftMentions: AgentMention[]
   draftSkillIds: string[]
@@ -116,6 +118,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
   threadId: loadAgentThreadId(),
   lines: [],
   streamingLineId: null,
+  streamingDraft: '',
   draftInput: '',
   draftMentions: [],
   draftSkillIds: [],
@@ -151,6 +154,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
       threadId: '',
       lines: [],
       streamingLineId: null,
+      streamingDraft: '',
       view: 'chat',
       toolSteps: [],
       threadMentions: [],
@@ -179,12 +183,18 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set((s) => {
       let lines = [...s.lines]
       let streamingLineId = s.streamingLineId
+      let streamingDraft = s.streamingDraft
       if (streamingLineId) {
         const cur = lines.find((ln) => ln.id === streamingLineId)
-        if (!cur?.content.trim() && !(cur?.tools && cur.tools.length)) {
+        if (streamingDraft.trim()) {
+          lines = lines.map((ln) =>
+            ln.id === streamingLineId ? { ...ln, content: streamingDraft } : ln,
+          )
+        } else if (!cur?.content.trim() && !(cur?.tools && cur.tools.length)) {
           lines = lines.filter((ln) => ln.id !== streamingLineId)
         }
         streamingLineId = null
+        streamingDraft = ''
       }
       let idx = -1
       for (let i = lines.length - 1; i >= 0; i--) {
@@ -203,7 +213,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
         ...ln,
         tools: [...(ln.tools || []), { id, tool, status: 'running', argsPreview }],
       }
-      return { lines, streamingLineId, toolSteps: [] }
+      return { lines, streamingLineId, streamingDraft, toolSteps: [] }
     })
     return id
   },
@@ -226,32 +236,30 @@ export const useAgentStore = create<AgentStore>((set) => ({
     const id = nextAgentLineId()
     set((s) => ({
       streamingLineId: id,
+      streamingDraft: '',
       lines: [...s.lines, { id, role: 'assistant', content: '', tools: [] }],
     }))
   },
   appendStreamDelta: (delta) =>
     set((s) => {
-      const sid = s.streamingLineId
-      if (!sid || !delta) return s
-      return {
-        lines: s.lines.map((ln) =>
-          ln.id === sid ? { ...ln, content: ln.content + delta } : ln,
-        ),
-      }
+      if (!s.streamingLineId || !delta) return s
+      return { streamingDraft: s.streamingDraft + delta }
     }),
   finishStreaming: (fullContent, seq) =>
     set((s) => {
       const sid = s.streamingLineId
-      if (!sid) return { streamingLineId: null }
+      if (!sid) return { streamingLineId: null, streamingDraft: '' }
+      const merged = fullContent || s.streamingDraft
       const turnSkills = s.pendingTurnSkillIds.length ? [...s.pendingTurnSkillIds] : undefined
       return {
         streamingLineId: null,
+        streamingDraft: '',
         pendingTurnSkillIds: [],
         lines: s.lines.map((ln) =>
           ln.id === sid
             ? {
                 ...ln,
-                content: fullContent || ln.content,
+                content: merged || ln.content,
                 seq: seq ?? ln.seq,
                 skillIds: turnSkills ?? ln.skillIds,
               }
@@ -264,16 +272,22 @@ export const useAgentStore = create<AgentStore>((set) => ({
       const sid = s.streamingLineId
       if (!sid) return s
       const line = s.lines.find((ln) => ln.id === sid)
-      const text = line?.content.trim() ?? ''
+      const text = (line?.content.trim() || s.streamingDraft.trim()) ?? ''
       const hasTools = !!(line?.tools && line.tools.length)
-      // 工具开始：有正文则保留为气泡（Cursor 风）；空旁白丢弃
       if (!text && !hasTools) {
         return {
           streamingLineId: null,
+          streamingDraft: '',
           lines: s.lines.filter((ln) => ln.id !== sid),
         }
       }
-      return { streamingLineId: null }
+      return {
+        streamingLineId: null,
+        streamingDraft: '',
+        lines: text && !line?.content.trim()
+          ? s.lines.map((ln) => (ln.id === sid ? { ...ln, content: s.streamingDraft } : ln))
+          : s.lines,
+      }
     }),
 }))
 

@@ -92,8 +92,12 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   const testLoading = useLoading('agent.testConnection')
   const { width, onResizeStart } = useAgentPanelResize()
 
+  const streamingDraft = useAgentStore((s) => s.streamingDraft)
   const scrollContentKey = [
-    lines.map((l) => `${l.id}:${l.content.length}:${(l.tools || []).map((t) => t.status).join(',')}`).join('|'),
+    lines
+      .map((l) => `${l.id}:${l.content.length}:${(l.tools || []).map((tool) => tool.status).join(',')}`)
+      .join('|'),
+    streamingDraft.length,
     pending?.pendingId ?? '',
     pendingChoice?.pendingId ?? '',
     busy ? '1' : '0',

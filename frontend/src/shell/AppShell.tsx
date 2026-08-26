@@ -1,16 +1,9 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { useAppStore } from '../stores/appStore'
 import { bootstrapAppState } from '../stores/bootstrapApp'
-import { DockerWorkbench } from '../products/docker/DockerWorkbench'
-import { DatabaseWorkbench } from '../products/database/DatabaseWorkbench'
-import { EnvironmentWorkbench } from '../products/environment/EnvironmentWorkbench'
-import { NotebookWorkbench } from '../products/notebook/NotebookWorkbench'
-import { SftpWorkbench } from '../products/sftp/SftpWorkbench'
-import { HttpApiWorkbench } from '../products/httpapi/HttpApiWorkbench'
-import { LogCenterWorkbench } from '../products/logs/LogCenterWorkbench'
-import { TerminalWorkbench } from '../products/terminal/TerminalWorkbench'
-import { SkillsWorkbench } from '../products/skills/SkillsWorkbench'
+import { PRODUCT_VIEWS } from './productViews'
+import { useMountedProductViews } from './useMountedProductViews'
 import { ProductRail } from './ProductRail'
 import { ShellChrome } from './ShellChrome'
 import { StatusBar } from './StatusBar'
@@ -23,18 +16,6 @@ import { installFocusGate } from '../components/compat'
 import { useI18n } from '../i18n'
 import './shell.css'
 
-const PRODUCT_VIEWS = {
-  database: DatabaseWorkbench,
-  terminal: TerminalWorkbench,
-  sftp: SftpWorkbench,
-  docker: DockerWorkbench,
-  environment: EnvironmentWorkbench,
-  notebook: NotebookWorkbench,
-  skills: SkillsWorkbench,
-  httpapi: HttpApiWorkbench,
-  logs: LogCenterWorkbench,
-} as const
-
 type ProductKey = keyof typeof PRODUCT_VIEWS
 
 /** 多产品线工作台壳 */
@@ -44,9 +25,7 @@ export function AppShell() {
   const [booting, setBooting] = useState(!preferencesReady)
   const agentOpen = useAgentStore((s) => s.panelOpen)
   const toggleAgent = useAgentStore((s) => s.togglePanel)
-  const [mountedProducts, setMountedProducts] = useState<Set<ProductKey>>(
-    () => new Set([activeProduct as ProductKey]),
-  )
+  const { mountedProducts } = useMountedProductViews(activeProduct)
 
   useEffect(() => {
     if (preferencesReady) {
@@ -73,16 +52,6 @@ export function AppShell() {
   useEffect(() => startWorkbenchRadar(), [])
   useEffect(() => installFocusGate(), [])
 
-  useEffect(() => {
-    setMountedProducts((prev) => {
-      const key = activeProduct as ProductKey
-      if (prev.has(key)) return prev
-      const next = new Set(prev)
-      next.add(key)
-      return next
-    })
-  }, [activeProduct])
-
   if (booting) {
     return (
       <div className="workbench-shell">
@@ -108,7 +77,9 @@ export function AppShell() {
                 hidden={!visible}
                 aria-hidden={!visible}
               >
-                <View />
+                <Suspense fallback={<div className="pane-empty">{t('shell.loadingProduct')}</div>}>
+                  <View />
+                </Suspense>
               </div>
             )
           })}

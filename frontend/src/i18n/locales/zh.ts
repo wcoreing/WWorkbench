@@ -176,6 +176,7 @@ export const zh: MessageTree = {
     langZh: '简体中文',
     langEn: 'English',
     booting: '正在恢复工作区…',
+    loadingProduct: '正在加载工作台…',
     productRail: '产品线',
   },
   products: {
