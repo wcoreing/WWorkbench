@@ -109,7 +109,7 @@ export function NotebookWorkbench() {
   })
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'note' | 'group'; id: string; title: string } | null>(null)
   const [groupModal, setGroupModal] = useState<NotebookGroup | null | undefined>(undefined)
-  const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('source')
+  const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('preview')
   const [saveByNote, setSaveByNote] = useState<Record<string, 'saved' | 'dirty' | 'saving'>>({})
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
   useDismissOverlays(() => setTabCtxMenu(null))

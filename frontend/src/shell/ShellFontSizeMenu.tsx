@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { IconFontSize } from '../components/Icons'
+import { IconUiFontSize } from '../components/ShellChromeIcons'
 import { pressProps, useDismissOverlays } from '../components/compat'
 import { useI18n } from '../i18n'
 import { useAppStore } from '../stores/appStore'
@@ -33,7 +33,7 @@ export function ShellFontSizeMenu() {
         aria-expanded={open}
         {...pressProps(() => setOpen((v) => !v))}
       >
-        <IconFontSize size={13} />
+        <IconUiFontSize />
       </button>
       {open && (
         <div className="shell-locale-dropdown shell-fontsize-dropdown" role="menu">

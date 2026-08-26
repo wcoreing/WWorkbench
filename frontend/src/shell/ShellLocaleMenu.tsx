@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AppLocale } from '../i18n/types'
 import { useI18n } from '../i18n'
-import { IconGlobe } from '../components/Icons'
+import { IconUiGlobe } from '../components/ShellChromeIcons'
 import { useAppStore } from '../stores/appStore'
 import { pressProps, useDismissOverlays } from '../components/compat'
 
@@ -37,7 +37,7 @@ export function ShellLocaleMenu() {
         aria-expanded={open}
         {...pressProps(() => setOpen((v) => !v))}
       >
-        <IconGlobe size={13} />
+        <IconUiGlobe />
       </button>
       {open && (
         <div className="shell-locale-dropdown" role="menu">

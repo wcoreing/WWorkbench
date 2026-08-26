@@ -108,6 +108,16 @@
   padding: 0;
 }
 
+.wn-btn-chrome.active {
+  background: var(--accent-muted);
+  color: var(--accent);
+}
+
+.wn-btn-chrome.active:hover:not(:disabled) {
+  background: var(--accent-muted);
+  color: var(--accent-hover);
+}
+
 /* 表单 */
 .wn-input,
 .wn-select,

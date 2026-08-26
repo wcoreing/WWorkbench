@@ -1,5 +1,5 @@
 import { chromeProps, pressProps } from '../components/compat'
-import { IconMoon, IconSun } from '../components/Icons'
+import { IconUiAgent, IconUiMoon, IconUiSun } from '../components/ShellChromeIcons'
 import { useI18n, useLocalizedProduct } from '../i18n'
 import { useAppStore } from '../stores/appStore'
 import { ShellFontSizeMenu } from './ShellFontSizeMenu'
@@ -33,11 +33,11 @@ export function ShellChrome({
       {onToggleAgent && (
         <button
           type="button"
-          className={`wn-btn wn-btn-chrome wn-btn-sm${agentOpen ? ' active' : ''}`}
+          className={`wn-btn wn-btn-chrome wn-btn-icon-only${agentOpen ? ' active' : ''}`}
           title={agentOpen ? t('agent.collapsePanel') : t('agent.openPanel')}
           {...pressProps(() => onToggleAgent())}
         >
-          AI
+          <IconUiAgent />
         </button>
       )}
       <ShellFontSizeMenu />
@@ -48,7 +48,7 @@ export function ShellChrome({
         title={t('shell.switchTheme')}
         {...pressProps(() => setTheme(theme === 'dark' ? 'light' : 'dark'))}
       >
-        {theme === 'dark' ? <IconSun size={13} /> : <IconMoon size={13} />}
+        {theme === 'dark' ? <IconUiSun /> : <IconUiMoon />}
       </button>
     </header>
   )

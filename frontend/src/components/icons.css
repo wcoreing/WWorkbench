@@ -10,6 +10,13 @@
   image-rendering: auto;
 }
 
+.wn-ui-icon {
+  display: block;
+  flex-shrink: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
 .product-rail-btn .wn-raster-icon {
   width: var(--icon-rail);
   height: var(--icon-rail);

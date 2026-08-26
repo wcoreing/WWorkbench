@@ -110,6 +110,11 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   min-width: 0;
 }
 
+.shell-chrome .wn-btn-chrome.wn-btn-icon-only .wn-ui-icon {
+  width: var(--icon-chrome);
+  height: var(--icon-chrome);
+}
+
 .shell-locale-menu {
   position: relative;
   flex-shrink: 0;
