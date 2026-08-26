@@ -3,12 +3,10 @@ package harness
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"WWorkbench/internal/workbenchtools"
 
-	"github.com/wcoreing/ningharness/history"
 	"github.com/wcoreing/ningharness/toolgateway"
 )
 
@@ -165,18 +163,4 @@ func (h *Host) CallTool(ctx context.Context, name string, args json.RawMessage) 
 // InvokeTool 兼容旧名：记忆工具或任意 Gateway 工具。
 func (h *Host) InvokeTool(ctx context.Context, name string, args json.RawMessage) workbenchtools.ToolResult {
 	return h.CallTool(ctx, name, args)
-}
-
-// RewindHistory 按 seq 截断 ningharness history。
-func (h *Host) RewindHistory(sessionKey string, keepSeq int) error {
-	if h == nil || h.Root == "" {
-		return fmt.Errorf("harness: not open")
-	}
-	if keepSeq < 0 {
-		keepSeq = 0
-	}
-	if keepSeq == 0 {
-		return history.ClearSession(h.Root, sessionKey)
-	}
-	return rewindBySeq(h.Root, sessionKey, keepSeq)
 }

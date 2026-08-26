@@ -86,19 +86,6 @@ func (r *Runner) InvalidateThread(threadID string) {
 	r.mu.Unlock()
 }
 
-// Rewind 截断工作记忆并清缓存。
-func (r *Runner) Rewind(threadID string, keepSeq int) error {
-	r.Stop(threadID)
-	if r.harness == nil {
-		return fmt.Errorf("harness 未就绪")
-	}
-	if err := r.harness.RewindHistory(threadID, keepSeq); err != nil {
-		return err
-	}
-	r.InvalidateThread(threadID)
-	return nil
-}
-
 // preparedChat 一次对话轮次的公共准备结果。
 type preparedChat struct {
 	threadID  string

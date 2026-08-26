@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../api/client'
-import { askConfirm } from '../../utils/askConfirm'
 import { subscribeAgentEvents } from '../../api/agentEvents'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
@@ -474,30 +473,6 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     }
   }
 
-  const rewindTo = async (keepSeq: number) => {
-    if (!threadId || busy || keepSeq <= 0) return
-    const ok = await askConfirm({
-      title: t('agent.rewindTitle'),
-      message: t('agent.rewindConfirm'),
-      confirmLabel: t('agent.rewindHere'),
-      danger: true,
-    })
-    if (!ok) return
-    setBusy(true)
-    try {
-      await api.agentRewind(threadId, keepSeq)
-      clearToolSteps()
-      setPending(null)
-      setPendingChoice(null)
-      setLines((prev) => prev.filter((ln) => !ln.seq || ln.seq <= keepSeq))
-      setStatusMessage(t('agent.rewindDone'))
-    } catch (e) {
-      setStatusMessage((e as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const confirmPending = async (approved: boolean) => {
     if (!pending) return
     const id = pending.pendingId
@@ -752,7 +727,6 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
               .then(() => setStatusMessage(t(`agent.${savedToNotebookMessage()}`)))
               .catch((e) => setStatusMessage((e as Error).message))
           }}
-          onRewind={(seq) => void rewindTo(seq)}
           onConfirm={(ok) => void confirmPending(ok)}
           onModeChange={setChatMode}
           onModelChange={(id) => void switchModel(id)}

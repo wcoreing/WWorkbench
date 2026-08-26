@@ -956,12 +956,6 @@ type AgentMessageDO struct {
 	Tools    []AgentMessageToolDO `json:"tools,omitempty"`
 }
 
-// AgentRewindRequestDO 截断工作记忆。
-type AgentRewindRequestDO struct {
-	ThreadID string `json:"threadId"`
-	KeepSeq  int    `json:"keepSeq"`
-}
-
 // AgentThreadDO 对话线程摘要。
 type AgentThreadDO struct {
 	ID        string `json:"id"`

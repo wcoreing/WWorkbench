@@ -53,7 +53,6 @@ interface Props {
   onChoiceDraft: (text: string) => void
   onChoiceSubmit: (answers: ChoiceSubmitAnswer[]) => void
   onSaveToNotebook: (content: string) => void
-  onRewind: (seq: number) => void
   onConfirm: (ok: boolean) => void
   onModeChange: (mode: AgentChatMode) => void
   onModelChange: (id: string) => void
@@ -99,7 +98,6 @@ export function AgentChatPane({
   onChoiceDraft,
   onChoiceSubmit,
   onSaveToNotebook,
-  onRewind,
   onConfirm,
   onModeChange,
   onModelChange,
@@ -186,38 +184,10 @@ export function AgentChatPane({
                             {t('agent.saveToNotebook')}
                           </button>
                         )}
-                        {!!line.seq && (
-                          <button
-                            type="button"
-                            className="wn-btn wn-btn-xs wn-btn-ghost"
-                            title={t('agent.rewindConfirm')}
-                            onClick={() => onRewind(line.seq!)}
-                          >
-                            {t('agent.rewindHere')}
-                          </button>
-                        )}
                       </div>
                     )}
                 </div>
               )}
-              {line.role === 'assistant' &&
-                !line.content.trim() &&
-                !(line.images && line.images.length) &&
-                line.tools &&
-                line.tools.length > 0 &&
-                !!line.seq &&
-                !busy && (
-                  <div className="agent-turn-actions agent-turn-actions-loose">
-                    <button
-                      type="button"
-                      className="wn-btn wn-btn-xs wn-btn-ghost"
-                      title={t('agent.rewindConfirm')}
-                      onClick={() => onRewind(line.seq!)}
-                    >
-                      {t('agent.rewindHere')}
-                    </button>
-                  </div>
-                )}
             </div>
           )
         })}

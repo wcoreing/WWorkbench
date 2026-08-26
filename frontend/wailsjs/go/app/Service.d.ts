@@ -9,8 +9,6 @@ export function AgentChoose(arg1:Array<model.AgentChoiceAnswerDO>):Promise<app.A
 
 export function AgentConfirm(arg1:string,arg2:boolean):Promise<app.ApiResult_bool_>;
 
-export function AgentRewind(arg1:string,arg2:number):Promise<app.ApiResult_bool_>;
-
 export function AgentStop(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function ApplyAgentProviderPreset(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;

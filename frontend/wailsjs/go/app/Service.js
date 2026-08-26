@@ -14,10 +14,6 @@ export function AgentConfirm(arg1, arg2) {
   return window['go']['app']['Service']['AgentConfirm'](arg1, arg2);
 }
 
-export function AgentRewind(arg1, arg2) {
-  return window['go']['app']['Service']['AgentRewind'](arg1, arg2);
-}
-
 export function AgentStop(arg1) {
   return window['go']['app']['Service']['AgentStop'](arg1);
 }

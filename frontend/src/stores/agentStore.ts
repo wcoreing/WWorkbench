@@ -13,7 +13,7 @@ export interface AgentChatLine {
   mentions?: AgentMention[]
   skillIds?: string[]
   images?: { mime: string; data: string }[]
-  /** history_message.seq；有值时可「截到此处」 */
+  /** history_message.seq；用于 thread#seq 查日志 */
   seq?: number
   /** 本条 assistant 下挂的工具（可折叠，对齐 Cursor） */
   tools?: AgentToolStep[]

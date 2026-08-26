@@ -279,26 +279,3 @@ func (s *Service) ListAgentMessages(threadID string) ApiResult[[]model.AgentMess
 	}
 	return OkResult([]model.AgentMessageDO{})
 }
-
-// AgentRewind 截断会话工作记忆（保留 keepSeq 及之前的消息）。
-func (s *Service) AgentRewind(threadID string, keepSeq int) ApiResult[bool] {
-	if threadID == "" {
-		return ErrResult[bool](errno.New(errno.CodeInvalidArg, "threadId 不能为空", ""))
-	}
-	if keepSeq < 0 {
-		return ErrResult[bool](errno.New(errno.CodeInvalidArg, "keepSeq 无效", ""))
-	}
-	if s.agentRunner == nil {
-		if s.harnessHost != nil {
-			if err := s.harnessHost.RewindHistory(threadID, keepSeq); err != nil {
-				return ErrResult[bool](err)
-			}
-			return OkResult(true)
-		}
-		return ErrResult[bool](errAgentNotReady())
-	}
-	if err := s.agentRunner.Rewind(threadID, keepSeq); err != nil {
-		return ErrResult[bool](err)
-	}
-	return OkResult(true)
-}

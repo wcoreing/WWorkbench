@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useI18n } from '../../i18n'
 import type { AgentToolStep } from '../../stores/agentStore'
+import { previewToolArgs } from './agentToolPreview'
 
 interface Props {
   steps: AgentToolStep[]
@@ -52,17 +53,20 @@ export function AgentToolTrace({ steps }: Props) {
       </button>
       {open && (
         <ol className="agent-tool-trace-list">
-          {steps.map((step) => (
+          {steps.map((step) => {
+            const argsHint = previewToolArgs(step.argsPreview)
+            return (
             <li key={step.id} className={`agent-tool-trace-item agent-tool-trace-${step.status}`}>
               <span className="agent-tool-trace-name">{step.tool}</span>
-              {(step.summary || step.argsPreview) && (
-                <span className="agent-tool-trace-args" title={step.summary || step.argsPreview}>
-                  {step.summary || step.argsPreview}
+              {argsHint ? (
+                <span className="agent-tool-trace-args" title={step.argsPreview}>
+                  {argsHint}
                 </span>
-              )}
+              ) : null}
               <span className="agent-tool-trace-status">{statusLabel(step.status, t)}</span>
             </li>
-          ))}
+            )
+          })}
         </ol>
       )}
     </div>

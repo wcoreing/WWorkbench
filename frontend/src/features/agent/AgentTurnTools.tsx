@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useI18n } from '../../i18n'
 import type { AgentToolStep } from '../../stores/agentStore'
+import { previewToolArgs } from './agentToolPreview'
 
 interface Props {
   tools: AgentToolStep[]
@@ -25,22 +26,6 @@ function statusLabel(status: AgentToolStep['status'] | '', t: (k: string) => str
   }
 }
 
-function previewArgs(args?: string): string {
-  const s = (args || '').trim()
-  if (!s) return ''
-  try {
-    const j = JSON.parse(s) as Record<string, unknown>
-    const keys = Object.keys(j)
-    if (keys.length === 1 && typeof j[keys[0]] === 'string') {
-      const v = String(j[keys[0]])
-      return v.length > 48 ? `${v.slice(0, 48)}…` : v
-    }
-  } catch {
-    /* plain */
-  }
-  return s.length > 48 ? `${s.slice(0, 48)}…` : s
-}
-
 /** AgentTurnTools Cursor/AgentDesk 风：挂在助手气泡下的可折叠工具条。 */
 export function AgentTurnTools({ tools }: Props) {
   const { t } = useI18n()
@@ -62,7 +47,7 @@ export function AgentTurnTools({ tools }: Props) {
     <div className="agent-turn-tools">
       {tools.map((step) => {
         const open = isOpen(step)
-        const hint = step.summary || previewArgs(step.argsPreview)
+        const hint = previewToolArgs(step.argsPreview)
         return (
           <div
             key={step.id}
