@@ -522,6 +522,7 @@ export function DatabaseWorkbench() {
   const selectDatabase = useCallback(
     async (database: string) => {
       if (!session || !database) return
+      if (session.database === database) return
       try {
         const info = await api.setDatabase(session.sessionId, database)
         setSession(info)

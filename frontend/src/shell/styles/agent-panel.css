@@ -1,10 +1,9 @@
-/* Agent 侧栏壳：面板 / 历史 / 子视图 */
+/* Agent 侧栏壳：面板 / 历史 / 子视图
+ * 左缘 ResizeHandle + 右侧内容列（与 ProductLayout 同一套分栏语言） */
 .agent-panel {
-  position: relative;
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  border-left: 1px solid var(--color-border-strong);
+  flex-direction: row;
   background: var(--color-surface);
   min-height: 0;
   min-width: 0;
@@ -14,6 +13,15 @@
 
 .agent-panel-collapsed {
   display: none;
+}
+
+.agent-panel-body {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .agent-panel-tabs {
@@ -97,21 +105,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.agent-panel-resize {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  margin-left: -3px;
-  cursor: col-resize;
-  z-index: 2;
-}
-
-.agent-panel-resize:hover {
-  background: var(--accent-ring);
 }
 
 .agent-chat-pane {

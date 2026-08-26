@@ -88,6 +88,8 @@ export function ObjectTree({
   const indexCacheRef = useRef(indexCache)
   /** 已自动展开过的选中库；避免 nodes 引用变化把用户手动收起顶开。 */
   const autoExpandedDbRef = useRef<string | null>(null)
+  /** 进行中的 ensureExpanded 代际；折叠时递增以丢弃过期的 setExpanded。 */
+  const expandGenRef = useRef<Map<string, number>>(new Map())
   expandedRef.current = expanded
   nodesRef.current = nodes
   databaseCacheRef.current = databaseCache
@@ -101,7 +103,13 @@ export function ObjectTree({
     setIndexCache({})
     setSelectedId(null)
     autoExpandedDbRef.current = null
+    expandGenRef.current = new Map()
   }, [sessionId])
+
+  /** bumpExpandGen 使进行中的 ensureExpanded 不再写回 expanded。 */
+  const bumpExpandGen = useCallback((nodeId: string) => {
+    expandGenRef.current.set(nodeId, (expandGenRef.current.get(nodeId) ?? 0) + 1)
+  }, [])
 
   // 顶部刷新：清空懒加载缓存，并重拉已展开库 + 当前选中库的表/列。
   useEffect(() => {
@@ -111,14 +119,12 @@ export function ObjectTree({
     const treeNodes = nodesRef.current
 
     const run = async () => {
-      setDatabaseCache({})
-      setColumnCache({})
-      setIndexCache({})
+      // 保留旧缓存直到新数据就绪，避免展开态下先闪「空库 / 无」。
       const dbNodes = treeNodes.filter((n) => {
         if (n.nodeType !== 'database' || !n.database) return false
         return expandedIds.has(n.id) || n.database === selectedDatabase
       })
-      const nextDbCache: Record<string, ObjectTreeNode[]> = {}
+      const nextDbCache: Record<string, ObjectTreeNode[]> = { ...databaseCacheRef.current }
       await Promise.all(
         dbNodes.map(async (node) => {
           try {
@@ -131,8 +137,8 @@ export function ObjectTree({
       if (cancelled) return
       setDatabaseCache(nextDbCache)
 
-      const nextColCache: Record<string, ObjectTreeNode[]> = {}
-      const nextIdxCache: Record<string, ObjectTreeNode[]> = {}
+      const nextColCache: Record<string, ObjectTreeNode[]> = { ...columnCacheRef.current }
+      const nextIdxCache: Record<string, ObjectTreeNode[]> = { ...indexCacheRef.current }
       const tableNodes = Object.values(nextDbCache)
         .flat()
         .filter(
@@ -211,30 +217,19 @@ export function ObjectTree({
     [t]
   )
 
-  /** loadDatabaseObjects 懒加载库内表/视图。 */
+  /** loadDatabaseObjects 懒加载库内表/视图（保留旧缓存直到新数据就绪）。 */
   const loadDatabaseObjects = useCallback(
     async (node: ObjectTreeNode) => {
       if (!node.database || databaseCacheRef.current[node.id]) return
       const key = treeNodeLoadingKey(sessionId, node.id)
-      await withLoading(
-        key,
-        async () => {
-          try {
-            const children = await api.listDatabaseObjects(sessionId, node.database!)
-            setDatabaseCache((prev) => ({ ...prev, [node.id]: children }))
-          } catch {
-            setDatabaseCache((prev) => ({ ...prev, [node.id]: [] }))
-          }
-        },
-        {
-          onBegin: () =>
-            setDatabaseCache((prev) => {
-              const next = { ...prev }
-              delete next[node.id]
-              return next
-            }),
-        },
-      )
+      await withLoading(key, async () => {
+        try {
+          const children = await api.listDatabaseObjects(sessionId, node.database!)
+          setDatabaseCache((prev) => ({ ...prev, [node.id]: children }))
+        } catch {
+          setDatabaseCache((prev) => ({ ...prev, [node.id]: [] }))
+        }
+      })
     },
     [sessionId],
   )
@@ -244,25 +239,14 @@ export function ObjectTree({
     async (node: ObjectTreeNode, cacheKey: string) => {
       if (!node.database || !node.table || columnCacheRef.current[cacheKey]) return
       const key = treeNodeLoadingKey(sessionId, cacheKey)
-      await withLoading(
-        key,
-        async () => {
-          try {
-            const cols = await api.listColumns(sessionId, node.database!, node.table!)
-            setColumnCache((prev) => ({ ...prev, [cacheKey]: columnNodesFromMeta(node, cols) }))
-          } catch {
-            setColumnCache((prev) => ({ ...prev, [cacheKey]: [] }))
-          }
-        },
-        {
-          onBegin: () =>
-            setColumnCache((prev) => {
-              const next = { ...prev }
-              delete next[cacheKey]
-              return next
-            }),
-        },
-      )
+      await withLoading(key, async () => {
+        try {
+          const cols = await api.listColumns(sessionId, node.database!, node.table!)
+          setColumnCache((prev) => ({ ...prev, [cacheKey]: columnNodesFromMeta(node, cols) }))
+        } catch {
+          setColumnCache((prev) => ({ ...prev, [cacheKey]: [] }))
+        }
+      })
     },
     [sessionId],
   )
@@ -272,36 +256,35 @@ export function ObjectTree({
     async (node: ObjectTreeNode, cacheKey: string) => {
       if (!node.database || !node.table || indexCacheRef.current[cacheKey]) return
       const key = treeNodeLoadingKey(sessionId, cacheKey)
-      await withLoading(
-        key,
-        async () => {
-          try {
-            const idxs = await api.listIndexes(sessionId, node.database!, node.table!)
-            setIndexCache((prev) => ({ ...prev, [cacheKey]: indexNodesFromMeta(node, idxs) }))
-          } catch {
-            setIndexCache((prev) => ({ ...prev, [cacheKey]: [] }))
-          }
-        },
-        {
-          onBegin: () =>
-            setIndexCache((prev) => {
-              const next = { ...prev }
-              delete next[cacheKey]
-              return next
-            }),
-        },
-      )
+      await withLoading(key, async () => {
+        try {
+          const idxs = await api.listIndexes(sessionId, node.database!, node.table!)
+          setIndexCache((prev) => ({ ...prev, [cacheKey]: indexNodesFromMeta(node, idxs) }))
+        } catch {
+          setIndexCache((prev) => ({ ...prev, [cacheKey]: [] }))
+        }
+      })
     },
     [sessionId],
   )
 
-  /** ensureExpanded 展开节点并按需懒加载子节点。 */
+  /** ensureExpanded 先展开再懒加载，避免空占位闪一下再灌数据。 */
   const ensureExpanded = useCallback(
     async (node: ObjectTreeNode) => {
       const isDatabase = node.nodeType === 'database'
       const isTableOrView = node.nodeType === 'table' || node.nodeType === 'view'
       const isGroup = isTableGroupType(node.nodeType)
       if (!isDatabase && !isTableOrView && !isGroup) return
+
+      const gen = (expandGenRef.current.get(node.id) ?? 0) + 1
+      expandGenRef.current.set(node.id, gen)
+
+      setExpanded((prev) => {
+        if (prev.has(node.id)) return prev
+        const next = new Set(prev)
+        next.add(node.id)
+        return next
+      })
 
       if (isDatabase && !databaseCacheRef.current[node.id]) {
         await loadDatabaseObjects(node)
@@ -313,12 +296,7 @@ export function ObjectTree({
         await loadIndexes(node, node.id)
       }
 
-      setExpanded((prev) => {
-        if (prev.has(node.id)) return prev
-        const next = new Set(prev)
-        next.add(node.id)
-        return next
-      })
+      if (expandGenRef.current.get(node.id) !== gen) return
     },
     [loadDatabaseObjects, loadColumns, loadIndexes, isRedis],
   )
@@ -357,6 +335,7 @@ export function ObjectTree({
     if (!isDatabase && !isTableOrView && !isGroup) return
 
     if (expanded.has(node.id)) {
+      bumpExpandGen(node.id)
       setExpanded((prev) => {
         const next = new Set(prev)
         next.delete(node.id)
@@ -367,12 +346,11 @@ export function ObjectTree({
     await ensureExpanded(node)
   }
 
-  /** handleNodeClick 单击：库则选中并展开，表/视图则打开并高亮；分组则展开。 */
+  /** handleNodeClick 单击：库/表选中；表/视图打开 Tab；分组与箭头一致走 toggle。 */
   const handleNodeClick = (node: ObjectTreeNode) => {
     if (node.nodeType === 'database' && node.database) {
       setSelectedId(node.id)
       onDatabaseSelect?.(node.database)
-      void ensureExpanded(node)
       return
     }
     if ((node.nodeType === 'table' || node.nodeType === 'view') && node.database && node.table) {
@@ -382,7 +360,7 @@ export function ObjectTree({
     }
     if (isTableGroupType(node.nodeType)) {
       setSelectedId(node.id)
-      void ensureExpanded(node)
+      void toggleExpand(node)
     }
   }
 
@@ -428,6 +406,12 @@ export function ObjectTree({
       },
     })
     const showChildren = expandable && isOpen
+    const childrenPending = isLazyChildrenPending(node, {
+      isRedis,
+      databaseCache,
+      columnCache,
+      indexCache,
+    })
     const emptyHint =
       isGroup && !isRedis ? t('objectTree.emptyGroup') : t('objectTree.emptyDatabase')
 
@@ -459,7 +443,7 @@ export function ObjectTree({
             <span className="tree-tag">{t('database.systemDatabase')}</span>
           )}
         </div>
-        {showChildren && (
+        {showChildren && !childrenPending && (
           <ul className="wn-tree">
             {children.length > 0 ? (
               children.map((c) => renderNode(c, depth + 1))
@@ -764,6 +748,26 @@ function tableGroupNodes(parent: ObjectTreeNode, labels: GroupLabels): ObjectTre
       table: parent.table,
     },
   ]
+}
+
+/** isLazyChildrenPending 懒加载子节点尚未就绪（展开时显示 loading，不闪空态）。 */
+function isLazyChildrenPending(
+  node: ObjectTreeNode,
+  opts: {
+    isRedis: boolean
+    databaseCache: Record<string, ObjectTreeNode[]>
+    columnCache: Record<string, ObjectTreeNode[]>
+    indexCache: Record<string, ObjectTreeNode[]>
+  },
+): boolean {
+  if (node.nodeType === 'database') return opts.databaseCache[node.id] === undefined
+  if (node.nodeType === 'table' || node.nodeType === 'view') {
+    if (opts.isRedis) return opts.columnCache[node.id] === undefined
+    return false
+  }
+  if (node.nodeType === 'columns') return opts.columnCache[node.id] === undefined
+  if (node.nodeType === 'indexes') return opts.indexCache[node.id] === undefined
+  return false
 }
 
 /** resolveChildren 计算节点子树。 */

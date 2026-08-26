@@ -123,21 +123,17 @@ export const AgentChatTurn = memo(function AgentChatTurn({
               onChoiceDraft={line.role === 'assistant' ? onChoiceDraft : undefined}
             />
           )}
-          {(line.role === 'assistant' || line.role === 'user') &&
-            (line.content.trim() ||
-              (line.images && line.images.length > 0) ||
-              (line.skillIds && line.skillIds.length > 0)) &&
+          {line.role === 'assistant' &&
+            line.content.trim() &&
             !busy && (
               <div className="agent-turn-actions">
-                {line.role === 'assistant' && line.content.trim() && (
-                  <button
-                    type="button"
-                    className="wn-btn wn-btn-xs wn-btn-ghost"
-                    onClick={() => onSaveToNotebook(line.content)}
-                  >
-                    {t('agent.saveToNotebook')}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="wn-btn wn-btn-xs wn-btn-ghost"
+                  onClick={() => onSaveToNotebook(line.content)}
+                >
+                  {t('agent.saveToNotebook')}
+                </button>
               </div>
             )}
         </div>

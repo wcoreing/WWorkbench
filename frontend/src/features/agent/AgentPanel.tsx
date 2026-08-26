@@ -624,122 +624,124 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       aria-hidden={collapsed}
       aria-label={t('agent.title')}
     >
-      <ResizeHandle axis="x" onMouseDown={onResizeStart} title={t('agent.resize')} className="agent-panel-resize" />
-      <header className="agent-panel-head">
-        <span className="agent-panel-title">{t('agent.title')}</span>
-        <div className="agent-panel-actions">
-          {view === 'chat' && (
-            <>
-              <button
-                type="button"
-                className={`wn-btn wn-btn-xs wn-btn-ghost${showHistory ? ' active' : ''}`}
-                onClick={() => setShowHistory((v) => !v)}
-              >
-                {t('agent.history')}
-              </button>
-              <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" onClick={newThread} title={t('agent.newThread')}>
-                {t('agent.newThread')}
-              </button>
-            </>
-          )}
-        </div>
-      </header>
+      <ResizeHandle axis="x" onMouseDown={onResizeStart} title={t('agent.resize')} />
+      <div className="agent-panel-body">
+        <header className="agent-panel-head">
+          <span className="agent-panel-title">{t('agent.title')}</span>
+          <div className="agent-panel-actions">
+            {view === 'chat' && (
+              <>
+                <button
+                  type="button"
+                  className={`wn-btn wn-btn-xs wn-btn-ghost${showHistory ? ' active' : ''}`}
+                  onClick={() => setShowHistory((v) => !v)}
+                >
+                  {t('agent.history')}
+                </button>
+                <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" onClick={newThread} title={t('agent.newThread')}>
+                  {t('agent.newThread')}
+                </button>
+              </>
+            )}
+          </div>
+        </header>
 
-      <nav className="agent-panel-tabs" role="tablist" aria-label={t('agent.title')}>
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={view === tab.id}
-            className={`agent-panel-tab${view === tab.id ? ' is-active' : ''}`}
-            onClick={() => switchView(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+        <nav className="agent-panel-tabs" role="tablist" aria-label={t('agent.title')}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={view === tab.id}
+              className={`agent-panel-tab${view === tab.id ? ' is-active' : ''}`}
+              onClick={() => switchView(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
 
-      {view === 'config' && (
-        <AgentConfigView
-          apiBase={apiBase}
-          setApiBase={setApiBase}
-          apiKey={apiKey}
-          setApiKey={setApiKey}
-          modelName={modelName}
-          setModelName={setModelName}
-          hasKey={hasKey}
-          provider={provider}
-          error={configError}
-          saving={savingConfig}
-          testing={testLoading.active}
-          onApplyPreset={(id) => void applyPreset(id)}
-          onTest={() => void testConnection()}
-          onSave={() => void handleSaveConfig()}
-        />
-      )}
+        {view === 'config' && (
+          <AgentConfigView
+            apiBase={apiBase}
+            setApiBase={setApiBase}
+            apiKey={apiKey}
+            setApiKey={setApiKey}
+            modelName={modelName}
+            setModelName={setModelName}
+            hasKey={hasKey}
+            provider={provider}
+            error={configError}
+            saving={savingConfig}
+            testing={testLoading.active}
+            onApplyPreset={(id) => void applyPreset(id)}
+            onTest={() => void testConnection()}
+            onSave={() => void handleSaveConfig()}
+          />
+        )}
 
-      {view === 'permissions' && (
-        <AgentPermissionsView
-          capabilities={capabilities}
-          unavailableNote={unavailableNote}
-          allowWrite={allowWrite}
-          setAllowWrite={setAllowWrite}
-          onToggle={toggleCapability}
-          error={permError}
-          saving={savingPerm}
-          onSave={() => void handleSavePermissions()}
-        />
-      )}
+        {view === 'permissions' && (
+          <AgentPermissionsView
+            capabilities={capabilities}
+            unavailableNote={unavailableNote}
+            allowWrite={allowWrite}
+            setAllowWrite={setAllowWrite}
+            onToggle={toggleCapability}
+            error={permError}
+            saving={savingPerm}
+            onSave={() => void handleSavePermissions()}
+          />
+        )}
 
-      {view === 'chat' && showHistory && (
-        <AgentThreadHistory
-          threads={threads}
-          activeThreadId={threadId}
-          emptyHint={t('agent.noHistory')}
-          onOpen={(id) => void openThread(id)}
-        />
-      )}
+        {view === 'chat' && showHistory && (
+          <AgentThreadHistory
+            threads={threads}
+            activeThreadId={threadId}
+            emptyHint={t('agent.noHistory')}
+            onOpen={(id) => void openThread(id)}
+          />
+        )}
 
-      {view === 'chat' && !showHistory && (
-        <AgentChatPane
-          t={t}
-          lines={lines}
-          busy={busy}
-          chatMode={chatMode}
-          skillCatalog={skillCatalog}
-          threadMentions={threadMentions}
-          threadSkillIds={threadSkillIds}
-          autoMentions={autoMentions}
-          pending={pending}
-          pendingChoice={pendingChoice}
-          threadId={threadId}
-          modelName={modelName}
-          provider={provider}
-          scrollRef={scrollRef}
-          onMessagesScroll={onMessagesScroll}
-          onChoiceDraft={(text) => {
-            useAgentStore.getState().applyDraft({
-              message: text,
-              mentions: threadMentions,
-              skillIds: threadSkillIds,
-            })
-          }}
-          onChoiceSubmit={(answers) => void submitChoice(answers)}
-          onSaveToNotebook={(content) => {
-            void saveReplyToNotebook(content, mergeMentions(threadMentions, autoMentions))
-              .then(() => setStatusMessage(t(`agent.${savedToNotebookMessage()}`)))
-              .catch((e) => setStatusMessage((e as Error).message))
-          }}
-          onConfirm={(ok) => void confirmPending(ok)}
-          onModeChange={setChatMode}
-          onModelChange={(id) => void switchModel(id)}
-          onSend={(text, mentions, images, skillIds) => send(text, mentions, images, skillIds ?? [])}
-          onStop={() => void stopGeneration()}
-          onUnbindThreadMention={(id, kind) => void unbindThreadMention(id, kind)}
-          onUnbindThreadSkill={unbindThreadSkill}
-        />
-      )}
+        {view === 'chat' && !showHistory && (
+          <AgentChatPane
+            t={t}
+            lines={lines}
+            busy={busy}
+            chatMode={chatMode}
+            skillCatalog={skillCatalog}
+            threadMentions={threadMentions}
+            threadSkillIds={threadSkillIds}
+            autoMentions={autoMentions}
+            pending={pending}
+            pendingChoice={pendingChoice}
+            threadId={threadId}
+            modelName={modelName}
+            provider={provider}
+            scrollRef={scrollRef}
+            onMessagesScroll={onMessagesScroll}
+            onChoiceDraft={(text) => {
+              useAgentStore.getState().applyDraft({
+                message: text,
+                mentions: threadMentions,
+                skillIds: threadSkillIds,
+              })
+            }}
+            onChoiceSubmit={(answers) => void submitChoice(answers)}
+            onSaveToNotebook={(content) => {
+              void saveReplyToNotebook(content, mergeMentions(threadMentions, autoMentions))
+                .then(() => setStatusMessage(t(`agent.${savedToNotebookMessage()}`)))
+                .catch((e) => setStatusMessage((e as Error).message))
+            }}
+            onConfirm={(ok) => void confirmPending(ok)}
+            onModeChange={setChatMode}
+            onModelChange={(id) => void switchModel(id)}
+            onSend={(text, mentions, images, skillIds) => send(text, mentions, images, skillIds ?? [])}
+            onStop={() => void stopGeneration()}
+            onUnbindThreadMention={(id, kind) => void unbindThreadMention(id, kind)}
+            onUnbindThreadSkill={unbindThreadSkill}
+          />
+        )}
+      </div>
     </aside>
   )
 }
