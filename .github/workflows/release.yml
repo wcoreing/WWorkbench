@@ -89,7 +89,7 @@ jobs:
 
       - name: Build
         shell: bash
-        run: wails build -platform "${{ matrix.platform }}" ${{ matrix.wails_args }}
+        run: wails build -platform "${{ matrix.platform }}" -ldflags="-s -w" ${{ matrix.wails_args }}
 
       - name: Zip
         shell: bash
