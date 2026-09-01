@@ -90,7 +90,7 @@
 .agent-user-content {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .agent-mention-chips-inline {

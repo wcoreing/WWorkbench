@@ -119,7 +119,7 @@ function isChoiceFenceLang(lang: string): boolean {
   )
 }
 
-/** 从助手正文抽出 agent-choice / 「可选下一步」列表。 */
+/** 从助手正文抽出 agent-choice；无围栏时按 Markdown 列表格式兜底（不看文案语义）。 */
 export function extractAgentChoices(content: string): AgentChoiceParse {
   const src = content || ''
   const questions: AgentChoiceQuestion[] = []
@@ -135,7 +135,7 @@ export function extractAgentChoices(content: string): AgentChoiceParse {
     return '\n'
   })
   if (!questions.length) {
-    const fallback = extractNextStepsFromMarkdown(body)
+    const fallback = extractLastMarkdownList(body)
     if (fallback.question) {
       questions.push(fallback.question)
       body = fallback.body
@@ -145,155 +145,111 @@ export function extractAgentChoices(content: string): AgentChoiceParse {
   return { body: body.replace(/\n{3,}/g, '\n\n').trim(), questions }
 }
 
-const NEXT_STEPS_HEADER =
-  /(?:^|\n)(?:#{1,3}\s*)?(?:\*\*)?(?:可选下一步|Next steps?|需要的话我可以继续|我可以继续(?:帮你|为你)?|接下来(?:我)?可以|你可以选择|可选操作|还可以(?:继续|做)|要不要我)(?:\*\*)?\s*[：:]?\s*(?:\n|$)/i
+const LIST_ITEM_RE = /^(?:[-*+]|\d+[.)、])\s+(.+)$/
 
-/** Agent 只写 Markdown 列表、未挂 agent-choice 时，从「可选下一步 / 需要的话我可以继续」等段落成表单。 */
-function extractNextStepsFromMarkdown(body: string): {
-  question: AgentChoiceQuestion | null
-  body: string
-} {
-  const fromHeader = extractListAfterHeader(body, NEXT_STEPS_HEADER)
-  if (fromHeader.question) return fromHeader
-  // 兜底：末尾「……：\n- a\n- b」+ 可选收尾问句
-  return extractTrailingOfferList(body)
+/** 掩码代码围栏，避免把 fence 内列表当成选项。 */
+function maskCodeFences(text: string): string {
+  return text.replace(/```[\s\S]*?```/g, (block) => block.replace(/[^\n]/g, ' '))
 }
 
-function extractListAfterHeader(
-  body: string,
-  headerRe: RegExp,
-): { question: AgentChoiceQuestion | null; body: string } {
-  const m = body.match(headerRe)
-  if (!m || m.index === undefined) return { question: null, body }
-  const start = m.index + m[0].length
-  const tail = body.slice(start)
-  const labels = parseListLabels(tail)
-  if (labels.length < 2 || labels.length > 8) return { question: null, body }
-  const keys = 'abcdefghijklmnopqrstuvwxyz'
-  const options: AgentChoiceOption[] = labels.map((label, i) => ({
-    key: keys[i] || String(i + 1),
-    label,
-  }))
-  const end = start + consumedListChars(tail, labels.length)
-  const prompt = m[0]
-    .replace(/^\n/, '')
-    .replace(/^#{1,3}\s*/, '')
-    .replace(/\*\*/g, '')
-    .replace(/[：:]\s*$/, '')
-    .trim() || '可选下一步'
-  const stripped = (body.slice(0, m.index) + body.slice(end)).replace(/\n{3,}/g, '\n\n').trim()
-  return {
-    question: {
-      n: 1,
-      id: 'next-steps',
-      mode: 'single',
-      prompt,
-      options,
-    },
-    body: stripped,
+type ListBlock = {
+  startLine: number
+  endLine: number
+  labels: string[]
+}
+
+/** 扫描正文中连续 Markdown 列表块（无序列表 / 有序列表）。 */
+function findMarkdownListBlocks(lines: string[]): ListBlock[] {
+  const blocks: ListBlock[] = []
+  let i = 0
+  while (i < lines.length) {
+    const trimmed = lines[i].trim()
+    if (!trimmed || !LIST_ITEM_RE.test(trimmed)) {
+      i++
+      continue
+    }
+    const start = i
+    const labels: string[] = []
+    while (i < lines.length) {
+      const line = lines[i].trim()
+      if (!line) break
+      const item = line.match(LIST_ITEM_RE)
+      if (!item) break
+      const label = item[1].replace(/\*\*/g, '').trim()
+      if (label) labels.push(label)
+      i++
+    }
+    if (labels.length >= 2 && labels.length <= 8) {
+      blocks.push({ startLine: start, endLine: i - 1, labels })
+    }
   }
+  return blocks
 }
 
-/** 正文末尾「引导句：」+ 2～8 条列表（常见于模型未写 agent-choice）。 */
-function extractTrailingOfferList(body: string): {
+/**
+ * 按 Markdown 列表格式抽出可点选项：取正文中最后一段 2～8 项列表。
+ * 列表上一行短文案作 prompt（可选）；列表后的正文保留。
+ */
+function extractLastMarkdownList(body: string): {
   question: AgentChoiceQuestion | null
   body: string
 } {
+  const masked = maskCodeFences(body)
   const lines = body.split('\n')
-  // 从末尾跳过空行与收尾短问句
-  let i = lines.length - 1
-  while (i >= 0 && !lines[i].trim()) i--
-  if (i < 0) return { question: null, body }
-  const closing = lines[i].trim()
-  let listEnd = i
-  if (/[？?]$/.test(closing) && closing.length <= 40 && !/^(?:[-*+]|\d+[.)、])\s/.test(closing)) {
-    listEnd = i - 1
-    while (listEnd >= 0 && !lines[listEnd].trim()) listEnd--
-  }
-  if (listEnd < 0) return { question: null, body }
+  const maskedLines = masked.split('\n')
+  // 用掩码后的行找列表位置，标签仍取原文
+  const blocks = findMarkdownListBlocks(maskedLines)
+  if (!blocks.length) return { question: null, body }
 
-  const labels: string[] = []
-  let j = listEnd
-  while (j >= 0) {
-    const trimmed = lines[j].trim()
-    if (!trimmed) break
-    const item = trimmed.match(/^(?:[-*+]|\d+[.)、])\s*(.+)$/)
-    if (!item) break
-    labels.unshift(item[1].replace(/\*\*/g, '').trim())
-    j--
-  }
+  const block = blocks[blocks.length - 1]
+  const labels = lines
+    .slice(block.startLine, block.endLine + 1)
+    .map((line) => {
+      const item = line.trim().match(LIST_ITEM_RE)
+      return item ? item[1].replace(/\*\*/g, '').trim() : ''
+    })
+    .filter(Boolean)
   if (labels.length < 2 || labels.length > 8) return { question: null, body }
-  while (j >= 0 && !lines[j].trim()) j--
-  if (j < 0) return { question: null, body }
-  const head = lines[j].trim().replace(/\*\*/g, '')
-  if (!/[：:]$/.test(head) || head.length > 48) return { question: null, body }
-  if (!/(继续|选择|下一步|可以|要不要|可选|接着)/.test(head)) return { question: null, body }
+
+  let promptLine = -1
+  for (let j = block.startLine - 1; j >= 0; j--) {
+    if (!lines[j].trim()) continue
+    if (LIST_ITEM_RE.test(lines[j].trim())) break
+    promptLine = j
+    break
+  }
 
   const keys = 'abcdefghijklmnopqrstuvwxyz'
   const options: AgentChoiceOption[] = labels.map((label, idx) => ({
     key: keys[idx] || String(idx + 1),
     label,
   }))
-  const prompt = head.replace(/[：:]\s*$/, '').trim() || '可选下一步'
-  const stripped = lines.slice(0, j).join('\n').replace(/\n{3,}/g, '\n\n').trim()
-  // 保留收尾问句（若有）
-  const keepTail =
-    listEnd < i ? '\n\n' + lines.slice(listEnd + 1).join('\n').trim() : ''
+  const prompt =
+    promptLine >= 0
+      ? lines[promptLine]
+          .trim()
+          .replace(/\*\*/g, '')
+          .replace(/[：:]\s*$/, '')
+          .trim()
+      : '请选择'
+
+  const keepHead = lines.slice(0, promptLine >= 0 ? promptLine : block.startLine).join('\n')
+  const keepTail = lines.slice(block.endLine + 1).join('\n')
+  const stripped = [keepHead, keepTail]
+    .map((s) => s.replace(/\n{3,}/g, '\n\n').trim())
+    .filter(Boolean)
+    .join('\n\n')
+
   return {
     question: {
       n: 1,
-      id: 'next-steps',
+      id: 'md-list',
       mode: 'single',
-      prompt,
+      prompt: prompt || '请选择',
       options,
     },
-    body: (stripped + keepTail).replace(/\n{3,}/g, '\n\n').trim(),
+    body: stripped,
   }
-}
-
-function parseListLabels(block: string): string[] {
-  const labels: string[] = []
-  for (const line of block.split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed) {
-      if (labels.length) break
-      continue
-    }
-    const item = trimmed.match(/^(?:[-*+]|\d+[.)、])\s*(.+)$/)
-    if (!item) {
-      if (labels.length) break
-      continue
-    }
-    const label = item[1].replace(/\*\*/g, '').trim()
-    if (label) labels.push(label)
-  }
-  return labels
-}
-
-function consumedListChars(block: string, count: number): number {
-  let seen = 0
-  let pos = 0
-  for (const line of block.split('\n')) {
-    const trimmed = line.trim()
-    if (!trimmed) {
-      if (seen) {
-        pos += line.length + 1
-        break
-      }
-      pos += line.length + 1
-      continue
-    }
-    const item = trimmed.match(/^(?:[-*+]|\d+[.)、])\s*(.+)$/)
-    if (!item) {
-      if (seen) break
-      pos += line.length + 1
-      continue
-    }
-    seen++
-    pos += line.length + 1
-    if (seen >= count) break
-  }
-  return pos
 }
 
 export type ChoiceAnswer = { keys?: string[]; text?: string }

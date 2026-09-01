@@ -56,6 +56,7 @@ export function AgentMessageContent({
             <AgentChoicePanel
               questions={choice.questions}
               disabled={choiceDisabled}
+              inline
               onDraft={onChoiceDraft}
               onSubmit={onChoiceSubmit}
             />

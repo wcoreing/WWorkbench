@@ -2,6 +2,8 @@ import { memo } from 'react'
 import type { AgentChatLine } from '../../stores/agentStore'
 import { useAgentStore } from '../../stores/agentStore'
 import type { AgentMention } from './agentMention'
+import { AgentChoicePanel, type ChoiceSubmitAnswer } from './AgentChoicePanel'
+import type { AgentChoiceQuestion } from './agentChoice'
 import { AgentMessageContent } from './AgentMessageContent'
 import { AgentTurnTools } from './AgentTurnTools'
 
@@ -10,11 +12,12 @@ interface Props {
   threadId: string
   isLastAssistant: boolean
   busy: boolean
-  hasToolChoice: boolean
+  toolChoiceQuestions?: AgentChoiceQuestion[]
   skillCatalog: Record<string, string>
   t: (key: string, params?: Record<string, string | number>) => string
   onSaveToNotebook: (content: string) => void
   onChoiceDraft?: (text: string) => void
+  onChoiceSubmit?: (answers: ChoiceSubmitAnswer[]) => void
 }
 
 function historyRef(threadId: string, seq?: number): string {
@@ -52,20 +55,24 @@ export const AgentChatTurn = memo(function AgentChatTurn({
   threadId,
   isLastAssistant,
   busy,
-  hasToolChoice,
+  toolChoiceQuestions,
   skillCatalog,
   t,
   onSaveToNotebook,
   onChoiceDraft,
+  onChoiceSubmit,
 }: Props) {
   const streamingLineId = useAgentStore((s) => s.streamingLineId)
   const isStreaming = streamingLineId === line.id
   const href = historyRef(threadId, line.seq)
+  const hasToolChoiceInline =
+    line.role === 'assistant' && isLastAssistant && Boolean(toolChoiceQuestions?.length)
   const hasContent =
     Boolean(line.content.trim()) ||
     isStreaming ||
     Boolean(line.images?.length) ||
     Boolean(line.skillIds?.length) ||
+    hasToolChoiceInline ||
     line.role === 'system'
 
   return (
@@ -119,8 +126,16 @@ export const AgentChatTurn = memo(function AgentChatTurn({
               skillLabels={skillCatalog}
               images={line.images}
               choiceDisabled={busy || !isLastAssistant}
-              hideInlineChoice={hasToolChoice && isLastAssistant}
+              hideInlineChoice={hasToolChoiceInline}
               onChoiceDraft={line.role === 'assistant' ? onChoiceDraft : undefined}
+            />
+          )}
+          {hasToolChoiceInline && toolChoiceQuestions && (
+            <AgentChoicePanel
+              questions={toolChoiceQuestions}
+              disabled={busy}
+              inline
+              onSubmit={onChoiceSubmit}
             />
           )}
           {line.role === 'assistant' &&

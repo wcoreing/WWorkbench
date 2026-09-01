@@ -17,6 +17,8 @@ interface Props {
   questions: AgentChoiceQuestion[]
   /** 历史气泡 / 忙碌时不可点 */
   disabled?: boolean
+  /** 嵌入助手气泡：无独立边框，随消息区滚动 */
+  inline?: boolean
   /** 将选项写入侧栏输入框（Markdown 兜底路径） */
   onDraft?: (text: string) => void
   /**
@@ -27,7 +29,7 @@ interface Props {
 }
 
 /** AgentChoicePanel 渲染助手挂出的可点选项（对齐 AgentDesk desk-choice）。 */
-export function AgentChoicePanel({ questions, disabled, onDraft, onSubmit }: Props) {
+export function AgentChoicePanel({ questions, disabled, inline, onDraft, onSubmit }: Props) {
   const { t } = useI18n()
   const [answers, setAnswers] = useState<Record<number, ChoiceAnswer>>({})
 
@@ -151,7 +153,7 @@ export function AgentChoicePanel({ questions, disabled, onDraft, onSubmit }: Pro
   }
 
   return (
-    <div className={`agent-choice${disabled ? ' is-disabled' : ''}`}>
+    <div className={`agent-choice${inline ? ' agent-choice-inline' : ''}${disabled ? ' is-disabled' : ''}`}>
       <div className="agent-choice-head">{t('agent.choiceTitle')}</div>
       {questions.map((q) => (
         <div key={`${q.n}-${q.id || q.prompt}`} className="agent-choice-q">

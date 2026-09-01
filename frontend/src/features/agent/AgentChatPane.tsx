@@ -6,7 +6,7 @@ import type { AgentChatLine } from '../../stores/agentStore'
 import type { AgentChatMode } from './agentChatMode'
 import type { AgentMention, AgentMentionKind } from './agentMention'
 import { AgentConfirmPanel } from './AgentConfirmPanel'
-import { AgentChoicePanel, type ChoiceSubmitAnswer } from './AgentChoicePanel'
+import type { ChoiceSubmitAnswer } from './AgentChoicePanel'
 import type { AgentChoiceQuestion } from './agentChoice'
 import { AgentInputBar } from './AgentInputBar'
 import { AgentChatTurn } from './AgentChatTurn'
@@ -94,7 +94,6 @@ export function AgentChatPane({
   onUnbindThreadMention,
   onUnbindThreadSkill,
 }: Props) {
-  const hasToolChoice = Boolean(pendingChoice && pendingChoice.items.length > 0)
   const lastAssistantIdx = lastAssistantIndex(lines)
   const useVirtual = lines.length >= VIRTUALIZE_MIN
   const listRef = useRef<HTMLDivElement>(null)
@@ -107,20 +106,27 @@ export function AgentChatPane({
     measureElement: (el) => el.getBoundingClientRect().height,
   })
 
-  const renderTurn = (line: AgentChatLine, idx: number) => (
-    <AgentChatTurn
-      key={line.id}
-      line={line}
-      threadId={threadId}
-      isLastAssistant={idx === lastAssistantIdx}
-      busy={busy}
-      hasToolChoice={hasToolChoice}
-      skillCatalog={skillCatalog}
-      t={t}
-      onSaveToNotebook={onSaveToNotebook}
-      onChoiceDraft={onChoiceDraft}
-    />
-  )
+  const renderTurn = (line: AgentChatLine, idx: number) => {
+    const toolChoiceQuestions =
+      idx === lastAssistantIdx && pendingChoice?.items.length
+        ? offerEventToQuestions(pendingChoice)
+        : undefined
+    return (
+      <AgentChatTurn
+        key={line.id}
+        line={line}
+        threadId={threadId}
+        isLastAssistant={idx === lastAssistantIdx}
+        busy={busy}
+        toolChoiceQuestions={toolChoiceQuestions}
+        skillCatalog={skillCatalog}
+        t={t}
+        onSaveToNotebook={onSaveToNotebook}
+        onChoiceDraft={onChoiceDraft}
+        onChoiceSubmit={onChoiceSubmit}
+      />
+    )
+  }
 
   return (
     <div className="agent-chat-pane">
@@ -177,16 +183,6 @@ export function AgentChatPane({
           onApprove={() => onConfirm(true)}
           onReject={() => onConfirm(false)}
         />
-      )}
-
-      {hasToolChoice && pendingChoice && (
-        <div className="agent-choice-pending">
-          <AgentChoicePanel
-            questions={offerEventToQuestions(pendingChoice)}
-            disabled={busy}
-            onSubmit={onChoiceSubmit}
-          />
-        </div>
       )}
 
       <AgentInputBar
