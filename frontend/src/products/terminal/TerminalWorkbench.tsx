@@ -490,13 +490,11 @@ export function TerminalWorkbench() {
         newSessionIds.push(await openSessionForTab(tab))
       }
       const newLayout = replaceSessionIds(tab.layout, newSessionIds)
-      const newTabId = `term-${newSessionIds[0]}`
       setTabs((prev) =>
         prev.map((t) =>
           t.id === tabId
             ? {
                 ...t,
-                id: newTabId,
                 layout: newLayout,
                 activePaneId: firstLeafId(newLayout),
                 connectState: 'ready' as const,
@@ -505,7 +503,7 @@ export function TerminalWorkbench() {
             : t,
         ),
       )
-      setActiveTabId(newTabId)
+      setActiveTabId(tabId)
       setStatusMessage(t('terminal.reconnected', { name: tab.title }))
     } catch (e) {
       setStatusMessage((e as Error).message)

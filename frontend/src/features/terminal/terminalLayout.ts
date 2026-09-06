@@ -33,14 +33,14 @@ export function collectSessionIds(layout: PaneLayout): string[] {
   return [...collectSessionIds(layout.first), ...collectSessionIds(layout.second)]
 }
 
-/** replaceSessionIds 按深度优先顺序替换各叶子的 sessionId 与 paneId。 */
+/** replaceSessionIds 按深度优先顺序替换各叶子的 sessionId（保留 paneId，避免重连卸载 xterm）。 */
 export function replaceSessionIds(layout: PaneLayout, sessionIds: string[]): PaneLayout {
   let idx = 0
   const walk = (node: PaneLayout): PaneLayout => {
     if (node.kind === 'leaf') {
       const sessionId = sessionIds[idx++]
       if (!sessionId) return node
-      return { kind: 'leaf', paneId: `pane-${sessionId}`, sessionId }
+      return { ...node, sessionId }
     }
     return {
       ...node,

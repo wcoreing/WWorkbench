@@ -274,19 +274,27 @@ export function DockerWorkbench() {
   const shellActionLabel = isRemoteContext ? t('docker.shellRemote') : t('docker.shell')
 
   const {
-    shellSessionId,
-    shellLoadingKey,
-    shellError,
+    shellSessions,
+    shellErrors,
     openContainerShell,
     popOutContainerShell,
+    closeShellSession,
+    pruneShellSessions,
   } = useDockerContainerShell({
     activeContextId,
-    detailTab,
     setDetailTab,
     setStatusMessage,
     t,
   })
+  const shellLoadingKey = selectedId ? `docker.shell.${selectedId}` : 'docker.shell._'
   const shellPaneLoading = useLoading(shellLoadingKey)
+  const shellSessionCount = Object.keys(shellSessions).length
+  const selectedShell = selectedId ? shellSessions[selectedId] : undefined
+  const selectedShellError = selectedId ? shellErrors[selectedId] ?? '' : ''
+
+  useEffect(() => {
+    pruneShellSessions(containers.filter((c) => c.state === 'running').map((c) => c.id))
+  }, [containers, pruneShellSessions])
 
   useEffect(() => {
     if (activeProduct !== 'docker') return
@@ -549,7 +557,6 @@ export function DockerWorkbench() {
 
   const selectContainer = async (container: DockerContainer) => {
     setSelectedId(container.id)
-    setDetailTab('logs')
     await Promise.all([
       loadLogs(activeContextId, container.id),
       loadContainerEnv(activeContextId, container.id),
@@ -583,11 +590,13 @@ export function DockerWorkbench() {
 
   const stopContainer = (container: DockerContainer) =>
     runContainerAction(container, t('docker.stopping', { name: container.name || container.shortId }), async () => {
+      await closeShellSession(container.id)
       await api.stopContainer(activeContextId, container.id)
     })
 
   const restartContainer = (container: DockerContainer) =>
     runContainerAction(container, t('docker.restarting', { name: container.name || container.shortId }), async () => {
+      await closeShellSession(container.id)
       await api.restartContainer(activeContextId, container.id)
     })
 
@@ -602,6 +611,7 @@ export function DockerWorkbench() {
     setActing(true)
     setStatusMessage(t('docker.removing', { name }))
     try {
+      await closeShellSession(container.id)
       await api.removeContainer(activeContextId, container.id)
       if (selectedId === container.id) {
         setSelectedId(null)
@@ -1054,7 +1064,9 @@ export function DockerWorkbench() {
                         return (
                           <tr
                             key={c.id}
-                            className={`docker-row ${c.id === selectedId ? 'selected' : ''}`}
+                            className={`docker-row${c.id === selectedId ? ' selected' : ''}${
+                              shellSessions[c.id] ? ' has-shell' : ''
+                            }`}
                             {...pressProps(() => void selectContainer(c))}
                             onContextMenu={(e) => openContainerContextMenu(e, c)}
                           >
@@ -1124,7 +1136,10 @@ export function DockerWorkbench() {
                                     className="docker-act-btn"
                                     disabled={!dockerReady || acting}
                                     title={shellActionLabel}
-                                    {...pressProps(() => void openContainerShell(c), {
+                                    {...pressProps(() => {
+                                      setSelectedId(c.id)
+                                      void openContainerShell(c)
+                                    }, {
                                       disabled: !dockerReady || acting,
                                       stop: true,
                                     })}
@@ -1188,7 +1203,9 @@ export function DockerWorkbench() {
                         void openContainerShell(selected, { showTab: false })
                       }, { disabled: !selected || selected.state !== 'running' })}
                     >
-                      {t('docker.tabShell')}
+                      {shellSessionCount > 0
+                        ? t('docker.tabShellCount', { count: shellSessionCount })
+                        : t('docker.tabShell')}
                     </button>
                     <button
                       type="button"
@@ -1210,14 +1227,30 @@ export function DockerWorkbench() {
                     </button>
                   )}
                   {selected && detailTab === 'shell' && selected.state === 'running' && (
-                    <button
-                      type="button"
-                      className="wn-btn wn-btn-tool wn-btn-sm"
-                      disabled={acting || shellPaneLoading.active}
-                      {...pressProps(() => void popOutContainerShell(selected), { disabled: acting || shellPaneLoading.active })}
-                    >
-                      {t('docker.popOutShell')}
-                    </button>
+                    <>
+                      {selectedShell && (
+                        <button
+                          type="button"
+                          className="wn-btn wn-btn-tool wn-btn-sm"
+                          disabled={acting || shellPaneLoading.active}
+                          {...pressProps(() => void closeShellSession(selected.id), {
+                            disabled: acting || shellPaneLoading.active,
+                          })}
+                        >
+                          {t('docker.closeShell')}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="wn-btn wn-btn-tool wn-btn-sm"
+                        disabled={acting || shellPaneLoading.active}
+                        {...pressProps(() => void popOutContainerShell(selected), {
+                          disabled: acting || shellPaneLoading.active,
+                        })}
+                      >
+                        {t('docker.popOutShell')}
+                      </button>
+                    </>
                   )}
                   {selected && detailTab === 'env' && (
                     <button
@@ -1234,33 +1267,46 @@ export function DockerWorkbench() {
                 </header>
                 {detailTab === 'logs' ? (
                   <pre className="docker-log-body">{logs || (mainLoading.active ? t('common.loading') : t('docker.selectLogs'))}</pre>
-                ) : detailTab === 'shell' ? (
-                  <div
-                    className="docker-shell-body"
-                    style={{ backgroundColor: terminalBackground(terminalOpacity) }}
-                  >
+                ) : null}
+                <div
+                  className="docker-shell-body"
+                  style={{
+                    display: detailTab === 'shell' ? 'flex' : 'none',
+                    backgroundColor: terminalBackground(terminalOpacity),
+                  }}
+                >
+                  {Object.values(shellSessions).map((session) => {
+                    const visible = detailTab === 'shell' && session.containerId === selectedId
+                    return (
+                      <div
+                        key={session.containerId}
+                        className="docker-shell-pane"
+                        style={{ display: visible ? 'flex' : 'none' }}
+                      >
+                        <TerminalPane
+                          sessionId={session.sessionId}
+                          active={activeProduct === 'docker' && visible}
+                          focused={visible}
+                          opacity={terminalOpacity}
+                        />
+                      </div>
+                    )
+                  })}
+                  {detailTab === 'shell' && !selectedShell && (
                     <LoadingPane loadingKey={shellLoadingKey} label={t('docker.preparingShell')} minHeight={120}>
                       {!selected ? (
                         <p className="docker-env-empty">{t('docker.selectShell')}</p>
                       ) : selected.state !== 'running' ? (
                         <p className="docker-env-empty">{t('docker.shellNeedsRunning')}</p>
-                      ) : shellError ? (
-                        <p className="docker-env-empty">{shellError}</p>
-                      ) : shellSessionId ? (
-                        <div className="docker-shell-pane">
-                          <TerminalPane
-                            sessionId={shellSessionId}
-                            active={activeProduct === 'docker' && detailTab === 'shell'}
-                            focused
-                            opacity={terminalOpacity}
-                          />
-                        </div>
+                      ) : selectedShellError ? (
+                        <p className="docker-env-empty">{selectedShellError}</p>
                       ) : (
                         <p className="docker-env-empty">{t('docker.selectShell')}</p>
                       )}
                     </LoadingPane>
-                  </div>
-                ) : (
+                  )}
+                </div>
+                {detailTab === 'env' ? (
                   <div className="docker-env-body">
                     <LoadingPane loadingKey={envLoadingKey} label={t('common.loading')} minHeight={120}>
                       {!selected ? (
@@ -1291,7 +1337,7 @@ export function DockerWorkbench() {
                       )}
                     </LoadingPane>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           )}
@@ -1430,6 +1476,7 @@ export function DockerWorkbench() {
                 className="wn-context-item"
                 {...pressProps(() => {
                   setCtxMenu(null)
+                  setSelectedId(ctxMenu.container.id)
                   void openContainerShell(ctxMenu.container)
                 })}
               >

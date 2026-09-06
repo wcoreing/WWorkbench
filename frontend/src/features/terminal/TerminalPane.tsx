@@ -53,7 +53,7 @@ function termFontSizeForUi(uiFontSize: number): number {
   return Math.max(11, zoomCompensatedPx(BASE_TERM_FONT_PX, uiFontSize))
 }
 
-/** xterm 终端视图 */
+/** xterm 终端视图：sessionId 变更时热绑定，保留 scrollback。 */
 export function TerminalPane({ sessionId, active, focused = false, opacity }: Props) {
   const { t } = useI18n()
   const tRef = useRef(t)
@@ -62,9 +62,13 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
+  const sessionIdRef = useRef(sessionId)
+  sessionIdRef.current = sessionId
+  const boundSessionRef = useRef<string | null>(null)
   const uiFontSize = useAppStore((s) => s.uiFontSize)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
 
+  // 生命周期内只建一次 xterm，避免重连清空历史
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -93,6 +97,81 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
     termRef.current = term
     fitRef.current = fit
 
+    term.attachCustomKeyEventHandler((ev) => {
+      if (ev.type !== 'keydown') return true
+      const key = ev.key.toLowerCase()
+      const copyKey = (ev.metaKey && key === 'c') || (ev.ctrlKey && ev.shiftKey && key === 'c')
+      const copySelOnly = ev.ctrlKey && !ev.metaKey && !ev.shiftKey && key === 'c' && term.hasSelection()
+      if (copyKey || copySelOnly) {
+        void (async () => {
+          const text = readXtermCopyText(term)
+          if (!text) {
+            useAppStore.getState().setStatusMessage(tRef.current('terminal.copyEmpty'))
+            return
+          }
+          const ok = await writeAppClipboard(text)
+          useAppStore.getState().setStatusMessage(ok ? tRef.current('terminal.copied') : tRef.current('terminal.copyFailed'))
+        })()
+        return false
+      }
+      return true
+    })
+
+    const onPaste = (e: ClipboardEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const sync = e.clipboardData?.getData('text/plain')
+      void pasteIntoTerminal(sessionIdRef.current, sync || undefined).catch((err) => {
+        useAppStore.getState().setStatusMessage((err as Error).message)
+      })
+    }
+    el.addEventListener('paste', onPaste, true)
+
+    const resize = () => {
+      if (disposed) return
+      if (!safeFit(fit, term, el)) return
+      api.resizeTerminal(sessionIdRef.current, term.cols, term.rows).catch(() => {})
+    }
+
+    requestAnimationFrame(resize)
+
+    const onCtx = (e: MouseEvent) => {
+      e.preventDefault()
+      setCtxMenu({ x: e.clientX, y: e.clientY })
+    }
+    el.addEventListener('contextmenu', onCtx)
+
+    const unbindGuard = bindSelectionGuard(el, () => term.clearSelection())
+    const ro = new ResizeObserver(() => resize())
+    ro.observe(el)
+
+    return () => {
+      disposed = true
+      el.removeEventListener('contextmenu', onCtx)
+      el.removeEventListener('paste', onPaste, true)
+      unbindGuard()
+      ro.disconnect()
+      term.dispose()
+      termRef.current = null
+      fitRef.current = null
+      boundSessionRef.current = null
+    }
+  }, [])
+
+  // 会话热绑定：换 sessionId 时不销毁 xterm，续写历史
+  useEffect(() => {
+    const term = termRef.current
+    const fit = fitRef.current
+    const el = containerRef.current
+    if (!term || !fit || !el) return
+
+    let disposed = false
+    const prev = boundSessionRef.current
+    if (prev && prev !== sessionId) {
+      term.writeln(`\r\n\x1b[32m[${tRef.current('terminal.sessionReconnected')}]\x1b[0m`)
+    }
+    boundSessionRef.current = sessionId
+
     const copyOut = async () => {
       const text = readXtermCopyText(term)
       if (!text) {
@@ -119,42 +198,13 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
       paste: pasteIn,
     })
     const unregisterTail = registerTerminalTail(sessionId, () => readXtermTail(term, AGENT_SHELL_TAIL_LINES))
-
-    term.attachCustomKeyEventHandler((ev) => {
-      if (ev.type !== 'keydown') return true
-      const key = ev.key.toLowerCase()
-      const copyKey = (ev.metaKey && key === 'c') || (ev.ctrlKey && ev.shiftKey && key === 'c')
-      const copySelOnly = ev.ctrlKey && !ev.metaKey && !ev.shiftKey && key === 'c' && term.hasSelection()
-      if (copyKey || copySelOnly) {
-        void copyOut()
-        return false
-      }
-      return true
-    })
-
-    const onPaste = (e: ClipboardEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      const sync = e.clipboardData?.getData('text/plain')
-      void pasteIn(sync || undefined)
-    }
-    el.addEventListener('paste', onPaste, true)
-
-    const resize = () => {
-      if (disposed) return
-      if (!safeFit(fit, term, el)) return
-      api.resizeTerminal(sessionId, term.cols, term.rows).catch(() => {})
-    }
-
-    requestAnimationFrame(resize)
-
     const unregisterFocus = registerTerminalFocus(sessionId, () => {
       if (!disposed) term.focus()
     })
 
     const disposeData = term.onData((data) => {
       api.writeTerminal(sessionId, data).catch(() => {
-        if (!disposed) term.writeln('\r\n\x1b[31m[连接已断开]\x1b[0m')
+        if (!disposed) term.writeln(`\r\n\x1b[31m[${tRef.current('terminal.connectionLost')}]\x1b[0m`)
       })
     })
 
@@ -165,34 +215,23 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
 
     const offClosed = onTerminalClosed((sid) => {
       if (sid !== sessionId || disposed) return
-      term.writeln('\r\n\x1b[33m[会话已结束]\x1b[0m')
+      term.writeln(`\r\n\x1b[33m[${tRef.current('terminal.sessionEnded')}]\x1b[0m`)
     })
 
-    const onCtx = (e: MouseEvent) => {
-      e.preventDefault()
-      setCtxMenu({ x: e.clientX, y: e.clientY })
-    }
-    el.addEventListener('contextmenu', onCtx)
-
-    const unbindGuard = bindSelectionGuard(el, () => term.clearSelection())
-    const ro = new ResizeObserver(() => resize())
-    ro.observe(el)
+    requestAnimationFrame(() => {
+      if (disposed) return
+      if (!safeFit(fit, term, el)) return
+      api.resizeTerminal(sessionId, term.cols, term.rows).catch(() => {})
+    })
 
     return () => {
       disposed = true
-      el.removeEventListener('contextmenu', onCtx)
-      el.removeEventListener('paste', onPaste, true)
-      unbindGuard()
       unregisterClip()
       unregisterTail()
       unregisterFocus()
       disposeData.dispose()
       offOutput()
       offClosed()
-      ro.disconnect()
-      term.dispose()
-      termRef.current = null
-      fitRef.current = null
     }
   }, [sessionId])
 
@@ -206,9 +245,9 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
     term.options.fontSize = next
     requestAnimationFrame(() => {
       if (!safeFit(fit, term, el)) return
-      api.resizeTerminal(sessionId, term.cols, term.rows).catch(() => {})
+      api.resizeTerminal(sessionIdRef.current, term.cols, term.rows).catch(() => {})
     })
-  }, [uiFontSize, sessionId])
+  }, [uiFontSize])
 
   useEffect(() => {
     const el = containerRef.current
@@ -241,7 +280,7 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
     if (!el || !fit || !term) return
     requestAnimationFrame(() => {
       if (!safeFit(fit, term, el)) return
-      api.resizeTerminal(sessionId, term.cols, term.rows).catch(() => {})
+      api.resizeTerminal(sessionIdRef.current, term.cols, term.rows).catch(() => {})
       term.focus()
     })
   }, [active, sessionId])
