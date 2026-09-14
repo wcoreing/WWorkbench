@@ -44,7 +44,7 @@ export function NotebookNoteSettingsMenu({
     Boolean(note.sshHostId) ||
     Boolean(note.connectionId) ||
     note.groupId !== '' ||
-    note.language !== 'markdown'
+    note.language === 'shell'
 
   return (
     <div className="notebook-settings-menu" ref={rootRef}>

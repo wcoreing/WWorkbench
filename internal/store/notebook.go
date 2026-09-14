@@ -159,7 +159,7 @@ func (s *Store) SaveNote(n model.NoteDO) error {
 		return errno.New(errno.CodeInvalidArg, "笔记标题不能为空", "")
 	}
 	if n.Language == "" {
-		n.Language = "plaintext"
+		n.Language = "markdown"
 	}
 	now := time.Now().Unix()
 	if n.CreatedAt == 0 {

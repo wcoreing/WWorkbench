@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS notes (
   group_id TEXT NOT NULL DEFAULT '',
   title TEXT NOT NULL,
   content TEXT NOT NULL DEFAULT '',
-  language TEXT NOT NULL DEFAULT 'plaintext',
+  language TEXT NOT NULL DEFAULT 'markdown',
   ssh_host_id TEXT NOT NULL DEFAULT '',
   connection_id TEXT NOT NULL DEFAULT '',
   sort_order INTEGER NOT NULL DEFAULT 0,
@@ -247,6 +247,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_docker_shell_hosts_ctx_ctr
   ON docker_shell_hosts(context_id, container_id);`)
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移 Docker Shell 主机表失败", err)
+	}
+	// 历史 plaintext 笔记统一升为 markdown（视图/预览以 MD 为一等公民）
+	if _, err := s.db.Exec(`UPDATE notes SET language = 'markdown' WHERE language = 'plaintext'`); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "升级笔记语言失败", err)
 	}
 	return nil
 }

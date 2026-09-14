@@ -63,6 +63,12 @@ function toSummary(note: Note): NoteSummary {
   }
 }
 
+/** 历史 plaintext 升为 markdown（视图切换与预览依赖 MD）。 */
+function adoptNoteLanguage(note: Note): Note {
+  if (note.language !== 'plaintext') return note
+  return { ...note, language: 'markdown' }
+}
+
 /** NotebookWorkbench 笔记本产品线工作区。 */
 export function NotebookWorkbench() {
   const { t } = useI18n()
@@ -109,7 +115,7 @@ export function NotebookWorkbench() {
   })
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'note' | 'group'; id: string; title: string } | null>(null)
   const [groupModal, setGroupModal] = useState<NotebookGroup | null | undefined>(undefined)
-  const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('preview')
+  const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('split')
   const [saveByNote, setSaveByNote] = useState<Record<string, 'saved' | 'dirty' | 'saving'>>({})
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
   useDismissOverlays(() => setTabCtxMenu(null))
@@ -122,6 +128,10 @@ export function NotebookWorkbench() {
   openNotesRef.current = openNotes
 
   const activeNote = activeTabId ? openNotes[activeTabId] ?? null : null
+  const showNoteEditor = Boolean(activeNote) && mdViewMode !== 'preview'
+  const showNotePreview = Boolean(activeNote) && mdViewMode !== 'source'
+  const noteEditorSplitClass =
+    showNoteEditor && showNotePreview ? ' with-preview' : !showNoteEditor && showNotePreview ? ' preview-only' : ''
   const tabsRef = useScrollActiveTabIntoView(activeTabId)
 
   useEffect(() => {
@@ -240,7 +250,7 @@ export function NotebookWorkbench() {
             const status = saveByNote[id]
             if (status === 'dirty' || status === 'saving') continue
             try {
-              const note = (await api.getNote(id)) as Note
+              const note = adoptNoteLanguage((await api.getNote(id)) as Note)
               markNoteSaved(note)
               setOpenNotes((prev) => ({ ...prev, [id]: note }))
             } catch {
@@ -298,8 +308,9 @@ export function NotebookWorkbench() {
 
   const openNoteById = useCallback(
     async (id: string) => {
-      const note = (await api.getNote(id)) as Note
-      markNoteSaved(note)
+      const raw = (await api.getNote(id)) as Note
+      const note = adoptNoteLanguage(raw)
+      const promoted = note.language !== raw.language
       setOpenNotes((prev) => ({ ...prev, [id]: note }))
       setSummaries((prev) => {
         const sum = toSummary(note)
@@ -310,8 +321,13 @@ export function NotebookWorkbench() {
       })
       setOpenTabIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
       setActiveTabId(id)
+      if (promoted) {
+        void persistNote(note, { silent: true })
+      } else {
+        markNoteSaved(note)
+      }
     },
-    [markNoteSaved],
+    [markNoteSaved, persistNote],
   )
 
   useEffect(() => {
@@ -387,9 +403,13 @@ export function NotebookWorkbench() {
         const ui = await api.getNotebookUI()
         const tabIds = ui.openTabIds ?? []
         const loaded: Record<string, Note> = {}
+        const promoted: Note[] = []
         for (const id of tabIds) {
           try {
-            loaded[id] = (await api.getNote(id)) as Note
+            const raw = (await api.getNote(id)) as Note
+            const note = adoptNoteLanguage(raw)
+            loaded[id] = note
+            if (note.language !== raw.language) promoted.push(note)
           } catch {
             /* 跳过已删除笔记 */
           }
@@ -399,6 +419,13 @@ export function NotebookWorkbench() {
         for (const n of Object.values(loaded)) markNoteSaved(n)
         setOpenTabIds(validIds)
         setActiveTabId(ui.activeTabId && loaded[ui.activeTabId] ? ui.activeTabId : validIds[0] ?? null)
+        await Promise.all(
+          promoted.map((n) =>
+            api.saveNote(toNoteDO(n)).catch(() => {
+              /* 启动升级失败不挡 UI */
+            }),
+          ),
+        )
       },
       {
         label: t('notebook.loading'),
@@ -542,7 +569,7 @@ export function NotebookWorkbench() {
           groupId,
           title: t('common.unnamed'),
           content: '',
-          language: 'plaintext',
+          language: 'markdown',
           sshHostId: '',
           connectionId: '',
           sortOrder: nextNoteSortOrder(summaries, groupId),
@@ -953,9 +980,7 @@ export function NotebookWorkbench() {
                   placeholder={t('notebook.titlePlaceholder')}
                 />
                 <div className="notebook-meta-bar-right">
-                  {activeNote.language === 'markdown' && (
-                    <NotebookMdViewToggle mode={mdViewMode} onChange={setMdViewMode} />
-                  )}
+                  <NotebookMdViewToggle mode={mdViewMode} onChange={setMdViewMode} />
                   <NotebookNoteSettingsMenu
                     note={activeNote}
                     groups={groups}
@@ -991,12 +1016,8 @@ export function NotebookWorkbench() {
                   </div>
                 </div>
               </div>
-              <div
-                className={`notebook-editor-split${
-                  mdViewMode === 'split' ? ' with-preview' : mdViewMode === 'preview' ? ' preview-only' : ''
-                }`}
-              >
-                {mdViewMode !== 'preview' && (
+              <div className={`notebook-editor-split${noteEditorSplitClass}`}>
+                {showNoteEditor && (
                   <NoteEditor
                     ref={editorRef}
                     noteId={activeNote.id}
@@ -1006,8 +1027,24 @@ export function NotebookWorkbench() {
                     onRunSelection={runInTerminal}
                   />
                 )}
-                {mdViewMode !== 'source' && activeNote.language === 'markdown' && (
-                  <div className="notebook-preview-pane">
+                {showNotePreview && (
+                  <div
+                    className="notebook-preview-pane"
+                    title={mdViewMode === 'preview' ? t('notebook.previewEditHint') : undefined}
+                    onDoubleClick={mdViewMode === 'preview' ? () => setMdViewMode('split') : undefined}
+                  >
+                    {mdViewMode === 'preview' && (
+                      <div className="notebook-preview-edit-bar">
+                        <span>{t('notebook.previewOnlyHint')}</span>
+                        <button
+                          type="button"
+                          className="wn-btn wn-btn-sm wn-btn-primary"
+                          {...pressProps(() => setMdViewMode('split'))}
+                        >
+                          {t('notebook.enterEdit')}
+                        </button>
+                      </div>
+                    )}
                     <MarkdownPreview content={activeNote.content} />
                   </div>
                 )}

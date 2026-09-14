@@ -82,7 +82,7 @@ func (s *Service) SaveNote(n model.NoteDO) (*model.NoteDO, error) {
 	}
 	n.GroupID = strings.TrimSpace(n.GroupID)
 	if n.Language == "" {
-		n.Language = "plaintext"
+		n.Language = "markdown"
 	}
 	if err := s.store.SaveNote(n); err != nil {
 		return nil, err
