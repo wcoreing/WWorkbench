@@ -105,7 +105,7 @@ func Gather(ctx model.AgentContextDO, userText string) string {
 	if hint := userSSHHint(userText, ctx.Mentions); hint != "" {
 		b.WriteString(hint)
 	}
-	b.WriteString("- 容器启停/删除用 start_container / stop_container / remove_container（会确认）。shell_run=注入给人看（pip/下载/训练）；shell_probe=无头只读短探针；看可见终端输出用 get_shell_output 按需分页。\n")
+	b.WriteString("- 容器启停/删除用 start_container / stop_container / remove_container（会确认）。shell_run=注入给人看（pip/下载/训练）；shell_probe=无头只读短探针；看可见终端输出用 get_shell_output 按需分页；会话断开用 terminal_reconnect。\n")
 	b.WriteString("- 资产落盘：HTTP→save_http_request+save_http_environment；SSH→save_ssh_host/save_ssh_forward；库→save_connection；日志→save_log_source；Docker→save_docker_context。\n")
 	out := b.String()
 	if utf8.RuneCountInString(out) > maxSnapshotRunes {

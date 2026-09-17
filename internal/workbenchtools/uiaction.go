@@ -6,8 +6,9 @@ import "WWorkbench/internal/workbench"
 type UIActionKind string
 
 const (
-	UIActionShellRun   UIActionKind = UIActionKind(workbench.CapShellRun)
-	UIActionShellProbe UIActionKind = UIActionKind(workbench.CapShellProbe)
+	UIActionShellRun          UIActionKind = UIActionKind(workbench.CapShellRun)
+	UIActionShellProbe        UIActionKind = UIActionKind(workbench.CapShellProbe)
+	UIActionTerminalReconnect UIActionKind = UIActionKind(workbench.CapTerminalReconnect)
 	UIActionDatabaseOpen      UIActionKind = UIActionKind(workbench.CapDatabaseOpen)
 	UIActionNotebookOpen      UIActionKind = UIActionKind(workbench.CapNotebookOpen)
 	UIActionSFTPOpen          UIActionKind = UIActionKind(workbench.CapSFTPOpen)

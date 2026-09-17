@@ -5,6 +5,7 @@ import { Capability } from './capabilities'
 export function capabilityToProductId(capability: string): ProductId | null {
   switch (capability) {
     case Capability.ShellRun:
+    case Capability.TerminalReconnect:
     case Capability.SSHForwardOpen:
       return 'terminal'
     case Capability.DatabaseOpen:

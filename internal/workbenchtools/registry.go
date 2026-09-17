@@ -339,6 +339,36 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolGetShellOutput,
 	})
 	r.add(ToolDef{
+		Name:        workbench.CapTerminalReconnect,
+		Description: "重连已打开的可见终端（本机/SSH/Docker）：关闭旧 PTY 并新开，面板保留历史输出。按 sessionId 或 hostId/hostOrName/localShell 定位；若尚无对应标签则新开连接。会话断开、[会话已结束] 后先调本工具再 shell_run/get_shell_output。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"sessionId": map[string]interface{}{
+					"type":        "string",
+					"description": "终端 sessionId（openTerminals / get_workbench_context）",
+				},
+				"terminalSessionId": map[string]interface{}{
+					"type":        "string",
+					"description": "同 sessionId",
+				},
+				"hostId": map[string]interface{}{
+					"type":        "string",
+					"description": "SSH/Docker 主机 ID（来自 list_ssh_hosts）",
+				},
+				"hostOrName": map[string]interface{}{
+					"type":        "string",
+					"description": "IP、主机名或配置名称（与 hostId 二选一）",
+				},
+				"localShell": map[string]interface{}{
+					"type":        "boolean",
+					"description": "true=重连本机终端",
+				},
+			},
+		},
+		Handler: toolTerminalReconnect,
+	})
+	r.add(ToolDef{
 		Name:        workbench.CapDatabaseOpen,
 		Description: "打开数据库工作台：按 connectionId 连接，可选填入 initialSql；runSql=true 时自动执行（只读建议先 readonly 查库）。",
 		Parameters: map[string]interface{}{

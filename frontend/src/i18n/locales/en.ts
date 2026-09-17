@@ -798,6 +798,7 @@ export const en: MessageTree = {
     reconnect: 'Reconnect',
     reconnecting: 'Reconnecting to {name}…',
     reconnected: 'Reconnected to {name}',
+    reconnectNoTarget: 'No terminal to reconnect; provide sessionId / hostId or open a terminal first',
     sessionEnded: 'Session ended',
     sessionReconnected: 'Reconnected',
     connectionLost: 'Connection lost',

@@ -10,6 +10,7 @@ export const Capability = {
   ListSSHHosts: 'list_ssh_hosts',
   ShellRun: 'shell_run',
   ShellProbe: 'shell_probe',
+  TerminalReconnect: 'terminal_reconnect',
   DatabaseSessionOpen: 'open_database_session',
   DatabaseSessionClose: 'close_database_session',
   ListTables: 'list_tables',
@@ -36,6 +37,7 @@ export type WorkbenchCapability = (typeof Capability)[keyof typeof Capability]
 /** UI 联动能力（由 CommandBus 在前端执行）。 */
 export const UI_CAPABILITIES: ReadonlySet<string> = new Set([
   Capability.ShellRun,
+  Capability.TerminalReconnect,
   Capability.DatabaseOpen,
   Capability.NotebookOpen,
   Capability.SftpOpen,

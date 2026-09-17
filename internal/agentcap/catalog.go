@@ -105,6 +105,11 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "terminal_reconnect", Label: "终端重连", Risk: RiskSession,
+			Description:    "重连已打开的本机/SSH/Docker 终端（保留面板历史）；可按 sessionId 或 hostId",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "database_open", Label: "打开数据库工作台", Risk: RiskSession,
 			Description:    "切换到数据库并连接，可选填入或执行 SQL",
 			DefaultEnabled: true,

@@ -814,6 +814,7 @@ export const zh: MessageTree = {
     reconnect: '重新连接',
     reconnecting: '正在重新连接 {name}…',
     reconnected: '已重新连接 {name}',
+    reconnectNoTarget: '未找到可重连的终端，请先指定 sessionId / hostId 或打开终端',
     sessionEnded: '会话已结束',
     sessionReconnected: '已重新连接',
     connectionLost: '连接已断开',

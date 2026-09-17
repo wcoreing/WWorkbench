@@ -120,3 +120,84 @@ func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 		"note":           "已切换到 SSH 终端；命令将自动输入，请在终端面板查看输出",
 	})
 }
+
+type terminalReconnectArgs struct {
+	SessionID         string `json:"sessionId"`
+	TerminalSessionID string `json:"terminalSessionId"`
+	HostID            string `json:"hostId"`
+	HostOrName        string `json:"hostOrName"`
+	LocalShell        bool   `json:"localShell"`
+}
+
+// toolTerminalReconnect 重连可见终端（UI 联动 terminal_reconnect）。
+func toolTerminalReconnect(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
+	var in terminalReconnectArgs
+	if err := json.Unmarshal(raw, &in); err != nil {
+		return Fail("参数无效: " + err.Error())
+	}
+	sessionID := strings.TrimSpace(in.SessionID)
+	if sessionID == "" {
+		sessionID = strings.TrimSpace(in.TerminalSessionID)
+	}
+	hostID := strings.TrimSpace(in.HostID)
+	hostOrName := strings.TrimSpace(in.HostOrName)
+	if !in.LocalShell && sessionID == "" && hostID == "" && hostOrName == "" {
+		return Fail("请提供 sessionId、hostId/hostOrName 或 localShell=true")
+	}
+	if d.UIActions == nil {
+		return Fail("UI 联动未初始化")
+	}
+
+	payload := map[string]interface{}{}
+	if sessionID != "" {
+		payload["sessionId"] = sessionID
+	}
+	if in.LocalShell {
+		payload["localShell"] = true
+		d.UIActions.Dispatch(UIActionTerminalReconnect, payload)
+		return OKData(map[string]interface{}{
+			"reconnecting": true,
+			"kind":         "local",
+			"note":         "已请求重连本机终端；面板会保留历史输出",
+		})
+	}
+	if hostID == "" && hostOrName != "" {
+		host, ambiguous, errMsg := resolveSSHHost(d, "", hostOrName)
+		if errMsg != "" {
+			if len(ambiguous) > 0 {
+				parts := make([]string, 0, len(ambiguous))
+				for _, h := range ambiguous {
+					parts = append(parts, fmt.Sprintf("%s %s@%s (id=%s)", h.Name, h.User, h.Host, h.ID))
+				}
+				return Fail(errMsg + "：" + strings.Join(parts, "；"))
+			}
+			return Fail(errMsg)
+		}
+		hostID = host.ID
+		payload["hostId"] = host.ID
+		d.UIActions.Dispatch(UIActionTerminalReconnect, payload)
+		return OKData(map[string]interface{}{
+			"reconnecting": true,
+			"hostId":       host.ID,
+			"name":         host.Name,
+			"host":         host.Host,
+			"user":         host.User,
+			"note":         "已请求重连 SSH 终端；面板会保留历史输出",
+		})
+	}
+	if hostID != "" {
+		payload["hostId"] = hostID
+	}
+	d.UIActions.Dispatch(UIActionTerminalReconnect, payload)
+	out := map[string]interface{}{
+		"reconnecting": true,
+		"note":         "已请求重连终端；面板会保留历史输出。若尚无标签将新开连接",
+	}
+	if sessionID != "" {
+		out["sessionId"] = sessionID
+	}
+	if hostID != "" {
+		out["hostId"] = hostID
+	}
+	return OKData(out)
+}

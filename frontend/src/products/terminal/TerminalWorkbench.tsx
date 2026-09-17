@@ -567,6 +567,53 @@ export function TerminalWorkbench() {
     })
   })
 
+  useWorkbenchCommand(Capability.TerminalReconnect, (cmd) => {
+    const sessionId =
+      payloadStr(cmd.payload, 'sessionId') || payloadStr(cmd.payload, 'terminalSessionId') || ''
+    const hostId = payloadStr(cmd.payload, 'hostId') || ''
+    const localShell = payloadBool(cmd.payload, 'localShell')
+    const tabsNow = tabsRef.current
+
+    let tab =
+      (sessionId
+        ? tabsNow.find((t) => collectSessionIds(t.layout).includes(sessionId))
+        : undefined) ??
+      (localShell
+        ? tabsNow.find((t) => t.kind === 'local' && t.id === activeTabId) ||
+          tabsNow.find((t) => t.kind === 'local')
+        : undefined) ??
+      (hostId
+        ? tabsNow.find(
+            (t) =>
+              (t.kind === 'ssh' || t.kind === 'docker') &&
+              t.hostId === hostId &&
+              t.id === activeTabId,
+          ) ||
+          tabsNow.find((t) => (t.kind === 'ssh' || t.kind === 'docker') && t.hostId === hostId)
+        : undefined)
+
+    void (async () => {
+      try {
+        if (tab) {
+          await reconnectTab(tab.id)
+          return
+        }
+        if (localShell) {
+          await connectLocal()
+          return
+        }
+        if (hostId) {
+          const host = await resolveHost(hostId)
+          await connectHost(host)
+          return
+        }
+        setStatusMessage(t('terminal.reconnectNoTarget'))
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  })
+
   const closeSessions = async (sessionIds: string[]) => {
     for (const sid of sessionIds) {
       if (!isLiveSessionId(sid)) continue

@@ -21,6 +21,8 @@ export function dispatchAgentUiAction(raw: Record<string, unknown>) {
         useAppStore.getState().setStatusMessage(
           payload.localShell ? 'AI：已打开本机终端' : 'AI：已打开 SSH 终端',
         )
+      } else if (kind === Capability.TerminalReconnect) {
+        useAppStore.getState().setStatusMessage('AI：正在重连终端')
       } else if (kind === Capability.DatabaseOpen) {
         useAppStore.getState().setStatusMessage('AI：已打开数据库工作台')
       } else if (kind === Capability.LogsOpen) {

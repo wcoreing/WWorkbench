@@ -17,7 +17,7 @@ import (
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
 // ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.54.198"
+const ServerVersion = "0.54.199"
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明。
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本等）。
@@ -25,6 +25,7 @@ const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据�
 - 写操作可能返回含 ww_confirm 的文本；需在 WWorkbench 侧栏确认，外置客户端本期不弹确认框。
 - 容器启停/删除用 start_container / stop_container / remove_container，勿用 shell_probe 跑 docker rm/start/stop。
 - 问终端输出用 get_shell_output（分页读可见 PTY scrollback；offsetFromEnd=0 最新页，nextOffsetFromEnd 向历史翻）。shell_run=给人看（注入 pip/下载/训练/脚本，不返回 stdout）。shell_probe=无头只读短探针，禁止改机器；看磁盘文件用 cat，不要 sed/awk。
+- 终端断开或出现「会话已结束」时先 terminal_reconnect（sessionId 或 hostId），再 shell_run / get_shell_output。
 - HTTP：先 save_http_request / save_http_environment，再 execute_http(requestId / envId)。
 - 笔记本：list_notes / search_notes / get_note(noteId) 读正文；notebook_append_content 写入；首次发布技能 publish_agent_skill；改已有技能 update_agent_skill（不写笔记）；抽象为方法包 /skill-to-method-pack。
 - Agent 对话：agent_chat 同步发消息并等回复（支持 /skill-id、mentions、sshHostId）；待确认用 agent_confirm。

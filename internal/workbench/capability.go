@@ -14,6 +14,7 @@ const (
 	CapShellRun             = "shell_run"
 	CapShellProbe           = "shell_probe"
 	CapGetShellOutput       = "get_shell_output"
+	CapTerminalReconnect    = "terminal_reconnect"
 	CapOpenDatabaseSession  = "open_database_session"
 	CapCloseDatabaseSession = "close_database_session"
 	CapListTables           = "list_tables"
@@ -42,6 +43,7 @@ const (
 func UICapabilities() []string {
 	return []string{
 		CapShellRun,
+		CapTerminalReconnect,
 		CapDatabaseOpen,
 		CapNotebookOpen,
 		CapSFTPOpen,

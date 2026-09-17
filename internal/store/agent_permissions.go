@@ -98,6 +98,8 @@ func (s *Store) GetToolPermissions() map[string]bool {
 		"terminal_open":           workbench.CapShellRun,
 		"terminal.exec":           workbench.CapShellProbe,
 		"terminal_exec":           workbench.CapShellProbe,
+		"terminal.reconnect":      workbench.CapTerminalReconnect,
+		"reconnect_terminal":      workbench.CapTerminalReconnect,
 		"database.open":           workbench.CapDatabaseOpen,
 		"notebook.append_content": workbench.CapNotebookAppend,
 	}
