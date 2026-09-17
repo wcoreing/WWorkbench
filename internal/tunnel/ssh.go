@@ -255,7 +255,8 @@ func expandKeyPath(path string) (string, error) {
 	return filepath.Clean(os.ExpandEnv(p)), nil
 }
 
-// loadPrivateKey 从文件加载私钥，支持 PEM 加密密钥。
+// loadPrivateKey 从文件加载私钥；口令仅在密钥确为加密时使用。
+// Password 字段同时表示「登录密码」，不可对未加密私钥强行当 passphrase。
 func loadPrivateKey(path, passphrase string) (ssh.Signer, error) {
 	path, err := expandKeyPath(path)
 	if err != nil {
@@ -265,11 +266,9 @@ func loadPrivateKey(path, passphrase string) (ssh.Signer, error) {
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeInvalidArg, "读取 SSH 私钥失败", err)
 	}
-	var key interface{}
-	if passphrase != "" {
+	key, err := ssh.ParsePrivateKey(raw)
+	if err != nil && passphrase != "" {
 		key, err = ssh.ParsePrivateKeyWithPassphrase(raw, []byte(passphrase))
-	} else {
-		key, err = ssh.ParsePrivateKey(raw)
 	}
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeInvalidArg, "解析 SSH 私钥失败", err)

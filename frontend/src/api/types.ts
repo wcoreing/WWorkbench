@@ -176,6 +176,10 @@ export interface SSHHost {
   user: string
   password: string
   keyPath: string
+  /** 库中是否已存密码（不回传明文） */
+  hasPassword?: boolean
+  /** 保存时显式清空已存密码 */
+  clearPassword?: boolean
   createdAt: number
   updatedAt: number
 }

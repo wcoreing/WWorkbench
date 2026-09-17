@@ -24,6 +24,8 @@ const emptyHost = (): SSHHost => ({
   user: 'root',
   password: '',
   keyPath: '',
+  hasPassword: false,
+  clearPassword: false,
   createdAt: 0,
   updatedAt: 0,
 })
@@ -35,7 +37,11 @@ function validateSSHHostForm(form: SSHHost, locale: AppLocale): string | null {
   if (!form.host.trim()) return t('sshHost.errHost')
   if (!form.user.trim()) return t('sshHost.errUser')
   if (!form.port || form.port <= 0) return t('sshHost.errPort')
-  if (!form.keyPath.trim() && !form.password && !form.id) {
+  const hasAuth =
+    form.keyPath.trim() ||
+    form.password ||
+    (Boolean(form.id) && form.hasPassword && !form.clearPassword)
+  if (!hasAuth) {
     return t('sshHost.errAuth')
   }
   return null
@@ -60,11 +66,19 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
       return
     }
     let cancelled = false
-    setForm({ ...initial, password: '' })
+    // 列表项不含密码；详情也不回传明文，只带 hasPassword
+    setForm({ ...initial, password: '', clearPassword: false })
     api
       .getSSHHost(initial.id)
       .then((host) => {
-        if (!cancelled) setForm(host)
+        if (!cancelled) {
+          setForm({
+            ...host,
+            password: '',
+            clearPassword: false,
+            hasPassword: Boolean(host.hasPassword),
+          })
+        }
       })
       .catch((e) => {
         if (!cancelled) setError((e as Error).message)
@@ -111,7 +125,8 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
       return
     }
     const payload = { ...form }
-    if (!payload.id) payload.id = crypto.randomUUID()
+    // 新建交给后端分配 id；前端预生成会导致 mergeSecrets 误查「主机不存在」
+    if (!initial?.id) payload.id = ''
     setSaving(true)
     setError('')
     setSuccess('')
@@ -128,6 +143,10 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
 
   const isEdit = Boolean(form.id && initial?.id)
   const busy = testLoading.active || saving
+  const passwordPlaceholder =
+    isEdit && form.hasPassword && !form.clearPassword && !form.password
+      ? t('sshHost.passwordKeptPlaceholder')
+      : t('sshHost.passwordPlaceholder')
 
   return (
     <>
@@ -229,9 +248,30 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
                     className="wn-input"
                     type="password"
                     value={form.password}
-                    onChange={(e) => update({ password: e.target.value })}
-                    placeholder={t('sshHost.passwordPlaceholder')}
+                    onChange={(e) =>
+                      update({
+                        password: e.target.value,
+                        clearPassword: false,
+                      })
+                    }
+                    placeholder={passwordPlaceholder}
+                    autoComplete="new-password"
                   />
+                  {isEdit && form.hasPassword && !form.clearPassword && (
+                    <button
+                      type="button"
+                      className="wn-btn wn-btn-tool"
+                      style={{ marginTop: 6 }}
+                      {...pressProps(() =>
+                        update({ password: '', clearPassword: true, hasPassword: false }),
+                      )}
+                    >
+                      {t('sshHost.clearSavedPassword')}
+                    </button>
+                  )}
+                  {form.clearPassword && (
+                    <p className="conn-ssh-hint">{t('sshHost.passwordWillClear')}</p>
+                  )}
                 </div>
                 <p className="conn-ssh-hint">{t('sshHost.hint')}</p>
               </div>

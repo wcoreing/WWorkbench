@@ -116,12 +116,13 @@ func (s *Service) GetShellHost(id string) ApiResult[model.ShellHostDO] {
 	})
 }
 
-// GetSSHHost 获取 SSH 主机详情（含密码，仅供编辑）。
+// GetSSHHost 获取 SSH 主机详情（不回传密码明文；hasPassword 表示库中是否已存）。
 func (s *Service) GetSSHHost(id string) ApiResult[model.SSHHostDO] {
 	h, err := s.sshHosts.Get(id)
 	if err != nil {
 		return ErrResult[model.SSHHostDO](err)
 	}
+	terminal.StripSecrets(h)
 	return OkResult(*h)
 }
 

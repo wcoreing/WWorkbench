@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"context"
+	"strings"
 
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
@@ -32,12 +33,24 @@ func (s *HostService) Get(id string) (*model.SSHHostDO, error) {
 }
 
 // mergeSecrets 编辑时合并已保存的密码。
+// 新建主机前端可能已预分配 id 且密码为空（仅私钥登录），查库不存在时不应失败。
+// 空白密码视为未填写（保持库中原密码）；ClearPassword 才真正清空。
 func (s *HostService) mergeSecrets(h model.SSHHostDO) (model.SSHHostDO, error) {
+	if h.ClearPassword {
+		h.Password = ""
+		h.ClearPassword = false
+		h.HasPassword = false
+		return h, nil
+	}
+	h.Password = strings.TrimSpace(h.Password)
 	if h.Password != "" || h.ID == "" {
 		return h, nil
 	}
 	existing, err := s.store.GetSSHHost(h.ID)
 	if err != nil {
+		if ae := errno.Extract(err); ae != nil && ae.Code == errno.CodeNotFound {
+			return h, nil
+		}
 		return h, err
 	}
 	h.Password = existing.Password
@@ -91,9 +104,11 @@ func (s *HostService) Test(ctx context.Context, h model.SSHHostDO) error {
 	return sess.Run("echo ok")
 }
 
-// StripSecrets 清除敏感字段。
+// StripSecrets 清除敏感字段；保留 HasPassword 供编辑态提示。
 func StripSecrets(h *model.SSHHostDO) {
+	h.HasPassword = h.HasPassword || strings.TrimSpace(h.Password) != ""
 	h.Password = ""
+	h.ClearPassword = false
 }
 
 // ValidateSSHHost 校验 SSH 主机配置。

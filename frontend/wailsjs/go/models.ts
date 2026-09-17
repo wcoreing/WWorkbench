@@ -4648,6 +4648,8 @@ export namespace model {
 	    user: string;
 	    password: string;
 	    keyPath: string;
+	    hasPassword: boolean;
+	    clearPassword: boolean;
 	    createdAt: number;
 	    updatedAt: number;
 	
@@ -4664,6 +4666,8 @@ export namespace model {
 	        this.user = source["user"];
 	        this.password = source["password"];
 	        this.keyPath = source["keyPath"];
+	        this.hasPassword = source["hasPassword"];
+	        this.clearPassword = source["clearPassword"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	    }

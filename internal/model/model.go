@@ -233,15 +233,17 @@ type SessionInfoDO struct {
 
 // SSHHostDO SSH 终端主机配置。
 type SSHHostDO struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Host      string `json:"host"`
-	Port      int    `json:"port"`
-	User      string `json:"user"`
-	Password  string `json:"password"`
-	KeyPath   string `json:"keyPath"`
-	CreatedAt int64  `json:"createdAt"`
-	UpdatedAt int64  `json:"updatedAt"`
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	Host          string `json:"host"`
+	Port          int    `json:"port"`
+	User          string `json:"user"`
+	Password      string `json:"password"`
+	KeyPath       string `json:"keyPath"`
+	HasPassword   bool   `json:"hasPassword"`   // 仅展示：库中是否已存密码（不回传明文）
+	ClearPassword bool   `json:"clearPassword"` // 保存时显式清空已存密码
+	CreatedAt     int64  `json:"createdAt"`
+	UpdatedAt     int64  `json:"updatedAt"`
 }
 
 const (
