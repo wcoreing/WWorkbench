@@ -7,7 +7,7 @@ import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { formatEnvText, parseEnvText } from './httpUtils'
 import { model } from '../../../wailsjs/go/models'
-import { ModalPortal, Select } from '../../components/compat'
+import { ModalPortal, Select, backdropDismissProps } from '../../components/compat'
 
 interface Props {
   open: boolean
@@ -78,7 +78,7 @@ export function HttpEnvModal({ open, activeEnvId, onActiveEnvId, onClose, onSave
   return (
     <>
       <ModalPortal>
-      <div className="wn-modal-backdrop wn-modal-backdrop-top" onClick={onClose}>
+      <div className="wn-modal-backdrop wn-modal-backdrop-top" {...backdropDismissProps(onClose)}>
         <div className="wn-modal httpapi-env-modal" onClick={(e) => e.stopPropagation()}>
           <header className="wn-modal-header wn-modal-header-bar">
             <h3 className="wn-modal-title">{t('httpapi.envManage')}</h3>

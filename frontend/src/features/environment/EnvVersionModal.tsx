@@ -6,6 +6,7 @@ import { LoadingPane } from '../../components/LoadingHost'
 import { useI18n } from '../../i18n'
 import { useLoading } from '../../stores/loadingStore'
 import '../../components/ui.css'
+import { backdropDismissProps } from '../../components/compat'
 
 const versionLoadingKey = (lang: RuntimeLang) => `environment.versions.${lang}`
 
@@ -234,7 +235,7 @@ export function EnvVersionModal({
   }
 
   return (
-    <div className="wn-modal-backdrop" onClick={onClose}>
+    <div className="wn-modal-backdrop" {...backdropDismissProps(onClose)}>
       <div className="wn-modal env-version-modal" onClick={(e) => e.stopPropagation()} role="dialog">
         <header className="wn-modal-header env-version-modal-header">
           <div className="env-version-modal-head">

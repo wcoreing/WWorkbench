@@ -4,7 +4,7 @@ import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
 import { model } from '../../../wailsjs/go/models'
 import '../../components/ui.css'
-import { Select, pressProps } from '../../components/compat'
+import { Select, backdropDismissProps, pressProps } from '../../components/compat'
 import { LoadingPane } from '../../components/LoadingHost'
 import { useLoading, withLoading } from '../../stores/loadingStore'
 
@@ -224,7 +224,7 @@ export function DockerRunModal({ open, contextId, image, onClose, onCreated }: D
   }
 
   return (
-    <div className="wn-modal-backdrop" {...pressProps(onClose)}>
+    <div className="wn-modal-backdrop" {...backdropDismissProps(onClose)}>
       <div
         className="wn-modal docker-run-modal"
         onClick={(e) => e.stopPropagation()}

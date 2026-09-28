@@ -3,7 +3,7 @@ import type { SSHForwardPreset, SSHHost } from '../../api/types'
 import { api } from '../../api/client'
 import { model } from '../../../wailsjs/go/models'
 import { useI18n } from '../../i18n'
-import { ModalPortal, Select, pressProps } from '../../components/compat'
+import { ModalPortal, Select, backdropDismissProps, pressProps } from '../../components/compat'
 import '../../components/ui.css'
 
 interface Props {
@@ -73,7 +73,7 @@ export function SSHForwardModal({ open, hosts, initial, defaultHostId, onClose, 
 
   return (
     <ModalPortal>
-      <div className="wn-modal-backdrop" {...pressProps(onClose)}>
+      <div className="wn-modal-backdrop" {...backdropDismissProps(onClose)}>
         <div
           className="wn-modal wn-modal-compact"
           onClick={(e) => e.stopPropagation()}

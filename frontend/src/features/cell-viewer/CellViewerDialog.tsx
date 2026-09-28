@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { MarkdownPreview } from '../notebook/MarkdownPreview'
 import { CellRichValue } from './CellRichValue'
-import { ModalPortal, pressProps } from '../../components/compat'
+import { ModalPortal, backdropDismissProps, pressProps } from '../../components/compat'
 import {
   cellStats,
   containsMarkdown,
@@ -133,7 +133,7 @@ export function CellViewerDialog({ target, onClose, onApply }: Props) {
 
   return (
     <ModalPortal>
-      <div className="wn-modal-backdrop wn-modal-backdrop-top" onClick={onClose}>
+      <div className="wn-modal-backdrop wn-modal-backdrop-top" {...backdropDismissProps(onClose)}>
         <div
           className="wn-modal wn-modal-xl cell-viewer-modal"
           onClick={(e) => e.stopPropagation()}

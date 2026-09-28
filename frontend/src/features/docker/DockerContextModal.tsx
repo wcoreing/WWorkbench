@@ -7,7 +7,7 @@ import { SSHHostModal } from '../terminal/SSHHostModal'
 import { LoadingPane } from '../../components/LoadingHost'
 import { useLoading, withLoading } from '../../stores/loadingStore'
 import '../../components/ui.css'
-import { Select, pressProps } from '../../components/compat'
+import { Select, backdropDismissProps, pressProps } from '../../components/compat'
 
 const DOCKER_CONTEXT_HOSTS = 'docker.context.hosts'
 
@@ -114,7 +114,7 @@ export function DockerContextModal({ open, initialHostId, onClose, onSaved }: Do
 
   return (
     <>
-      <div className="wn-modal-backdrop" {...pressProps(onClose)}>
+      <div className="wn-modal-backdrop" {...backdropDismissProps(onClose)}>
         <div
           className="wn-modal wn-modal-compact"
           onClick={(e) => e.stopPropagation()}

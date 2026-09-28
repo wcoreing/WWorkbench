@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Connection, SSHHost } from '../../api/types'
 import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
-import { ModalPortal, Select, pressProps } from '../../components/compat'
+import { ModalPortal, Select, backdropDismissProps, pressProps } from '../../components/compat'
 import { useLoading, withLoading } from '../../stores/loadingStore'
 import '../../components/ui.css'
 
@@ -209,7 +209,7 @@ export function ConnectionModal({ open, initial, onClose, onSaved }: Props) {
 
   return (
     <ModalPortal>
-    <div className="wn-modal-backdrop" {...pressProps(onClose)}>
+    <div className="wn-modal-backdrop" {...backdropDismissProps(onClose)}>
       <div
         className="wn-modal wn-modal-compact"
         onClick={(e) => e.stopPropagation()}

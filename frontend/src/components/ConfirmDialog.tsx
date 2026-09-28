@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { useI18n } from '../i18n'
-import { ModalPortal, pressProps } from './compat'
+import { ModalPortal, backdropDismissProps, pressProps } from './compat'
 import './ui.css'
 
 interface ConfirmDialogProps {
@@ -34,7 +34,7 @@ export function ConfirmDialog({
     <ModalPortal>
     <div
       className="wn-modal-backdrop wn-modal-backdrop-top ssh-trust-backdrop"
-      {...pressProps(onCancel)}
+      {...backdropDismissProps(onCancel)}
     >
       <div
         className="wn-modal wn-modal-compact ssh-trust-dialog"

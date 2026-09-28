@@ -12,7 +12,7 @@ import { useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
-import { Select, pressProps, useDismissOverlays } from '../../components/compat'
+import { Select, backdropDismissProps, pressProps, useDismissOverlays } from '../../components/compat'
 import { LoadingPane } from '../../components/LoadingHost'
 import { useLoading, withLoading } from '../../stores/loadingStore'
 
@@ -934,7 +934,7 @@ export function HttpApiWorkbench() {
       />
 
       {curlOpen && (
-        <div className="wn-modal-backdrop" {...pressProps(() => setCurlOpen(false))}>
+        <div className="wn-modal-backdrop" {...backdropDismissProps(() => setCurlOpen(false))}>
           <div className="wn-modal httpapi-curl-modal" onPointerDown={(e) => e.stopPropagation()} role="dialog">
             <header className="wn-modal-header wn-modal-header-bar">
               <h3 className="wn-modal-title">{t('httpapi.importCurl')}</h3>

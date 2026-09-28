@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { NotebookGroup } from '../../api/types'
 import { useI18n } from '../../i18n'
 import '../../components/ui.css'
+import { backdropDismissProps } from '../../components/compat'
 
 interface NotebookGroupModalProps {
   open: boolean
@@ -43,7 +44,7 @@ export function NotebookGroupModal({ open, initial, onClose, onSubmit }: Noteboo
   }
 
   return (
-    <div className="wn-modal-backdrop" onClick={onClose}>
+    <div className="wn-modal-backdrop" {...backdropDismissProps(onClose)}>
       <div className="wn-modal wn-modal-compact" onClick={(e) => e.stopPropagation()} role="dialog">
         <header className="wn-modal-header">
           <h2 className="wn-modal-title">{initial ? t('notebook.editGroup') : t('notebook.newGroupModal')}</h2>

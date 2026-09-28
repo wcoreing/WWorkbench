@@ -10,6 +10,7 @@
  * 4. 菜单外点关闭 → pointerdown（useDismissOnPointerDown），禁止 click/mousedown
  * 5. 抢焦区 / 命令壳 → FocusGate（data-ww-focus-hog / data-ww-chrome）
  * 6. CSS zoom 飞选 → 宿主加 ww-zoom-content + zoomCompensatedPx；可选 bindSelectionGuard
+ * 7. 弹窗遮罩关闭 → backdropDismissProps（禁止 pressProps/裸 onClick，防拖选误关）
  *
  * 套其他框架示例：
  *   import { pressProps, Select } from '../../components/compat'
@@ -17,6 +18,7 @@
  *   <Select className="ant-like" ... />
  */
 export { pressProps, type PressHandler, type PressOptions } from './press'
+export { backdropDismissProps } from './backdropDismiss'
 export { useOutsideDismiss } from './useOutsideDismiss'
 export { useDismissOnPointerDown, onPointerDownOutside } from './useDismissOnPointerDown'
 export { dismissOverlays, subscribeDismissOverlays, DISMISS_OVERLAYS_EVENT } from './dismissOverlays'

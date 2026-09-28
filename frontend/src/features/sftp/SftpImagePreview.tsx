@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { pressProps } from '../../components/compat'
+import { backdropDismissProps, pressProps } from '../../components/compat'
 import { useI18n } from '../../i18n'
 import { formatBytes } from './sftpUtils'
 
@@ -101,7 +101,7 @@ export function SftpImagePreview({ open, path, name, src, size, onDownload, onCl
   const pct = Math.round(scale * 100)
 
   return (
-    <div className="wn-modal-backdrop" onClick={onClose}>
+    <div className="wn-modal-backdrop" {...backdropDismissProps(onClose)}>
       <div
         className="wn-modal wn-modal-xl sftp-image-preview-modal"
         role="dialog"

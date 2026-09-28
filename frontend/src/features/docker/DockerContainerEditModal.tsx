@@ -3,7 +3,7 @@ import type { ContainerMount, ContainerPortMapping, DockerContainer } from '../.
 import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
 import { model } from '../../../wailsjs/go/models'
-import { ModalPortal, Select, pressProps } from '../../components/compat'
+import { ModalPortal, Select, backdropDismissProps, pressProps } from '../../components/compat'
 import '../../components/ui.css'
 
 interface Props {
@@ -154,7 +154,7 @@ export function DockerContainerEditModal({ open, contextId, container, onClose, 
 
   return (
     <ModalPortal>
-      <div className="wn-modal-backdrop wn-modal-backdrop-top" {...pressProps(onClose)}>
+      <div className="wn-modal-backdrop wn-modal-backdrop-top" {...backdropDismissProps(onClose)}>
         <div
           className="wn-modal docker-run-modal"
           onClick={(e) => e.stopPropagation()}

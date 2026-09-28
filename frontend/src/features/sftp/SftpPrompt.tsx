@@ -1,5 +1,6 @@
 import { useI18n } from '../../i18n'
 import '../../components/ui.css'
+import { backdropDismissProps } from '../../components/compat'
 
 export type SftpPromptMode = 'mkdir' | 'rename' | 'confirm'
 
@@ -35,7 +36,7 @@ export function SftpPrompt({
   }
 
   return (
-    <div className="wn-modal-backdrop ssh-trust-backdrop" onClick={onCancel}>
+    <div className="wn-modal-backdrop ssh-trust-backdrop" {...backdropDismissProps(onCancel)}>
       <form className="wn-modal wn-modal-compact ssh-trust-dialog" onClick={(e) => e.stopPropagation()} onSubmit={handleSubmit}>
         <header className="wn-modal-header">
           <h2 className="wn-modal-title">{title}</h2>

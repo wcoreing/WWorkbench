@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import type { SSHTrustConfirm } from '../../api/sshTrust'
+import { backdropDismissProps } from '../../components/compat'
 import '../../components/ui.css'
 
 interface TrustState {
@@ -18,7 +19,7 @@ function SSHTrustDialog({
   onCancel: () => void
 }) {
   return (
-    <div className="wn-modal-backdrop ssh-trust-backdrop" onClick={onCancel}>
+    <div className="wn-modal-backdrop ssh-trust-backdrop" {...backdropDismissProps(onCancel)}>
       <div
         className="wn-modal wn-modal-compact ssh-trust-dialog"
         onClick={(e) => e.stopPropagation()}

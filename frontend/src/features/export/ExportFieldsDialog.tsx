@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '../../i18n'
 import '../../components/ui.css'
-import { ModalPortal } from '../../components/compat'
+import { ModalPortal, backdropDismissProps } from '../../components/compat'
 
 interface Props {
   open: boolean
@@ -45,7 +45,7 @@ export function ExportFieldsDialog({ open, columns, onConfirm, onCancel }: Props
 
   return (
     <ModalPortal>
-      <div className="wn-modal-backdrop wn-modal-backdrop-top" onClick={onCancel}>
+      <div className="wn-modal-backdrop wn-modal-backdrop-top" {...backdropDismissProps(onCancel)}>
         <div
           className="wn-modal wn-modal-compact"
           onClick={(e) => e.stopPropagation()}

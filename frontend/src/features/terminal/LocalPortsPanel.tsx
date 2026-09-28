@@ -4,7 +4,7 @@ import type { LocalPortProcess } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconRefresh } from '../../components/Icons'
 import { useI18n } from '../../i18n'
-import { ModalPortal, pressProps } from '../../components/compat'
+import { ModalPortal, backdropDismissProps, pressProps } from '../../components/compat'
 import { LoadingPane } from '../../components/LoadingHost'
 import { useLoading, withLoading } from '../../stores/loadingStore'
 
@@ -147,7 +147,7 @@ export function LocalPortsDialog({ open, onClose, onStatus }: Props) {
   return (
     <>
       <ModalPortal>
-        <div className="wn-modal-backdrop wn-modal-backdrop-top" onClick={onClose}>
+        <div className="wn-modal-backdrop wn-modal-backdrop-top" {...backdropDismissProps(onClose)}>
           <div
             className="wn-modal wn-modal-wide local-port-dialog"
             onClick={(e) => e.stopPropagation()}

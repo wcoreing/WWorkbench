@@ -7,7 +7,7 @@ import type { AppLocale } from '../../i18n/types'
 import { useLoading, withLoading } from '../../stores/loadingStore'
 import { useSSHTrustConfirm } from './useSSHTrustConfirm'
 import '../../components/ui.css'
-import { pressProps } from '../../components/compat'
+import { backdropDismissProps, pressProps } from '../../components/compat'
 
 interface Props {
   open: boolean
@@ -150,7 +150,7 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
 
   return (
     <>
-      <div className="wn-modal-backdrop" {...pressProps(onClose)}>
+      <div className="wn-modal-backdrop" {...backdropDismissProps(onClose)}>
       <div
         className="wn-modal wn-modal-compact"
         onClick={(e) => e.stopPropagation()}

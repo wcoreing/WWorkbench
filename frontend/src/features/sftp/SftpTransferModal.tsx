@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { pressProps } from '../../components/compat'
+import { backdropDismissProps, pressProps } from '../../components/compat'
 import { IconArrowDown, IconFolder, IconUpload } from '../../components/Icons'
 import { useI18n } from '../../i18n'
 import { formatBytes } from './sftpUtils'
@@ -103,7 +103,7 @@ export function SftpTransferModal({
   const emptyHint = mode === 'upload' ? t('sftp.uploadListEmpty') : t('sftp.downloadListEmpty')
 
   return (
-    <div className="wn-modal-backdrop" onClick={onClose}>
+    <div className="wn-modal-backdrop" {...backdropDismissProps(onClose)}>
       <div
         className="wn-modal wn-modal-wide sftp-upload-modal"
         role="dialog"

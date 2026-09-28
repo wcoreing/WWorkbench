@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../../api/client'
 import type { EnvPreset, RuntimeLang } from '../../api/types'
 import '../../components/ui.css'
+import { backdropDismissProps } from '../../components/compat'
 
 const LANGS: RuntimeLang[] = ['node', 'go', 'php', 'java']
 const LANG_LABELS: Record<RuntimeLang, string> = {
@@ -76,7 +77,7 @@ export function EnvPresetModal({
   }
 
   return (
-    <div className="wn-modal-backdrop" onClick={onClose}>
+    <div className="wn-modal-backdrop" {...backdropDismissProps(onClose)}>
       <div className="wn-modal wn-modal-compact" onClick={(e) => e.stopPropagation()} role="dialog">
         <header className="wn-modal-header">
           <h2 className="wn-modal-title">{isEdit ? '编辑预设' : '保存当前预设'}</h2>

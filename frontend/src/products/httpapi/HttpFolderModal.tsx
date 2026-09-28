@@ -5,7 +5,7 @@ import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { nextHttpChildSortOrder } from './httpapiSort'
 import { model } from '../../../wailsjs/go/models'
-import { ModalPortal } from '../../components/compat'
+import { ModalPortal, backdropDismissProps } from '../../components/compat'
 
 interface Props {
   open: boolean
@@ -72,7 +72,7 @@ export function HttpFolderModal({
 
   return (
     <ModalPortal>
-      <div className="wn-modal-backdrop wn-modal-backdrop-top" onClick={onClose}>
+      <div className="wn-modal-backdrop wn-modal-backdrop-top" {...backdropDismissProps(onClose)}>
         <div className="wn-modal httpapi-folder-modal" onClick={(e) => e.stopPropagation()} role="dialog">
           <header className="wn-modal-header wn-modal-header-bar">
             <h3 className="wn-modal-title">

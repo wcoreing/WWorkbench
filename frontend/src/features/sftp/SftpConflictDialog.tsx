@@ -1,4 +1,5 @@
 import type { TransferConflict } from '../../api/types'
+import { backdropDismissProps } from '../../components/compat'
 import { formatBytes, formatFullModTime } from './sftpUtils'
 import '../../components/ui.css'
 
@@ -20,7 +21,7 @@ export function SftpConflictDialog({ open, kind, conflict, remaining, onAction }
   const targetLabel = kind === 'upload' ? '远程（已存在）' : '本地（已存在）'
 
   return (
-    <div className="wn-modal-backdrop ssh-trust-backdrop" onClick={() => onAction('cancel-all')}>
+    <div className="wn-modal-backdrop ssh-trust-backdrop" {...backdropDismissProps(() => onAction('cancel-all'))}>
       <div className="wn-modal wn-modal-compact sftp-conflict-dialog" onClick={(e) => e.stopPropagation()}>
         <header className="wn-modal-header">
           <h2 className="wn-modal-title">文件已存在：{conflict.name}</h2>

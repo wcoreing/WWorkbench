@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
-import { pressProps, bindSelectionGuard, zoomCompensatedPx } from '../../components/compat'
+import { backdropDismissProps, pressProps, bindSelectionGuard, zoomCompensatedPx } from '../../components/compat'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { askConfirm } from '../../utils/askConfirm'
@@ -105,7 +105,7 @@ export function SftpTextEditor({
   if (!open) return null
 
   return (
-    <div className="wn-modal-backdrop" onClick={() => void requestClose()}>
+    <div className="wn-modal-backdrop" {...backdropDismissProps(() => void requestClose())}>
       <div
         className="wn-modal wn-modal-xl sftp-text-editor-modal"
         role="dialog"
