@@ -10,6 +10,16 @@
   image-rendering: auto;
 }
 
+/* Element Plus 风格 SVG 箭头（随 currentColor） */
+.wn-ep-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+  pointer-events: none;
+  user-select: none;
+  overflow: visible;
+}
+
 .wn-ui-icon {
   display: block;
   flex-shrink: 0;

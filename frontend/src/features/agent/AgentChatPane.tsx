@@ -10,6 +10,7 @@ import type { ChoiceSubmitAnswer } from './AgentChoicePanel'
 import type { AgentChoiceQuestion } from './agentChoice'
 import { AgentInputBar } from './AgentInputBar'
 import { AgentChatTurn } from './AgentChatTurn'
+import { AgentStarter, type AgentStarterItem } from './AgentStarter'
 import type { ChatImage } from './agentImages'
 
 const VIRTUALIZE_MIN = 24
@@ -42,10 +43,12 @@ interface Props {
     mentions: AgentMention[],
     images: ChatImage[],
     skillIds?: string[],
+    mode?: AgentChatMode,
   ) => void | Promise<void>
   onStop: () => void
   onUnbindThreadMention: (id: string, kind: AgentMentionKind) => void
   onUnbindThreadSkill: (id: string) => void
+  onSuggest?: (item: AgentStarterItem) => void
 }
 
 function offerEventToQuestions(evt: AgentOfferChoicesEvent): AgentChoiceQuestion[] {
@@ -64,6 +67,19 @@ function lastAssistantIndex(lines: AgentChatLine[]): number {
     if (lines[i].role === 'assistant') return i
   }
   return -1
+}
+
+/** 一轮助手回复只显示一次「助手」（跳过中间的 system；用户每条仍显示）。 */
+function shouldShowRoleLabel(lines: AgentChatLine[], idx: number): boolean {
+  const role = lines[idx]?.role
+  if (role === 'user') return true
+  if (role !== 'assistant') return false
+  for (let i = idx - 1; i >= 0; i--) {
+    const prev = lines[i].role
+    if (prev === 'system') continue
+    return prev !== 'assistant'
+  }
+  return true
 }
 
 /** AgentChatPane 对话区：轨迹、消息、确认、输入栏。 */
@@ -93,6 +109,7 @@ export function AgentChatPane({
   onStop,
   onUnbindThreadMention,
   onUnbindThreadSkill,
+  onSuggest,
 }: Props) {
   const lastAssistantIdx = lastAssistantIndex(lines)
   const useVirtual = lines.length >= VIRTUALIZE_MIN
@@ -117,6 +134,7 @@ export function AgentChatPane({
         line={line}
         threadId={threadId}
         isLastAssistant={idx === lastAssistantIdx}
+        showRoleLabel={shouldShowRoleLabel(lines, idx)}
         busy={busy}
         toolChoiceQuestions={toolChoiceQuestions}
         skillCatalog={skillCatalog}
@@ -131,7 +149,12 @@ export function AgentChatPane({
   return (
     <div className="agent-chat-pane">
       <div className="agent-messages" ref={scrollRef} onScroll={onMessagesScroll}>
-        {lines.length === 0 && <div className="agent-empty">{t('agent.hint')}</div>}
+        {lines.length === 0 &&
+          (onSuggest ? (
+            <AgentStarter t={t} busy={busy} onSuggest={onSuggest} />
+          ) : (
+            <div className="agent-empty">{t('agent.hint')}</div>
+          ))}
         {useVirtual ? (
           <div
             ref={listRef}

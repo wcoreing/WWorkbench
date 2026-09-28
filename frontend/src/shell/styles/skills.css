@@ -68,11 +68,21 @@
 }
 
 .dir-tree-chevron {
-  width: 10px;
+  width: 12px;
+  height: 12px;
   flex-shrink: 0;
-  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--color-text-muted);
-  text-align: center;
+}
+
+.dir-tree-chevron .wn-ep-icon {
+  transition: transform 0.12s ease;
+}
+
+.dir-tree-chevron.is-open .wn-ep-icon {
+  transform: rotate(90deg);
 }
 
 .dir-tree-dot {
@@ -651,8 +661,14 @@
 }
 
 .agent-composer-caret {
-  font-size: 9px;
-  opacity: 0.7;
+  flex-shrink: 0;
+  opacity: 0.75;
+  color: var(--color-text-muted);
+  transition: transform 0.12s ease;
+}
+
+.agent-composer-caret.is-open {
+  transform: rotate(180deg);
 }
 
 .agent-composer-menu {

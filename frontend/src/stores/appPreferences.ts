@@ -28,7 +28,7 @@ export interface AppPreferences {
 const DEFAULT_PREFERENCES: AppPreferences = {
   theme: 'light',
   locale: 'zh',
-  activeProduct: 'database',
+  activeProduct: 'terminal',
   terminalOpacity: 0.92,
   uiFontSize: DEFAULT_UI_FONT_SIZE,
   lastConnectionId: null,
@@ -42,7 +42,7 @@ function parsePreferences(settings: Record<string, string>): AppPreferences {
   const locale: AppLocale = localeRaw === 'en' ? 'en' : 'zh'
   const product = settings[APP_SETTING_KEYS.activeProduct] as ProductId
   const valid = new Set(PRODUCTS.map((p) => p.id))
-  const activeProduct: ProductId = valid.has(product) ? product : 'database'
+  const activeProduct: ProductId = valid.has(product) ? product : 'terminal'
   const opacity = Number(settings[APP_SETTING_KEYS.terminalOpacity])
   const fontRaw = Number(settings[APP_SETTING_KEYS.uiFontSize])
   return {

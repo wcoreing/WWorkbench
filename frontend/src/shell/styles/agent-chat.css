@@ -16,10 +16,77 @@
 .agent-empty {
   margin: auto 0;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   line-height: 1.45;
   color: var(--color-text-muted);
   padding: 24px 12px;
+}
+
+.agent-starter {
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 2px 4px;
+  width: 100%;
+  max-width: 360px;
+  align-self: center;
+}
+
+.agent-starter-lead {
+  margin: 0;
+  text-align: center;
+  font-size: var(--font-size-ui);
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.agent-starter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-starter-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border, var(--color-divider));
+  border-radius: 8px;
+  background: var(--color-bg-elevated, var(--color-surface, transparent));
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.agent-starter-card:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--color-border, var(--color-divider)));
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.agent-starter-card:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.agent-starter-card.is-primary {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--color-border, var(--color-divider)));
+}
+
+.agent-starter-card-label {
+  font-size: var(--font-size-title);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.agent-starter-card-hint {
+  font-size: var(--font-size-caption);
+  line-height: 1.4;
+  color: var(--color-text-muted);
 }
 
 .agent-turn {
@@ -146,10 +213,9 @@
 
 .agent-bubble-assistant {
   width: 100%;
-  padding: 7px 0 7px 10px;
+  padding: 4px 0;
   background: transparent;
   border: 0;
-  border-left: 1px solid var(--accent);
   box-shadow: none;
 }
 
@@ -224,7 +290,7 @@
 .agent-md h4,
 .agent-md h5,
 .agent-md h6 {
-  font-size: 13px;
+  font-size: 1.05em;
 }
 
 .agent-md h1:first-child,
@@ -267,7 +333,7 @@
   padding: 8px 10px;
   border-radius: var(--radius);
   overflow-x: auto;
-  font-size: 11.5px;
+  font-size: 0.92em;
   line-height: 1.38;
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);

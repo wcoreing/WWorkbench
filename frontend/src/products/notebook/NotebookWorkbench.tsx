@@ -10,6 +10,13 @@ import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '..
 import { MarkdownPreview } from '../../features/notebook/MarkdownPreview'
 import { NotebookMdViewToggle, type NotebookMdViewMode } from '../../features/notebook/NotebookMdViewToggle'
 import { NotebookNoteSettingsMenu } from '../../features/notebook/NotebookNoteSettingsMenu'
+import {
+  clampNotebookEditorFontSize,
+  DEFAULT_NOTEBOOK_EDITOR_FONT,
+  NOTEBOOK_EDITOR_FONT_SETTING_KEY,
+  type NotebookEditorFontSize,
+} from '../../features/notebook/notebookEditorFont'
+import { saveAppSetting } from '../../stores/appPreferences'
 import { NoteEditor, type NoteEditorHandle } from '../../features/notebook/NoteEditor'
 import { NotebookGroupModal } from '../../features/notebook/NotebookGroupModal'
 import { NotebookSidebar } from '../../features/notebook/NotebookSidebar'
@@ -116,6 +123,7 @@ export function NotebookWorkbench() {
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'note' | 'group'; id: string; title: string } | null>(null)
   const [groupModal, setGroupModal] = useState<NotebookGroup | null | undefined>(undefined)
   const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('split')
+  const [editorFontSize, setEditorFontSize] = useState<NotebookEditorFontSize>(DEFAULT_NOTEBOOK_EDITOR_FONT)
   const [saveByNote, setSaveByNote] = useState<Record<string, 'saved' | 'dirty' | 'saving'>>({})
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
   useDismissOverlays(() => setTabCtxMenu(null))
@@ -124,6 +132,8 @@ export function NotebookWorkbench() {
   const noteSnapshots = useRef<Record<string, string>>({})
   const uiTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const booted = useRef(false)
+  /** boot 完成前不消费 notebookFocusNoteId，避免被持久化草稿覆盖。 */
+  const [bootReady, setBootReady] = useState(false)
   const openNotesRef = useRef(openNotes)
   openNotesRef.current = openNotes
 
@@ -137,6 +147,21 @@ export function NotebookWorkbench() {
   useEffect(() => {
     setNotebookActiveNoteId(activeTabId)
   }, [activeTabId, setNotebookActiveNoteId])
+
+  useEffect(() => {
+    void api
+      .listAppSettings()
+      .then((settings) => {
+        const raw = Number(settings[NOTEBOOK_EDITOR_FONT_SETTING_KEY])
+        if (Number.isFinite(raw)) setEditorFontSize(clampNotebookEditorFontSize(raw))
+      })
+      .catch(() => {})
+  }, [])
+
+  const onEditorFontSizeChange = useCallback((size: NotebookEditorFontSize) => {
+    setEditorFontSize(size)
+    void saveAppSetting(NOTEBOOK_EDITOR_FONT_SETTING_KEY, String(size))
+  }, [])
 
   useEffect(() => {
     if (activeProduct !== 'notebook') return
@@ -387,11 +412,16 @@ export function NotebookWorkbench() {
   }, [refreshSummaries, refreshAll, openNoteById, markNoteSaved])
 
   useEffect(() => {
-    if (!notebookFocusNoteId || bootLoading.active) return
-    void openNoteById(notebookFocusNoteId)
+    if (!bootReady || !notebookFocusNoteId || bootLoading.active) return
+    const id = notebookFocusNoteId
+    void openNoteById(id)
       .then(() => refreshSummaries())
-      .finally(() => setNotebookFocusNoteId(null))
-  }, [notebookFocusNoteId, bootLoading.active, openNoteById, setNotebookFocusNoteId, refreshSummaries])
+      .finally(() => {
+        if (useAppStore.getState().notebookFocusNoteId === id) {
+          setNotebookFocusNoteId(null)
+        }
+      })
+  }, [bootReady, notebookFocusNoteId, bootLoading.active, openNoteById, setNotebookFocusNoteId, refreshSummaries])
 
   useEffect(() => {
     if (booted.current) return
@@ -414,11 +444,31 @@ export function NotebookWorkbench() {
             /* 跳过已删除笔记 */
           }
         }
-        const validIds = tabIds.filter((id) => loaded[id])
+        let validIds = tabIds.filter((id) => loaded[id])
+        // 写入笔记本后的 focus 优先于持久化草稿，避免 boot 盖掉刚保存的笔记。
+        const focusId = useAppStore.getState().notebookFocusNoteId?.trim() || ''
+        if (focusId && !loaded[focusId]) {
+          try {
+            const raw = (await api.getNote(focusId)) as Note
+            const note = adoptNoteLanguage(raw)
+            loaded[focusId] = note
+            if (note.language !== raw.language) promoted.push(note)
+            validIds = [...validIds.filter((id) => id !== focusId), focusId]
+          } catch {
+            /* focus 笔记已删则回退持久化 UI */
+          }
+        }
         setOpenNotes(loaded)
         for (const n of Object.values(loaded)) markNoteSaved(n)
         setOpenTabIds(validIds)
-        setActiveTabId(ui.activeTabId && loaded[ui.activeTabId] ? ui.activeTabId : validIds[0] ?? null)
+        const activeFromFocus = focusId && loaded[focusId] ? focusId : ''
+        setActiveTabId(
+          activeFromFocus ||
+            (ui.activeTabId && loaded[ui.activeTabId] ? ui.activeTabId : validIds[0] ?? null),
+        )
+        if (activeFromFocus) {
+          setNotebookFocusNoteId(null)
+        }
         await Promise.all(
           promoted.map((n) =>
             api.saveNote(toNoteDO(n)).catch(() => {
@@ -434,8 +484,10 @@ export function NotebookWorkbench() {
           setGroups([])
         },
       },
-    ).catch((e) => setStatusMessage((e as Error).message))
-  }, [refreshAll, setStatusMessage, markNoteSaved, t])
+    )
+      .catch((e) => setStatusMessage((e as Error).message))
+      .finally(() => setBootReady(true))
+  }, [refreshAll, setStatusMessage, markNoteSaved, setNotebookFocusNoteId, t])
 
   useEffect(() => {
     if (bootLoading.active) return
@@ -454,7 +506,15 @@ export function NotebookWorkbench() {
     const existingId = payloadStr(cmd.payload, 'noteId')
     if (existingId) {
       useAppStore.getState().setNotebookFocusNoteId(existingId)
-      void openNoteById(existingId).catch((e) => setStatusMessage((e as Error).message))
+      // boot 未完成时只记 focus，避免 open 后被持久化草稿覆盖。
+      if (!bootReady || bootLoading.active) return
+      void openNoteById(existingId)
+        .then(() => {
+          if (useAppStore.getState().notebookFocusNoteId === existingId) {
+            setNotebookFocusNoteId(null)
+          }
+        })
+        .catch((e) => setStatusMessage((e as Error).message))
       return
     }
     const hostId = payloadStr(cmd.payload, 'hostId')
@@ -981,12 +1041,15 @@ export function NotebookWorkbench() {
                 />
                 <div className="notebook-meta-bar-right">
                   <NotebookMdViewToggle mode={mdViewMode} onChange={setMdViewMode} />
+                  <div className="notebook-meta-divider" aria-hidden />
                   <NotebookNoteSettingsMenu
                     note={activeNote}
                     groups={groups}
                     hosts={hosts}
                     connections={connections}
                     languages={languages}
+                    editorFontSize={editorFontSize}
+                    onEditorFontSizeChange={onEditorFontSizeChange}
                     onPatch={updateActiveNote}
                     onConnectionLink={onConnectionLinkChange}
                   />
@@ -994,7 +1057,7 @@ export function NotebookWorkbench() {
                     {(activeSaveStatus === 'dirty' || activeSaveStatus === 'saving') && (
                       <button
                         type="button"
-                        className={`wn-btn wn-btn-sm ${activeSaveStatus === 'dirty' ? 'wn-btn-primary' : 'wn-btn-tool'}`}
+                        className={`wn-btn wn-btn-sm ${activeSaveStatus === 'dirty' ? 'wn-btn-primary' : 'wn-btn-ghost'}`}
                         disabled={activeSaveStatus === 'saving'}
                         title={t('notebook.saveShortcut')}
                         {...pressProps(() => void flushSaveActive(), { disabled: activeSaveStatus === 'saving' })}
@@ -1003,7 +1066,7 @@ export function NotebookWorkbench() {
                       </button>
                     )}
                     <span
-                      className={`notebook-save-status${activeSaveStatus === 'dirty' ? ' is-dirty' : ''}`}
+                      className={`notebook-save-status is-${activeSaveStatus}`}
                       aria-live="polite"
                       title={t('notebook.saveShortcut')}
                     >
@@ -1016,13 +1079,17 @@ export function NotebookWorkbench() {
                   </div>
                 </div>
               </div>
-              <div className={`notebook-editor-split${noteEditorSplitClass}`}>
+              <div
+                className={`notebook-editor-split${noteEditorSplitClass}`}
+                style={{ ['--notebook-editor-font-size' as string]: `${editorFontSize}px` }}
+              >
                 {showNoteEditor && (
                   <NoteEditor
                     ref={editorRef}
                     noteId={activeNote.id}
                     language={activeNote.language}
                     content={activeNote.content}
+                    editorFontSize={editorFontSize}
                     onChange={(content) => updateActiveNote({ content })}
                     onRunSelection={runInTerminal}
                   />

@@ -25,7 +25,7 @@ import {
   toContextMentions,
   type AgentMention,
 } from './agentMention'
-import { saveReplyToNotebook, savedToNotebookMessage } from './saveReplyToNotebook'
+import { saveReplyToNotebook } from './saveReplyToNotebook'
 import { buildSkillLabelMap, mergeSkillIds } from './agentSkillIds'
 
 interface AgentThreadItem {
@@ -439,9 +439,12 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     mentions: AgentMention[],
     images: { mime: string; data: string }[] = [],
     skillIds: string[] = [],
+    modeOverride?: typeof chatMode,
   ) => {
     if ((!text.trim() && images.length === 0) || busy) return
     const allSkillIds = mergeSkillIds(threadSkillIds, skillIds)
+    const mode = modeOverride ?? chatMode
+    if (modeOverride && modeOverride !== chatMode) setChatMode(modeOverride)
     clearToolSteps()
     setBusy(true)
     setPending(null)
@@ -457,7 +460,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
           threadId,
           message: text.trim(),
           images: images.map((img) => ({ mime: img.mime, data: img.data })),
-          mode: chatMode,
+          mode,
           skillIds: allSkillIds.length ? allSkillIds : undefined,
           context: buildContext(contextMentions),
         }),
@@ -729,16 +732,31 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
             onChoiceSubmit={(answers) => void submitChoice(answers)}
             onSaveToNotebook={(content) => {
               void saveReplyToNotebook(content, mergeMentions(threadMentions, autoMentions))
-                .then(() => setStatusMessage(t(`agent.${savedToNotebookMessage()}`)))
+                .then((msg) => setStatusMessage(t(`agent.${msg}`)))
                 .catch((e) => setStatusMessage((e as Error).message))
             }}
             onConfirm={(ok) => void confirmPending(ok)}
             onModeChange={setChatMode}
             onModelChange={(id) => void switchModel(id)}
-            onSend={(text, mentions, images, skillIds) => send(text, mentions, images, skillIds ?? [])}
+            onSend={(text, mentions, images, skillIds, mode) =>
+              send(text, mentions, images, skillIds ?? [], mode)
+            }
             onStop={() => void stopGeneration()}
             onUnbindThreadMention={(id, kind) => void unbindThreadMention(id, kind)}
             onUnbindThreadSkill={unbindThreadSkill}
+            onSuggest={(item) => {
+              if (item.goTerminal) {
+                useAppStore.getState().setActiveProduct('terminal')
+                return
+              }
+              void send(
+                item.message,
+                mergeMentions(threadMentions, autoMentions),
+                [],
+                [],
+                item.mode,
+              )
+            }}
           />
         )}
       </div>

@@ -53,12 +53,13 @@ export function openDatabase(
 
 /** openNotebook 按主机/连接创建或打开笔记。 */
 export function openNotebook(
-  opts: { hostId?: string; connectionId?: string; initialCommand?: string },
+  opts: { noteId?: string; hostId?: string; connectionId?: string; initialCommand?: string },
   source: CommandSource = 'user',
 ) {
   openCapability(
     Capability.NotebookOpen,
     {
+      noteId: opts.noteId,
       hostId: opts.hostId,
       connectionId: opts.connectionId,
       initialCommand: opts.initialCommand,

@@ -115,6 +115,18 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   height: var(--icon-chrome);
 }
 
+.shell-chrome .chrome-ai-btn {
+  min-width: var(--control-height-chrome);
+  padding: 0 8px;
+}
+
+.shell-chrome .chrome-ai-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
 .shell-locale-menu {
   position: relative;
   flex-shrink: 0;

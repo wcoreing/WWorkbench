@@ -82,7 +82,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   preferencesReady: false,
   theme: 'light',
   locale: 'zh',
-  activeProduct: 'database',
+  activeProduct: 'terminal',
   connections: [],
   activeConnectionId: null,
   session: null,

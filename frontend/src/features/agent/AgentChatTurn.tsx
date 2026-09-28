@@ -11,6 +11,8 @@ interface Props {
   line: AgentChatLine
   threadId: string
   isLastAssistant: boolean
+  /** 本轮是否显示角色名（一轮助手回复只显示一次「助手」）。 */
+  showRoleLabel?: boolean
   busy: boolean
   toolChoiceQuestions?: AgentChoiceQuestion[]
   skillCatalog: Record<string, string>
@@ -54,6 +56,7 @@ export const AgentChatTurn = memo(function AgentChatTurn({
   line,
   threadId,
   isLastAssistant,
+  showRoleLabel = true,
   busy,
   toolChoiceQuestions,
   skillCatalog,
@@ -74,15 +77,18 @@ export const AgentChatTurn = memo(function AgentChatTurn({
     Boolean(line.skillIds?.length) ||
     hasToolChoiceInline ||
     line.role === 'system'
+  const showMeta =
+    (line.role === 'assistant' || line.role === 'user') &&
+    (showRoleLabel || Boolean(href))
 
   return (
     <div className={`agent-turn agent-turn-${line.role}`}>
-      {(line.role === 'assistant' || line.role === 'user') && (
+      {showMeta && (
         <div className="agent-turn-meta">
-          {line.role === 'assistant' && (
+          {showRoleLabel && line.role === 'assistant' && (
             <span className="agent-turn-label">{t('agent.assistantLabel')}</span>
           )}
-          {line.role === 'user' && (
+          {showRoleLabel && line.role === 'user' && (
             <span className="agent-turn-label agent-turn-label-user">{t('agent.youLabel')}</span>
           )}
           {href ? (

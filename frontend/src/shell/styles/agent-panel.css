@@ -1,6 +1,11 @@
 /* Agent 侧栏壳：面板 / 历史 / 子视图
  * 左缘 ResizeHandle + 右侧内容列（与 ProductLayout 同一套分栏语言） */
 .agent-panel {
+  /* 侧栏字号比主工作区小两号，信息密度更高 */
+  --font-size-caption: 8px;
+  --font-size-ui-sm: 9px;
+  --font-size-ui: 10px;
+  --font-size-title: 11px;
   flex-shrink: 0;
   display: flex;
   flex-direction: row;

@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { IconArrowDown } from '../Icons'
 import { pressProps } from './press'
 import { useOutsideDismiss } from './useOutsideDismiss'
 import { subscribeDismissOverlays } from './dismissOverlays'
@@ -145,9 +146,7 @@ export function Select({
         {...pressProps(() => setOpen((v) => !v), { disabled })}
       >
         <span className={`wn-select-label ${current ? '' : 'placeholder'}`}>{label}</span>
-        <span className="wn-select-chevron" aria-hidden>
-          ▾
-        </span>
+        <IconArrowDown size={12} className={`wn-select-chevron${open ? ' is-open' : ''}`} />
       </button>
       {open &&
         pos &&

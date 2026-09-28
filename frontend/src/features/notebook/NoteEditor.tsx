@@ -5,9 +5,9 @@ import type { NoteLanguage } from '../../api/types'
 import { bindSelectionGuard, zoomCompensatedPx } from '../../components/compat'
 import { useContainerHeight } from '../../hooks/useContainerHeight'
 import { useAppStore } from '../../stores/appStore'
+import { DEFAULT_NOTEBOOK_EDITOR_FONT } from './notebookEditorFont'
 
-const BASE_FONT_PX = 13
-const BASE_LINE_PX = 20
+const BASE_LINE_RATIO = 20 / 13
 
 export interface NoteEditorHandle {
   /** getSelectedText 获取选中文本，无选区则返回全文。 */
@@ -18,13 +18,14 @@ interface Props {
   noteId: string
   language: NoteLanguage
   content: string
+  editorFontSize?: number
   onChange: (content: string) => void
   onRunSelection?: () => void
 }
 
 /** NoteEditor Monaco 笔记编辑区。 */
 export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEditor(
-  { noteId, language, content, onChange, onRunSelection },
+  { noteId, language, content, editorFontSize = DEFAULT_NOTEBOOK_EDITOR_FONT, onChange, onRunSelection },
   ref
 ) {
   const theme = useAppStore((s) => s.theme)
@@ -38,8 +39,8 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
   contentRef.current = content
   onRunSelectionRef.current = onRunSelection
   const editorHeight = useContainerHeight(editorHostRef, 120)
-  const fontSize = zoomCompensatedPx(BASE_FONT_PX, uiFontSize)
-  const lineHeight = zoomCompensatedPx(BASE_LINE_PX, uiFontSize)
+  const fontSize = zoomCompensatedPx(editorFontSize, uiFontSize)
+  const lineHeight = zoomCompensatedPx(Math.round(editorFontSize * BASE_LINE_RATIO), uiFontSize)
 
   useImperativeHandle(ref, () => ({
     getSelectedText: () => {

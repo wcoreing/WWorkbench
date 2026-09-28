@@ -77,3 +77,46 @@ export const IconCompare = named('compare')
 export const IconConnect = named('connect')
 export const IconForward = named('forward')
 export const IconPort = named('port')
+
+type SvgIconProps = IconProps & { title?: string }
+
+/** Element Plus ArrowDown 路径（下拉触发器用）。 */
+const EP_ARROW_DOWN =
+  'M831.872 340.864 512 652.672 192.128 340.864a30.592 30.592 0 0 0-42.752 0 29.12 29.12 0 0 0 0 41.6L489.664 714.24a32 32 0 0 0 44.672 0l340.288-331.712a29.12 29.12 0 0 0 0-41.728 30.592 30.592 0 0 0-42.752 0z'
+
+/** Element Plus ArrowRight 路径（树展开用）。 */
+const EP_ARROW_RIGHT =
+  'M340.864 149.312a30.592 30.592 0 0 0 0 42.752L652.736 512 340.864 831.872a30.592 30.592 0 0 0 0 42.752 29.12 29.12 0 0 0 41.472 0L714.24 534.336a32 32 0 0 0 0-44.672L382.336 149.376a29.12 29.12 0 0 0-41.472 0z'
+
+function EpSvgIcon({
+  path,
+  size = 12,
+  className,
+  title,
+}: SvgIconProps & { path: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 1024 1024"
+      width={size}
+      height={size}
+      className={['wn-ep-icon', className].filter(Boolean).join(' ')}
+      aria-hidden={title ? undefined : true}
+      focusable="false"
+      style={{ width: size, height: size }}
+    >
+      {title ? <title>{title}</title> : null}
+      <path fill="currentColor" d={path} />
+    </svg>
+  )
+}
+
+/** IconArrowDown Element Plus 风格下拉箭头。 */
+export function IconArrowDown({ size = 12, className }: IconProps) {
+  return <EpSvgIcon path={EP_ARROW_DOWN} size={size} className={className} />
+}
+
+/** IconArrowRight Element Plus 风格向右箭头（树节点可旋转为展开）。 */
+export function IconArrowRight({ size = 12, className }: IconProps) {
+  return <EpSvgIcon path={EP_ARROW_RIGHT} size={size} className={className} />
+}

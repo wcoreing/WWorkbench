@@ -1,5 +1,5 @@
 import { chromeProps, pressProps } from '../components/compat'
-import { IconUiAgent, IconUiMoon, IconUiSun } from '../components/ShellChromeIcons'
+import { IconUiMoon, IconUiSun } from '../components/ShellChromeIcons'
 import { useI18n, useLocalizedProduct } from '../i18n'
 import { useAppStore } from '../stores/appStore'
 import { ShellFontSizeMenu } from './ShellFontSizeMenu'
@@ -33,11 +33,12 @@ export function ShellChrome({
       {onToggleAgent && (
         <button
           type="button"
-          className={`wn-btn wn-btn-chrome wn-btn-icon-only${agentOpen ? ' active' : ''}`}
+          className={`wn-btn wn-btn-chrome chrome-ai-btn${agentOpen ? ' active' : ''}`}
           title={agentOpen ? t('agent.collapsePanel') : t('agent.openPanel')}
+          aria-pressed={agentOpen}
           {...pressProps(() => onToggleAgent())}
         >
-          <IconUiAgent />
+          <span className="chrome-ai-label">AI</span>
         </button>
       )}
       <ShellFontSizeMenu />

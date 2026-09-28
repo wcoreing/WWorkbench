@@ -6,8 +6,13 @@ import { api } from '../../api/client'
 import { onTerminalClosed, onTerminalOutput } from '../../api/terminalEvents'
 import { bindSelectionGuard, pressProps, zoomCompensatedPx } from '../../components/compat'
 import { ContextMenu } from '../../components/ContextMenu'
+import { IconRefresh } from '../../components/Icons'
+import { openAgentDraft } from '../agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { useAgentStore } from '../../stores/agentStore'
+import { Capability } from '../../workbench/capabilities'
+import { openCapability } from '../../workbench/workbenchCommandBus'
 import { registerTerminalFocus } from './terminalFocus'
 import {
   AGENT_SHELL_TAIL_LINES,
@@ -67,6 +72,7 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
   const boundSessionRef = useRef<string | null>(null)
   const uiFontSize = useAppStore((s) => s.uiFontSize)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
+  const [sessionEnded, setSessionEnded] = useState(false)
 
   // 生命周期内只建一次 xterm，避免重连清空历史
   useEffect(() => {
@@ -74,6 +80,7 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
     if (!el) return
 
     let disposed = false
+    setSessionEnded(false)
     const fontSize = termFontSizeForUi(useAppStore.getState().uiFontSize)
 
     const term = new Terminal({
@@ -216,6 +223,7 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
     const offClosed = onTerminalClosed((sid) => {
       if (sid !== sessionId || disposed) return
       term.writeln(`\r\n\x1b[33m[${tRef.current('terminal.sessionEnded')}]\x1b[0m`)
+      setSessionEnded(true)
     })
 
     requestAnimationFrame(() => {
@@ -303,14 +311,40 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
     setCtxMenu(null)
   }
 
+  const reconnectSession = () => {
+    openCapability(Capability.TerminalReconnect, { sessionId }, 'terminal')
+  }
+
+  const askAboutEnded = () => {
+    useAgentStore.getState().setChatMode('plan')
+    openAgentDraft({
+      mentions: [],
+      message: t('agent.draftSessionEnded'),
+    })
+  }
+
   return (
-    <>
+    <div className="terminal-pane-stack">
       <div
         ref={containerRef}
         className="terminal-xterm-host ww-zoom-content"
         data-ww-focus-hog=""
         style={{ backgroundColor: terminalBackground(opacity) }}
       />
+      {sessionEnded && (
+        <div className="terminal-ended-bar" role="status">
+          <span className="terminal-ended-bar-text">{t('terminal.sessionEndedHint')}</span>
+          <div className="terminal-ended-bar-actions">
+            <button type="button" className="wn-btn wn-btn-chrome wn-btn-sm" {...pressProps(reconnectSession)}>
+              <IconRefresh size={13} />
+              <span>{t('terminal.reconnect')}</span>
+            </button>
+            <button type="button" className="wn-btn wn-btn-ghost wn-btn-sm" {...pressProps(askAboutEnded)}>
+              <span>{t('terminal.askAfterEnded')}</span>
+            </button>
+          </div>
+        </div>
+      )}
       {ctxMenu && (
         <ContextMenu x={ctxMenu.x} y={ctxMenu.y} onDismiss={() => setCtxMenu(null)}>
           <button type="button" className="wn-context-item" {...pressProps(runCopy)}>
@@ -319,8 +353,19 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
           <button type="button" className="wn-context-item" {...pressProps(runPaste)}>
             {t('terminal.paste')}
           </button>
+          {sessionEnded && (
+            <>
+              <div className="wn-context-sep" />
+              <button type="button" className="wn-context-item" {...pressProps(reconnectSession)}>
+                {t('terminal.reconnect')}
+              </button>
+              <button type="button" className="wn-context-item" {...pressProps(askAboutEnded)}>
+                {t('terminal.askAfterEnded')}
+              </button>
+            </>
+          )}
         </ContextMenu>
       )}
-    </>
+    </div>
   )
 }

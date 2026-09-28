@@ -182,9 +182,13 @@ button.wn-select-trigger {
 
 .wn-select-trigger .wn-select-chevron {
   flex-shrink: 0;
-  font-size: 10px;
-  line-height: 1;
   color: var(--color-text-muted);
+  opacity: 0.85;
+  transition: transform 0.12s ease;
+}
+
+.wn-select-trigger .wn-select-chevron.is-open {
+  transform: rotate(180deg);
 }
 
 .wn-select-menu {
@@ -1558,24 +1562,39 @@ button.wn-select-trigger {
   color: var(--color-text-secondary);
 }
 
-/* 细灰 chevron，对齐常见对象浏览器箭头 */
+/* Element Plus ArrowRight：收起向右、展开向下 */
 .tree-chevron {
   display: block;
   box-sizing: border-box;
-  width: 6px;
-  height: 6px;
-  border-style: solid;
-  border-width: 0 1.5px 1.5px 0;
-  border-color: currentColor;
-  opacity: 0.65;
-  transform: rotate(-45deg);
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.7;
   pointer-events: none;
+  background-color: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'%3E%3Cpath fill='black' d='M340.864 149.312a30.592 30.592 0 0 0 0 42.752L652.736 512 340.864 831.872a30.592 30.592 0 0 0 0 42.752 29.12 29.12 0 0 0 41.472 0L714.24 534.336a32 32 0 0 0 0-44.672L382.336 149.376a29.12 29.12 0 0 0-41.472 0z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'%3E%3Cpath fill='black' d='M340.864 149.312a30.592 30.592 0 0 0 0 42.752L652.736 512 340.864 831.872a30.592 30.592 0 0 0 0 42.752 29.12 29.12 0 0 0 41.472 0L714.24 534.336a32 32 0 0 0 0-44.672L382.336 149.376a29.12 29.12 0 0 0-41.472 0z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  transform: rotate(0deg);
   transition: transform 0.12s ease;
 }
 
 .tree-chevron.is-open {
-  transform: rotate(45deg);
-  margin-top: -1px;
+  transform: rotate(90deg);
+}
+
+/* 分栏收起按钮仍用细三角几何，旋转语义与树节点不同 */
+.tree-chevron.wn-collapse-chevron {
+  width: 6px;
+  height: 6px;
+  background: none;
+  -webkit-mask: none;
+  mask: none;
+  border-style: solid;
+  border-width: 0 1.5px 1.5px 0;
+  border-color: currentColor;
+  opacity: 0.65;
 }
 
 .tree-expand-loading {

@@ -94,6 +94,8 @@ func execSSHArgv(ctx context.Context, d *Deps, host model.SSHHostDO, argv []stri
 	}()
 	select {
 	case <-runCtx.Done():
+		_ = sess.Close()
+		_ = client.Close()
 		return "", errno.New(errno.CodeConnFailed, "命令执行超时", cmdline)
 	case r := <-done:
 		text := strings.TrimSpace(string(r.out))

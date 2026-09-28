@@ -111,10 +111,18 @@ func listenLocalTCP(localPort int) (net.Listener, error) {
 	return net.Listen("tcp", addr)
 }
 
+// sshIOTimeout TCP 拨号与 SSH 握手上限。
+// crypto/ssh 的 ClientConfig.Timeout 只作用于 ssh.Dial，NewClientConn 不再设 deadline，
+// 端口通了但没有 SSH 应答时会一直卡住。
+const sshIOTimeout = 12 * time.Second
+
 // DialSSH 建立 SSH 客户端连接（供终端等产品复用）。
 func DialSSH(ctx context.Context, spec model.TunnelSpecDO) (*ssh.Client, error) {
 	if err := validateSSHSpec(spec); err != nil {
 		return nil, err
+	}
+	if ctx == nil {
+		ctx = context.Background()
 	}
 	sshPort := spec.Port
 	if sshPort <= 0 {
@@ -127,18 +135,47 @@ func DialSSH(ctx context.Context, spec model.TunnelSpecDO) (*ssh.Client, error) 
 		return nil, err
 	}
 
-	dialer := &net.Dialer{Timeout: 10 * time.Second}
+	dialTimeout := sshIOTimeout
+	if dl, ok := ctx.Deadline(); ok {
+		if remain := time.Until(dl); remain > 0 && remain < dialTimeout {
+			dialTimeout = remain
+		}
+	}
+	dialer := &net.Dialer{Timeout: dialTimeout}
 	conn, err := dialer.DialContext(ctx, "tcp", remote)
 	if err != nil {
 		return nil, wrapSSHDialErr(remote, "连接 SSH 服务器失败", err)
 	}
+
 	hostKeyAddr := net.JoinHostPort(spec.Host, strconv.Itoa(sshPort))
-	sshConn, chans, reqs, err := ssh.NewClientConn(conn, hostKeyAddr, config)
-	if err != nil {
-		_ = conn.Close()
-		return nil, wrapSSHDialErr(remote, "SSH 握手失败", err)
+	hsCtx, cancel := context.WithTimeout(ctx, sshIOTimeout)
+	defer cancel()
+	type handshake struct {
+		conn  ssh.Conn
+		chans <-chan ssh.NewChannel
+		reqs  <-chan *ssh.Request
+		err   error
 	}
-	return ssh.NewClient(sshConn, chans, reqs), nil
+	done := make(chan handshake, 1)
+	go func() {
+		if dl, ok := hsCtx.Deadline(); ok {
+			_ = conn.SetDeadline(dl)
+		}
+		c, ch, rq, hsErr := ssh.NewClientConn(conn, hostKeyAddr, config)
+		done <- handshake{conn: c, chans: ch, reqs: rq, err: hsErr}
+	}()
+	select {
+	case <-hsCtx.Done():
+		_ = conn.Close()
+		return nil, wrapSSHDialErr(remote, "SSH 连接超时", hsCtx.Err())
+	case r := <-done:
+		if r.err != nil {
+			_ = conn.Close()
+			return nil, wrapSSHDialErr(remote, "SSH 握手失败", r.err)
+		}
+		_ = conn.SetDeadline(time.Time{})
+		return ssh.NewClient(r.conn, r.chans, r.reqs), nil
+	}
 }
 
 // wrapSSHDialErr 把目标地址写进错误，EOF 视为该端口没有有效 SSH（填错区域/端口或实例关机）。

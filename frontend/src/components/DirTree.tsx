@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { IconFolder } from './Icons'
+import { IconArrowRight, IconFolder } from './Icons'
 import { pressProps } from './compat'
 
 export interface DirEntry {
@@ -74,7 +74,9 @@ function DirTreeNode({
           style={{ paddingLeft: 8 + depth * 12 }}
           {...pressProps(() => setOpen((v) => !v))}
         >
-          <span className="dir-tree-chevron">{open ? '▾' : '▸'}</span>
+          <span className={`dir-tree-chevron${open ? ' is-open' : ''}`} aria-hidden>
+            <IconArrowRight size={12} />
+          </span>
           <IconFolder size={14} />
           <span className="dir-tree-name">{entry.name}</span>
         </button>
@@ -145,7 +147,9 @@ export function DirTree({ rootLabel, listDir, activePath, onSelectFile, filter =
         style={{ paddingLeft: 8 }}
         {...pressProps(() => setOpen((v) => !v))}
       >
-        <span className="dir-tree-chevron">{open ? '▾' : '▸'}</span>
+        <span className={`dir-tree-chevron${open ? ' is-open' : ''}`} aria-hidden>
+          <IconArrowRight size={12} />
+        </span>
         <IconFolder size={14} />
         <span className="dir-tree-name">{rootLabel}</span>
       </button>

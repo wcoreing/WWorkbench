@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
+import { IconArrowDown } from '../../components/Icons'
 import { useOutsideDismiss } from '../../components/compat/useOutsideDismiss'
 import { useI18n } from '../../i18n'
 import {
@@ -91,9 +92,7 @@ export function AgentModeMenu({ mode, disabled, onChange }: ModeProps) {
         onClick={() => setOpen((v) => !v)}
       >
         <span className="agent-composer-chip-label">{t(`agent.mode${mode[0].toUpperCase()}${mode.slice(1)}`)}</span>
-        <span className="agent-composer-caret" aria-hidden>
-          ▾
-        </span>
+        <IconArrowDown size={11} className={`agent-composer-caret${open ? ' is-open' : ''}`} />
       </button>
       {open &&
         pos &&
@@ -168,9 +167,7 @@ export function AgentModelMenu({ modelName, provider, disabled, onChange }: Mode
         onClick={() => setOpen((v) => !v)}
       >
         <span className="agent-composer-chip-label">{label}</span>
-        <span className="agent-composer-caret" aria-hidden>
-          ▾
-        </span>
+        <IconArrowDown size={11} className={`agent-composer-caret${open ? ' is-open' : ''}`} />
       </button>
       {open &&
         pos &&

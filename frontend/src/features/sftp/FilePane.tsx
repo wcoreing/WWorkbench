@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FileEntry, SftpBookmark } from '../../api/types'
-import { IconFolder, IconRefresh } from '../../components/Icons'
+import { IconArrowDown, IconFolder, IconRefresh } from '../../components/Icons'
 import { pressProps } from '../../components/compat'
 import {
   SFTP_DRAG_THRESHOLD,
@@ -246,7 +246,7 @@ export function FilePane({
                 setBookmarkOpen((v) => !v)
               })}
             >
-              ▾
+              <IconArrowDown size={12} />
             </button>
             {bookmarkOpen && (
               <div className="sftp-bookmark-dropdown" onPointerDown={(e) => e.stopPropagation()}>

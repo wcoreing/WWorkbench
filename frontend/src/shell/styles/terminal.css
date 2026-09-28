@@ -339,6 +339,41 @@
   overflow: hidden;
 }
 
+.terminal-pane-stack {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.terminal-ended-bar {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(28, 24, 16, 0.92);
+  color: #e8d9a8;
+  font-size: 12px;
+}
+
+.terminal-ended-bar-text {
+  min-width: 0;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.terminal-ended-bar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .terminal-xterm-host {
   flex: 1;
   min-height: 0;

@@ -105,7 +105,13 @@ export function filterEphemeralAutoMentions(
 export function buildAutoMentions(input: AgentAutoMentionInput): AgentMention[] {
   const out: AgentMention[] = []
   const s = input.surface
-  if (
+  if (input.activeProduct === 'terminal' && s.focusKind === 'terminal.docker' && s.hostId) {
+    out.push({
+      kind: 'docker',
+      id: s.hostId,
+      label: s.focusLabel || s.hostId,
+    })
+  } else if (
     (input.activeProduct === 'terminal' && s.focusKind === 'terminal.ssh' && s.hostId) ||
     (input.activeProduct === 'sftp' && s.focusKind === 'sftp' && s.hostId) ||
     (input.activeProduct === 'docker' && s.hostId) ||
