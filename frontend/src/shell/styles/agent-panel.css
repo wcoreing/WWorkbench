@@ -10,6 +10,7 @@
   display: flex;
   flex-direction: row;
   background: var(--color-surface);
+  border-left: 1px solid var(--color-divider);
   min-height: 0;
   min-width: 0;
   max-width: 72vw;
@@ -35,7 +36,7 @@
   gap: 0;
   min-height: 30px;
   padding: 0;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-divider);
   background: var(--color-toolbar);
 }
 
@@ -45,7 +46,7 @@
   padding: 5px 8px;
   font-size: var(--font-size-ui-sm);
   border: none;
-  border-right: 1px solid var(--color-border-subtle);
+  border-right: 1px solid var(--color-divider);
   border-radius: 0;
   background: transparent;
   color: var(--color-text-muted, #888);
@@ -82,14 +83,13 @@
 
 .agent-history-item {
   display: block;
-  width: 100%;
+  width: auto;
   text-align: left;
   min-height: 34px;
   padding: 8px 10px;
-  margin: 0;
+  margin: 1px 8px;
   border: none;
-  border-bottom: 1px solid var(--color-border-subtle);
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
   font-size: var(--font-size-ui);
@@ -101,8 +101,10 @@
 }
 
 .agent-history-item.is-active {
-  background: var(--color-selection);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--color-sidebar-selected);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
 }
 
 .agent-history-title {

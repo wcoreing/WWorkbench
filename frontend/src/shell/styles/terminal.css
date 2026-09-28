@@ -5,7 +5,7 @@
 }
 
 .terminal-toolbar {
-  border-bottom-color: var(--color-border-strong);
+  border-bottom: none;
 }
 
 .terminal-toolbar .product-actions {
@@ -46,18 +46,95 @@
 
 .terminal-sidebar {
   background: var(--color-sidebar);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.terminal-sidebar > .sidebar-section {
-  border-bottom: 1px solid var(--color-border);
+.terminal-side {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.terminal-sidebar > .sidebar-section:last-child {
+.terminal-side-tabs,
+.sftp-side-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  margin: 8px 8px 4px;
+  padding: 2px;
+  border: none;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
+.terminal-side-tab,
+.sftp-side-tab {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 4px;
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-ui-sm);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background var(--motion-fast) var(--ease-ui), color var(--motion-fast) var(--ease-ui);
+}
+
+.terminal-side-tab:hover,
+.sftp-side-tab:hover {
+  color: var(--color-text);
+}
+
+.terminal-side-tab.is-active,
+.sftp-side-tab.is-active {
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  font-weight: 550;
+  box-shadow: 0 0.5px 0.5px rgba(24, 25, 31, 0.04), 0 1px 2px rgba(24, 25, 31, 0.06);
+}
+
+[data-theme='dark'] .terminal-side-tabs,
+[data-theme='dark'] .sftp-side-tabs {
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+}
+
+[data-theme='dark'] .terminal-side-tab.is-active,
+[data-theme='dark'] .sftp-side-tab.is-active {
+  box-shadow: 0 0.5px 0.5px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.28);
+}
+
+.terminal-side-panel,
+.sftp-side-panel,
+.terminal-sidebar .ssh-forward-section.is-embedded {
+  flex: 1;
+  min-height: 0;
   border-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-sidebar .ssh-forward-section.is-embedded .sidebar-body {
+  overflow: auto;
+}
+
+.terminal-side-embed-actions {
+  justify-content: flex-end;
 }
 
 .terminal-sidebar .sidebar-header {
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .terminal-sidebar .conn-item {
@@ -75,7 +152,7 @@
 }
 
 .terminal-sidebar .conn-item.active {
-  background: var(--color-selection);
+  background: var(--color-sidebar-selected);
 }
 
 .terminal-main {
@@ -318,7 +395,7 @@
   width: 22px;
   height: 18px;
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: #8a8a96;
   font-size: 14px;

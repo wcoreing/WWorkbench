@@ -310,6 +310,24 @@ type TransferResultDO struct {
 	Path string `json:"path"`
 }
 
+// SFTPTextFileDO 远程文本文件（在线编辑）。
+type SFTPTextFileDO struct {
+	Path     string `json:"path"`
+	Name     string `json:"name"`
+	Content  string `json:"content"`
+	Size     int64  `json:"size"`
+	Encoding string `json:"encoding"`
+}
+
+// SFTPBinaryFileDO 远程二进制文件（预览用，Content 为 raw base64）。
+type SFTPBinaryFileDO struct {
+	Path    string `json:"path"`
+	Name    string `json:"name"`
+	Mime    string `json:"mime"`
+	Content string `json:"content"`
+	Size    int64  `json:"size"`
+}
+
 // LocalDirResultDO 本地目录列表结果。
 type LocalDirResultDO struct {
 	Path    string        `json:"path"`

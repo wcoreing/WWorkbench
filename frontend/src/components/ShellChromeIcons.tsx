@@ -81,3 +81,15 @@ export function IconUiAgent({ size, className }: ShellChromeIconProps) {
     </UiIcon>
   )
 }
+
+/** 设置（主题 / 语言 / 字号） */
+export function IconUiSettings({ size, className }: ShellChromeIconProps) {
+  return (
+    <UiIcon size={size} className={className}>
+      <path d="M2.5 5h11" />
+      <path d="M2.5 11h11" />
+      <circle cx="6.2" cy="5" r="1.55" />
+      <circle cx="10.2" cy="11" r="1.55" />
+    </UiIcon>
+  )
+}

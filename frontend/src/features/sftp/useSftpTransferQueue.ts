@@ -41,7 +41,7 @@ function isTransferring(tasks: TransferTask[], starting: Set<string>): boolean {
 }
 
 /** useSftpTransferQueue SFTP 传输队列（最多 3 路并发，支持取消） */
-export function useSftpTransferQueue(onIdle?: () => void) {
+export function useSftpTransferQueue(onIdle?: (tasks: TransferTask[]) => void) {
   const [tasks, setTasks] = useState<TransferTask[]>([])
   const tasksRef = useRef<TransferTask[]>([])
   const startingRef = useRef<Set<string>>(new Set())
@@ -129,7 +129,7 @@ export function useSftpTransferQueue(onIdle?: () => void) {
             setTimeout(() => {
               pump()
               if (!isTransferring(tasksRef.current, startingRef.current)) {
-                onIdleRef.current?.()
+                onIdleRef.current?.(tasksRef.current)
               }
             }, 0)
           }

@@ -9,7 +9,7 @@
   zoom: var(--ui-zoom, 1);
 }
 
-/* 终端产品：窗口可透桌面；仅 xterm 画布半透明，顶栏/侧栏/标签条保持实底 */
+/* 终端产品：仅终端画布可透桌面；顶栏 / 产品轨 / 侧栏强制实底。 */
 .workbench-shell.is-terminal-glass {
   background: transparent;
 }
@@ -29,12 +29,29 @@
   background: transparent;
 }
 
-.workbench-shell.is-terminal-glass .terminal-workbench .product-toolbar {
+.workbench-shell.is-terminal-glass .shell-chrome,
+.workbench-shell.is-terminal-glass .product-rail,
+.workbench-shell.is-terminal-glass .agent-panel,
+.workbench-shell.is-terminal-glass .terminal-workbench .product-toolbar,
+.workbench-shell.is-terminal-glass .terminal-workbench .app-sidebar,
+.workbench-shell.is-terminal-glass .terminal-workbench .editor-chrome {
+  background: var(--color-chrome);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.workbench-shell.is-terminal-glass .terminal-workbench .product-toolbar,
+.workbench-shell.is-terminal-glass .terminal-workbench .app-sidebar,
+.workbench-shell.is-terminal-glass .terminal-workbench .editor-chrome {
   background: var(--color-toolbar);
 }
 
 .workbench-shell.is-terminal-glass .terminal-workbench .app-sidebar {
   background: var(--color-sidebar);
+}
+
+.workbench-shell.is-terminal-glass .terminal-workbench .editor-chrome {
+  background: var(--color-tab-bar);
 }
 
 /* 侧栏|主区拖拽缝：默认 handle 透明，glass 下会透桌面；铺实底并改用暗色分隔线 */
@@ -52,10 +69,6 @@
 
 body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-resize-handle-x::after {
   background: var(--accent);
-}
-
-.workbench-shell.is-terminal-glass .terminal-workbench .editor-chrome {
-  background: var(--color-tab-bar);
 }
 
 .workbench-body {
@@ -76,9 +89,11 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   height: var(--chrome-height);
   padding: 0 var(--chrome-pad-x);
   background: var(--color-chrome);
-  border-bottom: 1px solid var(--color-border-strong);
+  border-bottom: 1px solid var(--color-divider);
   gap: var(--chrome-gap);
   flex-shrink: 0;
+  position: relative;
+  z-index: 5;
 }
 
 .shell-chrome .chrome-brand {
@@ -138,7 +153,7 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   right: 0;
   min-width: 132px;
   padding: 4px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface-raised);
   box-shadow: var(--shadow);
@@ -172,6 +187,40 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 }
 
 .shell-fontsize-dropdown .shell-locale-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.shell-settings-dropdown {
+  min-width: 168px;
+  max-height: min(72vh, 420px);
+  overflow: auto;
+  padding: 6px;
+}
+
+.shell-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.shell-settings-label {
+  padding: 4px 10px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.shell-settings-sep {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--color-divider);
+}
+
+.shell-settings-fontsize-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -214,7 +263,7 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   display: flex;
   flex-direction: column;
   background: var(--color-chrome);
-  border-right: 1px solid var(--color-border-strong);
+  border-right: 1px solid var(--color-divider);
   padding: 4px 0;
   position: relative;
   z-index: 3;
@@ -223,8 +272,8 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 .product-rail-main {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  padding: 0;
+  gap: 2px;
+  padding: 0 6px;
 }
 
 .product-rail-btn {
@@ -238,14 +287,16 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   height: 44px;
   margin: 0;
   padding: var(--space-1) 0;
-  border: none;
-  border-radius: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
   transition:
     background var(--motion-ui) var(--ease-ui),
-    color var(--motion-ui) var(--ease-ui);
+    color var(--motion-ui) var(--ease-ui),
+    border-color var(--motion-ui) var(--ease-ui),
+    box-shadow var(--motion-ui) var(--ease-ui);
 }
 
 .product-rail-btn:hover {
@@ -254,19 +305,14 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 }
 
 .product-rail-btn.active {
-  background: transparent;
+  background: var(--color-sidebar-selected);
+  border-color: transparent;
+  box-shadow: none;
   color: var(--accent);
 }
 
 .product-rail-btn.active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 8px;
-  bottom: 8px;
-  width: 2px;
-  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
-  background: var(--accent);
+  display: none;
 }
 
 .product-rail-label {
@@ -293,6 +339,7 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  background: transparent;
 }
 
 .product-toolbar {
@@ -302,8 +349,10 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   height: var(--toolbar-height);
   padding: 0 var(--chrome-pad-x);
   background: var(--color-toolbar);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-divider);
   flex-shrink: 0;
+  position: relative;
+  z-index: 4;
 }
 
 .product-actions {
@@ -397,7 +446,7 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   font-size: 10px;
   font-weight: 500;
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   background: var(--color-warning-muted);
   color: var(--color-warning);
 }
@@ -407,6 +456,7 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  background: transparent;
 }
 
 .app-statusbar .status-right {

@@ -561,6 +561,7 @@ export function LogCenterWorkbench() {
                 <EmptyState
                   variant="inline"
                   title={t('logs.emptyList')}
+                  hint={t('logs.emptyListHint')}
                   actions={[{ label: t('logs.newSource'), onPress: createNew, primary: true }]}
                 />
               ) : (
@@ -648,6 +649,7 @@ export function LogCenterWorkbench() {
                   <label className="wn-label">{t('logs.path')}</label>
                   <input className="wn-input" value={path} onChange={(e) => setPath(e.target.value)} placeholder={t('logs.pathPlaceholder')} />
                 </div>
+                <p className="logs-field-hint">{t('logs.pathHintSSH')}</p>
               </>
             )}
 

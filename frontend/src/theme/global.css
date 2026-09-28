@@ -53,7 +53,7 @@ button {
   height: var(--chrome-height);
   padding: 0 var(--chrome-pad-x);
   background: var(--color-chrome);
-  border-bottom: 1px solid var(--color-border-strong);
+  border-bottom: none;
   gap: var(--chrome-gap);
   flex-shrink: 0;
 }
@@ -148,7 +148,7 @@ button {
   width: var(--sidebar-width);
   min-width: 188px;
   background: var(--color-sidebar);
-  border-right: 1px solid var(--color-border-strong);
+  border-right: 1px solid var(--color-divider);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -190,6 +190,10 @@ button {
   letter-spacing: 0.035em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+  background: var(--color-sidebar);
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .sidebar-header-title {
@@ -235,7 +239,7 @@ button {
   flex-shrink: 0;
   min-height: var(--tab-height);
   background: var(--color-tab-bar);
-  border-bottom: 1px solid var(--color-border-strong);
+  border-bottom: 1px solid var(--color-divider);
   position: relative;
   z-index: 2;
   overflow: hidden;

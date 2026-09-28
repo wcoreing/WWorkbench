@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n'
 import '../../components/ui.css'
 
 export type SftpPromptMode = 'mkdir' | 'rename' | 'confirm'
@@ -24,6 +25,7 @@ export function SftpPrompt({
   onConfirm,
   onCancel,
 }: Props) {
+  const { t } = useI18n()
   if (!open) return null
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -41,15 +43,25 @@ export function SftpPrompt({
         </header>
         <div className="wn-modal-body">
           {mode !== 'confirm' && (
-            <input className="wn-input" name="value" defaultValue={defaultValue} autoFocus placeholder="名称" />
+            <input
+              className="wn-input"
+              name="value"
+              defaultValue={defaultValue}
+              autoFocus
+              autoComplete="off"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              placeholder={t('sftp.namePlaceholder')}
+            />
           )}
         </div>
         <footer className="wn-modal-footer">
           <button type="button" className="wn-btn wn-btn-tool" onClick={onCancel}>
-            取消
+            {t('common.cancel')}
           </button>
           <button type="submit" className="wn-btn wn-btn-sm wn-btn-primary">
-            {confirmLabel ?? (mode === 'confirm' ? '确定' : '保存')}
+            {confirmLabel ?? (mode === 'confirm' ? t('common.confirm') : t('common.save'))}
           </button>
         </footer>
       </form>

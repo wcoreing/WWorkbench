@@ -1020,6 +1020,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_SFTPBinaryFileDO_ {
+	    ok: boolean;
+	    data: model.SFTPBinaryFileDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_SFTPBinaryFileDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.SFTPBinaryFileDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_SFTPSessionInfoDO_ {
 	    ok: boolean;
 	    data: model.SFTPSessionInfoDO;
@@ -1033,6 +1067,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.SFTPSessionInfoDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_model_SFTPTextFileDO_ {
+	    ok: boolean;
+	    data: model.SFTPTextFileDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_SFTPTextFileDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.SFTPTextFileDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -2427,6 +2495,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.ShellHostDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___string_ {
+	    ok: boolean;
+	    data: string[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___string_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = source["data"];
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -4544,6 +4646,26 @@ export namespace model {
 	        this.active = source["active"];
 	    }
 	}
+	export class SFTPBinaryFileDO {
+	    path: string;
+	    name: string;
+	    mime: string;
+	    content: string;
+	    size: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SFTPBinaryFileDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.mime = source["mime"];
+	        this.content = source["content"];
+	        this.size = source["size"];
+	    }
+	}
 	export class SFTPSessionInfoDO {
 	    sessionId: string;
 	    hostId: string;
@@ -4558,6 +4680,26 @@ export namespace model {
 	        this.sessionId = source["sessionId"];
 	        this.hostId = source["hostId"];
 	        this.title = source["title"];
+	    }
+	}
+	export class SFTPTextFileDO {
+	    path: string;
+	    name: string;
+	    content: string;
+	    size: number;
+	    encoding: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SFTPTextFileDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.content = source["content"];
+	        this.size = source["size"];
+	        this.encoding = source["encoding"];
 	    }
 	}
 	export class SSHForwardActiveDO {

@@ -36,7 +36,7 @@
   text-transform: none;
   color: var(--color-text-muted);
   background: var(--color-toolbar);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-divider);
 }
 
 .docker-table td {
@@ -58,11 +58,22 @@
 }
 
 .docker-row.selected td {
-  background: var(--color-selection);
+  background: var(--color-row-selected);
+  color: var(--color-row-selected-fg);
+  box-shadow: none;
+}
+
+.docker-row.selected .docker-name,
+.docker-row.selected .docker-mono {
+  color: var(--color-row-selected-fg);
 }
 
 .docker-row.selected td:first-child {
-  box-shadow: inset 2px 0 0 var(--accent);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.docker-row.selected td:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
 .docker-row.has-shell .docker-name::after {

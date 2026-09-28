@@ -125,6 +125,43 @@ func (s *Service) DownloadSFTPFile(sessionID, remotePath string) ApiResult[model
 	return OkResult(model.TransferResultDO{Path: savePath})
 }
 
+// PickSFTPUploadPaths 多选本地文件供上传队列使用（取消返回空切片）。
+func (s *Service) PickSFTPUploadPaths() ApiResult[[]string] {
+	paths, err := runtime.OpenMultipleFilesDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择要上传的文件",
+	})
+	if err != nil {
+		return ErrResult[[]string](err)
+	}
+	if paths == nil {
+		paths = []string{}
+	}
+	return OkResult(paths)
+}
+
+// PickSFTPUploadDir 选择本地文件夹整夹上传（取消返回空串）。
+func (s *Service) PickSFTPUploadDir() ApiResult[string] {
+	dir, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
+		Title: "选择要上传的文件夹",
+	})
+	if err != nil {
+		return ErrResult[string](err)
+	}
+	return OkResult(dir)
+}
+
+// PickSFTPDownloadDir 选择本地下载保存目录（取消返回空串；defaultDir 非空时作为初始目录）。
+func (s *Service) PickSFTPDownloadDir(defaultDir string) ApiResult[string] {
+	dir, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
+		Title:            "选择下载保存目录",
+		DefaultDirectory: defaultDir,
+	})
+	if err != nil {
+		return ErrResult[string](err)
+	}
+	return OkResult(dir)
+}
+
 // UploadSFTPFile 选择本地文件上传到远程目录。
 func (s *Service) UploadSFTPFile(sessionID, remoteDir string) ApiResult[model.TransferResultDO] {
 	localPath, err := runtime.OpenFileDialog(s.ctx, runtime.OpenDialogOptions{
@@ -137,6 +174,32 @@ func (s *Service) UploadSFTPFile(sessionID, remoteDir string) ApiResult[model.Tr
 		return OkResult(model.TransferResultDO{Path: ""})
 	}
 	return s.TransferSFTPUpload(sessionID, "", localPath, remoteDir)
+}
+
+// ReadSFTPText 读取远程文本文件（在线编辑）。
+func (s *Service) ReadSFTPText(sessionID, remotePath string) ApiResult[model.SFTPTextFileDO] {
+	out, err := s.sftp.ReadTextFile(sessionID, remotePath)
+	if err != nil {
+		return ErrResult[model.SFTPTextFileDO](err)
+	}
+	return OkResult(*out)
+}
+
+// ReadSFTPBinary 读取远程二进制文件（图片等预览，content 为 base64）。
+func (s *Service) ReadSFTPBinary(sessionID, remotePath string) ApiResult[model.SFTPBinaryFileDO] {
+	out, err := s.sftp.ReadBinaryFile(sessionID, remotePath)
+	if err != nil {
+		return ErrResult[model.SFTPBinaryFileDO](err)
+	}
+	return OkResult(*out)
+}
+
+// WriteSFTPText 写回远程文本文件。
+func (s *Service) WriteSFTPText(sessionID, remotePath, content string) ApiResult[bool] {
+	if err := s.sftp.WriteTextFile(sessionID, remotePath, content); err != nil {
+		return ErrResult[bool](err)
+	}
+	return OkResult(true)
 }
 
 // MkdirSFTPRemote 创建远程目录。

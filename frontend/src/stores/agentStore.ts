@@ -84,6 +84,8 @@ interface AgentStore {
   draftInput: string
   draftMentions: AgentMention[]
   draftSkillIds: string[]
+  /** 本轮 draft 是否带了 message（无则输入栏保留原文）。 */
+  draftHasMessage: boolean
   draftTick: number
   toolSteps: AgentToolStep[]
   threadMentions: AgentMention[]
@@ -122,6 +124,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
   draftInput: '',
   draftMentions: [],
   draftSkillIds: [],
+  draftHasMessage: false,
   draftTick: 0,
   toolSteps: [],
   threadMentions: [],
@@ -173,7 +176,9 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set((s) => ({
       panelOpen: true,
       view: 'chat',
-      draftInput: payload.message ?? '',
+      draftInput: payload.message ?? s.draftInput,
+      draftHasMessage: payload.message !== undefined,
+      // 本批新增 @；由输入栏与已有 chips 合并，避免覆盖 / 复活已移除项。
       draftMentions: payload.mentions,
       draftSkillIds: payload.skillIds ?? [],
       draftTick: s.draftTick + 1,

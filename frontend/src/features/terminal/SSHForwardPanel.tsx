@@ -18,10 +18,12 @@ import { useSSHTrustConfirm } from './useSSHTrustConfirm'
 interface Props {
   hosts: SSHHost[]
   onStatus: (msg: string) => void
+  /** 嵌入侧栏 tab：不渲染分区标题，由外层 tab 承担。 */
+  embedded?: boolean
 }
 
 /** SSHForwardPanel 终端侧栏端口转发管理。 */
-export function SSHForwardPanel({ hosts, onStatus }: Props) {
+export function SSHForwardPanel({ hosts, onStatus, embedded = false }: Props) {
   const { t } = useI18n()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [active, setActive] = useState<SSHForwardActive[]>([])
@@ -142,22 +144,40 @@ export function SSHForwardPanel({ hosts, onStatus }: Props) {
 
   return (
     <>
-      <section className="sidebar-section ssh-forward-section">
-        <div className="sidebar-header">
-          <span>{t('sshForward.title')}</span>
-          <button
-            type="button"
-            className="wn-btn wn-btn-icon wn-btn-sm"
-            title={t('sshForward.newPreset')}
-            {...pressProps(() => {
-              setEditing(null)
-              setDraftHostId(undefined)
-              setModalOpen(true)
-            })}
-          >
-            <IconPlus size={14} />
-          </button>
-        </div>
+      <section className={`sidebar-section ssh-forward-section${embedded ? ' is-embedded' : ''}`}>
+        {!embedded && (
+          <div className="sidebar-header">
+            <span>{t('sshForward.title')}</span>
+            <button
+              type="button"
+              className="wn-btn wn-btn-icon wn-btn-sm"
+              title={t('sshForward.newPreset')}
+              {...pressProps(() => {
+                setEditing(null)
+                setDraftHostId(undefined)
+                setModalOpen(true)
+              })}
+            >
+              <IconPlus size={14} />
+            </button>
+          </div>
+        )}
+        {embedded && (
+          <div className="sidebar-header terminal-side-embed-actions">
+            <button
+              type="button"
+              className="wn-btn wn-btn-icon wn-btn-sm"
+              title={t('sshForward.newPreset')}
+              {...pressProps(() => {
+                setEditing(null)
+                setDraftHostId(undefined)
+                setModalOpen(true)
+              })}
+            >
+              <IconPlus size={14} />
+            </button>
+          </div>
+        )}
         <div className="sidebar-body">
           <div className="ssh-forward-subhead">{t('sshForward.active')}</div>
           {active.length === 0 ? (

@@ -522,6 +522,18 @@ export function PickLogFilePath() {
   return window['go']['app']['Service']['PickLogFilePath']();
 }
 
+export function PickSFTPDownloadDir(arg1) {
+  return window['go']['app']['Service']['PickSFTPDownloadDir'](arg1);
+}
+
+export function PickSFTPUploadDir() {
+  return window['go']['app']['Service']['PickSFTPUploadDir']();
+}
+
+export function PickSFTPUploadPaths() {
+  return window['go']['app']['Service']['PickSFTPUploadPaths']();
+}
+
 export function PruneStoppedDockerHosts() {
   return window['go']['app']['Service']['PruneStoppedDockerHosts']();
 }
@@ -532,6 +544,14 @@ export function PublishAgentSkill(arg1) {
 
 export function QuerySQLPage(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['app']['Service']['QuerySQLPage'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function ReadSFTPBinary(arg1, arg2) {
+  return window['go']['app']['Service']['ReadSFTPBinary'](arg1, arg2);
+}
+
+export function ReadSFTPText(arg1, arg2) {
+  return window['go']['app']['Service']['ReadSFTPText'](arg1, arg2);
 }
 
 export function RemoveContainer(arg1, arg2) {
@@ -740,6 +760,10 @@ export function UploadSFTPFile(arg1, arg2) {
 
 export function UseEnvVersion(arg1, arg2, arg3) {
   return window['go']['app']['Service']['UseEnvVersion'](arg1, arg2, arg3);
+}
+
+export function WriteSFTPText(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['WriteSFTPText'](arg1, arg2, arg3);
 }
 
 export function WriteTerminal(arg1, arg2) {

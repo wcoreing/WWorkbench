@@ -28,4 +28,6 @@ type remoteFS interface {
 	DownloadFile(ctx context.Context, remotePath, localPath string, onProgress func(done, total int64)) error
 	Walk(dir string, fn func(path string, isDir bool) error) error
 	OpenTransfer() (remoteFS, error)
+	ReadBytes(remotePath string, maxSize int64) ([]byte, error)
+	WriteBytes(remotePath string, data []byte) error
 }

@@ -91,9 +91,9 @@ export function AgentInputBar({
 
   useEffect(() => {
     if (draftTick === 0) return
-    const { draftInput, draftMentions, draftSkillIds } = useAgentStore.getState()
-    setInput(draftInput)
-    setMentions(draftMentions)
+    const { draftInput, draftHasMessage, draftMentions, draftSkillIds } = useAgentStore.getState()
+    if (draftHasMessage) setInput(draftInput)
+    setMentions((prev) => mergeMentions(prev, draftMentions))
     if (draftSkillIds.length > 0) {
       void api.listEnabledAgentSkills().then((list) => {
         const refs = list.map((s) => ({ id: s.id, name: s.name, description: s.description }))
@@ -542,16 +542,6 @@ export function AgentInputBar({
             disabled={busy}
             onChange={onModelChange}
           />
-          {autoMentions[0] && (
-            <button
-              type="button"
-              className="wn-btn wn-btn-xs wn-btn-ghost agent-composer-action"
-              disabled={busy || mentions.some((m) => m.id === autoMentions[0].id && m.kind === autoMentions[0].kind)}
-              onClick={() => addMention(autoMentions[0])}
-            >
-              {t('agent.attachCurrent')}
-            </button>
-          )}
         </div>
         <div className="agent-composer-toolbar-end">
           {busy && threadId && (

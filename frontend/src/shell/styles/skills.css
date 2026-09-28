@@ -5,7 +5,7 @@
 }
 
 .skills-toolbar {
-  border-bottom-color: var(--color-border-strong);
+  border-bottom: none;
 }
 
 .skills-toolbar .product-actions {
@@ -45,10 +45,12 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  width: 100%;
+  width: auto;
   min-height: 26px;
-  padding: 2px 8px 2px 0;
+  margin: 1px 6px;
+  padding: 2px 8px;
   border: 0;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
   font-size: var(--font-size-ui-sm);
@@ -62,9 +64,9 @@
 }
 
 .dir-tree-file.is-active {
-  background: var(--color-selection);
+  background: var(--color-sidebar-selected);
   color: var(--color-text);
-  box-shadow: inset 2px 0 0 var(--accent);
+  border-radius: var(--radius-sm);
 }
 
 .dir-tree-chevron {
@@ -420,7 +422,7 @@
   display: inline-block;
   margin-top: 4px;
   font-size: 10px;
-  color: var(--accent, #3b6fd9);
+  color: var(--accent, #007aff);
 }
 
 .agent-check {
@@ -679,7 +681,7 @@
   min-width: 196px;
   max-width: 260px;
   padding: 4px;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface-raised);
   box-shadow: var(--shadow);

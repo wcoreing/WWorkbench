@@ -115,27 +115,11 @@ func (f *sshFS) Remove(p string) error {
 
 func (f *sshFS) RemoveAll(remotePath string) error {
 	remotePath = cleanRemotePath(remotePath)
-	info, err := f.sftp.Stat(remotePath)
-	if err != nil {
-		return errno.Wrap(errno.CodeConnFailed, "读取远程路径失败", err)
+	if remotePath == "/" {
+		return errno.New(errno.CodeInvalidArg, "不能删除根目录", "")
 	}
-	if !info.IsDir() {
-		return f.Remove(remotePath)
-	}
-	var dirs []string
-	if err := f.Walk(remotePath, func(rPath string, isDir bool) error {
-		if isDir {
-			dirs = append(dirs, rPath)
-			return nil
-		}
-		return f.sftp.Remove(rPath)
-	}); err != nil {
-		return err
-	}
-	for i := len(dirs) - 1; i >= 0; i-- {
-		if err := f.sftp.RemoveDirectory(dirs[i]); err != nil {
-			return errno.Wrap(errno.CodeConnFailed, "删除远程目录失败", err)
-		}
+	if err := f.sftp.RemoveAll(remotePath); err != nil {
+		return errno.Wrap(errno.CodeConnFailed, "删除远程路径失败", err)
 	}
 	return nil
 }
@@ -248,6 +232,49 @@ func (f *sshFS) DownloadFile(ctx context.Context, remotePath, localPath string, 
 	_ = done
 	if onProgress != nil {
 		onProgress(total, total)
+	}
+	return nil
+}
+
+func (f *sshFS) ReadBytes(remotePath string, maxSize int64) ([]byte, error) {
+	p := cleanRemotePath(remotePath)
+	st, err := f.sftp.Stat(p)
+	if err != nil {
+		return nil, errno.Wrap(errno.CodeConnFailed, "读取远程文件失败", err)
+	}
+	if st.IsDir() {
+		return nil, errno.New(errno.CodeInvalidArg, "远程路径是目录", p)
+	}
+	if maxSize > 0 && st.Size() > maxSize {
+		return nil, errno.New(errno.CodeInvalidArg, "文件过大，不适合在线编辑", p)
+	}
+	src, err := f.sftp.Open(p)
+	if err != nil {
+		return nil, errno.Wrap(errno.CodeConnFailed, "打开远程文件失败", err)
+	}
+	defer src.Close()
+	data, err := io.ReadAll(io.LimitReader(src, maxSize+1))
+	if err != nil {
+		return nil, errno.Wrap(errno.CodeConnFailed, "读取远程文件失败", err)
+	}
+	if maxSize > 0 && int64(len(data)) > maxSize {
+		return nil, errno.New(errno.CodeInvalidArg, "文件过大，不适合在线编辑", p)
+	}
+	return data, nil
+}
+
+func (f *sshFS) WriteBytes(remotePath string, data []byte) error {
+	p := cleanRemotePath(remotePath)
+	if err := f.MkdirAll(path.Dir(p)); err != nil {
+		return err
+	}
+	dst, err := f.sftp.Create(p)
+	if err != nil {
+		return errno.Wrap(errno.CodeConnFailed, "写入远程文件失败", err)
+	}
+	defer dst.Close()
+	if _, err := dst.Write(data); err != nil {
+		return errno.Wrap(errno.CodeConnFailed, "写入远程文件失败", err)
 	}
 	return nil
 }

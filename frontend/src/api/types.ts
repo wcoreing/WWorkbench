@@ -284,6 +284,14 @@ export interface SFTPSessionInfo {
   title: string
 }
 
+export interface SFTPTextFile {
+  path: string
+  name: string
+  content: string
+  size: number
+  encoding: string
+}
+
 export interface FileEntry {
   name: string
   path: string

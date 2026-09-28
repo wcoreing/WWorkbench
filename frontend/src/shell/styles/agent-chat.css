@@ -55,7 +55,7 @@
   width: 100%;
   padding: 10px 12px;
   border: 1px solid var(--color-border, var(--color-divider));
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--color-bg-elevated, var(--color-surface, transparent));
   color: var(--color-text);
   text-align: left;
@@ -358,7 +358,7 @@
   height: 22px;
   padding: 0;
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-surface-raised) 82%, transparent);
   cursor: pointer;
   opacity: 0.7;
@@ -478,7 +478,7 @@
 }
 
 .agent-md a {
-  color: var(--accent, #3b6fd9);
+  color: var(--accent, #007aff);
   text-decoration: none;
 }
 
@@ -588,12 +588,12 @@
 
 .agent-choice-opt:hover:not(:disabled) {
   background: transparent;
-  color: var(--accent, #3b6fd9);
+  color: var(--accent, #007aff);
 }
 
 .agent-choice-opt.is-on {
   background: transparent;
-  color: var(--accent, #3b6fd9);
+  color: var(--accent, #007aff);
   box-shadow: none;
 }
 
@@ -611,7 +611,7 @@
 
 .agent-choice-opt:hover:not(:disabled) .agent-choice-key,
 .agent-choice-opt.is-on .agent-choice-key {
-  color: var(--accent, #3b6fd9);
+  color: var(--accent, #007aff);
 }
 
 .agent-choice-label {
@@ -632,7 +632,7 @@
   flex: 1;
   min-width: 0;
   border: 1px solid var(--color-border, rgba(15, 23, 42, 0.16));
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   padding: 5px 8px;
   font-size: 12px;
   background: var(--color-surface, #fff);
@@ -641,7 +641,7 @@
 
 .agent-choice-input:focus {
   outline: none;
-  border-color: var(--accent, #3b6fd9);
+  border-color: var(--accent, #007aff);
 }
 
 .agent-choice-foot {
@@ -692,7 +692,7 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--accent, #3b6fd9);
+  background: var(--accent, #007aff);
   opacity: 0.5;
   animation: agent-dot-pulse 1.2s ease-in-out infinite;
 }
@@ -822,7 +822,7 @@
   font-size: 10px;
   font-weight: 600;
   padding: 1px 5px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: var(--accent-muted);
   color: var(--accent);
 }

@@ -5,7 +5,7 @@
 }
 
 .database-toolbar {
-  border-bottom-color: var(--color-border-strong);
+  border-bottom: none;
 }
 
 .database-toolbar .product-actions {
@@ -56,11 +56,11 @@
 }
 
 .database-explorer-columns {
-  background: var(--color-sidebar);
+  background: transparent;
 }
 
 .database-explorer-columns .sidebar-section {
-  background: var(--color-sidebar);
+  background: transparent;
 }
 
 .database-explorer-columns .sidebar-header {
@@ -88,7 +88,7 @@
 }
 
 .database-explorer-columns .conn-item.active {
-  background: var(--color-selection);
+  background: var(--color-sidebar-selected);
 }
 
 .database-explorer-columns .conn-item .conn-name {
@@ -120,14 +120,13 @@
 
 .database-explorer-columns .wn-tree-item {
   min-height: 24px;
-  margin: 0;
+  margin: 1px 6px;
   padding-block: 2px;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
 }
 
 .database-explorer-columns .wn-tree-item.selected {
-  background: var(--color-selection);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--color-sidebar-selected);
 }
 
 .database-workbench .sidebar-section.history .sidebar-body {
@@ -244,7 +243,9 @@
 
 .database-workbench .wn-grid tbody tr.is-selected td,
 .database-workbench .wn-grid tbody tr.is-selected:hover td {
-  background: var(--color-selection);
+  background: var(--color-row-selected);
+  color: var(--color-row-selected-fg);
+  box-shadow: none;
 }
 
 .database-workbench .wn-grid .grid-cell-value {

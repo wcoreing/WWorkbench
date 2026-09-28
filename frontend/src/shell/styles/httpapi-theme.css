@@ -307,8 +307,9 @@
   align-items: center;
   gap: 4px;
   min-height: 28px;
+  margin: 1px 6px;
   padding: 4px 8px;
-  border-radius: 0;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: var(--font-size-ui-sm);
 }
@@ -350,9 +351,9 @@ body.httpapi-tree-dragging * {
 }
 
 .httpapi-tree-api.is-active {
-  background: var(--color-selection);
+  background: var(--color-sidebar-selected);
   color: var(--color-text);
-  box-shadow: inset 2px 0 0 var(--accent);
+  border-radius: var(--radius-sm);
 }
 
 .httpapi-tree-chevron {
@@ -436,7 +437,7 @@ body.httpapi-tree-dragging * {
 .httpapi-drop-slot {
   height: 3px;
   margin: 0 6px;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   pointer-events: auto;
 }
 
@@ -480,8 +481,8 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
 }
 
 .httpapi-tree-body.is-drop-root {
-  background: rgba(59, 111, 217, 0.06);
-  outline: 1px dashed rgba(124, 58, 237, 0.35);
+  background: rgba(0, 122, 255, 0.06);
+  outline: 1px dashed rgba(0, 122, 255, 0.35);
   outline-offset: -2px;
 }
 
@@ -490,8 +491,8 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
   padding: 4px 8px;
   font-size: 10px;
   color: var(--color-text-muted);
-  border-radius: 4px;
-  background: rgba(124, 58, 237, 0.08);
+  border-radius: var(--radius);
+  background: rgba(0, 122, 255, 0.08);
 }
 
 .httpapi-req-pane .httpapi-tab-panel {

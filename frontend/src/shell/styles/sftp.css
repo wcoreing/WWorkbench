@@ -1,37 +1,54 @@
-/* SFTP 工作台：双栏方向明确，路径与传输状态优先。 */
+/* SFTP 工作台：Finder 式色块分区，少用硬线。 */
 .sftp-workbench {
   container-type: inline-size;
   container-name: sftp-workbench;
 }
 
 .sftp-toolbar {
-  border-bottom-color: var(--color-border-strong);
+  border-bottom: none;
 }
 
 .sftp-toolbar .product-toolbar-status {
   padding-left: 10px;
-  border-left: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-divider);
   font-family: var(--font-mono);
   font-size: var(--font-size-caption);
 }
 
 .sftp-sidebar {
   background: var(--color-sidebar);
-  border-right-color: var(--color-border-strong);
+  border-right: 1px solid var(--color-divider);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sftp-side {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .sftp-sidebar .conn-item {
-  min-height: 38px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  min-height: 34px;
+  border-bottom: none;
 }
 
 .sftp-sidebar .conn-item.active,
 .sftp-sidebar .conn-item.connected {
-  background: var(--color-selection);
+  background: var(--color-sidebar-selected);
 }
 
 .sftp-sidebar .conn-item.connected:not(.active) {
-  box-shadow: inset 2px 0 0 var(--color-success);
+  box-shadow: none;
+}
+
+.sftp-sidebar .conn-item.connected:not(.active) .conn-dot {
+  opacity: 1;
+  background: var(--color-success);
 }
 
 .sftp-editor-chrome {
@@ -41,6 +58,20 @@
 .sftp-panes {
   display: flex;
   flex-direction: row;
+  min-height: 0;
+}
+
+.sftp-panes-single {
+  flex-direction: column;
+}
+
+.sftp-panes-single .sftp-pane {
+  flex: 1;
+  min-height: 0;
+}
+
+.sftp-panes-single .sftp-bt-chrome {
+  padding-left: 12px;
 }
 
 .sftp-pane {
@@ -51,125 +82,269 @@
   background: var(--color-editor);
 }
 
-.sftp-pane-header {
+
+/* —— 宝塔式文件窗格 —— */
+.sftp-bt-chrome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-toolbar);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.sftp-bt-side-label {
+  flex-shrink: 0;
+  font-size: var(--font-size-caption);
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  padding-right: 8px;
+  border-right: 1px solid var(--color-divider);
+}
+
+.sftp-pane-remote .sftp-bt-side-label {
+  color: var(--accent);
+}
+
+.sftp-bt-crumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sftp-bt-crumb-wrap {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.sftp-bt-crumb-sep {
+  margin: 0 2px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.sftp-bt-crumb {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--font-size-ui-sm);
+  padding: 2px 4px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sftp-bt-crumb:hover {
+  background: var(--color-hover);
+}
+
+.sftp-bt-crumb.is-current {
+  color: var(--color-text);
+  font-weight: 550;
+  cursor: text;
+}
+
+.sftp-bt-path-edit {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.sftp-bt-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 5px;
-  min-height: 32px;
-  padding: 3px 7px;
-  font-size: var(--font-size-ui-sm);
-  font-weight: 550;
-  color: var(--color-text-muted);
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-toolbar);
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--color-divider);
+  background: var(--color-surface);
 }
 
-.sftp-pane-header > span:first-child {
-  flex-shrink: 0;
-  min-width: 38px;
-  padding-right: 6px;
-  border-right: 1px solid var(--color-border);
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.sftp-pane-remote .sftp-pane-header > span:first-child {
-  color: var(--accent);
-}
-
-.sftp-path {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--color-text-secondary);
-}
-
-.sftp-pane-body {
-  flex: 1;
-  overflow: auto;
-  padding: 0;
-  position: relative;
-}
-
-.sftp-divider {
-  width: 1px;
-  background: var(--color-border-strong);
-  flex-shrink: 0;
-}
-
-.sftp-transfer-rail {
+.sftp-bt-toolbar-start,
+.sftp-bt-toolbar-end {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  width: 58px;
-  flex-shrink: 0;
-  background: var(--color-toolbar);
-  border-left: 1px solid var(--color-border-strong);
-  border-right: 1px solid var(--color-border-strong);
+  gap: 4px;
+  min-width: 0;
 }
 
-.sftp-transfer-rail-inner {
+.sftp-bt-search {
+  width: 160px;
+  height: 26px;
+  font-size: var(--font-size-ui-sm);
+}
+
+.sftp-bt-footer {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 26px;
+  padding: 0 10px;
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-toolbar);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+}
+
+.sftp-table-bt {
+  table-layout: fixed;
+}
+
+.sftp-table-bt th,
+.sftp-table-bt td {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.sftp-table-bt .sftp-col-name {
+  width: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-inline: 8px 10px;
+}
+
+.sftp-table-bt .sftp-col-size {
+  width: 80px;
+  white-space: nowrap;
+}
+
+.sftp-table-bt .sftp-col-mtime {
+  width: 148px;
+  white-space: nowrap;
+}
+
+.sftp-table-bt .sftp-col-ops {
+  width: 132px;
+  white-space: nowrap;
+}
+
+.sftp-name-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.sftp-name-head {
+  gap: 6px;
+  font-weight: 650;
+}
+
+.sftp-check {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.sftp-row .sftp-check {
+  opacity: 0.55;
+}
+
+.sftp-row:hover .sftp-check,
+.sftp-row.selected .sftp-check,
+.sftp-name-head .sftp-check {
+  opacity: 1;
+}
+
+.sftp-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sftp-row-ops {
+  display: flex;
   align-items: center;
   gap: 2px;
-  padding: 8px 0;
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-ui);
 }
 
-.sftp-transfer-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 40px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  transition:
-    background var(--motion-fast) var(--ease-ui),
-    border-color var(--motion-fast) var(--ease-ui),
-    color var(--motion-fast) var(--ease-ui);
+.sftp-row:hover .sftp-row-ops,
+.sftp-row.selected .sftp-row-ops {
+  opacity: 1;
 }
 
-.sftp-transfer-btn:hover:not(:disabled) {
-  background: var(--color-active);
-  border-color: var(--accent);
+.sftp-op {
+  border: none;
+  background: transparent;
   color: var(--accent);
+  font-size: var(--font-size-ui-sm);
+  padding: 2px 5px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
 }
 
-.sftp-transfer-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
+.sftp-op:hover {
+  background: var(--accent-muted);
 }
 
-.sftp-transfer-arrow {
-  font-size: 16px;
-  line-height: 1;
-  font-weight: 600;
+.sftp-op-danger {
+  color: var(--color-danger);
 }
 
-.sftp-transfer-text {
-  font-size: var(--font-size-caption);
-  margin-top: 1px;
+.sftp-op-danger:hover {
+  background: var(--color-danger-muted);
 }
 
-.sftp-transfer-hint {
-  font-size: 8px;
-  color: var(--color-text-muted);
-  margin: 0 0 8px;
-  text-align: center;
-  user-select: none;
+.sftp-table-bt .sftp-row td {
+  height: 32px;
 }
+
+.sftp-pane-bt .sftp-pane-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  padding: 2px 6px 8px;
+}
+
+.sftp-main .sftp-panes {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.sftp-drop-target {
+  --wails-drop-target: drop;
+}
+
+
+
+
+
+
+
+
 
 .sftp-table {
   width: 100%;
   table-layout: auto;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: var(--font-size-ui-sm);
   font-variant-numeric: tabular-nums;
 }
@@ -186,14 +361,14 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-text-muted);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-divider);
   background: var(--color-toolbar);
 }
 
 .sftp-table td {
   height: 28px;
   padding: 0 8px;
-  border-bottom: 1px solid var(--color-border-subtle);
+  border-bottom: none;
   color: var(--color-text-secondary);
 }
 
@@ -218,12 +393,68 @@
   background: var(--color-hover);
 }
 
+.sftp-row:hover td:first-child {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.sftp-row:hover td:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
 .sftp-row.selected td {
-  background: var(--color-selection);
+  background: var(--color-row-selected);
+  color: var(--color-row-selected-fg);
+  box-shadow: none;
 }
 
 .sftp-row.selected td:first-child {
-  box-shadow: inset 2px 0 0 var(--accent);
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+
+.sftp-row.selected td:last-child {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.sftp-row.selected:hover td {
+  background: var(--accent-hover);
+}
+
+.sftp-row.selected .sftp-name-text,
+.sftp-row.selected .sftp-col-size,
+.sftp-row.selected .sftp-col-mtime {
+  color: var(--color-row-selected-fg);
+}
+
+.sftp-row.selected .sftp-op {
+  color: var(--color-row-selected-fg);
+}
+
+.sftp-row.selected .sftp-op:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sftp-row.selected .sftp-op-danger:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.sftp-row.is-flash td {
+  animation: sftp-row-flash 3.2s ease-out;
+}
+
+@keyframes sftp-row-flash {
+  0% {
+    background: color-mix(in srgb, var(--color-success) 28%, var(--color-editor));
+  }
+  70% {
+    background: color-mix(in srgb, var(--color-success) 14%, var(--color-editor));
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.sftp-upload-row-other {
+  opacity: 0.72;
 }
 
 .sftp-row-parent td {
@@ -234,11 +465,6 @@
 .sftp-main {
   min-width: 0;
   background: var(--color-editor);
-}
-
-.sftp-main .sftp-panes {
-  flex: 1;
-  min-height: 0;
 }
 
 .sftp-path-input {
@@ -261,276 +487,7 @@
   box-shadow: 0 0 0 2px var(--accent-ring);
 }
 
-.sftp-transfer-hint.active {
-  color: var(--accent);
-  margin-bottom: 0;
-}
 
-.sftp-bottom-bar {
-  position: relative;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  border-top: 1px solid var(--color-border-strong);
-  background: var(--color-toolbar);
-  min-height: 72px;
-  overflow: hidden;
-}
-
-.sftp-bottom-bar.is-active {
-  background: color-mix(in srgb, var(--accent) 6%, var(--color-surface-2));
-}
-
-.sftp-bottom-bar-resize {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 5px;
-  cursor: pointer;
-  z-index: 2;
-}
-
-.sftp-bottom-bar-resize:hover {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-}
-
-body.is-sftp-log-resizing,
-body.is-sftp-log-resizing * {
-  cursor: row-resize !important;
-  user-select: none !important;
-}
-
-.sftp-bottom-bar-chrome {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 28px;
-  padding: 0 10px;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.sftp-bottom-bar-title {
-  font-weight: 500;
-  font-size: 11px;
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-}
-
-.sftp-bottom-bar-summary {
-  font-size: 11px;
-  color: var(--color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex-shrink: 1;
-  min-width: 0;
-}
-
-.sftp-bottom-bar-overall {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: min(220px, 28vw);
-  flex-shrink: 0;
-}
-
-.sftp-bottom-bar-pct {
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
-  min-width: 28px;
-  text-align: right;
-}
-
-.sftp-bottom-bar-spacer {
-  flex: 1;
-}
-
-.sftp-bottom-bar-log {
-  overflow-y: auto;
-  padding: 4px 8px 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-height: 0;
-}
-
-.sftp-bottom-bar-empty {
-  padding: 10px 6px;
-  font-size: 11px;
-  color: var(--color-text-muted);
-}
-
-.sftp-transfer-clear {
-  font-size: 10px;
-  padding: 2px 8px;
-}
-
-.sftp-transfer-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 6px;
-  border-radius: 0;
-  border-bottom: 1px solid var(--color-border-subtle);
-  font-size: 11px;
-}
-
-.sftp-transfer-row.running {
-  background: var(--color-hover);
-}
-
-.sftp-transfer-row.queued {
-  opacity: 0.7;
-}
-
-.sftp-transfer-row.done {
-  color: var(--color-success);
-}
-
-.sftp-transfer-row.error {
-  color: var(--color-danger);
-}
-
-.sftp-transfer-row .sftp-transfer-track {
-  flex: 1;
-  min-width: 60px;
-}
-
-.sftp-transfer-row .sftp-transfer-label {
-  flex-shrink: 0;
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sftp-transfer-row.cancelled {
-  color: var(--color-text-muted);
-}
-
-.sftp-transfer-cancel {
-  flex-shrink: 0;
-  border: none;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 10px;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-}
-
-.sftp-transfer-cancel:hover {
-  color: var(--color-danger);
-  background: var(--color-danger-muted);
-}
-
-.sftp-conflict-dialog {
-  width: min(520px, 92vw);
-}
-
-.sftp-conflict-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 11px;
-}
-
-.sftp-conflict-table th,
-.sftp-conflict-table td {
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  text-align: left;
-  vertical-align: top;
-}
-
-.sftp-conflict-table th {
-  color: var(--color-text-muted);
-  font-weight: 500;
-}
-
-.sftp-conflict-key {
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  width: 64px;
-}
-
-.sftp-conflict-path {
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: 10px;
-}
-
-.sftp-conflict-footer {
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.sftp-transfer-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 12px;
-  font-size: 11px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-toolbar);
-}
-
-.sftp-transfer-bar.running {
-  color: var(--color-text-secondary);
-}
-
-.sftp-transfer-bar.done {
-  color: var(--color-success);
-}
-
-.sftp-transfer-bar.error {
-  color: var(--color-danger);
-}
-
-.sftp-transfer-label {
-  flex-shrink: 0;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sftp-transfer-track {
-  flex: 1;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--color-surface-3);
-  overflow: hidden;
-}
-
-.sftp-transfer-fill {
-  height: 100%;
-  background: var(--accent);
-  transition: width 0.15s;
-}
-
-.sftp-transfer-meta {
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted);
-}
-
-.sftp-icon-dir {
-  display: inline-block;
-  vertical-align: -2px;
-  margin-right: var(--space-1);
-  color: var(--accent);
-}
-
-.sftp-drop-target {
-  --wails-drop-target: drop;
-}
 
 .sftp-pane.sftp-drop-over .sftp-pane-body {
   outline: 2px dashed var(--accent);
@@ -636,15 +593,8 @@ body.is-sftp-file-dragging * {
     display: none;
   }
 
-  .sftp-transfer-rail {
-    width: 46px;
-  }
-
-  .sftp-transfer-btn {
-    width: 32px;
-    height: 32px;
-  }
-
+  
+  
   .sftp-transfer-text,
   .sftp-transfer-hint:not(.active) {
     display: none;
@@ -666,6 +616,354 @@ body.is-sftp-file-dragging * {
     display: none;
   }
 }
+
+
+/* —— 宝塔式上传弹窗 —— */
+.sftp-upload-modal {
+  width: min(720px, 92vw);
+  max-height: min(560px, 86vh);
+}
+
+.sftp-upload-title {
+  font-size: var(--font-size-ui);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 12px;
+}
+
+.sftp-upload-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 16px 8px;
+  flex-shrink: 0;
+}
+
+.sftp-upload-add {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.sftp-upload-add > .wn-btn:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.sftp-upload-add-caret {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 1px solid color-mix(in srgb, #fff 28%, transparent);
+  padding-inline: 6px;
+  min-width: 28px;
+}
+
+.sftp-upload-add-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 5;
+  min-width: 148px;
+  padding: 4px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-md);
+}
+
+.sftp-upload-add-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-ui-sm);
+  cursor: pointer;
+  text-align: left;
+}
+
+.sftp-upload-add-item:hover {
+  background: var(--color-hover);
+}
+
+.sftp-upload-table-wrap {
+  flex: 1;
+  min-height: 180px;
+  max-height: 320px;
+  overflow-y: auto;
+  border-top: 1px solid var(--color-divider);
+  border-bottom: 1px solid var(--color-divider);
+  margin: 0 16px;
+}
+
+.sftp-upload-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-ui-sm);
+  table-layout: fixed;
+}
+
+.sftp-upload-table th,
+.sftp-upload-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border-subtle);
+  vertical-align: middle;
+}
+
+.sftp-upload-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: var(--font-size-caption);
+}
+
+.sftp-upload-table th:nth-child(1),
+.sftp-upload-table td:nth-child(1) {
+  width: 42%;
+}
+
+.sftp-upload-table th:nth-child(2),
+.sftp-upload-table td:nth-child(2) {
+  width: 14%;
+  white-space: nowrap;
+}
+
+.sftp-upload-table th:nth-child(3),
+.sftp-upload-table td:nth-child(3) {
+  width: 28%;
+}
+
+.sftp-upload-table th:nth-child(4),
+.sftp-upload-table td:nth-child(4) {
+  width: 16%;
+  white-space: nowrap;
+}
+
+.sftp-upload-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sftp-upload-empty {
+  text-align: center !important;
+  color: var(--color-text-muted);
+  padding: 36px 12px !important;
+}
+
+.sftp-upload-status {
+  color: var(--color-text-muted);
+}
+
+.sftp-upload-status.is-running {
+  color: var(--accent);
+}
+
+.sftp-upload-status.is-done {
+  color: var(--color-success);
+}
+
+.sftp-upload-status.is-error {
+  color: var(--color-danger);
+}
+
+.sftp-upload-action {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: var(--font-size-ui-sm);
+  padding: 0;
+}
+
+.sftp-upload-action:hover {
+  text-decoration: underline;
+}
+
+.sftp-upload-footer {
+  justify-content: flex-end;
+}
+
+.sftp-transfer-fab {
+  position: fixed;
+  right: 20px;
+  bottom: 28px;
+  z-index: 40;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+  padding: 8px 14px;
+  font-size: var(--font-size-ui-sm);
+  cursor: pointer;
+}
+
+.sftp-transfer-fab:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* —— 在线文本编辑 —— */
+.sftp-text-editor-modal {
+  width: min(960px, 96vw);
+  height: min(720px, 90vh);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.sftp-text-editor-header .sftp-text-editor-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sftp-text-editor-dirty {
+  color: var(--accent);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.sftp-text-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-divider);
+  flex-shrink: 0;
+}
+
+.sftp-text-editor-tab {
+  margin-left: 8px;
+  font-size: var(--font-size-ui-sm);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sftp-text-editor-host {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sftp-text-editor-footer {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 16px;
+  border-top: 1px solid var(--color-divider);
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.sftp-text-editor-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}
+
+/* —— 图片预览 —— */
+.sftp-image-preview-modal {
+  width: min(900px, 96vw);
+  height: min(720px, 90vh);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.sftp-image-preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-divider);
+  flex-shrink: 0;
+}
+
+.sftp-image-preview-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-ui-sm);
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+}
+
+.sftp-image-preview-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sftp-image-preview-zoom-label {
+  min-width: 52px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sftp-image-preview-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  background:
+    linear-gradient(45deg, color-mix(in srgb, var(--color-text-muted) 8%, transparent) 25%, transparent 25%),
+    linear-gradient(-45deg, color-mix(in srgb, var(--color-text-muted) 8%, transparent) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--color-text-muted) 8%, transparent) 75%),
+    linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--color-text-muted) 8%, transparent) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.sftp-image-preview-stage:active,
+.sftp-image-preview-stage.is-zoomed:active {
+  cursor: grabbing;
+}
+
+.sftp-image-preview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+  transform-origin: center center;
+  will-change: transform;
+  pointer-events: none;
+  box-shadow: 0 1px 8px color-mix(in srgb, var(--color-text) 12%, transparent);
+}
+
+.sftp-image-preview-hint {
+  margin-left: auto;
+  color: var(--color-text-muted);
+}
+
 
 .sftp-drag-cursor {
   position: fixed;

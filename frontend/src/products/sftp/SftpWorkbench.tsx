@@ -3,7 +3,7 @@ import type { FileEntry, SftpBookmark, ShellHost, SSHHost } from '../../api/type
 import { shellHostAsSSH } from '../../api/types'
 import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
-import { IconDocker, IconPlus, IconServer } from '../../components/Icons'
+import { IconPlus, IconServer } from '../../components/Icons'
 import { ContextMenu } from '../../components/ContextMenu'
 import { EmptyState } from '../../components/EmptyState'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
@@ -27,24 +27,50 @@ import {
 import { SSHHostModal } from '../../features/terminal/SSHHostModal'
 import { useSSHTrustConfirm } from '../../features/terminal/useSSHTrustConfirm'
 import { FilePane } from '../../features/sftp/FilePane'
-import { selectionHint } from '../../features/sftp/fileSelectionHint'
 import { SftpPrompt, type SftpPromptMode } from '../../features/sftp/SftpPrompt'
-import { SftpBottomBar } from '../../features/sftp/SftpBottomBar'
-import { SftpTransferRail } from '../../features/sftp/SftpTransferRail'
+import {
+  SftpTransferModal,
+  type StagedTransfer,
+  type TransferModalMode,
+} from '../../features/sftp/SftpTransferModal'
+import { SftpTextEditor } from '../../features/sftp/SftpTextEditor'
+import { SftpImagePreview } from '../../features/sftp/SftpImagePreview'
+import { isProbablyImageFile, isProbablyTextFile, imageMimeFromName } from '../../features/sftp/sftpTextLanguage'
 import { useFileSelection } from '../../features/sftp/useFileSelection'
 import { useSftpFileDrop } from '../../features/sftp/useSftpFileDrop'
 import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 import { useSftpTransferQueue } from '../../features/sftp/useSftpTransferQueue'
 import { useSftpConflictResolver } from '../../features/sftp/useSftpConflictResolver'
 import { filterPathsWithConflict } from '../../features/sftp/transferConflict'
-import type { DragPayload } from '../../features/sftp/FilePane'
-import { joinLocalPath, joinRemotePath, parentLocalPath, parentRemotePath, siblingPath } from '../../features/sftp/sftpUtils'
+import { joinRemotePath, parentRemotePath, shellSingleQuote, siblingPath } from '../../features/sftp/sftpUtils'
+
+const SFTP_SIDE_TAB_KEY = 'sftp_sidebar_tab'
+type SftpSideTab = 'ssh' | 'docker'
+
+function loadSftpSideTab(): SftpSideTab {
+  try {
+    const v = localStorage.getItem(SFTP_SIDE_TAB_KEY)
+    if (v === 'ssh' || v === 'docker') return v
+  } catch {
+    /* ignore */
+  }
+  return 'ssh'
+}
+
+function persistSftpSideTab(tab: SftpSideTab) {
+  try {
+    localStorage.setItem(SFTP_SIDE_TAB_KEY, tab)
+  } catch {
+    /* ignore */
+  }
+}
 
 interface SftpTab {
   id: string
   sessionId: string
   hostId: string
   title: string
+  /** 本地下载默认目录（单栏模式下不再展示本地列表，仍用于工作区恢复）。 */
   localPath: string
   remotePath: string
 }
@@ -58,8 +84,6 @@ interface PromptState {
   onSubmit: (value: string) => void
 }
 
-type PaneSide = 'local' | 'remote'
-
 /** SFTP 产品线工作区 */
 export function SftpWorkbench() {
   const { t } = useI18n()
@@ -68,21 +92,40 @@ export function SftpWorkbench() {
   const [hosts, setHosts] = useState<ShellHost[]>([])
   const [tabs, setTabs] = useState<SftpTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
-  const [localFiles, setLocalFiles] = useState<FileEntry[]>([])
   const [remoteFiles, setRemoteFiles] = useState<FileEntry[]>([])
-  const localSel = useFileSelection(localFiles)
   const remoteSel = useFileSelection(remoteFiles)
-  const [localBookmarks, setLocalBookmarks] = useState<SftpBookmark[]>([])
   const [remoteBookmarks, setRemoteBookmarks] = useState<SftpBookmark[]>([])
   const [connectingId, setConnectingId] = useState<string | null>(null)
   const [mutating, setMutating] = useState(false)
   const [hostModalOpen, setHostModalOpen] = useState(false)
   const [editingHost, setEditingHost] = useState<SSHHost | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; host: ShellHost } | null>(null)
-  const [paneMenu, setPaneMenu] = useState<{ x: number; y: number; side: PaneSide; entry: FileEntry | null } | null>(null)
+  const [paneMenu, setPaneMenu] = useState<{ x: number; y: number; entry: FileEntry | null } | null>(null)
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
   const [prompt, setPrompt] = useState<PromptState | null>(null)
+  const [transferOpen, setTransferOpen] = useState(false)
+  const [transferMode, setTransferMode] = useState<TransferModalMode>('upload')
+  const [stagedTransfers, setStagedTransfers] = useState<StagedTransfer[]>([])
+  const [downloadLocalDir, setDownloadLocalDir] = useState('')
+  const [flashPaths, setFlashPaths] = useState<string[]>([])
+  const [textEditor, setTextEditor] = useState<{
+    path: string
+    name: string
+    content: string
+    revision: number
+  } | null>(null)
+  const [textSaving, setTextSaving] = useState(false)
+  const [imagePreview, setImagePreview] = useState<{
+    path: string
+    name: string
+    src: string
+    size: number
+  } | null>(null)
+  const [sideTab, setSideTab] = useState<SftpSideTab>(() => loadSftpSideTab())
   const workspaceRestored = useRef(false)
+  /** 防止系统文件框关闭后点击穿透再次唤起选文件。 */
+  const pickingRef = useRef(false)
+  const flashTimerRef = useRef<number | null>(null)
 
   useDismissOverlays(() => {
     setCtxMenu(null)
@@ -103,9 +146,7 @@ export function SftpWorkbench() {
         hostId: activeTab?.hostId,
         hostLabel: host?.name?.trim() || host?.host || activeTab?.title,
         hostKind: host?.kind === 'docker' ? 'docker' : host?.kind === 'ssh' ? 'ssh' : '',
-        localPath: activeTab?.localPath,
         remotePath: activeTab?.remotePath,
-        localSelected: localSel.selectedPaths,
         remoteSelected: remoteSel.selectedPaths,
         openTabsBrief: briefList(
           tabs.map((t) => t.title),
@@ -118,7 +159,6 @@ export function SftpWorkbench() {
     activeTab,
     hosts,
     tabs,
-    localSel.selectedPaths,
     remoteSel.selectedPaths,
     setAgentSurface,
   ])
@@ -134,8 +174,6 @@ export function SftpWorkbench() {
 
   const loadBookmarks = useCallback(async () => {
     try {
-      const local = await api.listSFTPBookmarks('local', '')
-      setLocalBookmarks(local)
       if (activeTab) {
         setRemoteBookmarks(await api.listSFTPBookmarks('remote', activeTab.hostId))
       } else {
@@ -221,33 +259,20 @@ export function SftpWorkbench() {
     return () => window.removeEventListener('pointerdown', close)
   }, [ctxMenu, paneMenu, tabCtxMenu])
 
-  const loadLocal = useCallback(async (path: string) => {
-    const res = await api.listLocalDir(path)
-    setLocalFiles(res.entries)
-    return res.path
-  }, [])
-
   const loadRemote = useCallback(async (sessionId: string, path: string) => {
     return api.listSFTPDir(sessionId, path)
   }, [])
 
-  const refreshLocal = useCallback(async () => {
+  /** 静默刷新：保留当前列表，避免 LoadingPane 闪屏。 */
+  const softRefreshRemote = useCallback(async () => {
     if (!activeTab) return
-    const key = `sftp.list.${activeTab.id}`
-    await withLoading(
-      key,
-      async () => {
-        const localPath = await loadLocal(activeTab.localPath)
-        setTabs((prev) => prev.map((t) => (t.id === activeTab.id ? { ...t, localPath } : t)))
-        localSel.clearSelection()
-      },
-      {
-        label: t('common.loading'),
-        onBegin: () => setLocalFiles([]),
-      },
-    )
-  }, [activeTab, loadLocal, localSel.clearSelection, t])
+    const remoteList = await loadRemote(activeTab.sessionId, activeTab.remotePath)
+    setRemoteFiles(remoteList)
+    const alive = new Set(remoteList.map((e) => e.path))
+    remoteSel.setSelectedPaths((prev) => prev.filter((p) => alive.has(p)))
+  }, [activeTab, loadRemote, remoteSel.setSelectedPaths])
 
+  /** 切换路径/首次进入：清空并走 LoadingPane。 */
   const refreshRemote = useCallback(async () => {
     if (!activeTab) return
     const key = `sftp.list.${activeTab.id}`
@@ -265,50 +290,47 @@ export function SftpWorkbench() {
     )
   }, [activeTab, loadRemote, remoteSel.clearSelection, t])
 
-  const refreshListings = useCallback(async () => {
-    if (!activeTab) return
-    const key = `sftp.list.${activeTab.id}`
-    await withLoading(
-      key,
-      async () => {
-        const [localPath, remoteList] = await Promise.all([
-          loadLocal(activeTab.localPath),
-          loadRemote(activeTab.sessionId, activeTab.remotePath),
-        ])
-        setTabs((prev) => prev.map((t) => (t.id === activeTab.id ? { ...t, localPath } : t)))
-        setRemoteFiles(remoteList)
-      },
-      {
-        label: t('common.loading'),
-        onBegin: () => {
-          setLocalFiles([])
-          setRemoteFiles([])
-        },
-      },
-    )
-  }, [activeTab, loadLocal, loadRemote, t])
-
   const refreshActive = useCallback(async () => {
-    await refreshListings()
-    localSel.clearSelection()
-    remoteSel.clearSelection()
-  }, [refreshListings, localSel.clearSelection, remoteSel.clearSelection])
+    await refreshRemote()
+  }, [refreshRemote])
 
   const conflictResolver = useSftpConflictResolver()
 
-  const transferQueue = useSftpTransferQueue(() => {
-    refreshListings().catch((e) => setStatusMessage((e as Error).message))
+  const markUploadFlash = useCallback(
+    (tasks: { name: string; state: string; kind: string; targetDir: string }[]) => {
+      if (!activeTab) return
+      const uploads = tasks.filter((x) => x.kind === 'upload' && x.state === 'done' && x.targetDir === activeTab.remotePath)
+      if (!uploads.length) return
+      const nextFlash = uploads.map((u) => joinRemotePath(activeTab.remotePath, u.name))
+      setFlashPaths(nextFlash)
+      setStatusMessage(t('sftp.wroteFiles', { count: uploads.length, path: activeTab.remotePath }))
+      if (flashTimerRef.current) window.clearTimeout(flashTimerRef.current)
+      flashTimerRef.current = window.setTimeout(() => setFlashPaths([]), 3200)
+    },
+    [activeTab, setStatusMessage, t],
+  )
+
+  const transferQueue = useSftpTransferQueue((tasks) => {
+    softRefreshRemote()
+      .then(() => {
+        markUploadFlash(tasks)
+        const downloads = tasks.filter((x) => x.kind === 'download' && x.state === 'done')
+        if (downloads.length) {
+          const dir = downloads[0]?.targetDir || ''
+          setStatusMessage(t('sftp.downloadedFiles', { count: downloads.length, path: dir }))
+        }
+      })
+      .catch((e) => setStatusMessage((e as Error).message))
   })
 
   useEffect(() => {
     if (!activeTab) {
-      setLocalFiles([])
       setRemoteFiles([])
       return
     }
     refreshActive().catch((e) => setStatusMessage((e as Error).message))
     loadBookmarks()
-  }, [activeTab?.id, activeTab?.localPath, activeTab?.remotePath])
+  }, [activeTab?.id, activeTab?.remotePath])
 
   const updateActiveTab = (patch: Partial<SftpTab>) => {
     if (!activeTab) return
@@ -413,7 +435,7 @@ export function SftpWorkbench() {
     setStatusMessage(label)
     try {
       await fn()
-      await refreshActive()
+      await softRefreshRemote()
     } catch (e) {
       setStatusMessage((e as Error).message)
     } finally {
@@ -435,68 +457,297 @@ export function SftpWorkbench() {
       transferQueue.enqueueUpload(activeTab.sessionId, accepted, activeTab.remotePath)
       setStatusMessage(t('sftp.queuedUpload', { count: accepted.length }))
     },
-    [activeTab, conflictResolver.ask, transferQueue.enqueueUpload, setStatusMessage]
+    [activeTab, conflictResolver.ask, transferQueue.enqueueUpload, setStatusMessage, t]
   )
 
   const requestDownload = useCallback(
-    async (paths: string[]) => {
-      if (!activeTab || paths.length === 0) return
+    async (paths: string[], localDir: string) => {
+      if (!activeTab || paths.length === 0 || !localDir) return
       const accepted = await filterPathsWithConflict(
         'download',
         activeTab.sessionId,
         paths,
-        activeTab.localPath,
+        localDir,
         conflictResolver.ask
       )
       if (!accepted.length) return
-      transferQueue.enqueueDownload(activeTab.sessionId, accepted, activeTab.localPath)
+      transferQueue.enqueueDownload(activeTab.sessionId, accepted, localDir)
       setStatusMessage(t('sftp.queuedDownload', { count: accepted.length }))
     },
-    [activeTab, conflictResolver.ask, transferQueue.enqueueDownload, setStatusMessage]
+    [activeTab, conflictResolver.ask, transferQueue.enqueueDownload, setStatusMessage, t]
   )
 
-  const uploadPaths = (paths: string[]) => {
-    requestUpload(paths).catch((e) => setStatusMessage((e as Error).message))
-  }
+  const stageUploadPaths = useCallback((paths: string[]) => {
+    if (!paths.length) return
+    setTransferMode((mode) => {
+      setStagedTransfers((prev) => {
+        const base = mode === 'upload' ? prev : []
+        const seen = new Set(base.map((p) => p.path))
+        const next = [...base]
+        for (const path of paths) {
+          if (seen.has(path)) continue
+          seen.add(path)
+          const parts = path.replace(/\\/g, '/').split('/')
+          next.push({ id: crypto.randomUUID(), path, name: parts[parts.length - 1] || path })
+        }
+        return next
+      })
+      return 'upload'
+    })
+    setTransferOpen(true)
+  }, [])
 
-  const downloadPaths = (paths: string[]) => {
-    requestDownload(paths).catch((e) => setStatusMessage((e as Error).message))
-  }
+  const stageDownloadPaths = useCallback((paths: string[], localDir: string) => {
+    if (!paths.length || !localDir) return
+    setTransferMode('download')
+    setDownloadLocalDir(localDir)
+    setStagedTransfers(
+      paths.map((path) => {
+        const parts = path.replace(/\\/g, '/').split('/')
+        return { id: crypto.randomUUID(), path, name: parts[parts.length - 1] || path }
+      }),
+    )
+    setTransferOpen(true)
+  }, [])
 
+  /** 先选本地文件，再打开上传弹窗（避开系统框关闭后的点击穿透）。 */
   const handleUpload = () => {
-    const paths = localSel.selectedPaths
-    if (!paths.length) {
-      setStatusMessage(t('sftp.pickUpload'))
+    if (!activeTab || pickingRef.current) return
+    pickingRef.current = true
+    const wasOpen = transferOpen
+    if (wasOpen) setTransferOpen(false)
+    void (async () => {
+      try {
+        await new Promise((r) => setTimeout(r, 80))
+        const paths = await api.pickSFTPUploadPaths()
+        if (!paths.length) {
+          if (wasOpen) setTransferOpen(true)
+          return
+        }
+        stageUploadPaths(paths)
+      } catch (e) {
+        if (wasOpen) setTransferOpen(true)
+        setStatusMessage((e as Error).message)
+      } finally {
+        window.setTimeout(() => {
+          pickingRef.current = false
+        }, 280)
+      }
+    })()
+  }
+
+  /** 先选本地文件夹，再打开上传弹窗。 */
+  const handleUploadFolder = () => {
+    if (!activeTab || pickingRef.current) return
+    pickingRef.current = true
+    const wasOpen = transferOpen
+    if (wasOpen) setTransferOpen(false)
+    void (async () => {
+      try {
+        await new Promise((r) => setTimeout(r, 80))
+        const dir = await api.pickSFTPUploadDir()
+        if (!dir) {
+          if (wasOpen) setTransferOpen(true)
+          return
+        }
+        stageUploadPaths([dir])
+      } catch (e) {
+        if (wasOpen) setTransferOpen(true)
+        setStatusMessage((e as Error).message)
+      } finally {
+        window.setTimeout(() => {
+          pickingRef.current = false
+        }, 280)
+      }
+    })()
+  }
+
+  const startStagedTransfers = () => {
+    if (!activeTab || !stagedTransfers.length) return
+    const paths = stagedTransfers.map((s) => s.path)
+    setStagedTransfers([])
+    if (transferMode === 'upload') {
+      requestUpload(paths).catch((e) => setStatusMessage((e as Error).message))
       return
     }
-    uploadPaths(paths)
+    const dir = downloadLocalDir || activeTab.localPath
+    if (!dir) {
+      setStatusMessage(t('sftp.pickDownloadDir'))
+      return
+    }
+    requestDownload(paths, dir).catch((e) => setStatusMessage((e as Error).message))
   }
 
-  const handleDownload = () => {
-    const paths = remoteSel.selectedPaths
-    if (!paths.length) {
+  /** 勾选远程项后下载：选目录 → 入下载队列弹窗 → 开始下载。 */
+  const handleDownload = (paths?: string[]) => {
+    if (!activeTab || pickingRef.current) return
+    const selected = paths ?? remoteSel.selectedPaths
+    if (!selected.length) {
       setStatusMessage(t('sftp.pickDownload'))
       return
     }
-    downloadPaths(paths)
+    pickingRef.current = true
+    const wasOpen = transferOpen
+    if (wasOpen) setTransferOpen(false)
+    void (async () => {
+      try {
+        await new Promise((r) => setTimeout(r, 80))
+        const dir = await api.pickSFTPDownloadDir(downloadLocalDir || activeTab.localPath || '')
+        if (!dir) {
+          if (wasOpen) setTransferOpen(true)
+          return
+        }
+        updateActiveTab({ localPath: dir })
+        stageDownloadPaths(selected, dir)
+      } catch (e) {
+        if (wasOpen) setTransferOpen(true)
+        setStatusMessage((e as Error).message)
+      } finally {
+        window.setTimeout(() => {
+          pickingRef.current = false
+        }, 280)
+      }
+    })()
+  }
+
+  const handleChangeDownloadDir = () => {
+    if (!activeTab || pickingRef.current) return
+    pickingRef.current = true
+    const wasOpen = transferOpen
+    if (wasOpen) setTransferOpen(false)
+    void (async () => {
+      try {
+        await new Promise((r) => setTimeout(r, 80))
+        const dir = await api.pickSFTPDownloadDir(downloadLocalDir || activeTab.localPath || '')
+        if (!dir) {
+          if (wasOpen) setTransferOpen(true)
+          return
+        }
+        updateActiveTab({ localPath: dir })
+        setDownloadLocalDir(dir)
+        setTransferMode('download')
+        setTransferOpen(true)
+      } catch (e) {
+        if (wasOpen) setTransferOpen(true)
+        setStatusMessage((e as Error).message)
+      } finally {
+        window.setTimeout(() => {
+          pickingRef.current = false
+        }, 280)
+      }
+    })()
+  }
+
+  const openTextEditor = useCallback(
+    (entry: FileEntry) => {
+      if (!activeTab || entry.isDir) return
+      void (async () => {
+        try {
+          setStatusMessage(t('sftp.editorLoading'))
+          const file = await api.readSFTPText(activeTab.sessionId, entry.path)
+          setTextEditor({
+            path: file.path,
+            name: file.name || entry.name,
+            content: file.content,
+            revision: Date.now(),
+          })
+          setStatusMessage('')
+        } catch (e) {
+          setStatusMessage((e as Error).message)
+        }
+      })()
+    },
+    [activeTab, setStatusMessage, t],
+  )
+
+  const openImagePreview = useCallback(
+    (entry: FileEntry) => {
+      if (!activeTab || entry.isDir) return
+      void (async () => {
+        try {
+          setStatusMessage(t('sftp.imageLoading'))
+          const file = await api.readSFTPBinary(activeTab.sessionId, entry.path)
+          const mime = file.mime || imageMimeFromName(file.name || entry.name)
+          setImagePreview({
+            path: file.path,
+            name: file.name || entry.name,
+            src: `data:${mime};base64,${file.content}`,
+            size: file.size,
+          })
+          setStatusMessage('')
+        } catch (e) {
+          setStatusMessage((e as Error).message)
+        }
+      })()
+    },
+    [activeTab, setStatusMessage, t],
+  )
+
+  const reloadTextEditor = useCallback(() => {
+    if (!activeTab || !textEditor) return
+    void (async () => {
+      try {
+        const file = await api.readSFTPText(activeTab.sessionId, textEditor.path)
+        setTextEditor({
+          path: file.path,
+          name: file.name || textEditor.name,
+          content: file.content,
+          revision: Date.now(),
+        })
+        setStatusMessage(t('sftp.editorReloaded'))
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  }, [activeTab, textEditor, setStatusMessage, t])
+
+  const saveTextEditor = useCallback(() => {
+    if (!activeTab || !textEditor || textSaving) return
+    setTextSaving(true)
+    void (async () => {
+      try {
+        await api.writeSFTPText(activeTab.sessionId, textEditor.path, textEditor.content)
+        setTextEditor((prev) => (prev ? { ...prev, revision: Date.now() } : prev))
+        setStatusMessage(t('sftp.editorSaved', { name: textEditor.name }))
+        softRefreshRemote().catch(() => {})
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      } finally {
+        setTextSaving(false)
+      }
+    })()
+  }, [activeTab, textEditor, textSaving, setStatusMessage, softRefreshRemote, t])
+
+  const handleOpenFile = (entry: FileEntry) => {
+    if (isProbablyImageFile(entry.name)) {
+      openImagePreview(entry)
+      return
+    }
+    if (isProbablyTextFile(entry.name)) {
+      openTextEditor(entry)
+      return
+    }
+    handleDownload([entry.path])
   }
 
   const handleOsFileDrop = useCallback(
-    (paths: string[]) => uploadPaths(paths),
-    [uploadPaths]
+    (paths: string[]) => {
+      stageUploadPaths(paths)
+    },
+    [stageUploadPaths],
   )
 
   useSftpFileDrop(!!activeTab, handleOsFileDrop)
 
-  const addBookmark = async (side: PaneSide) => {
+  const addBookmark = async () => {
     if (!activeTab) return
     try {
       await api.saveSFTPBookmark({
         id: '',
-        side,
-        hostId: side === 'remote' ? activeTab.hostId : '',
+        side: 'remote',
+        hostId: activeTab.hostId,
         name: '',
-        path: side === 'local' ? activeTab.localPath : activeTab.remotePath,
+        path: activeTab.remotePath,
         createdAt: 0,
       })
       await loadBookmarks()
@@ -515,27 +766,23 @@ export function SftpWorkbench() {
     }
   }
 
-  const openMkdir = (side: PaneSide) => {
+  const openMkdir = () => {
     if (!activeTab) return
     setPrompt({
       mode: 'mkdir',
-      title: side === 'local' ? t('sftp.newLocalFolder') : t('sftp.newRemoteFolder'),
+      title: t('sftp.newRemoteFolder'),
       onSubmit: (name) => {
         setPrompt(null)
         if (!name.trim()) return
         runMutating(t('sftp.creating'), async () => {
-          if (side === 'local') {
-            await api.mkdirLocalPath(joinLocalPath(activeTab.localPath, name.trim()))
-          } else {
-            await api.mkdirSFTPRemote(activeTab.sessionId, joinRemotePath(activeTab.remotePath, name.trim()))
-          }
+          await api.mkdirSFTPRemote(activeTab.sessionId, joinRemotePath(activeTab.remotePath, name.trim()))
           setStatusMessage(t('sftp.folderCreated'))
         })
       },
     })
   }
 
-  const openRename = (side: PaneSide, entry: FileEntry) => {
+  const openRename = (entry: FileEntry) => {
     if (!activeTab) return
     setPrompt({
       mode: 'rename',
@@ -545,18 +792,14 @@ export function SftpWorkbench() {
         setPrompt(null)
         if (!name.trim() || name === entry.name) return
         runMutating(t('sftp.renaming'), async () => {
-          if (side === 'local') {
-            await api.renameLocalPath(entry.path, siblingPath(entry.path, name.trim()))
-          } else {
-            await api.renameSFTPRemote(activeTab.sessionId, entry.path, siblingPath(entry.path, name.trim()))
-          }
+          await api.renameSFTPRemote(activeTab.sessionId, entry.path, siblingPath(entry.path, name.trim()))
           setStatusMessage(t('sftp.renamed'))
         })
       },
     })
   }
 
-  const openDelete = (side: PaneSide, entry: FileEntry) => {
+  const openDelete = (entry: FileEntry) => {
     if (!activeTab) return
     setPrompt({
       mode: 'confirm',
@@ -566,42 +809,27 @@ export function SftpWorkbench() {
       onSubmit: () => {
         setPrompt(null)
         runMutating(t('sftp.deleting'), async () => {
-          if (side === 'local') {
-            await api.deleteLocalPath(entry.path)
-          } else {
-            await api.deleteSFTPPath(activeTab.sessionId, entry.path)
-          }
+          await api.deleteSFTPPath(activeTab.sessionId, entry.path)
           setStatusMessage(t('sftp.deleted'))
         })
       },
     })
   }
 
-  const openPaneMenu = (e: React.MouseEvent, side: PaneSide, entry: FileEntry | null) => {
+  const openPaneMenu = (e: React.MouseEvent, entry: FileEntry | null) => {
     e.preventDefault()
-    if (entry) {
-      const sel = side === 'local' ? localSel : remoteSel
-      if (!sel.selectedPaths.includes(entry.path)) {
-        sel.setSelectedPaths([entry.path])
-      }
+    if (entry && !remoteSel.selectedPaths.includes(entry.path)) {
+      remoteSel.setSelectedPaths([entry.path])
     }
-    setPaneMenu({ x: e.clientX, y: e.clientY, side, entry })
-  }
-
-  const uploadFromMenu = () => {
-    if (!paneMenu) return
-    setPaneMenu(null)
-    uploadPaths(localSel.selectedPaths)
+    setPaneMenu({ x: e.clientX, y: e.clientY, entry })
   }
 
   const downloadFromMenu = () => {
     if (!paneMenu) return
     setPaneMenu(null)
-    downloadPaths(remoteSel.selectedPaths)
+    handleDownload(remoteSel.selectedPaths)
   }
 
-  const localNames = localSel.selectedEntries.map((e) => e.name)
-  const remoteNames = remoteSel.selectedEntries.map((e) => e.name)
   const connectedHostIds = new Set(tabs.map((t) => t.hostId))
   const sshHosts = hosts.filter((h) => h.kind === 'ssh')
   const dockerHosts = hosts.filter((h) => h.kind === 'docker')
@@ -619,7 +847,7 @@ export function SftpWorkbench() {
             type="button"
             className="wn-btn wn-btn-chrome"
             disabled={!activeTab || mutating || listLoading.active}
-            {...pressProps(() => refreshActive().catch(() => {}), { disabled: !activeTab || mutating || listLoading.active })}
+            {...pressProps(() => softRefreshRemote().catch(() => {}), { disabled: !activeTab || mutating || listLoading.active })}
           >
             {t('common.refresh')}
           </button>
@@ -630,104 +858,145 @@ export function SftpWorkbench() {
 
       <div className="product-body">
         <aside className="app-sidebar sftp-sidebar">
-          <section className="sidebar-section">
-            <div className="sidebar-header">
-              <span>{t('sftp.sshHosts')}</span>
-              <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" {...pressProps(() => setHostModalOpen(true))}>
-                <IconPlus size={14} />
-              </button>
+          <div className="sftp-side">
+            <div className="sftp-side-tabs" role="tablist" aria-label={t('sftp.sideTabs')}>
+              {(
+                [
+                  { id: 'ssh' as const, label: t('sftp.sideTabSSH') },
+                  { id: 'docker' as const, label: t('sftp.sideTabDocker') },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={sideTab === tab.id}
+                  className={`sftp-side-tab${sideTab === tab.id ? ' is-active' : ''}`}
+                  {...pressProps(() => {
+                    setSideTab(tab.id)
+                    persistSftpSideTab(tab.id)
+                  })}
+                >
+                  {tab.label}
+                </button>
+              ))}
             </div>
-            <div className="sidebar-body">
-              {sshHosts.length === 0 ? (
-                <EmptyState
-                  variant="inline"
-                  title={t('sftp.emptyHosts')}
-                  actions={[{ label: t('sftp.addHost'), onPress: () => setHostModalOpen(true), primary: true }]}
-                />
-              ) : (
-                <ul className="conn-list">
-                  {sshHosts.map((h) => (
-                    <li
-                      key={h.id}
-                      className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
-                      {...pressProps(() => connectHost(h))}
-                      onDoubleClick={() => connectHost(h)}
-                      onContextMenu={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        setCtxMenu({ x: e.clientX, y: e.clientY, host: h })
-                      }}
-                    >
-                      <IconServer size={14} className="mock-icon" />
-                      <div className="conn-meta">
-                        <span className="conn-name">{h.name}</span>
-                        <span className="conn-host">
-                          {h.user}@{h.host}:{h.port}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
 
-          {dockerHosts.length > 0 && (
-            <section className="sidebar-section">
-              <div className="sidebar-header">
-                <span>{t('sftp.dockerHosts')}</span>
-                {dockerHosts.some((h) => h.running === false) && (
+            {sideTab === 'ssh' && (
+              <section className="sidebar-section sftp-side-panel">
+                <div className="sidebar-header">
+                  <span className="sidebar-header-title">{t('sftp.sshHosts')}</span>
                   <button
                     type="button"
-                    className="wn-btn wn-btn-ghost wn-btn-sm"
-                    title={t('sftp.pruneStopped')}
-                    {...pressProps(() => {
-                      void (async () => {
-                        try {
-                          const n = await api.pruneStoppedDockerHosts()
-                          await refreshHosts()
-                          setStatusMessage(
-                            n > 0 ? t('sftp.prunedStopped', { count: n }) : t('sftp.pruneStoppedNone')
-                          )
-                        } catch (e) {
-                          setStatusMessage((e as Error).message)
-                        }
-                      })()
-                    })}
+                    className="wn-btn wn-btn-icon wn-btn-sm"
+                    {...pressProps(() => setHostModalOpen(true))}
+                    title={t('common.new')}
                   >
-                    {t('sftp.pruneStopped')}
+                    <IconPlus size={14} />
                   </button>
-                )}
-              </div>
-              <div className="sidebar-body">
-                <ul className="conn-list">
-                  {dockerHosts.map((h) => (
-                    <li
-                      key={h.id}
-                      className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
-                      {...pressProps(() => connectHost(h))}
-                      onDoubleClick={() => connectHost(h)}
-                      onContextMenu={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        setCtxMenu({ x: e.clientX, y: e.clientY, host: h })
-                      }}
+                </div>
+                <div className="sidebar-body">
+                  {sshHosts.length === 0 ? (
+                    <EmptyState
+                      variant="inline"
+                      title={t('sftp.emptyHosts')}
+                      actions={[{ label: t('sftp.addHost'), onPress: () => setHostModalOpen(true), primary: true }]}
+                    />
+                  ) : (
+                    <ul className="conn-list is-homogeneous">
+                      {sshHosts.map((h) => {
+                        const hostLine = `${h.user}@${h.host}:${h.port}`
+                        return (
+                          <li
+                            key={h.id}
+                            className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
+                            {...pressProps(() => connectHost(h))}
+                            onDoubleClick={() => connectHost(h)}
+                            onContextMenu={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setCtxMenu({ x: e.clientX, y: e.clientY, host: h })
+                            }}
+                          >
+                            <div className="conn-meta">
+                              <span className="conn-name">{h.name}</span>
+                              <span className="conn-host" title={hostLine}>
+                                {hostLine}
+                              </span>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {sideTab === 'docker' && (
+              <section className="sidebar-section sftp-side-panel">
+                <div className="sidebar-header">
+                  <span className="sidebar-header-title">{t('sftp.dockerHosts')}</span>
+                  {dockerHosts.some((h) => h.running === false) && (
+                    <button
+                      type="button"
+                      className="wn-btn wn-btn-ghost wn-btn-sm"
+                      title={t('sftp.pruneStopped')}
+                      {...pressProps(() => {
+                        void (async () => {
+                          try {
+                            const n = await api.pruneStoppedDockerHosts()
+                            await refreshHosts()
+                            setStatusMessage(
+                              n > 0 ? t('sftp.prunedStopped', { count: n }) : t('sftp.pruneStoppedNone'),
+                            )
+                          } catch (e) {
+                            setStatusMessage((e as Error).message)
+                          }
+                        })()
+                      })}
                     >
-                      <IconDocker size={14} className="mock-icon" />
-                      <div className="conn-meta">
-                        <span className="conn-name">{h.name}</span>
-                        <span className="conn-host">
-                          {h.running === false
+                      {t('sftp.pruneStopped')}
+                    </button>
+                  )}
+                </div>
+                <div className="sidebar-body">
+                  {dockerHosts.length === 0 ? (
+                    <EmptyState variant="inline" title={t('sftp.emptyDockerHosts')} />
+                  ) : (
+                    <ul className="conn-list is-homogeneous">
+                      {dockerHosts.map((h) => {
+                        const hostLine =
+                          h.running === false
                             ? t('sftp.containerStopped')
-                            : h.image || h.containerId?.slice(0, 12) || 'container'}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </section>
-          )}
+                            : h.image || h.containerId?.slice(0, 12) || 'container'
+                        return (
+                          <li
+                            key={h.id}
+                            className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
+                            {...pressProps(() => connectHost(h))}
+                            onDoubleClick={() => connectHost(h)}
+                            onContextMenu={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setCtxMenu({ x: e.clientX, y: e.clientY, host: h })
+                            }}
+                          >
+                            <div className="conn-meta">
+                              <span className="conn-name">{h.name}</span>
+                              <span className="conn-host" title={hostLine}>
+                                {hostLine}
+                              </span>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
         </aside>
 
         <main className="app-main sftp-main">
@@ -780,68 +1049,37 @@ export function SftpWorkbench() {
               label={t('common.loading')}
               minHeight={280}
             >
-            <div className="product-body sftp-panes">
+            <div className="product-body sftp-panes sftp-panes-single">
               <FilePane
-                label={t('sftp.local')}
-                path={activeTab.localPath}
-                entries={localFiles}
-                selectedPaths={localSel.selectedPaths}
-                paneSide="local"
-                bookmarks={localBookmarks}
-                allowDrag
-                acceptDropFrom={['remote']}
-                onNavigate={(p) => updateActiveTab({ localPath: p })}
-                onRowClick={localSel.handleRowClick}
-                onOpenDir={(entry) => updateActiveTab({ localPath: entry.path })}
-                onOpenFile={(entry) => uploadPaths([entry.path])}
-                onGoUp={() => updateActiveTab({ localPath: parentLocalPath(activeTab.localPath) })}
-                onContextMenu={(e, entry) => openPaneMenu(e, 'local', entry)}
-                onAddBookmark={() => addBookmark('local')}
-                onBookmarkNavigate={(p) => updateActiveTab({ localPath: p })}
-                onDeleteBookmark={deleteBookmark}
-                onRefresh={() => {
-                  void refreshLocal().catch((e) => setStatusMessage((e as Error).message))
-                }}
-                refreshTitle={t('sftp.refreshLocal')}
-                onInternalDrop={(payload: DragPayload) => {
-                  if (payload.side === 'remote') downloadPaths(payload.paths)
-                }}
-              />
-              <SftpTransferRail
-                canUpload={localSel.selectedPaths.length > 0}
-                canDownload={remoteSel.selectedPaths.length > 0}
-                transferring={transferQueue.activeCount > 0}
-                localHint={selectionHint(localNames)}
-                remoteHint={selectionHint(remoteNames)}
-                onUpload={handleUpload}
-                onDownload={handleDownload}
-              />
-              <FilePane
-                label={t('sftp.remote')}
                 path={activeTab.remotePath}
                 entries={remoteFiles}
                 selectedPaths={remoteSel.selectedPaths}
+                flashPaths={flashPaths}
                 paneSide="remote"
                 bookmarks={remoteBookmarks}
-                allowDrag
-                acceptDropFrom={['local']}
                 wailsDropTarget
                 onNavigate={(p) => updateActiveTab({ remotePath: p })}
                 onRowClick={remoteSel.handleRowClick}
+                onTogglePath={remoteSel.togglePath}
+                onSelectAll={remoteSel.selectAll}
                 onOpenDir={(entry) => updateActiveTab({ remotePath: entry.path })}
-                onOpenFile={(entry) => downloadPaths([entry.path])}
+                onOpenFile={(entry) => handleOpenFile(entry)}
                 onGoUp={() => updateActiveTab({ remotePath: parentRemotePath(activeTab.remotePath) })}
-                onContextMenu={(e, entry) => openPaneMenu(e, 'remote', entry)}
-                onAddBookmark={() => addBookmark('remote')}
+                onContextMenu={(e, entry) => openPaneMenu(e, entry)}
+                onAddBookmark={() => void addBookmark()}
                 onBookmarkNavigate={(p) => updateActiveTab({ remotePath: p })}
                 onDeleteBookmark={deleteBookmark}
                 onRefresh={() => {
-                  void refreshRemote().catch((e) => setStatusMessage((e as Error).message))
+                  void softRefreshRemote().catch((e) => setStatusMessage((e as Error).message))
                 }}
                 refreshTitle={t('sftp.refreshRemote')}
-                onInternalDrop={(payload: DragPayload) => {
-                  if (payload.side === 'local') uploadPaths(payload.paths)
-                }}
+                onMkdir={openMkdir}
+                onUpload={handleUpload}
+                onUploadFolder={handleUploadFolder}
+                onDownloadSelected={() => handleDownload()}
+                downloadDisabled={remoteSel.selectedPaths.length === 0}
+                onRename={openRename}
+                onDelete={openDelete}
               />
             </div>
             </LoadingPane>
@@ -849,11 +1087,70 @@ export function SftpWorkbench() {
         </main>
       </div>
 
-      <SftpBottomBar
-        tasks={transferQueue.tasks}
-        onCancel={transferQueue.cancelTask}
-        onClearFinished={transferQueue.clearFinished}
+      <SftpTextEditor
+        open={!!textEditor}
+        path={textEditor?.path || ''}
+        name={textEditor?.name || ''}
+        content={textEditor?.content || ''}
+        revision={textEditor?.revision || 0}
+        saving={textSaving}
+        onChange={(content) => setTextEditor((prev) => (prev ? { ...prev, content } : prev))}
+        onSave={saveTextEditor}
+        onReload={reloadTextEditor}
+        onClose={() => setTextEditor(null)}
       />
+
+      <SftpImagePreview
+        open={!!imagePreview}
+        path={imagePreview?.path || ''}
+        name={imagePreview?.name || ''}
+        src={imagePreview?.src || ''}
+        size={imagePreview?.size || 0}
+        onDownload={
+          imagePreview
+            ? () => {
+                const p = imagePreview.path
+                setImagePreview(null)
+                handleDownload([p])
+              }
+            : undefined
+        }
+        onClose={() => setImagePreview(null)}
+      />
+
+      <SftpTransferModal
+        open={transferOpen}
+        mode={transferMode}
+        remotePath={activeTab?.remotePath || '/'}
+        localDir={downloadLocalDir || activeTab?.localPath || ''}
+        staged={stagedTransfers}
+        tasks={transferQueue.tasks}
+        onAddFiles={handleUpload}
+        onAddFolder={handleUploadFolder}
+        onChangeDownloadDir={handleChangeDownloadDir}
+        onRemoveStaged={(id) => setStagedTransfers((prev) => prev.filter((s) => s.id !== id))}
+        onClearStaged={() => {
+          setStagedTransfers([])
+          transferQueue.clearFinished()
+        }}
+        onStart={startStagedTransfers}
+        onCancelTask={transferQueue.cancelTask}
+        onClose={() => setTransferOpen(false)}
+      />
+
+      {!transferOpen && transferQueue.activeCount > 0 && (
+        <button
+          type="button"
+          className="sftp-transfer-fab"
+          {...pressProps(() => {
+            const hasDl = transferQueue.tasks.some((x) => x.kind === 'download' && (x.state === 'queued' || x.state === 'running'))
+            setTransferMode(hasDl ? 'download' : 'upload')
+            setTransferOpen(true)
+          })}
+        >
+          {t('sftp.transferFab', { count: transferQueue.activeCount })}
+        </button>
+      )}
 
       <SSHHostModal open={hostModalOpen} initial={editingHost} onClose={() => setHostModalOpen(false)} onSaved={refreshHosts} />
 
@@ -883,7 +1180,6 @@ export function SftpWorkbench() {
               if (host.kind === 'docker') {
                 openAgentDraft({
                   mentions: [mentionDockerHost(host)],
-                  message: t('agent.draftContainer'),
                 })
                 return
               }
@@ -891,7 +1187,6 @@ export function SftpWorkbench() {
               if (!ssh) return
               openAgentDraft({
                 mentions: [mentionSSH(ssh)],
-                message: t('agent.draftSSH'),
               })
             })}
           >
@@ -1013,30 +1308,109 @@ export function SftpWorkbench() {
 
       {paneMenu && (
         <ContextMenu
-          key={`pane-${paneMenu.side}-${paneMenu.x}-${paneMenu.y}`}
+          key={`pane-${paneMenu.x}-${paneMenu.y}`}
           x={paneMenu.x}
           y={paneMenu.y}
           onClick={(e) => e.stopPropagation()}
         >
-          {paneMenu.side === 'local' && localSel.selectedPaths.length > 0 && (
-            <button type="button" className="wn-context-item" {...pressProps(uploadFromMenu)}>
-              {localSel.selectedPaths.length > 1
-                ? t('sftp.uploadRemoteN', { count: localSel.selectedPaths.length })
-                : t('sftp.uploadRemote')}
-            </button>
-          )}
-          {paneMenu.side === 'remote' && remoteSel.selectedPaths.length > 0 && (
+          {remoteSel.selectedPaths.length > 0 && (
             <button type="button" className="wn-context-item" {...pressProps(downloadFromMenu)}>
               {remoteSel.selectedPaths.length > 1
                 ? t('sftp.downloadLocalN', { count: remoteSel.selectedPaths.length })
                 : t('sftp.downloadLocal')}
             </button>
           )}
-          {(paneMenu.side === 'local' && localSel.selectedPaths.length > 0) ||
-          (paneMenu.side === 'remote' && remoteSel.selectedPaths.length > 0) ? (
-            <div className="wn-context-sep" />
-          ) : null}
-          <button type="button" className="wn-context-item" {...pressProps(() => { setPaneMenu(null); openMkdir(paneMenu.side) })}>
+          {paneMenu.entry && !paneMenu.entry.isDir && isProbablyImageFile(paneMenu.entry.name) && (
+            <button
+              type="button"
+              className="wn-context-item"
+              {...pressProps(() => {
+                const entry = paneMenu.entry!
+                setPaneMenu(null)
+                openImagePreview(entry)
+              })}
+            >
+              {t('sftp.imagePreview')}
+            </button>
+          )}
+          {paneMenu.entry && !paneMenu.entry.isDir && isProbablyTextFile(paneMenu.entry.name) && (
+            <button
+              type="button"
+              className="wn-context-item"
+              {...pressProps(() => {
+                const entry = paneMenu.entry!
+                setPaneMenu(null)
+                openTextEditor(entry)
+              })}
+            >
+              {t('common.edit')}
+            </button>
+          )}
+          {paneMenu.entry && !paneMenu.entry.isDir && activeTab && (() => {
+            const host = hosts.find((h) => h.id === activeTab.hostId)
+            if (host?.kind !== 'ssh') return null
+            const entry = paneMenu.entry!
+            return (
+              <button
+                type="button"
+                className="wn-context-item"
+                {...pressProps(() => {
+                  setPaneMenu(null)
+                  openLogs(
+                    {
+                      sourceType: 'ssh_file',
+                      name: entry.name,
+                      path: entry.path,
+                      sshHostId: host.id,
+                      fetch: true,
+                    },
+                    'sftp',
+                  )
+                })}
+              >
+                {t('sftp.openInLogs')}
+              </button>
+            )
+          })()}
+          {paneMenu.entry && (
+            <button
+              type="button"
+              className="wn-context-item"
+              {...pressProps(() => {
+                const entry = paneMenu.entry!
+                setPaneMenu(null)
+                void navigator.clipboard.writeText(entry.path).then(
+                  () => setStatusMessage(t('sftp.pathCopied', { path: entry.path })),
+                  () => setStatusMessage(t('sftp.pathCopyFailed')),
+                )
+              })}
+            >
+              {t('sftp.copyPath')}
+            </button>
+          )}
+          {paneMenu.entry && activeTab && (
+            <button
+              type="button"
+              className="wn-context-item"
+              {...pressProps(() => {
+                const entry = paneMenu.entry!
+                const hostId = activeTab.hostId
+                const dir = entry.isDir ? entry.path : parentRemotePath(entry.path)
+                setPaneMenu(null)
+                openTerminal({ hostId, initialCommand: `cd ${shellSingleQuote(dir)}` }, 'sftp')
+              })}
+            >
+              {t('sftp.openInTerminal')}
+            </button>
+          )}
+          <button type="button" className="wn-context-item" {...pressProps(() => { setPaneMenu(null); handleUpload() })}>
+            {t('sftp.upload')}
+          </button>
+          <button type="button" className="wn-context-item" {...pressProps(() => { setPaneMenu(null); handleUploadFolder() })}>
+            {t('sftp.uploadFolder')}
+          </button>
+          <div className="wn-context-sep" />
+          <button type="button" className="wn-context-item" {...pressProps(() => { setPaneMenu(null); openMkdir() })}>
             {t('sftp.newFolder')}
           </button>
           {paneMenu.entry && (
@@ -1046,7 +1420,7 @@ export function SftpWorkbench() {
                 className="wn-context-item"
                 {...pressProps(() => {
                   setPaneMenu(null)
-                  openRename(paneMenu.side, paneMenu.entry!)
+                  openRename(paneMenu.entry!)
                 })}
               >
                 {t('sftp.rename')}
@@ -1056,7 +1430,7 @@ export function SftpWorkbench() {
                 className="wn-context-item danger"
                 {...pressProps(() => {
                   setPaneMenu(null)
-                  openDelete(paneMenu.side, paneMenu.entry!)
+                  openDelete(paneMenu.entry!)
                 })}
               >
                 {t('common.delete')}

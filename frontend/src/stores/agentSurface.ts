@@ -153,9 +153,7 @@ export function buildSftpSurface(input: {
   hostId?: string
   hostLabel?: string
   hostKind?: 'ssh' | 'docker' | ''
-  localPath?: string
   remotePath?: string
-  localSelected?: string[]
   remoteSelected?: string[]
   openTabsBrief?: string
 }): AgentSurface {
@@ -163,20 +161,15 @@ export function buildSftpSurface(input: {
     return { focusKind: 'sftp', focusLabel: 'SFTP', openTabsBrief: input.openTabsBrief }
   }
   const label = input.hostLabel || input.title || input.hostId || 'SFTP'
-  const pathBrief = [input.remotePath ? `remote ${input.remotePath}` : '', input.localPath ? `local ${input.localPath}` : '']
-    .filter(Boolean)
-    .join(' · ')
-  const selParts = [
-    briefList((input.remoteSelected || []).map((p) => `R:${p}`), 3),
-    briefList((input.localSelected || []).map((p) => `L:${p}`), 3),
-  ].filter(Boolean)
+  const pathBrief = input.remotePath ? `remote ${input.remotePath}` : ''
+  const selBrief = briefList((input.remoteSelected || []).map((p) => `R:${p}`), 3)
   return {
     focusKind: input.hostKind === 'docker' ? 'sftp.docker' : 'sftp',
     focusLabel: label,
     hostId: input.hostId,
     tabTitle: input.title,
     openTabsBrief: input.openTabsBrief,
-    selectionBrief: [input.hostId ? `host ${input.hostId}` : '', pathBrief, selParts.join(' · ')].filter(Boolean).join(' · '),
+    selectionBrief: [input.hostId ? `host ${input.hostId}` : '', pathBrief, selBrief].filter(Boolean).join(' · '),
   }
 }
 

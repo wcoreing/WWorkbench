@@ -1,7 +1,9 @@
 package sftp
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"os"
 	"path"
 	"path/filepath"
@@ -184,6 +186,66 @@ func (m *Manager) Upload(sessionID, localPath, remotePath string) error {
 	return s.fs.UploadFile(context.Background(), localPath, cleanRemotePath(remotePath), nil)
 }
 
+const maxTextEditBytes = 2 * 1024 * 1024
+const maxBinaryPreviewBytes = 12 * 1024 * 1024
+
+// ReadTextFile 读取远程文本文件供在线编辑。
+func (m *Manager) ReadTextFile(sessionID, remotePath string) (*model.SFTPTextFileDO, error) {
+	s, err := m.get(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	p := cleanRemotePath(remotePath)
+	data, err := s.fs.ReadBytes(p, maxTextEditBytes)
+	if err != nil {
+		return nil, err
+	}
+	if bytes.IndexByte(data, 0) >= 0 {
+		return nil, errno.New(errno.CodeInvalidArg, "二进制文件不支持在线编辑，请下载后用本地工具打开", p)
+	}
+	return &model.SFTPTextFileDO{
+		Path:     p,
+		Name:     path.Base(p),
+		Content:  string(data),
+		Size:     int64(len(data)),
+		Encoding: "utf-8",
+	}, nil
+}
+
+// ReadBinaryFile 读取远程二进制文件供预览（返回 base64）。
+func (m *Manager) ReadBinaryFile(sessionID, remotePath string) (*model.SFTPBinaryFileDO, error) {
+	s, err := m.get(sessionID)
+	if err != nil {
+		return nil, err
+	}
+	p := cleanRemotePath(remotePath)
+	data, err := s.fs.ReadBytes(p, maxBinaryPreviewBytes)
+	if err != nil {
+		return nil, err
+	}
+	name := path.Base(p)
+	return &model.SFTPBinaryFileDO{
+		Path:    p,
+		Name:    name,
+		Mime:    mimeFromFileName(name),
+		Content: base64.StdEncoding.EncodeToString(data),
+		Size:    int64(len(data)),
+	}, nil
+}
+
+// WriteTextFile 写回远程文本文件。
+func (m *Manager) WriteTextFile(sessionID, remotePath, content string) error {
+	s, err := m.get(sessionID)
+	if err != nil {
+		return err
+	}
+	data := []byte(content)
+	if len(data) > maxTextEditBytes {
+		return errno.New(errno.CodeInvalidArg, "内容过大，无法保存", remotePath)
+	}
+	return s.fs.WriteBytes(cleanRemotePath(remotePath), data)
+}
+
 // DownloadToFile 下载远程文件到指定本地路径。
 func (m *Manager) DownloadToFile(ctx context.Context, sessionID, taskID, remotePath, localPath string) error {
 	s, err := m.get(sessionID)
@@ -270,6 +332,36 @@ func cleanRemotePath(p string) string {
 		p = "/" + strings.TrimPrefix(p, "/")
 	}
 	return path.Clean(p)
+}
+
+// mimeFromFileName 根据扩展名猜测 MIME（预览用）。
+func mimeFromFileName(name string) string {
+	n := strings.ToLower(strings.TrimSpace(name))
+	dot := strings.LastIndex(n, ".")
+	ext := ""
+	if dot >= 0 {
+		ext = n[dot+1:]
+	}
+	switch ext {
+	case "png":
+		return "image/png"
+	case "jpg", "jpeg":
+		return "image/jpeg"
+	case "gif":
+		return "image/gif"
+	case "webp":
+		return "image/webp"
+	case "bmp":
+		return "image/bmp"
+	case "ico":
+		return "image/x-icon"
+	case "svg":
+		return "image/svg+xml"
+	case "avif":
+		return "image/avif"
+	default:
+		return "application/octet-stream"
+	}
 }
 
 // sortFileEntries 目录优先按名称排序。

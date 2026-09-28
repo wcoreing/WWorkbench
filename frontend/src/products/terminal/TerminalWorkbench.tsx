@@ -8,7 +8,7 @@ import { ContextMenu } from '../../components/ContextMenu'
 import { EmptyState } from '../../components/EmptyState'
 import { ProductLayout } from '../../components/layout'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
-import { IconCopy, IconDocker, IconLaptop, IconPlus, IconRefresh, IconServer, IconTerminal } from '../../components/Icons'
+import { IconCopy, IconDocker, IconLaptop, IconPlus, IconRefresh, IconTerminal } from '../../components/Icons'
 import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
@@ -45,6 +45,27 @@ import {
   splitPane,
   type PaneLayout,
 } from '../../features/terminal/terminalLayout'
+
+const TERMINAL_SIDE_TAB_KEY = 'terminal_sidebar_tab'
+type TerminalSideTab = 'local' | 'ssh' | 'docker' | 'forward'
+
+function loadTerminalSideTab(): TerminalSideTab {
+  try {
+    const v = localStorage.getItem(TERMINAL_SIDE_TAB_KEY)
+    if (v === 'local' || v === 'ssh' || v === 'docker' || v === 'forward') return v
+  } catch {
+    /* ignore */
+  }
+  return 'ssh'
+}
+
+function persistTerminalSideTab(tab: TerminalSideTab) {
+  try {
+    localStorage.setItem(TERMINAL_SIDE_TAB_KEY, tab)
+  } catch {
+    /* ignore */
+  }
+}
 
 /** firstSessionId 取分屏布局中第一个会话 ID。 */
 function firstSessionId(layout: PaneLayout): string | null {
@@ -87,6 +108,7 @@ export function TerminalWorkbench() {
   const [editingHost, setEditingHost] = useState<SSHHost | null>(null)
   const [reconnectingTabId, setReconnectingTabId] = useState<string | null>(null)
   const [splitting, setSplitting] = useState(false)
+  const [sideTab, setSideTab] = useState<TerminalSideTab>(() => loadTerminalSideTab())
   const [ctxMenu, setCtxMenu] = useState<
     { x: number; y: number; host: ShellHost | 'local' } | null
   >(null)
@@ -567,6 +589,11 @@ export function TerminalWorkbench() {
     })
   })
 
+  useWorkbenchCommand(Capability.SSHForwardOpen, () => {
+    setSideTab('forward')
+    persistTerminalSideTab('forward')
+  })
+
   useWorkbenchCommand(Capability.TerminalReconnect, (cmd) => {
     const sessionId =
       payloadStr(cmd.payload, 'sessionId') || payloadStr(cmd.payload, 'terminalSessionId') || ''
@@ -918,82 +945,111 @@ export function TerminalWorkbench() {
         resizeTitle={t('common.resizeWidth')}
         sidebarClassName="terminal-sidebar"
         sidebar={
-          <>
-            <section className="sidebar-section connections">
-              <div className="sidebar-header">
-                <span>{t('terminal.localSection')}</span>
-              </div>
-              <div className="sidebar-body connections-body">
-                <ul className="conn-list">
-                  <li
-                    className={`conn-item ${localItemActive() ? 'active' : ''} ${localTabCount > 0 ? 'connected' : ''}`}
-                    {...pressProps(() => void openRecentLocalWindow())}
-                    onContextMenu={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setCtxMenu({ x: e.clientX, y: e.clientY, host: 'local' })
-                    }}
-                  >
-                    <IconLaptop size={14} className="mock-icon" />
-                    <div className="conn-meta">
-                      <span className="conn-name">{t('terminal.localShell')}</span>
-                      <span className="conn-host" title={t('terminal.localMeta')}>
-                        {t('terminal.localMeta')}
-                      </span>
-                    </div>
-                  </li>
-                </ul>
-              </div>
-            </section>
-
-            <section className="sidebar-section">
-              <div className="sidebar-header">
-                <span>{t('terminal.sshHosts')}</span>
-                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" {...pressProps(() => openHostModal())} title={t('common.new')}>
-                  <IconPlus size={14} />
+          <div className="terminal-side">
+            <div className="terminal-side-tabs" role="tablist" aria-label={t('terminal.sideTabs')}>
+              {(
+                [
+                  { id: 'local' as const, label: t('terminal.sideTabLocal') },
+                  { id: 'ssh' as const, label: t('terminal.sideTabSSH') },
+                  { id: 'docker' as const, label: t('terminal.sideTabDocker') },
+                  { id: 'forward' as const, label: t('terminal.sideTabTunnel') },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={sideTab === tab.id}
+                  className={`terminal-side-tab${sideTab === tab.id ? ' is-active' : ''}`}
+                  {...pressProps(() => {
+                    setSideTab(tab.id)
+                    persistTerminalSideTab(tab.id)
+                  })}
+                >
+                  {tab.label}
                 </button>
-              </div>
-              <div className="sidebar-body">
-                {sshHosts.length === 0 ? (
-                  <EmptyState
-                    variant="inline"
-                    title={t('terminal.emptyHosts')}
-                    actions={[{ label: t('terminal.addHost'), onPress: () => openHostModal(), primary: true }]}
-                  />
-                ) : (
-                  <ul className="conn-list">
-                    {sshHosts.map((h) => {
-                      const hostLine = `${h.user}@${h.host}:${h.port}`
-                      return (
-                        <li
-                          key={h.id}
-                          className={`conn-item ${hostItemActive(h.id) ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
-                          {...pressProps(() => void openRecentHostWindow({ ...h, kind: 'ssh' }))}
-                          onContextMenu={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            setCtxMenu({ x: e.clientX, y: e.clientY, host: { ...h, kind: 'ssh' } })
-                          }}
-                        >
-                          <IconServer size={14} className="mock-icon" />
-                          <div className="conn-meta">
-                            <span className="conn-name">{h.name}</span>
-                            <span className="conn-host" title={hostLine}>
-                              {hostLine}
-                            </span>
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )}
-              </div>
-            </section>
+              ))}
+            </div>
 
-            {dockerHosts.length > 0 && (
-              <section className="sidebar-section">
+            {sideTab === 'local' && (
+              <section className="sidebar-section terminal-side-panel">
+                <div className="sidebar-body connections-body">
+                  <ul className="conn-list is-homogeneous">
+                    <li
+                      className={`conn-item ${localItemActive() ? 'active' : ''} ${localTabCount > 0 ? 'connected' : ''}`}
+                      {...pressProps(() => void openRecentLocalWindow())}
+                      onContextMenu={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        setCtxMenu({ x: e.clientX, y: e.clientY, host: 'local' })
+                      }}
+                    >
+                      <div className="conn-meta">
+                        <span className="conn-name">{t('terminal.localShell')}</span>
+                        <span className="conn-host" title={t('terminal.localMeta')}>
+                          {t('terminal.localMeta')}
+                        </span>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+              </section>
+            )}
+
+            {sideTab === 'ssh' && (
+              <section className="sidebar-section terminal-side-panel">
                 <div className="sidebar-header">
-                  <span>{t('terminal.dockerHosts')}</span>
+                  <span className="sidebar-header-title">{t('terminal.sshHosts')}</span>
+                  <button
+                    type="button"
+                    className="wn-btn wn-btn-icon wn-btn-sm"
+                    {...pressProps(() => openHostModal())}
+                    title={t('common.new')}
+                  >
+                    <IconPlus size={14} />
+                  </button>
+                </div>
+                <div className="sidebar-body">
+                  {sshHosts.length === 0 ? (
+                    <EmptyState
+                      variant="inline"
+                      title={t('terminal.emptyHosts')}
+                      actions={[{ label: t('terminal.addHost'), onPress: () => openHostModal(), primary: true }]}
+                    />
+                  ) : (
+                    <ul className="conn-list is-homogeneous">
+                      {sshHosts.map((h) => {
+                        const hostLine = `${h.user}@${h.host}:${h.port}`
+                        return (
+                          <li
+                            key={h.id}
+                            className={`conn-item ${hostItemActive(h.id) ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
+                            {...pressProps(() => void openRecentHostWindow({ ...h, kind: 'ssh' }))}
+                            onContextMenu={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setCtxMenu({ x: e.clientX, y: e.clientY, host: { ...h, kind: 'ssh' } })
+                            }}
+                          >
+                            <div className="conn-meta">
+                              <span className="conn-name">{h.name}</span>
+                              <span className="conn-host" title={hostLine}>
+                                {hostLine}
+                              </span>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {sideTab === 'docker' && (
+              <section className="sidebar-section terminal-side-panel">
+                <div className="sidebar-header">
+                  <span className="sidebar-header-title">{t('terminal.dockerHosts')}</span>
                   {dockerHosts.some((h) => h.running === false) && (
                     <button
                       type="button"
@@ -1005,7 +1061,7 @@ export function TerminalWorkbench() {
                             const n = await api.pruneStoppedDockerHosts()
                             await refreshHosts()
                             setStatusMessage(
-                              n > 0 ? t('terminal.prunedStopped', { count: n }) : t('terminal.pruneStoppedNone')
+                              n > 0 ? t('terminal.prunedStopped', { count: n }) : t('terminal.pruneStoppedNone'),
                             )
                           } catch (e) {
                             setStatusMessage((e as Error).message)
@@ -1018,40 +1074,45 @@ export function TerminalWorkbench() {
                   )}
                 </div>
                 <div className="sidebar-body">
-                  <ul className="conn-list">
-                    {dockerHosts.map((h) => {
-                      const hostLine =
-                        h.running === false
-                          ? t('terminal.containerStopped')
-                          : h.image || h.containerId?.slice(0, 12) || 'container'
-                      return (
-                        <li
-                          key={h.id}
-                          className={`conn-item ${hostItemActive(h.id) ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
-                          {...pressProps(() => void openRecentHostWindow(h))}
-                          onContextMenu={(e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            setCtxMenu({ x: e.clientX, y: e.clientY, host: h })
-                          }}
-                        >
-                          <IconDocker size={14} className="mock-icon" />
-                          <div className="conn-meta">
-                            <span className="conn-name">{h.name}</span>
-                            <span className="conn-host" title={hostLine}>
-                              {hostLine}
-                            </span>
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                  {dockerHosts.length === 0 ? (
+                    <EmptyState variant="inline" title={t('terminal.emptyDockerHosts')} />
+                  ) : (
+                    <ul className="conn-list is-homogeneous">
+                      {dockerHosts.map((h) => {
+                        const hostLine =
+                          h.running === false
+                            ? t('terminal.containerStopped')
+                            : h.image || h.containerId?.slice(0, 12) || 'container'
+                        return (
+                          <li
+                            key={h.id}
+                            className={`conn-item ${hostItemActive(h.id) ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
+                            {...pressProps(() => void openRecentHostWindow(h))}
+                            onContextMenu={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              setCtxMenu({ x: e.clientX, y: e.clientY, host: h })
+                            }}
+                          >
+                            <div className="conn-meta">
+                              <span className="conn-name">{h.name}</span>
+                              <span className="conn-host" title={hostLine}>
+                                {hostLine}
+                              </span>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
                 </div>
               </section>
             )}
 
-            <SSHForwardPanel hosts={sshHosts} onStatus={setStatusMessage} />
-          </>
+            {sideTab === 'forward' && (
+              <SSHForwardPanel hosts={sshHosts} onStatus={setStatusMessage} embedded />
+            )}
+          </div>
         }
       >
 
@@ -1215,7 +1276,6 @@ export function TerminalWorkbench() {
               if (host.kind === 'docker') {
                 openAgentDraft({
                   mentions: [mentionDockerHost(host)],
-                  message: t('agent.draftContainer'),
                 })
                 return
               }
@@ -1223,7 +1283,6 @@ export function TerminalWorkbench() {
               if (!ssh) return
               openAgentDraft({
                 mentions: [mentionSSH(ssh)],
-                message: t('agent.draftSSH'),
               })
             })}
           >

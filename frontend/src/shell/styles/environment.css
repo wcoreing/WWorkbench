@@ -5,7 +5,7 @@
 }
 
 .toolchain-toolbar {
-  border-bottom-color: var(--color-border-strong);
+  border-bottom: none;
   overflow: hidden;
 }
 
@@ -115,11 +115,11 @@
 
 .toolchain-preset-item {
   min-height: 40px;
+  margin: 1px 8px;
   padding: 7px 10px;
-  border-bottom: 1px solid var(--color-border-subtle);
-  border-radius: 0;
+  border-bottom: none;
+  border-radius: var(--radius-sm);
   cursor: default;
-  margin-bottom: 0;
 }
 
 .toolchain-preset-item:hover {
@@ -127,8 +127,8 @@
 }
 
 .toolchain-preset-item.active {
-  background: var(--color-selection);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--color-sidebar-selected);
+  border-radius: var(--radius-sm);
 }
 
 .toolchain-preset-name {

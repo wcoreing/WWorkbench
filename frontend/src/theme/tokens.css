@@ -3,44 +3,59 @@
 [data-theme='light'] {
   color-scheme: light;
 
-  /* 单一品牌操作色；语义色只表达状态。 */
-  --accent: #5e63d3;
-  --accent-hover: #4f54c4;
-  --accent-pressed: #4549b5;
-  --accent-muted: rgba(94, 99, 211, 0.09);
-  --accent-ring: rgba(94, 99, 211, 0.2);
+  /* 单一品牌操作色：Apple systemBlue。 */
+  --accent: #007aff;
+  --accent-hover: #0071eb;
+  --accent-pressed: #0066d6;
+  --accent-muted: rgba(0, 122, 255, 0.1);
+  --accent-ring: rgba(0, 122, 255, 0.22);
 
-  /* 连续工作台层级：canvas → panel → raised。 */
-  --color-bg: #e9eaee;
-  --color-canvas: #e9eaee;
-  --color-surface: #f8f8fa;
+  /* 大色块纯白；灰色只用于选中/悬停/输入槽等局部。 */
+  --color-bg: #ffffff;
+  --color-canvas: #ffffff;
+  --color-surface: #ffffff;
   --color-surface-raised: #ffffff;
-  --color-surface-2: #f1f2f5;
-  --color-surface-3: #e8e9ee;
-  --color-editor: #fbfbfc;
-  --color-sidebar: #f1f2f5;
-  --color-toolbar: #f6f6f8;
-  --color-chrome: #eeeff3;
-  --color-tab-bar: #eeeff3;
-  --color-tab-active: #f8f8fa;
-  --color-overlay: rgba(24, 25, 31, 0.34);
+  --color-surface-2: #f5f5f7;
+  --color-surface-3: #efeff1;
+  --color-editor: #ffffff;
+  --color-sidebar: #ffffff;
+  --color-toolbar: #ffffff;
+  --color-chrome: #ffffff;
+  --color-tab-bar: #ffffff;
+  --color-tab-active: #ffffff;
+  /* 壳层实色纯白；glass-* 仅作别名，不再半透明。 */
+  --color-overlay: rgba(24, 25, 31, 0.28);
 
-  --color-border-strong: #cfd1d8;
-  --color-border: #d9dbe1;
-  --color-border-subtle: #e6e7eb;
-  --color-divider: rgba(38, 40, 48, 0.09);
+  --glass-bg: #ffffff;
+  --glass-bg-strong: #ffffff;
+  --glass-bg-soft: #ffffff;
+  --glass-border: #ffffff;
+  --glass-stroke: rgba(0, 0, 0, 0.06);
+  --glass-blur: none;
+  --glass-shadow: var(--shadow);
+  --glass-chip-highlight: none;
+  --glass-row-highlight: none;
+  --atmosphere: #ffffff;
+
+  --color-border-strong: #d2d2d7;
+  --color-border: #e5e5ea;
+  --color-border-subtle: #ededf0;
+  --color-divider: rgba(0, 0, 0, 0.06);
 
   --color-text: #23242a;
   --color-text-secondary: #5b5e69;
   --color-text-muted: #898c96;
   --color-text-disabled: #b4b6be;
 
-  --color-hover: rgba(35, 36, 42, 0.045);
-  --color-active: rgba(94, 99, 211, 0.09);
-  --color-selection: rgba(94, 99, 211, 0.12);
+  --color-hover: rgba(0, 0, 0, 0.04);
+  --color-active: rgba(0, 0, 0, 0.06);
+  --color-selection: rgba(0, 0, 0, 0.06);
+  --color-sidebar-selected: rgba(0, 0, 0, 0.08);
+  --color-row-selected: var(--accent);
+  --color-row-selected-fg: #ffffff;
   --color-focus: var(--accent);
   --color-tree-hover: var(--color-hover);
-  --color-tree-active: var(--color-active);
+  --color-tree-active: var(--color-sidebar-selected);
 
   --color-primary: var(--accent);
   --color-primary-hover: var(--accent-hover);
@@ -51,9 +66,11 @@
   --color-warning: #a96814;
   --color-warning-muted: rgba(169, 104, 20, 0.09);
 
-  --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'PingFang SC',
-    'Microsoft YaHei', sans-serif;
-  --font-mono: 'SFMono-Regular', 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+  /* macOS 系统字体优先；Windows 用微软雅黑（中文），再 Segoe。 */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'SFMono-Regular', ui-monospace, Menlo, Consolas, 'Microsoft YaHei Mono',
+    monospace;
   --font-size-caption: 10px;
   --font-size-ui-sm: 11px;
   --font-size-ui: 12px;
@@ -61,16 +78,17 @@
   --line-height-tight: 1.25;
   --line-height-ui: 1.4;
 
-  /* 圆角只用于控件与浮层，不用于区域分栏。 */
-  --radius-xs: 2px;
-  --radius-sm: 3px;
-  --radius: 4px;
-  --radius-lg: 6px;
+  /* 圆角只用于控件与浮层，不用于区域分栏。Apple 向阶梯。 */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 
-  /* 平面区无阴影，只有浮层有高度。 */
-  --shadow-sm: 0 1px 2px rgba(24, 25, 31, 0.05);
-  --shadow: 0 8px 24px rgba(24, 25, 31, 0.12), 0 1px 3px rgba(24, 25, 31, 0.08);
-  --shadow-lg: 0 18px 50px rgba(24, 25, 31, 0.16), 0 2px 6px rgba(24, 25, 31, 0.08);
+  /* 平面区无阴影，只有浮层有高度；更弥散、更轻。 */
+  --shadow-sm: 0 1px 3px rgba(24, 25, 31, 0.04), 0 1px 2px rgba(24, 25, 31, 0.03);
+  --shadow: 0 8px 28px rgba(24, 25, 31, 0.08), 0 2px 6px rgba(24, 25, 31, 0.04);
+  --shadow-lg: 0 20px 56px rgba(24, 25, 31, 0.1), 0 4px 12px rgba(24, 25, 31, 0.05);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -85,7 +103,7 @@
 
   --icon-sm: 14px;
   --icon-md: 18px;
-  --icon-chrome: 16px;
+  --icon-chrome: 18px;
   --icon-rail: 20px;
 
   --sidebar-width: 220px;
@@ -94,8 +112,8 @@
   --toolbar-height: 32px;
   --tab-height: 30px;
   --statusbar-height: 22px;
-  --control-height: 28px;
-  --control-height-sm: 24px;
+  --control-height: 30px;
+  --control-height-sm: 26px;
   --control-height-chrome: 24px;
 
   --motion-fast: 100ms;
@@ -106,11 +124,11 @@
 [data-theme='dark'] {
   color-scheme: dark;
 
-  --accent: #8589ee;
-  --accent-hover: #9699f5;
-  --accent-pressed: #7478df;
-  --accent-muted: rgba(133, 137, 238, 0.12);
-  --accent-ring: rgba(133, 137, 238, 0.23);
+  --accent: #0a84ff;
+  --accent-hover: #409cff;
+  --accent-pressed: #0077ed;
+  --accent-muted: rgba(10, 132, 255, 0.16);
+  --accent-ring: rgba(10, 132, 255, 0.28);
 
   --color-bg: #111216;
   --color-canvas: #111216;
@@ -126,21 +144,35 @@
   --color-tab-active: #1b1c21;
   --color-overlay: rgba(0, 0, 0, 0.55);
 
-  --color-border-strong: #383a43;
-  --color-border: #2d2f36;
-  --color-border-subtle: #24262c;
-  --color-divider: rgba(255, 255, 255, 0.075);
+  --glass-bg: #18191e;
+  --glass-bg-strong: #202126;
+  --glass-bg-soft: #15161a;
+  --glass-border: #202126;
+  --glass-stroke: rgba(255, 255, 255, 0.08);
+  --glass-blur: none;
+  --glass-shadow: var(--shadow);
+  --glass-chip-highlight: none;
+  --glass-row-highlight: none;
+  --atmosphere: #111216;
+
+  --color-border-strong: #34363e;
+  --color-border: #2a2c33;
+  --color-border-subtle: #22242a;
+  --color-divider: rgba(255, 255, 255, 0.055);
 
   --color-text: #ececf0;
   --color-text-secondary: #a6a7b0;
   --color-text-muted: #70727d;
   --color-text-disabled: #4b4d56;
 
-  --color-hover: rgba(255, 255, 255, 0.045);
-  --color-active: rgba(133, 137, 238, 0.12);
-  --color-selection: rgba(133, 137, 238, 0.16);
+  --color-hover: rgba(255, 255, 255, 0.06);
+  --color-active: rgba(255, 255, 255, 0.1);
+  --color-selection: rgba(255, 255, 255, 0.1);
+  --color-sidebar-selected: rgba(255, 255, 255, 0.12);
+  --color-row-selected: var(--accent);
+  --color-row-selected-fg: #ffffff;
   --color-tree-hover: var(--color-hover);
-  --color-tree-active: var(--color-active);
+  --color-tree-active: var(--color-sidebar-selected);
 
   --color-danger: #ef6b76;
   --color-danger-muted: rgba(239, 107, 118, 0.1);
@@ -149,9 +181,9 @@
   --color-warning: #d9a052;
   --color-warning-muted: rgba(217, 160, 82, 0.1);
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.42), 0 1px 3px rgba(0, 0, 0, 0.38);
-  --shadow-lg: 0 20px 56px rgba(0, 0, 0, 0.52), 0 2px 8px rgba(0, 0, 0, 0.38);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.16);
+  --shadow: 0 10px 32px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 22px 60px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.22);
 }
 
 @media (prefers-reduced-motion: reduce) {

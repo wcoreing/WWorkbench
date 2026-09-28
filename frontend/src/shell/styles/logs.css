@@ -5,7 +5,7 @@
 }
 
 .logs-toolbar {
-  border-bottom-color: var(--color-border-strong);
+  border-bottom: none;
 }
 
 .logs-toolbar .product-actions {
@@ -93,6 +93,13 @@
 
 .logs-field-narrow {
   min-width: 0;
+}
+
+.logs-field-hint {
+  margin: -2px 0 0;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+  line-height: 1.4;
 }
 
 .logs-row-compose-dir {

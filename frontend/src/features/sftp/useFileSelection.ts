@@ -12,6 +12,17 @@ export function useFileSelection(entries: FileEntry[]) {
 
   const selectedEntries = entries.filter((e) => selectedPaths.includes(e.path))
 
+  const togglePath = useCallback((path: string) => {
+    setSelectedPaths((prev) => (prev.includes(path) ? prev.filter((p) => p !== path) : [...prev, path]))
+  }, [])
+
+  const selectAll = useCallback(
+    (checked: boolean) => {
+      setSelectedPaths(checked ? entries.map((e) => e.path) : [])
+    },
+    [entries],
+  )
+
   const handleRowClick = useCallback(
     (entry: FileEntry, index: number, e: React.MouseEvent) => {
       if (e.metaKey || e.ctrlKey) {
@@ -34,5 +45,5 @@ export function useFileSelection(entries: FileEntry[]) {
     [entries]
   )
 
-  return { selectedPaths, selectedEntries, handleRowClick, clearSelection, setSelectedPaths }
+  return { selectedPaths, selectedEntries, handleRowClick, clearSelection, setSelectedPaths, togglePath, selectAll }
 }

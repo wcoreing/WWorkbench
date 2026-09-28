@@ -205,7 +205,7 @@ body.is-col-resizing {
 .wn-pane-gutter-y::before {
   content: '';
   position: absolute;
-  background: var(--color-border-strong);
+  background: transparent;
   pointer-events: none;
   transition: background var(--motion-ui) var(--ease-ui);
 }
@@ -311,7 +311,7 @@ body.is-row-resizing .wn-pane-gutter-y::before {
   margin: 0;
   padding: 0;
   border: none;
-  border-radius: var(--radius-sm, 4px);
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;

@@ -263,11 +263,21 @@ export function PickEnvScanDirectory():Promise<app.ApiResult_string_>;
 
 export function PickLogFilePath():Promise<app.ApiResult_string_>;
 
+export function PickSFTPDownloadDir(arg1:string):Promise<app.ApiResult_string_>;
+
+export function PickSFTPUploadDir():Promise<app.ApiResult_string_>;
+
+export function PickSFTPUploadPaths():Promise<app.ApiResult___string_>;
+
 export function PruneStoppedDockerHosts():Promise<app.ApiResult_int_>;
 
 export function PublishAgentSkill(arg1:model.AgentSkillPublishDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
 
 export function QuerySQLPage(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<app.ApiResult_WWorkbench_internal_model_QueryPageDO_>;
+
+export function ReadSFTPBinary(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_SFTPBinaryFileDO_>;
+
+export function ReadSFTPText(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_SFTPTextFileDO_>;
 
 export function RemoveContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
@@ -372,5 +382,7 @@ export function UpdateContainerSpec(arg1:string,arg2:string,arg3:model.Container
 export function UploadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferResultDO_>;
 
 export function UseEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
+
+export function WriteSFTPText(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
 
 export function WriteTerminal(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;

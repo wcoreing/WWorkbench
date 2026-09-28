@@ -427,6 +427,113 @@ func (f *dockerFS) DownloadFile(ctx context.Context, remotePath, localPath strin
 	return nil
 }
 
+func (f *dockerFS) ReadBytes(remotePath string, maxSize int64) ([]byte, error) {
+	remotePath = cleanRemotePath(remotePath)
+	st, err := f.Stat(remotePath)
+	if err != nil {
+		return nil, errno.Wrap(errno.CodeConnFailed, "读取远程文件失败", err)
+	}
+	if st.IsDir {
+		return nil, errno.New(errno.CodeInvalidArg, "远程路径是目录", remotePath)
+	}
+	if maxSize > 0 && st.Size > maxSize {
+		return nil, errno.New(errno.CodeInvalidArg, "文件过大，不适合在线编辑", remotePath)
+	}
+
+	f.mu.Lock()
+	cli := f.api()
+	if cli == nil {
+		f.mu.Unlock()
+		return nil, errno.New(errno.CodeSessionClosed, "Docker 会话已关闭", "")
+	}
+	copyCtx, copyCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	reader, _, err := cli.CopyFromContainer(copyCtx, f.containerID, remotePath)
+	if err != nil {
+		copyCancel()
+		f.mu.Unlock()
+		return nil, errno.Wrap(errno.CodeConnFailed, "从容器读取失败", err)
+	}
+	defer func() {
+		_ = reader.Close()
+		copyCancel()
+		f.mu.Unlock()
+	}()
+
+	tr := tar.NewReader(reader)
+	hdr, err := tr.Next()
+	if err != nil {
+		return nil, errno.Wrap(errno.CodeConnFailed, "解析容器文件失败", err)
+	}
+	if hdr.Typeflag == tar.TypeDir {
+		return nil, errno.New(errno.CodeInvalidArg, "远程路径是目录", remotePath)
+	}
+	limit := maxSize
+	if limit <= 0 {
+		limit = st.Size
+	}
+	data, err := io.ReadAll(io.LimitReader(tr, limit+1))
+	if err != nil {
+		return nil, errno.Wrap(errno.CodeConnFailed, "读取远程文件失败", err)
+	}
+	if maxSize > 0 && int64(len(data)) > maxSize {
+		return nil, errno.New(errno.CodeInvalidArg, "文件过大，不适合在线编辑", remotePath)
+	}
+	return data, nil
+}
+
+func (f *dockerFS) WriteBytes(remotePath string, data []byte) error {
+	remotePath = cleanRemotePath(remotePath)
+	parent := path.Dir(remotePath)
+	if parent == "" {
+		parent = "/"
+	}
+	if err := f.MkdirAll(parent); err != nil {
+		return err
+	}
+
+	pr, pw := io.Pipe()
+	errCh := make(chan error, 1)
+	go func() {
+		tw := tar.NewWriter(pw)
+		hdr := &tar.Header{
+			Typeflag: tar.TypeReg,
+			Name:     path.Base(remotePath),
+			Mode:     0o644,
+			Size:     int64(len(data)),
+			ModTime:  time.Now(),
+		}
+		var writeErr error
+		if writeErr = tw.WriteHeader(hdr); writeErr == nil {
+			_, writeErr = tw.Write(data)
+		}
+		_ = tw.Close()
+		_ = pw.CloseWithError(writeErr)
+		errCh <- writeErr
+	}()
+
+	f.mu.Lock()
+	cli := f.api()
+	if cli == nil {
+		f.mu.Unlock()
+		_ = pr.Close()
+		<-errCh
+		return errno.New(errno.CodeSessionClosed, "Docker 会话已关闭", "")
+	}
+	copyCtx, copyCancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	f.mu.Unlock()
+	err := cli.CopyToContainer(copyCtx, f.containerID, parent, pr, container.CopyToContainerOptions{})
+	copyCancel()
+	_ = pr.Close()
+	writeErr := <-errCh
+	if err != nil {
+		return errno.Wrap(errno.CodeConnFailed, "写入容器文件失败", err)
+	}
+	if writeErr != nil {
+		return errno.Wrap(errno.CodeConnFailed, "写入容器文件失败", writeErr)
+	}
+	return nil
+}
+
 func (f *dockerFS) execOK(cmd ...string) error {
 	_, err := f.execOutput(cmd...)
 	return err

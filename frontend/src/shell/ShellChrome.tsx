@@ -1,12 +1,10 @@
 import { chromeProps, pressProps } from '../components/compat'
-import { IconUiMoon, IconUiSun } from '../components/ShellChromeIcons'
 import { useI18n, useLocalizedProduct } from '../i18n'
 import { useAppStore } from '../stores/appStore'
-import { ShellFontSizeMenu } from './ShellFontSizeMenu'
-import { ShellLocaleMenu } from './ShellLocaleMenu'
+import { ShellSettingsMenu } from './ShellSettingsMenu'
 import appMark from '../assets/brand/mark.png'
 
-/** 应用顶栏：品牌、当前产品、主题与语言切换 */
+/** 应用顶栏：品牌、当前产品、AI；外观类设置收进齿轮菜单。 */
 export function ShellChrome({
   agentOpen,
   onToggleAgent,
@@ -14,7 +12,7 @@ export function ShellChrome({
   agentOpen?: boolean
   onToggleAgent?: () => void
 }) {
-  const { theme, setTheme, activeProduct } = useAppStore()
+  const { activeProduct } = useAppStore()
   const { t } = useI18n()
   const product = useLocalizedProduct(activeProduct)
 
@@ -41,16 +39,7 @@ export function ShellChrome({
           <span className="chrome-ai-label">AI</span>
         </button>
       )}
-      <ShellFontSizeMenu />
-      <ShellLocaleMenu />
-      <button
-        type="button"
-        className="wn-btn wn-btn-chrome wn-btn-icon-only"
-        title={t('shell.switchTheme')}
-        {...pressProps(() => setTheme(theme === 'dark' ? 'light' : 'dark'))}
-      >
-        {theme === 'dark' ? <IconUiSun /> : <IconUiMoon />}
-      </button>
+      <ShellSettingsMenu />
     </header>
   )
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { ContainerEnvVar, DockerContainer, DockerContext, DockerImage, SSHHost } from '../../api/types'
-import { IconDocker, IconPlus } from '../../components/Icons'
+import { IconPlus } from '../../components/Icons'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ContextMenu } from '../../components/ContextMenu'
 import { ProductLayout, ResizeHandle, useResizable } from '../../components/layout'
@@ -802,7 +802,7 @@ export function DockerWorkbench() {
               </button>
             </div>
             <div className="sidebar-body">
-              <ul className="conn-list">
+              <ul className="conn-list is-homogeneous">
                 {contexts.map((ctx) => (
                   <li
                     key={ctx.id}
@@ -815,7 +815,6 @@ export function DockerWorkbench() {
                       setContextCtxMenu({ x: e.clientX, y: e.clientY, context: ctx })
                     }}
                   >
-                    <IconDocker size={14} className="mock-icon" />
                     <div className="conn-meta">
                       <span className="conn-name">{contextDisplayName(ctx, localContextLabel)}</span>
                       <span className="conn-host">{contextEndpointLabel(ctx, sshHosts)}</span>

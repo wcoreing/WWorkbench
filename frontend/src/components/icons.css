@@ -10,6 +10,12 @@
   image-rendering: auto;
 }
 
+/* 产品工具栏：统一 chrome 图标尺寸，避免各按钮 size 不一致 */
+.product-toolbar .wn-btn-chrome .wn-raster-icon {
+  width: var(--icon-chrome) !important;
+  height: var(--icon-chrome) !important;
+}
+
 /* Element Plus 风格 SVG 箭头（随 currentColor） */
 .wn-ep-icon {
   display: inline-block;

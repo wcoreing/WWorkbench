@@ -1021,7 +1021,7 @@ export function DatabaseWorkbench() {
       <div className="product-toolbar database-toolbar">
         <nav className="product-actions">
           <button type="button" className="wn-btn wn-btn-chrome" title={t('database.newConnection')} {...pressProps(() => openConnModal())}>
-            <IconPlus size={13} />
+            <IconPlus size={18} />
             <span>{t('database.connection')}</span>
           </button>
           <button
@@ -1031,7 +1031,7 @@ export function DatabaseWorkbench() {
             title={t('database.editConnection')}
             {...pressProps(() => activeConn && openConnModal(activeConn), { disabled: !activeConn })}
           >
-            <IconEdit size={13} />
+            <IconEdit size={18} />
           </button>
           <button
             type="button"
@@ -1040,11 +1040,11 @@ export function DatabaseWorkbench() {
             title={t('database.deleteConnection')}
             {...pressProps(() => activeConn && setDeleteConnTarget(activeConn), { disabled: !activeConn })}
           >
-            <IconTrash size={13} />
+            <IconTrash size={18} />
           </button>
           <span className="chrome-vrule" />
           <button type="button" className="wn-btn wn-btn-chrome" title={t('database.newQuery')} {...pressProps(newSqlTab)}>
-            <IconSql size={13} />
+            <IconSql size={18} />
             <span>{t('database.newQuery')}</span>
           </button>
           <button
@@ -1054,7 +1054,7 @@ export function DatabaseWorkbench() {
             title={t('database.runTitle')}
             {...pressProps(runSql, { disabled: !session || activeTab?.kind !== 'sql' })}
           >
-            <IconPlay size={12} />
+            <IconPlay size={18} />
             <span>{t('database.run')}</span>
           </button>
           <button
@@ -1064,7 +1064,7 @@ export function DatabaseWorkbench() {
             title={t('database.explain')}
             {...pressProps(runExplain, { disabled: !session || activeTab?.kind !== 'sql' })}
           >
-            <IconExplain size={13} />
+            <IconExplain size={18} />
             <span>EXPLAIN</span>
           </button>
           <button
@@ -1074,7 +1074,7 @@ export function DatabaseWorkbench() {
             title={t('database.importSqlHint')}
             {...pressProps(() => void runSqlFile(), { disabled: !session || isRedis })}
           >
-            <IconImportSql size={13} />
+            <IconImportSql size={18} />
             <span>{t('database.importSql')}</span>
           </button>
           <div className="shell-locale-menu" ref={exportMenuRef}>
@@ -1087,7 +1087,7 @@ export function DatabaseWorkbench() {
               aria-expanded={exportMenuOpen}
               {...pressProps(() => setExportMenuOpen((v) => !v), { disabled: !session || isRedis || sqlExport.exporting })}
             >
-              <IconDownload size={13} />
+              <IconDownload size={18} />
               <span>{t('database.exportSql')}</span>
             </button>
             {exportMenuOpen && (
@@ -1124,7 +1124,7 @@ export function DatabaseWorkbench() {
             title={t('database.reconnect')}
             {...pressProps(() => void reconnect(), { disabled: !session })}
           >
-            <IconRefresh size={13} />
+            <IconRefresh size={18} />
           </button>
           <button
             type="button"
@@ -1133,7 +1133,7 @@ export function DatabaseWorkbench() {
             title={t('database.disconnect')}
             {...pressProps(disconnect, { disabled: !session })}
           >
-            <IconDisconnect size={13} />
+            <IconDisconnect size={18} />
           </button>
           {session && (
             <>
@@ -1144,7 +1144,7 @@ export function DatabaseWorkbench() {
                 title={t('database.saveNotebook')}
                 {...pressProps(openNotebookFromConnection)}
               >
-                <IconNotebook size={13} />
+                <IconNotebook size={18} />
                 <span>{t('database.notebook')}</span>
               </button>
             </>
@@ -1158,7 +1158,7 @@ export function DatabaseWorkbench() {
                 title={t('database.sshTerminal')}
                 {...pressProps(() => void openLinkedProduct('terminal'))}
               >
-                <IconTerminal size={13} />
+                <IconTerminal size={18} />
                 <span>{t('database.sshTerminal')}</span>
               </button>
               <button
@@ -1167,7 +1167,7 @@ export function DatabaseWorkbench() {
                 title={t('database.sftp')}
                 {...pressProps(() => void openLinkedProduct('sftp'))}
               >
-                <IconFolder size={13} />
+                <IconFolder size={18} />
                 <span>{t('database.sftp')}</span>
               </button>
             </>

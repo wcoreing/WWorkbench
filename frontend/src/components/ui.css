@@ -36,19 +36,30 @@
 .wn-btn-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: #ffffff;
+  font-weight: 600;
   box-shadow: var(--shadow-sm);
 }
 
 .wn-btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-  color: #fff;
+  color: #ffffff;
 }
 
 .wn-btn-primary:active:not(:disabled) {
   background: var(--accent-pressed);
   border-color: var(--accent-pressed);
+  color: #ffffff;
+}
+
+/* 禁用仍保持白字 + 实心淡蓝，避免灰字叠淡蓝（对比度差、不像系统主按钮）。 */
+.wn-btn-primary:disabled {
+  color: #ffffff;
+  background: color-mix(in srgb, var(--accent) 42%, var(--color-surface-raised));
+  border-color: transparent;
+  opacity: 1;
+  box-shadow: none;
 }
 
 .wn-btn-ghost {
@@ -87,10 +98,14 @@
   font-weight: 500;
   color: var(--color-text-secondary);
   border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
 }
 
 .wn-btn-chrome:hover:not(:disabled) {
   background: var(--color-hover);
+  border-color: transparent;
+  box-shadow: none;
   color: var(--color-text);
 }
 
@@ -100,6 +115,7 @@
 
 .wn-btn-chrome.wn-btn-run:not(:disabled):hover {
   background: var(--accent-muted);
+  border-color: transparent;
   color: var(--accent-hover);
 }
 
@@ -110,6 +126,8 @@
 
 .wn-btn-chrome.active {
   background: var(--accent-muted);
+  border-color: transparent;
+  box-shadow: none;
   color: var(--accent);
 }
 
@@ -197,7 +215,7 @@ button.wn-select-trigger {
   overflow: auto;
   padding: 5px;
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background: var(--color-surface-raised);
   box-shadow: var(--shadow);
 }
@@ -369,7 +387,6 @@ button.wn-select-trigger {
   position: fixed;
   inset: 0;
   background: var(--color-overlay);
-  backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -389,7 +406,7 @@ button.wn-select-trigger {
   flex-direction: column;
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
 }
 
@@ -500,7 +517,7 @@ button.wn-select-trigger {
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 8px;
+  border-radius: var(--radius);
   font-size: 10px;
   font-weight: 600;
   background: var(--color-border-subtle);
@@ -1175,7 +1192,7 @@ button.wn-select-trigger {
   padding: 5px;
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow);
 }
 
@@ -1328,7 +1345,7 @@ button.wn-select-trigger {
   justify-content: center;
   width: 14px;
   height: 14px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
   line-height: 1;
   opacity: 0;
@@ -1372,14 +1389,22 @@ button.wn-select-trigger {
   align-items: center;
   gap: 8px;
   min-height: 32px;
+  margin: 1px 8px;
   padding: 5px 10px;
   cursor: pointer;
-  border-radius: 0;
-  border: none;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
   transition:
     background var(--motion-ui) var(--ease-ui),
-    color var(--motion-ui) var(--ease-ui);
+    color var(--motion-ui) var(--ease-ui),
+    border-color var(--motion-ui) var(--ease-ui),
+    box-shadow var(--motion-ui) var(--ease-ui);
   user-select: none;
+}
+
+/* 分区 / Tab 已标明类型时，列表不再重复放类型图标 */
+.conn-list.is-homogeneous .mock-icon {
+  display: none;
 }
 
 .conn-item:hover {
@@ -1387,8 +1412,9 @@ button.wn-select-trigger {
 }
 
 .conn-item.active {
-  background: var(--color-active);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--color-sidebar-selected);
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .conn-item.stopped {
@@ -1459,7 +1485,7 @@ button.wn-select-trigger {
   font-size: 9px;
   font-weight: 600;
   padding: 1px 4px;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: var(--accent-muted);
   color: var(--accent);
   vertical-align: middle;
@@ -1513,6 +1539,8 @@ button.wn-select-trigger {
   background: var(--color-tree-active);
   color: var(--color-text);
   font-weight: 560;
+  box-shadow: none;
+  border: 1px solid transparent;
 }
 
 .wn-tree-item.selected:hover {
@@ -1950,7 +1978,6 @@ button.wn-select-trigger {
   align-items: center;
   justify-content: center;
   background: var(--color-overlay);
-  backdrop-filter: blur(1px);
 }
 
 .wn-loading-spinner {
@@ -2123,7 +2150,7 @@ button.wn-select-trigger {
 .badge-count {
   font-size: 9px;
   padding: 0 4px;
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--accent-muted);
   color: var(--accent);
   line-height: 14px;
@@ -2167,6 +2194,8 @@ button.wn-select-trigger {
   top: 0;
   z-index: 1;
   user-select: none;
+  border-bottom: 1px solid var(--color-divider);
+  box-shadow: none;
 }
 
 .wn-grid th .col-head-label {
@@ -2274,11 +2303,13 @@ body.is-col-resizing * {
 }
 
 .wn-grid tbody tr.is-selected td {
-  background: var(--color-tree-active);
+  background: var(--color-row-selected);
+  color: var(--color-row-selected-fg);
+  box-shadow: none;
 }
 
 .wn-grid tbody tr.is-selected:hover td {
-  background: color-mix(in srgb, var(--color-tree-active) 80%, var(--color-tree-hover));
+  background: var(--accent-hover);
 }
 
 .wn-grid .col-actions {
@@ -2333,7 +2364,7 @@ body.is-col-resizing * {
   height: 18px;
   padding: 0;
   border: none;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-muted);
   font-size: 11px;
@@ -2366,7 +2397,7 @@ body.is-col-resizing * {
   height: 22px;
   padding: 0 4px;
   border: 1px solid transparent;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--color-text);
   font-family: var(--font-mono);
@@ -2492,7 +2523,7 @@ body.is-col-resizing * {
 .cell-rich-md {
   padding: 8px 10px;
   border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
   background: var(--color-surface);
 }
 
@@ -2531,7 +2562,7 @@ body.is-col-resizing * {
   gap: 10px;
   align-items: start;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
 }
 
 .cell-rich-root > .cell-rich-field:nth-child(even) {
@@ -2540,7 +2571,7 @@ body.is-col-resizing * {
 
 .cell-rich-root > .cell-rich-array-item:nth-child(even) {
   background: var(--color-surface-2);
-  border-radius: 6px;
+  border-radius: var(--radius-lg);
 }
 
 .cell-rich-key {

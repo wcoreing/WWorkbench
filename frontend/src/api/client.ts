@@ -68,7 +68,13 @@ import {
   ListLocalDir,
   DownloadSFTPFile,
   UploadSFTPFile,
+  PickSFTPUploadPaths,
+  PickSFTPUploadDir,
+  PickSFTPDownloadDir,
   DeleteSFTPPath,
+  ReadSFTPText,
+  ReadSFTPBinary,
+  WriteSFTPText,
   TransferSFTPUpload,
   TransferSFTPDownload,
   MkdirSFTPRemote,
@@ -512,6 +518,27 @@ export const api = {
     unwrap(() => DownloadSFTPFile(sessionId, remotePath)),
   uploadSFTPFile: (sessionId: string, remoteDir: string) =>
     unwrap(() => UploadSFTPFile(sessionId, remoteDir)),
+  pickSFTPUploadPaths: async () => asArray(await unwrap(() => PickSFTPUploadPaths())) as string[],
+  pickSFTPUploadDir: () => unwrap(() => PickSFTPUploadDir()) as Promise<string>,
+  pickSFTPDownloadDir: (defaultDir = '') => unwrap(() => PickSFTPDownloadDir(defaultDir)) as Promise<string>,
+  readSFTPText: (sessionId: string, remotePath: string) =>
+    unwrap(() => ReadSFTPText(sessionId, remotePath)) as Promise<{
+      path: string
+      name: string
+      content: string
+      size: number
+      encoding: string
+    }>,
+  readSFTPBinary: (sessionId: string, remotePath: string) =>
+    unwrap(() => ReadSFTPBinary(sessionId, remotePath)) as Promise<{
+      path: string
+      name: string
+      mime: string
+      content: string
+      size: number
+    }>,
+  writeSFTPText: (sessionId: string, remotePath: string, content: string) =>
+    unwrap(() => WriteSFTPText(sessionId, remotePath, content)),
   deleteSFTPPath: (sessionId: string, remotePath: string) =>
     unwrap(() => DeleteSFTPPath(sessionId, remotePath)),
   transferSFTPUpload: (sessionId: string, taskId: string, localPath: string, remoteDir: string) =>
