@@ -18,38 +18,59 @@ import (
 
 const maxLocalReadBytes = 2 << 20
 
-// Fetch 按日志源配置拉取尾部日志。
+// Fetch 按日志源配置拉取一段日志。
+// count 为行数；skipFromEnd 为距文件/流末尾再往前跳过的行数（0=最新一段）。
 func Fetch(
 	ctx context.Context,
 	src model.LogSourceDO,
 	hosts *terminal.HostService,
 	docker *dockersvc.Manager,
-	tailOverride int,
+	countOverride int,
+	skipFromEnd int,
 ) (string, error) {
-	tail := src.TailLines
-	if tailOverride > 0 {
-		tail = tailOverride
+	count := src.TailLines
+	if countOverride > 0 {
+		count = countOverride
 	}
-	if tail <= 0 {
-		tail = 200
+	if count <= 0 {
+		count = 200
+	}
+	if skipFromEnd < 0 {
+		skipFromEnd = 0
 	}
 
 	switch src.SourceType {
 	case model.LogSourceLocalFile:
-		return tailLocalFile(strings.TrimSpace(src.Path), tail)
+		return tailLocalFile(strings.TrimSpace(src.Path), count, skipFromEnd)
 	case model.LogSourceSSHFile:
-		return tailSSHFile(ctx, hosts, src.SSHHostID, strings.TrimSpace(src.Path), tail)
+		return tailSSHFile(ctx, hosts, src.SSHHostID, strings.TrimSpace(src.Path), count, skipFromEnd)
 	case model.LogSourceDocker:
-		return docker.GetContainerLogs(ctx, src.DockerContextID, src.ContainerID, tail)
+		return dockerLogWindow(ctx, docker, src.DockerContextID, src.ContainerID, count, skipFromEnd)
 	case model.LogSourceCompose:
-		return docker.GetComposeLogs(ctx, src.DockerContextID, strings.TrimSpace(src.ComposeDir), src.ComposeService, tail)
+		return composeLogWindow(ctx, docker, src.DockerContextID, strings.TrimSpace(src.ComposeDir), src.ComposeService, count, skipFromEnd)
 	default:
 		return "", errno.New(errno.CodeInvalidArg, "未知日志源类型", src.SourceType)
 	}
 }
 
-// tailLocalFile 读取本机文件尾部若干行。
-func tailLocalFile(path string, lines int) (string, error) {
+func dockerLogWindow(ctx context.Context, docker *dockersvc.Manager, contextID, containerID string, count, skip int) (string, error) {
+	raw, err := docker.GetContainerLogs(ctx, contextID, containerID, count+skip)
+	if err != nil {
+		return "", err
+	}
+	return takeLineWindow(raw, count, skip), nil
+}
+
+func composeLogWindow(ctx context.Context, docker *dockersvc.Manager, contextID, projectDir, service string, count, skip int) (string, error) {
+	raw, err := docker.GetComposeLogs(ctx, contextID, projectDir, service, count+skip)
+	if err != nil {
+		return "", err
+	}
+	return takeLineWindow(raw, count, skip), nil
+}
+
+// tailLocalFile 读取本机文件一段行窗口。
+func tailLocalFile(path string, count, skipFromEnd int) (string, error) {
 	if path == "" {
 		return "", errno.New(errno.CodeInvalidArg, "请填写日志文件路径", "")
 	}
@@ -86,23 +107,88 @@ func tailLocalFile(path string, lines int) (string, error) {
 			text = text[i+1:]
 		}
 	}
-	return takeLastLines(text, lines), nil
+	return takeLineWindow(text, count, skipFromEnd), nil
 }
 
-// takeLastLines 取文本最后 n 行。
-func takeLastLines(text string, n int) string {
-	if n <= 0 {
-		return text
-	}
-	parts := strings.Split(text, "\n")
-	if len(parts) <= n {
+// takeLineWindow 取距文本末尾 skip 行之前的 count 行。
+func takeLineWindow(text string, count, skipFromEnd int) string {
+	if count <= 0 {
 		return strings.TrimRight(text, "\n")
 	}
-	return strings.Join(parts[len(parts)-n:], "\n")
+	if skipFromEnd < 0 {
+		skipFromEnd = 0
+	}
+	parts := strings.Split(strings.TrimRight(text, "\n"), "\n")
+	if len(parts) == 1 && parts[0] == "" {
+		return ""
+	}
+	end := len(parts) - skipFromEnd
+	if end <= 0 {
+		return ""
+	}
+	start := end - count
+	if start < 0 {
+		start = 0
+	}
+	return strings.Join(parts[start:end], "\n")
 }
 
-// tailSSHFile 经 SSH 在远端执行 tail 读取日志。
-func tailSSHFile(ctx context.Context, hosts *terminal.HostService, hostID, path string, lines int) (string, error) {
+// DiffAppend 相对上次快照计算新增文本（兼容 tail 滑动窗口）。
+func DiffAppend(prev, full string) (chunk string, reset bool) {
+	if prev == "" {
+		return full, len(full) > 0
+	}
+	if full == prev {
+		return "", false
+	}
+	if strings.HasPrefix(full, prev) {
+		return full[len(prev):], false
+	}
+	prevLines := splitLogLines(prev)
+	fullLines := splitLogLines(full)
+	if len(prevLines) == 0 {
+		return full, len(full) > 0
+	}
+	maxK := len(prevLines)
+	if len(fullLines) < maxK {
+		maxK = len(fullLines)
+	}
+	for k := maxK; k > 0; k-- {
+		if linesEqual(prevLines[len(prevLines)-k:], fullLines[:k]) {
+			if k == len(fullLines) {
+				return "", false
+			}
+			added := strings.Join(fullLines[k:], "\n")
+			if added == "" {
+				return "", false
+			}
+			return "\n" + added, false
+		}
+	}
+	return full, true
+}
+
+func splitLogLines(text string) []string {
+	if text == "" {
+		return nil
+	}
+	return strings.Split(strings.TrimRight(text, "\n"), "\n")
+}
+
+func linesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// tailSSHFile 经 SSH 在远端执行 tail/head 读取日志窗口。
+func tailSSHFile(ctx context.Context, hosts *terminal.HostService, hostID, path string, count, skipFromEnd int) (string, error) {
 	if hostID == "" {
 		return "", errno.New(errno.CodeInvalidArg, "请选择 SSH 主机", "")
 	}
@@ -125,7 +211,13 @@ func tailSSHFile(ctx context.Context, hosts *terminal.HostService, hostID, path 
 	}
 	defer sess.Close()
 
-	cmd := fmt.Sprintf("tail -n %d -- %s 2>&1", lines, shellQuote(path))
+	quoted := shellQuote(path)
+	var cmd string
+	if skipFromEnd <= 0 {
+		cmd = fmt.Sprintf("tail -n %d -- %s 2>&1", count, quoted)
+	} else {
+		cmd = fmt.Sprintf("tail -n %d -- %s 2>&1 | head -n %d", count+skipFromEnd, quoted, count)
+	}
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	done := make(chan struct {
@@ -143,7 +235,7 @@ func tailSSHFile(ctx context.Context, hosts *terminal.HostService, hostID, path 
 	case <-runCtx.Done():
 		return "", errno.New(errno.CodeConnFailed, "读取远端日志超时", "")
 	case r := <-done:
-		text := strings.TrimSpace(string(r.out))
+		text := strings.TrimRight(string(r.out), "\n")
 		if r.err != nil {
 			if text == "" {
 				return "", errno.Wrap(errno.CodeConnFailed, "读取远端日志失败", r.err)

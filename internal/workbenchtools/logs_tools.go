@@ -51,7 +51,7 @@ func toolFetchLogs(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult
 	if tail > maxLogFetchTail {
 		tail = maxLogFetchTail
 	}
-	text, err := logs.Fetch(ctx, *src, d.SSHHosts, d.Docker, tail)
+	text, err := logs.Fetch(ctx, *src, d.SSHHosts, d.Docker, tail, 0)
 	if err != nil {
 		return Fail(err.Error())
 	}

@@ -656,10 +656,10 @@ export const api = {
   listLogSources: async () => asArray(await unwrap(() => ListLogSources())),
   saveLogSource: (src: model.LogSourceDO) => unwrap(() => SaveLogSource(src)),
   deleteLogSource: (id: string) => unwrap(() => DeleteLogSource(id)),
-  fetchLogSource: async (id: string, tail: number) =>
-    (await unwrap(() => FetchLogSource(id, tail))) as { content: string },
-  fetchLogSourceConfig: async (src: model.LogSourceDO, tail: number) =>
-    (await unwrap(() => FetchLogSourceConfig(src, tail))) as { content: string },
+  fetchLogSource: async (id: string, tail: number, skipFromEnd = 0) =>
+    (await unwrap(() => FetchLogSource(id, tail, skipFromEnd))) as { content: string },
+  fetchLogSourceConfig: async (src: model.LogSourceDO, tail: number, skipFromEnd = 0) =>
+    (await unwrap(() => FetchLogSourceConfig(src, tail, skipFromEnd))) as { content: string },
   startLogFollow: (src: model.LogSourceDO, tail: number) => unwrap(() => StartLogFollow(src, tail)),
   stopLogFollow: (streamId: string) => unwrap(() => StopLogFollow(streamId)),
   pickLogFilePath: () => unwrap(() => PickLogFilePath()),

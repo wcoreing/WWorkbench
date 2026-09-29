@@ -230,12 +230,12 @@ export function ExportTableSQL(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['app']['Service']['ExportTableSQL'](arg1, arg2, arg3, arg4, arg5);
 }
 
-export function FetchLogSource(arg1, arg2) {
-  return window['go']['app']['Service']['FetchLogSource'](arg1, arg2);
+export function FetchLogSource(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['FetchLogSource'](arg1, arg2, arg3);
 }
 
-export function FetchLogSourceConfig(arg1, arg2) {
-  return window['go']['app']['Service']['FetchLogSourceConfig'](arg1, arg2);
+export function FetchLogSourceConfig(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['FetchLogSourceConfig'](arg1, arg2, arg3);
 }
 
 export function GetAgentSettings() {

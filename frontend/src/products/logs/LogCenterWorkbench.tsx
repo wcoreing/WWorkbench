@@ -39,6 +39,15 @@ function logLineTone(line: string): 'error' | 'warning' | 'debug' | 'info' | '' 
   return ''
 }
 
+function splitContentLines(text: string): string[] {
+  if (!text) return []
+  return text.replace(/\n$/, '').split('\n')
+}
+
+function countContentLines(text: string): number {
+  return splitContentLines(text).length
+}
+
 /** canFetchLogConfig 判断当前表单是否满足拉取日志条件。 */
 function canFetchLogConfig(
   sourceType: LogSourceType,
@@ -60,6 +69,24 @@ function canFetchLogConfig(
     default:
       return false
   }
+}
+
+function sourceToDO(item: LogSource, tail: number): model.LogSourceDO {
+  return model.LogSourceDO.createFrom({
+    id: item.id,
+    name: item.name,
+    sourceType: item.sourceType,
+    path: item.path,
+    sshHostId: item.sshHostId,
+    dockerContextId: item.dockerContextId,
+    containerId: item.containerId,
+    composeDir: item.composeDir,
+    composeService: item.composeService,
+    tailLines: tail,
+    sortOrder: item.sortOrder,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+  })
 }
 
 /** LogCenterWorkbench 日志中心工作区。 */
@@ -88,6 +115,14 @@ export function LogCenterWorkbench() {
   const [dockerContexts, setDockerContexts] = useState<DockerContext[]>([])
   const [containers, setContainers] = useState<DockerContainer[]>([])
   const workspaceLoaded = useRef(false)
+  const preRef = useRef<HTMLPreElement>(null)
+  const stickToBottomRef = useRef(true)
+  /** 已加载内容中最旧一行距日志末尾的行距（打开/刷新后 = 当前行数）。 */
+  const oldestSkipRef = useRef(0)
+  const hasMoreOlderRef = useRef(true)
+  const loadingOlderRef = useRef(false)
+  const [hasMoreOlder, setHasMoreOlder] = useState(true)
+  const [loadingOlder, setLoadingOlder] = useState(false)
 
   const activeItem = useMemo(
     () => items.find((i) => i.id === activeId) ?? null,
@@ -121,6 +156,19 @@ export function LogCenterWorkbench() {
     },
     [t],
   )
+
+  const resetHistoryCursor = useCallback((text: string) => {
+    const n = countContentLines(text)
+    oldestSkipRef.current = n
+    hasMoreOlderRef.current = n > 0
+    setHasMoreOlder(n > 0)
+  }, [])
+
+  const scrollToBottom = useCallback(() => {
+    const el = preRef.current
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+  }, [])
 
   const loadEditor = useCallback((item: LogSource | null) => {
     if (!item) {
@@ -165,6 +213,130 @@ export function LogCenterWorkbench() {
     void api.listContainers(dockerContextId).then((c) => setContainers(c as DockerContainer[])).catch(() => setContainers([]))
   }, [sourceType, dockerContextId])
 
+  const buildSourceConfig = useCallback(
+    () =>
+      model.LogSourceDO.createFrom({
+        id: activeId,
+        name: name.trim(),
+        sourceType,
+        path: path.trim(),
+        sshHostId,
+        dockerContextId,
+        containerId,
+        composeDir: composeDir.trim(),
+        composeService: composeService.trim(),
+        tailLines,
+        sortOrder: 0,
+        createdAt: 0,
+        updatedAt: 0,
+      }),
+    [
+      activeId,
+      name,
+      sourceType,
+      path,
+      sshHostId,
+      dockerContextId,
+      containerId,
+      composeDir,
+      composeService,
+      tailLines,
+    ],
+  )
+
+  const fetchReady = useMemo(
+    () => canFetchLogConfig(sourceType, path, sshHostId, dockerContextId, containerId, composeDir),
+    [sourceType, path, sshHostId, dockerContextId, containerId, composeDir],
+  )
+
+  const applyTailContent = useCallback(
+    (text: string) => {
+      setContent(text)
+      resetHistoryCursor(text)
+      stickToBottomRef.current = true
+      requestAnimationFrame(scrollToBottom)
+    },
+    [resetHistoryCursor, scrollToBottom],
+  )
+
+  const fetchTailConfig = useCallback(
+    async (cfg: model.LogSourceDO, lines: number) => {
+      if (!canFetchLogConfig(
+        cfg.sourceType as LogSourceType,
+        cfg.path,
+        cfg.sshHostId,
+        cfg.dockerContextId,
+        cfg.containerId,
+        cfg.composeDir,
+      )) {
+        setStatusMessage(t('logs.errConfig'))
+        return
+      }
+      setStatusMessage(t('logs.refreshing'))
+      try {
+        await withLoading(
+          LOGS_LOADING_CONTENT,
+          async () => {
+            const res = await api.fetchLogSourceConfig(cfg, lines, 0)
+            applyTailContent(res.content || '')
+            setStatusMessage(t('logs.refresh'))
+          },
+          {
+            label: t('logs.refreshing'),
+            onBegin: () => setContent(''),
+          },
+        )
+      } catch (e) {
+        setContent((e as Error).message)
+        resetHistoryCursor('')
+        setStatusMessage((e as Error).message)
+      }
+    },
+    [applyTailContent, resetHistoryCursor, setStatusMessage, t],
+  )
+
+  const refreshLogs = useCallback(async () => {
+    await fetchTailConfig(buildSourceConfig(), tailLines)
+  }, [buildSourceConfig, fetchTailConfig, tailLines])
+
+  const loadOlder = useCallback(async () => {
+    if (!fetchReady || loadingOlderRef.current || !hasMoreOlderRef.current || contentLoading.active) return
+    if (oldestSkipRef.current <= 0) return
+    loadingOlderRef.current = true
+    setLoadingOlder(true)
+    const pre = preRef.current
+    const prevHeight = pre?.scrollHeight ?? 0
+    const prevTop = pre?.scrollTop ?? 0
+    try {
+      const res = await api.fetchLogSourceConfig(buildSourceConfig(), tailLines, oldestSkipRef.current)
+      const olderText = res.content || ''
+      const olderLines = splitContentLines(olderText)
+      if (olderLines.length === 0) {
+        hasMoreOlderRef.current = false
+        setHasMoreOlder(false)
+        return
+      }
+      if (olderLines.length < tailLines) {
+        hasMoreOlderRef.current = false
+        setHasMoreOlder(false)
+      }
+      oldestSkipRef.current += olderLines.length
+      setContent((prev) => {
+        if (!prev) return olderText
+        return `${olderText}\n${prev}`
+      })
+      requestAnimationFrame(() => {
+        if (!pre) return
+        pre.scrollTop = pre.scrollHeight - prevHeight + prevTop
+      })
+    } catch (e) {
+      setStatusMessage((e as Error).message)
+    } finally {
+      loadingOlderRef.current = false
+      setLoadingOlder(false)
+    }
+  }, [buildSourceConfig, contentLoading.active, fetchReady, setStatusMessage, tailLines])
+
   useEffect(() => {
     if (workspaceLoaded.current) {
       void refreshList()
@@ -176,9 +348,21 @@ export function LogCenterWorkbench() {
       const snap = await loadLogsWorkspace()
       const id = snap?.activeId && list.some((x) => x.id === snap.activeId) ? snap.activeId : list[0]?.id ?? ''
       setActiveId(id)
-      loadEditor(list.find((x) => x.id === id) ?? null)
+      const item = list.find((x) => x.id === id) ?? null
+      loadEditor(item)
+      if (item && canFetchLogConfig(
+        item.sourceType,
+        item.path,
+        item.sshHostId,
+        item.dockerContextId,
+        item.containerId,
+        item.composeDir,
+      )) {
+        const lines = item.tailLines > 0 ? item.tailLines : 200
+        await fetchTailConfig(sourceToDO(item, lines), lines)
+      }
     })()
-  }, [refreshList, loadEditor])
+  }, [refreshList, loadEditor, fetchTailConfig])
 
   useWorkbenchCommand(Capability.LogsOpen, (cmd) => {
     const logSourceId = payloadStr(cmd.payload, 'logSourceId')
@@ -228,6 +412,8 @@ export function LogCenterWorkbench() {
           setComposeService('')
           setTailLines(200)
           setContent('')
+          setFollowLive(false)
+          resetHistoryCursor('')
           setStatusMessage(t('logs.draftSSH'))
           return
         }
@@ -266,6 +452,7 @@ export function LogCenterWorkbench() {
 
         setActiveId(target.id)
         loadEditor(target)
+        setFollowLive(false)
         setContent('')
 
         if (shouldFetch && canFetchLogConfig(
@@ -276,40 +463,8 @@ export function LogCenterWorkbench() {
           target.containerId,
           target.composeDir,
         )) {
-          try {
-            await withLoading(
-              LOGS_LOADING_CONTENT,
-              async () => {
-                const res = await api.fetchLogSourceConfig(
-                  model.LogSourceDO.createFrom({
-                    id: target.id,
-                    name: target.name,
-                    sourceType: target.sourceType,
-                    path: target.path,
-                    sshHostId: target.sshHostId,
-                    dockerContextId: target.dockerContextId,
-                    containerId: target.containerId,
-                    composeDir: target.composeDir,
-                    composeService: target.composeService,
-                    tailLines: target.tailLines > 0 ? target.tailLines : 200,
-                    sortOrder: target.sortOrder,
-                    createdAt: target.createdAt,
-                    updatedAt: target.updatedAt,
-                  }),
-                  target.tailLines > 0 ? target.tailLines : 200,
-                )
-                setContent(res.content || '')
-                setStatusMessage(t('logs.refresh'))
-              },
-              {
-                label: t('logs.refreshing'),
-                onBegin: () => setContent(''),
-              },
-            )
-          } catch (e) {
-            setContent((e as Error).message)
-            setStatusMessage((e as Error).message)
-          }
+          const lines = target.tailLines > 0 ? target.tailLines : 200
+          await fetchTailConfig(sourceToDO(target, lines), lines)
         }
       } catch (e) {
         setStatusMessage((e as Error).message)
@@ -326,6 +481,9 @@ export function LogCenterWorkbench() {
         const next = list[0] ?? null
         setActiveId(next?.id ?? '')
         loadEditor(next)
+        setFollowLive(false)
+        setContent('')
+        resetHistoryCursor('')
       } else if (evt.reveal && id && evt.op !== 'delete') {
         const item = list.find((x) => x.id === id) ?? null
         if (item) {
@@ -343,7 +501,7 @@ export function LogCenterWorkbench() {
     return subscribeWorkbenchChanged((evt) => {
       void apply(evt)
     })
-  }, [refreshList, loadEditor, activeId])
+  }, [refreshList, loadEditor, activeId, resetHistoryCursor])
 
   useEffect(() => {
     scheduleLogsWorkspacePersist({ version: 1, activeId })
@@ -352,86 +510,49 @@ export function LogCenterWorkbench() {
   const selectItem = (item: LogSource) => {
     setActiveId(item.id)
     loadEditor(item)
+    setFollowLive(false)
     setContent('')
+    resetHistoryCursor('')
+    if (canFetchLogConfig(
+      item.sourceType,
+      item.path,
+      item.sshHostId,
+      item.dockerContextId,
+      item.containerId,
+      item.composeDir,
+    )) {
+      const lines = item.tailLines > 0 ? item.tailLines : 200
+      void fetchTailConfig(sourceToDO(item, lines), lines)
+    }
   }
 
   const createNew = () => {
     setActiveId('')
     loadEditor(null)
+    setFollowLive(false)
     setContent('')
+    resetHistoryCursor('')
   }
-
-  const buildSourceConfig = useCallback(
-    () =>
-      model.LogSourceDO.createFrom({
-        id: activeId,
-        name: name.trim(),
-        sourceType,
-        path: path.trim(),
-        sshHostId,
-        dockerContextId,
-        containerId,
-        composeDir: composeDir.trim(),
-        composeService: composeService.trim(),
-        tailLines,
-        sortOrder: 0,
-        createdAt: 0,
-        updatedAt: 0,
-      }),
-    [
-      activeId,
-      name,
-      sourceType,
-      path,
-      sshHostId,
-      dockerContextId,
-      containerId,
-      composeDir,
-      composeService,
-      tailLines,
-    ],
-  )
-
-  const fetchReady = useMemo(
-    () => canFetchLogConfig(sourceType, path, sshHostId, dockerContextId, containerId, composeDir),
-    [sourceType, path, sshHostId, dockerContextId, containerId, composeDir],
-  )
-
-  const refreshLogs = useCallback(async () => {
-    if (!fetchReady) {
-      setStatusMessage(t('logs.errConfig'))
-      return
-    }
-    setStatusMessage(t('logs.refreshing'))
-    try {
-      await withLoading(
-        LOGS_LOADING_CONTENT,
-        async () => {
-          const res = await api.fetchLogSourceConfig(buildSourceConfig(), tailLines)
-          setContent(res.content || '')
-          setStatusMessage(t('logs.refresh'))
-        },
-        {
-          label: t('logs.refreshing'),
-          onBegin: () => setContent(''),
-        },
-      )
-    } catch (e) {
-      setContent((e as Error).message)
-      setStatusMessage((e as Error).message)
-    }
-  }, [fetchReady, buildSourceConfig, tailLines, setStatusMessage, t])
 
   useEffect(() => {
     return subscribeLogsChunks((evt) => {
       if (!followStreamId.current || evt.streamId !== followStreamId.current) return
       if (evt.reset) {
-        setContent(evt.chunk)
-      } else if (evt.chunk) {
-        setContent((prev) => prev + evt.chunk)
+        applyTailContent(evt.chunk)
+        return
+      }
+      if (!evt.chunk) return
+      const added = evt.chunk.startsWith('\n') ? evt.chunk.slice(1) : evt.chunk
+      const addedCount = countContentLines(added)
+      if (addedCount > 0) {
+        oldestSkipRef.current += addedCount
+      }
+      setContent((prev) => prev + evt.chunk)
+      if (stickToBottomRef.current) {
+        requestAnimationFrame(scrollToBottom)
       }
     })
-  }, [])
+  }, [applyTailContent, scrollToBottom])
 
   useEffect(() => {
     if (!followLive || !fetchReady) {
@@ -450,6 +571,7 @@ export function LogCenterWorkbench() {
           return
         }
         followStreamId.current = id
+        stickToBottomRef.current = true
         setStatusMessage(t('logs.followOn'))
       } catch (e) {
         setFollowLive(false)
@@ -511,6 +633,18 @@ export function LogCenterWorkbench() {
     }
   }
 
+  const onViewerScroll = () => {
+    const el = preRef.current
+    if (!el) return
+    const distBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    stickToBottomRef.current = distBottom < 48
+    if (el.scrollTop < 48) {
+      void loadOlder()
+    }
+  }
+
+  const followDisabled = !fetchReady || contentLoading.active
+
   return (
     <div className="product-workbench logs-workbench">
       <header className="product-toolbar logs-toolbar">
@@ -535,13 +669,17 @@ export function LogCenterWorkbench() {
               {t('agent.sendToAgent')}
             </button>
           )}
-          <label className="logs-auto-label">
-            <input
-              type="checkbox"
-              checked={followLive}
-              onChange={(e) => setFollowLive(e.target.checked)}
-              disabled={!fetchReady || contentLoading.active}
-            />
+          <label
+            className={`logs-auto-label${followDisabled ? ' is-disabled' : ''}`}
+            {...pressProps(
+              () => {
+                if (followDisabled) return
+                setFollowLive((v) => !v)
+              },
+              { disabled: followDisabled },
+            )}
+          >
+            <input type="checkbox" checked={followLive} readOnly tabIndex={-1} disabled={followDisabled} />
             {t('logs.followLive')}
           </label>
         </div>
@@ -716,25 +854,50 @@ export function LogCenterWorkbench() {
               <span className="wn-label">{t('logs.logOutput')}</span>
               <div className="logs-viewer-meta">
                 <span>{t('logs.tailLines')}: {tailLines}</span>
+                {loadingOlder && <span>{t('logs.loadingOlder')}</span>}
+                {!hasMoreOlder && content ? <span>{t('logs.noMoreOlder')}</span> : null}
                 {followLive && <span className="logs-live-badge">{t('logs.followLive')}</span>}
               </div>
             </header>
-            <LoadingPane loadingKey={LOGS_LOADING_CONTENT} label={t('logs.refreshing')} minHeight={280} className="logs-viewer-body">
-              {!content ? (
-                <div className="pane-empty">{t('logs.noOutput')}</div>
-              ) : (
-                <pre className="logs-pre">
-                  {content.split('\n').map((line, index, lines) => {
-                    const tone = logLineTone(line)
-                    return (
-                      <span key={index} className={`logs-line${tone ? ` is-${tone}` : ''}`}>
-                        {line}{index < lines.length - 1 ? '\n' : null}
-                      </span>
-                    )
-                  })}
-                </pre>
-              )}
-            </LoadingPane>
+            <div className="logs-viewer-body">
+              <LoadingPane loadingKey={LOGS_LOADING_CONTENT} label={t('logs.refreshing')} minHeight={280}>
+                {!content ? (
+                  <EmptyState
+                    variant="pane"
+                    title={t('logs.noOutput')}
+                    hint={t('logs.noOutputHint')}
+                    actions={[
+                      {
+                        label: t('logs.refresh'),
+                        onPress: () => void refreshLogs(),
+                        primary: true,
+                      },
+                      {
+                        label: t('logs.tryFollow'),
+                        onPress: () => {
+                          if (!fetchReady) {
+                            setStatusMessage(t('logs.errConfig'))
+                            return
+                          }
+                          setFollowLive(true)
+                        },
+                      },
+                    ]}
+                  />
+                ) : (
+                  <pre ref={preRef} className="logs-pre" onScroll={onViewerScroll}>
+                    {content.split('\n').map((line, index, lines) => {
+                      const tone = logLineTone(line)
+                      return (
+                        <span key={index} className={`logs-line${tone ? ` is-${tone}` : ''}`}>
+                          {line}{index < lines.length - 1 ? '\n' : null}
+                        </span>
+                      )
+                    })}
+                  </pre>
+                )}
+              </LoadingPane>
+            </div>
           </div>
         </main>
       </div>
@@ -783,7 +946,9 @@ export function LogCenterWorkbench() {
             if (activeId === item.id) {
               setActiveId('')
               loadEditor(null)
+              setFollowLive(false)
               setContent('')
+              resetHistoryCursor('')
             }
             await refreshList()
             setStatusMessage(t('logs.deleted'))

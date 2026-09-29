@@ -1,20 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../../api/client'
-import type { Connection, ExecuteResult, IndexMeta, QueryHistory, QueryPage, SQLBatchResult, SessionInfo } from '../../api/types'
+import type { Connection, ExecuteResult, IndexMeta, QueryPage, SQLBatchResult, SessionInfo } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ContextMenu } from '../../components/ContextMenu'
 import { EmptyState } from '../../components/EmptyState'
-import { ProductLayout, PaneCollapseButton, ResizeHandle, SidebarColumns, SidebarStack, usePaneCollapse, useResizable } from '../../components/layout'
-import { loadSizeMap, rememberScalarSize, recallScalarSize, type CollapsedMap } from '../../components/layout/layoutStorage'
+import { ProductLayout, ResizeHandle, useResizable } from '../../components/layout'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { IconDisconnect, IconDownload, IconEdit, IconExplain, IconFolder, IconImportSql, IconNotebook, IconPlay, IconPlus, IconRefresh, IconSql, IconTerminal, IconTrash } from '../../components/Icons'
 import { Select, pressProps, useDismissOverlays } from '../../components/compat'
 import { LoadingPane } from '../../components/LoadingHost'
 import { useLoading, withLoading } from '../../stores/loadingStore'
-
-const treeLoadingKey = (sessionId: string) => `database.tree.${sessionId}`
-const resultLoadingKey = (sessionId: string) => `database.result.${sessionId}`
-
 import { ConnectionModal } from '../../features/connection/ConnectionModal'
 import { DdlEditor } from '../../features/ddl/DdlEditor'
 import { ObjectTree } from '../../features/explorer/ObjectTree'
@@ -37,6 +32,52 @@ import { defaultUntitledSql, localizeWorkTabTitle } from '../../i18n/databaseTab
 import { queryPageToExport } from '../../utils/queryCsv'
 import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 import { useSQLExport } from '../../features/export/useSQLExport'
+
+const treeLoadingKey = (sessionId: string) => `database.tree.${sessionId}`
+const resultLoadingKey = (sessionId: string) => `database.result.${sessionId}`
+
+type DatabaseSideTab = 'connections' | 'objects'
+type DatabaseConnTypeTab = 'default' | 'docker'
+
+function loadDatabaseSideTab(): DatabaseSideTab {
+  try {
+    const v = localStorage.getItem('database_side_tab')
+    if (v === 'connections' || v === 'objects') return v
+  } catch {
+    /* ignore */
+  }
+  return 'connections'
+}
+
+function persistDatabaseSideTab(tab: DatabaseSideTab) {
+  try {
+    localStorage.setItem('database_side_tab', tab)
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadDatabaseConnTypeTab(): DatabaseConnTypeTab {
+  try {
+    const v = localStorage.getItem('database_conn_type_tab')
+    if (v === 'default' || v === 'docker') return v
+  } catch {
+    /* ignore */
+  }
+  return 'default'
+}
+
+function persistDatabaseConnTypeTab(tab: DatabaseConnTypeTab) {
+  try {
+    localStorage.setItem('database_conn_type_tab', tab)
+  } catch {
+    /* ignore */
+  }
+}
+
+function isDockerConnection(c: Connection): boolean {
+  return c.group?.trim().toLowerCase() === 'docker'
+}
 
 type SqlResult = QueryPage | ExecuteResult | SQLBatchResult
 
@@ -109,10 +150,11 @@ export function DatabaseWorkbench() {
     invert: true,
   })
   const [bottomTab, setBottomTab] = useState<'result' | 'message'>('result')
-  const [history, setHistory] = useState<QueryHistory[]>([])
   const [lastQuery, setLastQuery] = useState<{ sql: string; page: QueryPage } | null>(null)
   const [treeFilter, setTreeFilter] = useState('')
   const [treeRefreshNonce, setTreeRefreshNonce] = useState(0)
+  const [sideTab, setSideTab] = useState<DatabaseSideTab>(() => loadDatabaseSideTab())
+  const [connTypeTab, setConnTypeTab] = useState<DatabaseConnTypeTab>(() => loadDatabaseConnTypeTab())
   const [ddlConfirm, setDdlConfirm] = useState<
     | { type: 'truncate' | 'drop'; database: string; table: string }
     | { type: 'drop-database'; database: string }
@@ -122,63 +164,16 @@ export function DatabaseWorkbench() {
   const [createDbOpen, setCreateDbOpen] = useState(false)
   const restoredConnection = useRef(false)
   const DB_SIDEBAR_WIDTH_KEY = 'database_sidebar_width'
-  const DB_SIDEBAR_EXPANDED_KEY = 'database_sidebar_width__expanded'
-  const DB_COLUMNS_KEY = 'database_sidebar_columns'
   const {
     size: databaseSidebarWidth,
-    setSizeAndSave: setDatabaseSidebarWidth,
     onResizeStart: onDatabaseSidebarResizeStart,
   } = useResizable({
     axis: 'x',
     storageKey: DB_SIDEBAR_WIDTH_KEY,
-    defaultSize: 400,
+    defaultSize: 280,
     min: 200,
-    max: 720,
+    max: 480,
   })
-  const {
-    collapsed: explorerCollapsed,
-    setCollapsed: setExplorerCollapsed,
-  } = usePaneCollapse(DB_COLUMNS_KEY)
-
-  /** 收起连接栏时同步缩小外层侧栏，把宽度还给主编辑区 */
-  const applyExplorerCollapsed = useCallback(
-    (next: CollapsedMap) => {
-      const was = Boolean(explorerCollapsed.connections)
-      const now = Boolean(next.connections)
-      if (was !== now) {
-        const colSizes = loadSizeMap(DB_COLUMNS_KEY)
-        const connW = Math.min(320, Math.max(120, colSizes.connections ?? 168))
-        const freed = Math.max(0, connW - 32)
-        if (now) {
-          rememberScalarSize(DB_SIDEBAR_EXPANDED_KEY, databaseSidebarWidth)
-          setDatabaseSidebarWidth(databaseSidebarWidth - freed)
-        } else {
-          setDatabaseSidebarWidth(
-            recallScalarSize(
-              DB_SIDEBAR_EXPANDED_KEY,
-              databaseSidebarWidth + freed,
-              320,
-              720,
-            ),
-          )
-        }
-      }
-      setExplorerCollapsed(next)
-    },
-    [
-      databaseSidebarWidth,
-      explorerCollapsed.connections,
-      setDatabaseSidebarWidth,
-      setExplorerCollapsed,
-    ],
-  )
-
-  const toggleConnectionsPane = useCallback(() => {
-    applyExplorerCollapsed({
-      ...explorerCollapsed,
-      connections: !explorerCollapsed.connections,
-    })
-  }, [applyExplorerCollapsed, explorerCollapsed])
 
   useEffect(() => {
     void refreshConnections()
@@ -285,15 +280,11 @@ export function DatabaseWorkbench() {
   /** 表设计：非 Redis 可新建；改表设计目前 MySQL / SQLite / PostgreSQL 均可打开。 */
   const canCreateTable = !isRedis
   const canDesignTable = !isRedis
-  const groupedConnections = useMemo(() => {
-    const map = new Map<string, Connection[]>()
-    for (const c of connectionList) {
-      const g = c.group?.trim() || t('database.defaultGroup')
-      if (!map.has(g)) map.set(g, [])
-      map.get(g)!.push(c)
-    }
-    return [...map.entries()]
-  }, [connectionList, t])
+  const typedConnections = useMemo(() => {
+    return connectionList.filter((c) =>
+      connTypeTab === 'docker' ? isDockerConnection(c) : !isDockerConnection(c),
+    )
+  }, [connectionList, connTypeTab])
   const activeTab = tabs.find((t) => t.id === activeTabId)
   const resultLoading = useLoading(session ? resultLoadingKey(session.sessionId) : 'database.result._')
   const treeLoading = useLoading(session ? treeLoadingKey(session.sessionId) : 'database.tree._')
@@ -347,7 +338,6 @@ export function DatabaseWorkbench() {
       try {
         const res = await api.executeSQL(sessionInfo.sessionId, sessionInfo.database, sql)
         applySqlResult(res, sql)
-        setHistory(await api.listQueryHistory(sessionInfo.connectionId, 30))
       } catch (e) {
         setSqlResult(null)
         setLastQuery(null)
@@ -415,10 +405,8 @@ export function DatabaseWorkbench() {
             ? t('database.reconnected', { name: conn.name })
             : t('database.connected', { name: conn.name }),
         )
-        const [history] = await Promise.all([
-          api.listQueryHistory(connId, 30),
-        ])
-        setHistory(history)
+        setSideTab('objects')
+        persistDatabaseSideTab('objects')
         await withLoading(
           treeLoadingKey(info.sessionId),
           async () => {
@@ -442,7 +430,6 @@ export function DatabaseWorkbench() {
       setSession,
       setActiveConnectionId,
       setObjectTree,
-      setHistory,
       setStatusMessage,
       fulfillPendingSql,
       t,
@@ -553,7 +540,6 @@ export function DatabaseWorkbench() {
         await api.closeSession(session.sessionId)
         setSession(null)
         setObjectTree([])
-        setHistory([])
       }
       await api.deleteConnection(target.id)
       if (activeConnectionId === target.id) setActiveConnectionId(null)
@@ -596,7 +582,6 @@ export function DatabaseWorkbench() {
           async () => {
             const res = await api.executeSQL(session.sessionId, session.database, sql)
             applySqlResult(res, sql)
-            setHistory(await api.listQueryHistory(session.connectionId, 30))
           },
           {
             label: t('common.loading'),
@@ -964,7 +949,6 @@ export function DatabaseWorkbench() {
       const res = await api.executeSQLFile(session.sessionId, targetDb)
       if (res) applySqlResult(res, '-- SQL 文件')
       await reloadObjectTree(session.sessionId)
-      setHistory(await api.listQueryHistory(session.connectionId, 30))
       setStatusMessage(t('database.importedSqlFile'))
     } catch (e) {
       setStatusMessage((e as Error).message)
@@ -1215,232 +1199,221 @@ export function DatabaseWorkbench() {
       <ProductLayout
         storageKey={DB_SIDEBAR_WIDTH_KEY}
         resizeTitle={t('common.resizeWidth')}
-        defaultWidth={400}
+        defaultWidth={280}
         minWidth={200}
-        maxWidth={720}
+        maxWidth={480}
         width={databaseSidebarWidth}
         onResizeStart={onDatabaseSidebarResizeStart}
+        sidebarClassName="database-sidebar"
         sidebar={
-          <SidebarStack
-            storageKey="database_sidebar_stack"
-            resizeTitle={t('common.resizeHeight')}
-            sections={[
-              {
-                id: 'explorer',
-                flex: true,
-                content: (
-                  <SidebarColumns
-                    storageKey={DB_COLUMNS_KEY}
-                    resizeTitle={t('common.resizeWidth')}
-                    collapseTitle={t('common.collapsePane')}
-                    expandTitle={t('common.expandPane')}
-                    className="database-explorer-columns"
-                    collapsed={explorerCollapsed}
-                    onCollapsedChange={applyExplorerCollapsed}
-                    sections={[
-                      {
-                        id: 'connections',
-                        defaultSize: 168,
-                        min: 120,
-                        max: 320,
-                        collapsible: true,
-                        railLabel: t('database.connectionsRail'),
-                        collapseLabel: t('common.collapsePane'),
-                        expandLabel: t('database.expandConnections'),
-                        content: (
-                          <section className="sidebar-section connections">
-                            <div className="sidebar-header">
-                              <PaneCollapseButton
-                                title={t('database.collapseConnections')}
-                                onToggle={toggleConnectionsPane}
-                              />
-                              <span className="sidebar-header-title">{t('database.connections')}</span>
-                              <div className="sidebar-header-actions">
-                                <button type="button" className="wn-btn wn-btn-icon wn-btn-sm" title={t('database.newConnection')} {...pressProps(() => openConnModal())}>
-                                  <IconPlus size={14} />
-                                </button>
-                              </div>
-                            </div>
-                            <div className="sidebar-body connections-body">
-                              {connectionList.length === 0 ? (
-                                <EmptyState
-                                  variant="inline"
-                                  title={t('database.emptyConnectionsGeneric')}
-                                  actions={[
-                                    { label: t('database.newConnection'), onPress: () => openConnModal(), primary: true },
-                                  ]}
-                                />
-                              ) : (
-                                groupedConnections.map(([group, list]) => (
-                                  <div key={group} className="conn-group">
-                                    <div className="conn-group-title">{group}</div>
-                                    <ul className="conn-list">
-                                      {list.map((c) => (
-                                        <li
-                                          key={c.id}
-                                          role="button"
-                                          tabIndex={0}
-                                          className={`conn-item ${activeConnectionId === c.id ? 'active' : ''} ${session?.connectionId === c.id ? 'connected' : ''}`}
-                                          {...pressProps(() => connect(c.id))}
-                                          onDoubleClick={() => void reconnect(c.id)}
-                                          onContextMenu={(e) => {
-                                            e.preventDefault()
-                                            e.stopPropagation()
-                                            setConnCtxMenu({ x: e.clientX, y: e.clientY, conn: c })
-                                          }}
-                                          title={
-                                            session?.connectionId === c.id
-                                              ? t('database.reconnectHint')
-                                              : undefined
-                                          }
-                                        >
-                                          <span className="conn-dot" />
-                                          <div className="conn-meta">
-                                            <span className="conn-name">
-                                              {c.name}
-                                              {c.sshEnabled && <span className="conn-ssh-tag">SSH</span>}
-                                            </span>
-                                            <span className="conn-host">
-                                              <span className="conn-db-type">{c.dbType}</span>
-                                              {c.sshEnabled && c.sshHost ? `${c.sshHost} → ` : ''}
-                                              {c.host}:{c.port}
-                                            </span>
-                                          </div>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          </section>
-                        ),
-                      },
-                      {
-                        id: 'objects',
-                        flex: true,
-                        content: (
-                          <section className="sidebar-section objects">
-                            <div className="sidebar-header">
-                              <span>{t('database.objectBrowser')}</span>
-                              <div className="sidebar-header-actions">
-                                {canCreateDatabase && session && (
-                                  <button
-                                    type="button"
-                                    className="wn-btn wn-btn-icon wn-btn-sm"
-                                    title={t('database.createDatabase')}
-                                    {...pressProps(() => setCreateDbOpen(true))}
-                                  >
-                                    <IconPlus size={14} />
-                                  </button>
-                                )}
-                                <button
-                                  type="button"
-                                  className="wn-btn wn-btn-icon wn-btn-sm"
-                                  disabled={!session || treeLoading.active}
-                                  title={t('common.refresh')}
-                                  {...pressProps(() => void refreshObjectTree(), { disabled: !session || treeLoading.active })}
-                                >
-                                  <IconRefresh size={14} />
-                                </button>
-                              </div>
-                            </div>
-                            {session && (
-                              <div className="sidebar-filter">
-                                <input
-                                  className="wn-input wn-input-sm"
-                                  placeholder={t('database.filterPlaceholder')}
-                                  value={treeFilter}
-                                  onChange={(e) => setTreeFilter(e.target.value)}
-                                />
-                              </div>
-                            )}
-                            <div className="sidebar-body">
-                              {session ? (
-                                <LoadingPane
-                                  loadingKey={treeLoadingKey(session.sessionId)}
-                                  label={t('common.loading')}
-                                  minHeight={160}
-                                >
-                                  <ObjectTree
-                                  sessionId={session.sessionId}
-                                  nodes={treeNodes}
-                                  filter={treeFilter}
-                                  selectedDatabase={session.database || undefined}
-                                  selectedTable={
-                                    activeTab?.kind === 'table'
-                                      ? activeTab.table
-                                      : activeTab?.kind === 'design'
-                                        ? activeTab.table
-                                        : undefined
-                                  }
-                                  refreshNonce={treeRefreshNonce}
-                                  canCreateTable={canCreateTable}
-                                  canDesignTable={canDesignTable}
-                                  isRedis={isRedis}
-                                  dbType={activeConn?.dbType}
-                                  onTableDoubleClick={openTableTab}
-                                  onDatabaseSelect={(db) => void selectDatabase(db)}
-                                  onShowDDL={showDDL}
-                                  onShowIndexes={showIndexes}
-                                  onNewTable={openCreateTableTab}
-                                  onDesignTable={openDesignTableTab}
-                                  onTruncateTable={truncateTable}
-                                  onDropTable={dropTable}
-                                  onDropDatabase={canCreateDatabase ? dropDatabase : undefined}
-                                  onExportTableSQL={exportTableSQL}
-                                  onExportDatabaseSQL={exportDatabaseSQL}
-                                  onImportSQL={(db) => void runSqlFile(db)}
-                                  onCreateDatabase={canCreateDatabase ? () => setCreateDbOpen(true) : undefined}
-                                />
-                                </LoadingPane>
-                              ) : (
-                                <div className="empty-hint">{t('database.connectToBrowse')}</div>
-                              )}
-                            </div>
-                          </section>
-                        ),
-                      },
-                    ]}
-                  />
-                ),
-              },
-              {
-                id: 'history',
-                defaultSize: 120,
-                min: 72,
-                max: 320,
-                content: (
-                  <section className="sidebar-section history">
-                    <div className="sidebar-header">
-                      <span>{t('database.queryHistory')}</span>
-                    </div>
-                    <div className="sidebar-body">
-                      {history.length === 0 ? (
-                        <div className="empty-hint" style={{ padding: '12px 8px' }}>
-                          {t('database.noHistory')}
-                        </div>
-                      ) : (
-                        history.map((h) => (
-                          <div
-                            key={h.id}
-                            className={`history-item ${h.success ? '' : 'failed'}`}
-                            title={h.sql}
-                            {...pressProps(() =>
-                              addTab({ id: `sql-h-${h.id}`, kind: 'sql', title: t('database.historyQuery'), sql: h.sql }),
-                            )}
-                          >
-                            {h.sql.slice(0, 50)}
-                            {h.sql.length > 50 ? '…' : ''}
+          <div className="database-side">
+            <div className="database-side-tabs" role="tablist" aria-label={t('database.sideTabs')}>
+              {(
+                [
+                  { id: 'connections' as const, label: t('database.sideTabConnections') },
+                  { id: 'objects' as const, label: t('database.sideTabObjects') },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={sideTab === tab.id}
+                  className={`database-side-tab${sideTab === tab.id ? ' is-active' : ''}`}
+                  {...pressProps(() => {
+                    setSideTab(tab.id)
+                    persistDatabaseSideTab(tab.id)
+                  })}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {sideTab === 'connections' && (
+              <section className="sidebar-section database-side-panel">
+                <div className="database-side-tabs database-conn-type-tabs" role="tablist" aria-label={t('database.connTypeTabs')}>
+                  {(
+                    [
+                      { id: 'default' as const, label: t('database.connTypeDefault') },
+                      { id: 'docker' as const, label: t('database.connTypeDocker') },
+                    ] as const
+                  ).map((tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={connTypeTab === tab.id}
+                      className={`database-side-tab${connTypeTab === tab.id ? ' is-active' : ''}`}
+                      {...pressProps(() => {
+                        setConnTypeTab(tab.id)
+                        persistDatabaseConnTypeTab(tab.id)
+                      })}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="sidebar-body">
+                  {typedConnections.length === 0 ? (
+                    <EmptyState
+                      variant="inline"
+                      title={
+                        connTypeTab === 'docker'
+                          ? t('database.emptyDockerConnections')
+                          : t('database.emptyConnectionsGeneric')
+                      }
+                      hint={
+                        connTypeTab === 'docker' ? t('database.emptyDockerConnectionsHint') : undefined
+                      }
+                      actions={
+                        connTypeTab === 'default'
+                          ? [
+                              {
+                                label: t('database.newConnection'),
+                                onPress: () => openConnModal(),
+                                primary: true,
+                              },
+                            ]
+                          : []
+                      }
+                    />
+                  ) : (
+                    <ul className="conn-list is-homogeneous">
+                      {typedConnections.map((c) => (
+                        <li
+                          key={c.id}
+                          role="button"
+                          tabIndex={0}
+                          className={`conn-item ${activeConnectionId === c.id ? 'active' : ''} ${session?.connectionId === c.id ? 'connected' : ''}`}
+                          {...pressProps(() => void connect(c.id))}
+                          onDoubleClick={() => void reconnect(c.id)}
+                          onContextMenu={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setConnCtxMenu({ x: e.clientX, y: e.clientY, conn: c })
+                          }}
+                          title={
+                            session?.connectionId === c.id
+                              ? t('database.reconnectHint')
+                              : undefined
+                          }
+                        >
+                          <span className="conn-dot" />
+                          <div className="conn-meta">
+                            <span className="conn-name">
+                              {c.name}
+                              {c.sshEnabled && <span className="conn-ssh-tag">SSH</span>}
+                            </span>
+                            <span className="conn-host">
+                              <span className="conn-db-type">{c.dbType}</span>
+                              {c.sshEnabled && c.sshHost ? `${c.sshHost} → ` : ''}
+                              {c.host}:{c.port}
+                            </span>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  </section>
-                ),
-              },
-            ]}
-          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {sideTab === 'objects' && (
+              <section className="sidebar-section database-side-panel">
+                <div className="sidebar-header">
+                  <span className="sidebar-header-title">{t('database.objectBrowser')}</span>
+                  <div className="sidebar-header-actions">
+                    {canCreateDatabase && session && (
+                      <button
+                        type="button"
+                        className="wn-btn wn-btn-icon wn-btn-sm"
+                        title={t('database.createDatabase')}
+                        {...pressProps(() => setCreateDbOpen(true))}
+                      >
+                        <IconPlus size={14} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="wn-btn wn-btn-icon wn-btn-sm"
+                      disabled={!session || treeLoading.active}
+                      title={t('common.refresh')}
+                      {...pressProps(() => void refreshObjectTree(), { disabled: !session || treeLoading.active })}
+                    >
+                      <IconRefresh size={14} />
+                    </button>
+                  </div>
+                </div>
+                {session && (
+                  <div className="sidebar-filter">
+                    <input
+                      className="wn-input wn-input-sm"
+                      placeholder={t('database.filterPlaceholder')}
+                      value={treeFilter}
+                      onChange={(e) => setTreeFilter(e.target.value)}
+                    />
+                  </div>
+                )}
+                <div className="sidebar-body">
+                  {session ? (
+                    <LoadingPane
+                      loadingKey={treeLoadingKey(session.sessionId)}
+                      label={t('common.loading')}
+                      minHeight={160}
+                    >
+                      <ObjectTree
+                        sessionId={session.sessionId}
+                        nodes={treeNodes}
+                        filter={treeFilter}
+                        selectedDatabase={session.database || undefined}
+                        selectedTable={
+                          activeTab?.kind === 'table'
+                            ? activeTab.table
+                            : activeTab?.kind === 'design'
+                              ? activeTab.table
+                              : undefined
+                        }
+                        refreshNonce={treeRefreshNonce}
+                        canCreateTable={canCreateTable}
+                        canDesignTable={canDesignTable}
+                        isRedis={isRedis}
+                        dbType={activeConn?.dbType}
+                        onTableDoubleClick={openTableTab}
+                        onDatabaseSelect={(db) => void selectDatabase(db)}
+                        onShowDDL={showDDL}
+                        onShowIndexes={showIndexes}
+                        onNewTable={openCreateTableTab}
+                        onDesignTable={openDesignTableTab}
+                        onTruncateTable={truncateTable}
+                        onDropTable={dropTable}
+                        onDropDatabase={canCreateDatabase ? dropDatabase : undefined}
+                        onExportTableSQL={exportTableSQL}
+                        onExportDatabaseSQL={exportDatabaseSQL}
+                        onImportSQL={(db) => void runSqlFile(db)}
+                        onCreateDatabase={canCreateDatabase ? () => setCreateDbOpen(true) : undefined}
+                      />
+                    </LoadingPane>
+                  ) : (
+                    <EmptyState
+                      variant="inline"
+                      title={t('database.connectToBrowse')}
+                      actions={[
+                        {
+                          label: t('database.sideTabConnections'),
+                          onPress: () => {
+                            setSideTab('connections')
+                            persistDatabaseSideTab('connections')
+                          },
+                          primary: true,
+                        },
+                      ]}
+                    />
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
         }
       >
         <main className="app-main database-main">

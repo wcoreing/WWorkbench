@@ -4,6 +4,91 @@
   container-name: database-workbench;
 }
 
+.database-sidebar {
+  background: var(--color-sidebar);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.database-side {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.database-side-panel .sidebar-header {
+  min-height: 32px;
+}
+
+.database-side-panel .sidebar-body {
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: none !important;
+  overflow: auto;
+}
+
+.database-conn-type-tabs {
+  margin: 4px 8px;
+}
+
+.database-side-panel .sidebar-filter {
+  padding: 6px 8px 4px;
+  flex-shrink: 0;
+}
+
+.database-side-panel .sidebar-filter .wn-input {
+  width: 100%;
+}
+
+.database-side-panel .conn-group {
+  margin-bottom: 6px;
+}
+
+.database-side-panel .conn-group-title {
+  padding: 6px 10px 2px;
+  font-size: var(--font-size-caption);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.database-side-panel .conn-item {
+  min-height: 38px;
+}
+
+.database-side-panel .conn-item.active {
+  background: var(--color-sidebar-selected);
+}
+
+.database-side-panel .conn-item .conn-name {
+  font-weight: 550;
+}
+
+.database-side-panel .conn-item .conn-db-type {
+  margin-right: 4px;
+  color: var(--color-text-muted);
+}
+
+.database-side-panel .conn-item.active .conn-db-type {
+  color: var(--color-text-secondary);
+}
+
+.database-side-panel .conn-item .conn-ssh-tag {
+  margin-left: 6px;
+}
+
+.database-side-panel .wn-tree-item {
+  min-height: 26px;
+}
+
+.database-side-panel .wn-tree-item.selected {
+  background: var(--color-sidebar-selected);
+}
+
 .database-toolbar {
   border-bottom: none;
 }
@@ -55,96 +140,45 @@
   box-shadow: none;
 }
 
-.database-explorer-columns {
-  background: transparent;
-}
-
-.database-explorer-columns .sidebar-section {
-  background: transparent;
-}
-
-.database-explorer-columns .sidebar-header {
+.database-side-panel .sidebar-header {
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.database-explorer-columns .connections-body {
-  max-height: none;
-}
-
-.database-explorer-columns .conn-group {
-  margin-bottom: 6px;
-}
-
-.database-explorer-columns .conn-group-title {
-  padding: 7px 10px 3px;
-  font-size: 9px;
-  font-weight: 650;
-  letter-spacing: 0.045em;
-  color: var(--color-text-muted);
-}
-
-.database-explorer-columns .conn-item {
-  min-height: 34px;
-}
-
-.database-explorer-columns .conn-item.active {
-  background: var(--color-sidebar-selected);
-}
-
-.database-explorer-columns .conn-item .conn-name {
-  font-weight: 600;
-}
-
-.database-explorer-columns .conn-item .conn-db-type {
-  margin-right: 5px;
-  font-size: 9px;
-  color: var(--color-text-muted);
-}
-
-.database-explorer-columns .conn-item.active .conn-db-type {
-  color: var(--accent);
-}
-
-.database-explorer-columns .conn-item .conn-ssh-tag {
-  border-radius: var(--radius-xs);
-}
-
-.database-explorer-columns .sidebar-filter {
-  padding: 6px 8px;
+.database-side-panel .sidebar-filter {
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.database-explorer-columns .sidebar-filter .wn-input {
+.database-side-panel .sidebar-filter .wn-input {
   background: var(--color-surface);
 }
 
-.database-explorer-columns .wn-tree-item {
+.database-side-panel .conn-group-title {
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 0.045em;
+}
+
+.database-side-panel .conn-item {
+  min-height: 34px;
+}
+
+.database-side-panel .conn-item .conn-name {
+  font-weight: 600;
+}
+
+.database-side-panel .conn-item .conn-db-type {
+  font-size: 9px;
+}
+
+.database-side-panel .conn-item.active .conn-db-type {
+  color: var(--accent);
+}
+
+.database-side-panel .wn-tree-item {
   min-height: 24px;
   margin: 1px 6px;
   padding-block: 2px;
   border-radius: var(--radius-sm);
-}
-
-.database-explorer-columns .wn-tree-item.selected {
-  background: var(--color-sidebar-selected);
-}
-
-.database-workbench .sidebar-section.history .sidebar-body {
-  padding: 0;
-}
-
-.database-workbench .history-item {
-  min-height: 28px;
-  padding: 6px 10px;
-  border-radius: 0;
-  border-bottom: 1px solid var(--color-border-subtle);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-caption);
-  line-height: var(--line-height-ui);
-}
-
-.database-workbench .history-item:hover {
-  background: var(--color-hover);
 }
 
 .database-main {

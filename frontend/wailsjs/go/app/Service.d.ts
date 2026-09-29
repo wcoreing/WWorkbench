@@ -117,9 +117,9 @@ export function ExportTableInsertSQL(arg1:string,arg2:string,arg3:string,arg4:nu
 
 export function ExportTableSQL(arg1:string,arg2:string,arg3:string,arg4:string,arg5:number):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
-export function FetchLogSource(arg1:string,arg2:number):Promise<app.ApiResult_WWorkbench_internal_model_LogFetchResultDO_>;
+export function FetchLogSource(arg1:string,arg2:number,arg3:number):Promise<app.ApiResult_WWorkbench_internal_model_LogFetchResultDO_>;
 
-export function FetchLogSourceConfig(arg1:model.LogSourceDO,arg2:number):Promise<app.ApiResult_WWorkbench_internal_model_LogFetchResultDO_>;
+export function FetchLogSourceConfig(arg1:model.LogSourceDO,arg2:number,arg3:number):Promise<app.ApiResult_WWorkbench_internal_model_LogFetchResultDO_>;
 
 export function GetAgentSettings():Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 

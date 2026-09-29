@@ -60,28 +60,28 @@ func (s *Service) DeleteLogSource(id string) ApiResult[bool] {
 	return OkResult(true)
 }
 
-// FetchLogSource 拉取指定日志源内容。
-func (s *Service) FetchLogSource(id string, tail int) ApiResult[model.LogFetchResultDO] {
+// FetchLogSource 拉取指定日志源内容。skipFromEnd 为距末尾再往前跳过的行数。
+func (s *Service) FetchLogSource(id string, tail int, skipFromEnd int) ApiResult[model.LogFetchResultDO] {
 	src, err := s.store.GetLogSource(id)
 	if err != nil {
 		return ErrResult[model.LogFetchResultDO](err)
 	}
-	return s.fetchLogContent(*src, tail)
+	return s.fetchLogContent(*src, tail, skipFromEnd)
 }
 
 // FetchLogSourceConfig 按当前配置拉取日志（无需已保存 ID，用于预览）。
-func (s *Service) FetchLogSourceConfig(src model.LogSourceDO, tail int) ApiResult[model.LogFetchResultDO] {
+func (s *Service) FetchLogSourceConfig(src model.LogSourceDO, tail int, skipFromEnd int) ApiResult[model.LogFetchResultDO] {
 	if err := validateLogSourceConfig(src); err != nil {
 		return ErrResult[model.LogFetchResultDO](err)
 	}
-	return s.fetchLogContent(src, tail)
+	return s.fetchLogContent(src, tail, skipFromEnd)
 }
 
 // fetchLogContent 执行日志拉取。
-func (s *Service) fetchLogContent(src model.LogSourceDO, tail int) ApiResult[model.LogFetchResultDO] {
+func (s *Service) fetchLogContent(src model.LogSourceDO, tail int, skipFromEnd int) ApiResult[model.LogFetchResultDO] {
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
-	content, err := logs.Fetch(ctx, src, s.sshHosts, s.docker, tail)
+	content, err := logs.Fetch(ctx, src, s.sshHosts, s.docker, tail, skipFromEnd)
 	if err != nil {
 		return ErrResult[model.LogFetchResultDO](err)
 	}

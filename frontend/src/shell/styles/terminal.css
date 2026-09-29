@@ -61,7 +61,8 @@
 }
 
 .terminal-side-tabs,
-.sftp-side-tabs {
+.sftp-side-tabs,
+.database-side-tabs {
   display: flex;
   flex-shrink: 0;
   gap: 2px;
@@ -73,7 +74,8 @@
 }
 
 .terminal-side-tab,
-.sftp-side-tab {
+.sftp-side-tab,
+.database-side-tab {
   flex: 1;
   min-width: 0;
   height: 24px;
@@ -93,12 +95,14 @@
 }
 
 .terminal-side-tab:hover,
-.sftp-side-tab:hover {
+.sftp-side-tab:hover,
+.database-side-tab:hover {
   color: var(--color-text);
 }
 
 .terminal-side-tab.is-active,
-.sftp-side-tab.is-active {
+.sftp-side-tab.is-active,
+.database-side-tab.is-active {
   color: var(--color-text);
   background: var(--color-surface-raised);
   font-weight: 550;
@@ -106,17 +110,20 @@
 }
 
 [data-theme='dark'] .terminal-side-tabs,
-[data-theme='dark'] .sftp-side-tabs {
+[data-theme='dark'] .sftp-side-tabs,
+[data-theme='dark'] .database-side-tabs {
   background: color-mix(in srgb, var(--color-text) 10%, transparent);
 }
 
 [data-theme='dark'] .terminal-side-tab.is-active,
-[data-theme='dark'] .sftp-side-tab.is-active {
+[data-theme='dark'] .sftp-side-tab.is-active,
+[data-theme='dark'] .database-side-tab.is-active {
   box-shadow: 0 0.5px 0.5px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.28);
 }
 
 .terminal-side-panel,
 .sftp-side-panel,
+.database-side-panel,
 .terminal-sidebar .ssh-forward-section.is-embedded {
   flex: 1;
   min-height: 0;

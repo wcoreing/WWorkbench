@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"time"
 
@@ -81,34 +80,27 @@ func (m *logFollowManager) run(ctx context.Context, streamID string, src model.L
 			"reset":    reset,
 		})
 	}
+	poll := func() {
+		reqCtx, cancel := context.WithTimeout(ctx, 40*time.Second)
+		content, err := logs.Fetch(reqCtx, src, m.service.sshHosts, m.service.docker, tail, 0)
+		cancel()
+		if err != nil {
+			emit(err.Error()+"\n", false)
+			return
+		}
+		chunk, reset := logs.DiffAppend(prev, content)
+		prev = content
+		emit(chunk, reset)
+	}
+	poll()
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			reqCtx, cancel := context.WithTimeout(ctx, 40*time.Second)
-			content, err := logs.Fetch(reqCtx, src, m.service.sshHosts, m.service.docker, tail)
-			cancel()
-			if err != nil {
-				emit(err.Error()+"\n", false)
-				continue
-			}
-			chunk, reset := logsDiffAppend(prev, content)
-			prev = content
-			emit(chunk, reset)
+			poll()
 		}
 	}
-}
-
-// logsDiffAppend 计算相对上次快照的新增文本。
-func logsDiffAppend(prev, full string) (chunk string, reset bool) {
-	if prev == "" {
-		return full, len(full) > 0
-	}
-	if strings.HasPrefix(full, prev) {
-		return full[len(prev):], false
-	}
-	return full, true
 }
 
 // StartLogFollow 启动日志实时跟随。
