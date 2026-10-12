@@ -60,30 +60,40 @@ func (s *Store) SaveNotebookGroup(g model.NotebookGroupDO) error {
 	return nil
 }
 
-// DeleteNotebookGroup 删除分组，组内笔记移到根目录。
+// DeleteNotebookGroup 删除目录：笔记与子目录上提到其父目录（根则为空）。
 func (s *Store) DeleteNotebookGroup(id string) error {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本分组失败", err)
+		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本目录失败", err)
 	}
 	defer tx.Rollback()
+	var parentID string
+	if err := tx.QueryRow(`SELECT parent_id FROM notebook_groups WHERE id = ?`, id).Scan(&parentID); err != nil {
+		if err == sql.ErrNoRows {
+			return errno.New(errno.CodeNotFound, "笔记本目录不存在", id)
+		}
+		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本目录失败", err)
+	}
 	now := time.Now().Unix()
-	if _, err := tx.Exec(`UPDATE notes SET group_id = '', updated_at = ? WHERE group_id = ?`, now, id); err != nil {
-		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本分组失败", err)
+	if _, err := tx.Exec(`UPDATE notes SET group_id = ?, updated_at = ? WHERE group_id = ?`, parentID, now, id); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本目录失败", err)
+	}
+	if _, err := tx.Exec(`UPDATE notebook_groups SET parent_id = ?, updated_at = ? WHERE parent_id = ?`, parentID, now, id); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本目录失败", err)
 	}
 	res, err := tx.Exec(`DELETE FROM notebook_groups WHERE id = ?`, id)
 	if err != nil {
-		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本分组失败", err)
+		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本目录失败", err)
 	}
 	n, err := res.RowsAffected()
 	if err != nil {
-		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本分组失败", err)
+		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本目录失败", err)
 	}
 	if n == 0 {
-		return errno.New(errno.CodeNotFound, "笔记本分组不存在", id)
+		return errno.New(errno.CodeNotFound, "笔记本目录不存在", id)
 	}
 	if err := tx.Commit(); err != nil {
-		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本分组失败", err)
+		return errno.Wrap(errno.CodeStoreFailed, "删除笔记本目录失败", err)
 	}
 	return nil
 }

@@ -71,7 +71,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
       automaticLayout: true,
       scrollBeyondLastLine: false,
       padding: { top: 8, bottom: 8 },
-      renderLineHighlight: 'line' as const,
+      renderLineHighlight: 'none' as const,
       overviewRulerBorder: false,
       hideCursorInOverviewRuler: true,
       scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },

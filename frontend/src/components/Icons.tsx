@@ -88,6 +88,10 @@ const EP_ARROW_DOWN =
 const EP_ARROW_RIGHT =
   'M340.864 149.312a30.592 30.592 0 0 0 0 42.752L652.736 512 340.864 831.872a30.592 30.592 0 0 0 0 42.752 29.12 29.12 0 0 0 41.472 0L714.24 534.336a32 32 0 0 0 0-44.672L382.336 149.376a29.12 29.12 0 0 0-41.472 0z'
 
+/** Element Plus DocumentCopy 路径（复制按钮用）。 */
+const EP_DOCUMENT_COPY =
+  'M128 320v576h576V320zm-32-64h640a32 32 0 0 1 32 32v640a32 32 0 0 1-32 32H96a32 32 0 0 1-32-32V288a32 32 0 0 1 32-32M960 96v704a32 32 0 0 1-32 32h-96v-64h64V128H384v64h-64V96a32 32 0 0 1 32-32h576a32 32 0 0 1 32 32M256 672h320v64H256zm0-192h320v64H256z'
+
 function EpSvgIcon({
   path,
   size = 12,
@@ -119,4 +123,9 @@ export function IconArrowDown({ size = 12, className }: IconProps) {
 /** IconArrowRight Element Plus 风格向右箭头（树节点可旋转为展开）。 */
 export function IconArrowRight({ size = 12, className }: IconProps) {
   return <EpSvgIcon path={EP_ARROW_RIGHT} size={size} className={className} />
+}
+
+/** IconDocumentCopy Element Plus 风格文档复制。 */
+export function IconDocumentCopy({ size = 14, className }: IconProps) {
+  return <EpSvgIcon path={EP_DOCUMENT_COPY} size={size} className={className} />
 }

@@ -209,6 +209,16 @@ CREATE TABLE IF NOT EXISTS notes (
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移笔记本表失败", err)
 	}
+	// 旧库 CREATE IF NOT EXISTS 不会补列；缺 parent_id 会导致新建目录失败
+	if err := s.ensureColumn("notebook_groups", "parent_id", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移笔记本分组 parent_id 失败", err)
+	}
+	if err := s.ensureColumn("notebook_groups", "sort_order", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移笔记本分组 sort_order 失败", err)
+	}
+	if err := s.ensureColumn("notes", "sort_order", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移笔记 sort_order 失败", err)
+	}
 	if err := s.ensureColumn("http_requests", "params_json", "TEXT NOT NULL DEFAULT '[]'"); err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移 HTTP 请求 params_json 失败", err)
 	}

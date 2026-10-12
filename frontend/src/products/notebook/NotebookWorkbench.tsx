@@ -22,7 +22,12 @@ import { NotebookGroupModal } from '../../features/notebook/NotebookGroupModal'
 import { NotebookSidebar } from '../../features/notebook/NotebookSidebar'
 import { openAgentDraft } from '../../features/agent/openAgentDraft'
 import { readLinkedSkillId } from '../../features/notebook/noteSkillLink'
-import { buildNotebookLayout, moveNoteInTree, nextNoteSortOrder } from '../../features/notebook/notebookTree'
+import {
+  buildNotebookLayout,
+  moveNoteInTree,
+  nextGroupSortOrder,
+  nextNoteSortOrder,
+} from '../../features/notebook/notebookTree'
 import { pressProps, useDismissOverlays } from '../../components/compat'
 import { LoadingPane } from '../../components/LoadingHost'
 import { useLoading, withLoading } from '../../stores/loadingStore'
@@ -122,6 +127,10 @@ export function NotebookWorkbench() {
   })
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'note' | 'group'; id: string; title: string } | null>(null)
   const [groupModal, setGroupModal] = useState<NotebookGroup | null | undefined>(undefined)
+  /** createGroupParentId 新建目录时的父目录 id（空=根）。 */
+  const [createGroupParentId, setCreateGroupParentId] = useState('')
+  /** selectedFolderId 侧栏当前选中目录（空=根）；工具栏新建落点。 */
+  const [selectedFolderId, setSelectedFolderId] = useState('')
   const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('split')
   const [editorFontSize, setEditorFontSize] = useState<NotebookEditorFontSize>(DEFAULT_NOTEBOOK_EDITOR_FONT)
   const [saveByNote, setSaveByNote] = useState<Record<string, 'saved' | 'dirty' | 'saving'>>({})
@@ -646,6 +655,11 @@ export function NotebookWorkbench() {
     }
   }
 
+  const openCreateFolder = (parentId = '') => {
+    setCreateGroupParentId(parentId)
+    setGroupModal(null)
+  }
+
   const saveGroup = async (name: string) => {
     if (groupModal) {
       const saved = (await api.saveNotebookGroup(
@@ -655,8 +669,16 @@ export function NotebookWorkbench() {
       setStatusMessage(t('notebook.renamedGroup', { name: saved.name }))
       return
     }
+    const parentId = createGroupParentId || ''
     const saved = (await api.saveNotebookGroup(
-      model.NotebookGroupDO.createFrom({ id: '', name, parentId: '', sortOrder: groups.length, createdAt: 0, updatedAt: 0 })
+      model.NotebookGroupDO.createFrom({
+        id: '',
+        name,
+        parentId,
+        sortOrder: nextGroupSortOrder(groups, parentId),
+        createdAt: 0,
+        updatedAt: 0,
+      })
     )) as NotebookGroup
     setGroups((prev) => [...prev, saved])
     setStatusMessage(t('notebook.createdGroup', { name: saved.name }))
@@ -802,6 +824,7 @@ export function NotebookWorkbench() {
         if (activeTabId === deleteTarget.id) setActiveTabId(null)
       } else {
         await api.deleteNotebookGroup(deleteTarget.id)
+        if (selectedFolderId === deleteTarget.id) setSelectedFolderId('')
         await refreshAll()
       }
       setStatusMessage(t('notebook.deleted'))
@@ -923,10 +946,23 @@ export function NotebookWorkbench() {
       <LoadingPane loadingKey="notebook.boot" label={t('notebook.loading')} minHeight={480}>
       <header className="product-toolbar notebook-toolbar">
         <div className="product-actions">
-          <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" {...pressProps(() => void createNote())}>
+          <button
+            type="button"
+            className="wn-btn wn-btn-sm wn-btn-primary"
+            title={
+              selectedFolderId
+                ? t('notebook.newInGroup')
+                : t('notebook.newInRoot')
+            }
+            {...pressProps(() => void createNote(selectedFolderId))}
+          >
             <IconPlus size={14} /> {t('notebook.newNote')}
           </button>
-          <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => setGroupModal(null))}>
+          <button
+            type="button"
+            className="wn-btn wn-btn-sm wn-btn-tool"
+            {...pressProps(() => openCreateFolder(selectedFolderId))}
+          >
             {t('notebook.newGroup')}
           </button>
           {activeNote && (
@@ -989,9 +1025,16 @@ export function NotebookWorkbench() {
             summaries={summaries}
             search={search}
             activeTabId={activeTabId}
-            languages={languages}
+            selectedFolderId={selectedFolderId}
+            onSelectFolder={setSelectedFolderId}
             onSearchChange={setSearch}
-            onOpenNote={(id) => void openNoteById(id)}
+            onOpenNote={(id) => {
+              const note = summaries.find((n) => n.id === id)
+              if (note) setSelectedFolderId(note.groupId || '')
+              void openNoteById(id)
+            }}
+            onCreateNote={(groupId) => void createNote(groupId)}
+            onCreateFolder={openCreateFolder}
             onEditGroup={setGroupModal}
             onDeleteGroup={(id, title) => setDeleteTarget({ kind: 'group', id, title })}
             onDeleteNote={(id, title) => setDeleteTarget({ kind: 'note', id, title })}
@@ -1121,7 +1164,9 @@ export function NotebookWorkbench() {
             <EmptyState
               title={t('notebook.emptyWorkspace')}
               hint={t('notebook.emptyWorkspaceHint')}
-              actions={[{ label: t('notebook.newNote'), onPress: () => void createNote(), primary: true }]}
+              actions={[
+                { label: t('notebook.newNote'), onPress: () => void createNote(selectedFolderId), primary: true },
+              ]}
             />
           )}
         </main>

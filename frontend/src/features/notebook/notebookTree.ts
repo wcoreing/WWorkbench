@@ -7,6 +7,10 @@ export const NOTEBOOK_ROOT_ID = ''
 
 export type NotebookDragPayload = { kind: 'note' | 'group'; id: string }
 
+export type NotebookTreeNode =
+  | { kind: 'folder'; id: string; name: string; parentId: string; children: NotebookTreeNode[] }
+  | { kind: 'note'; note: NoteSummary }
+
 /** parseNotebookDrag 解析侧栏拖拽载荷。 */
 export function parseNotebookDrag(raw: string): NotebookDragPayload | null {
   try {
@@ -28,6 +32,64 @@ export function notesInGroup(summaries: NoteSummary[], groupId: string): NoteSum
   return summaries
     .filter((n) => n.groupId === groupId)
     .sort((a, b) => a.sortOrder - b.sortOrder || b.updatedAt - a.updatedAt)
+}
+
+/** nextGroupSortOrder 同级目录下一个 sortOrder。 */
+export function nextGroupSortOrder(groups: NotebookGroup[], parentId: string): number {
+  const siblings = groups.filter((g) => (g.parentId || '') === (parentId || ''))
+  if (siblings.length === 0) return 0
+  return Math.max(...siblings.map((g) => g.sortOrder)) + 1
+}
+
+/** buildNotebookTree 构建目录 + 笔记文件树。 */
+export function buildNotebookTree(groups: NotebookGroup[], summaries: NoteSummary[]): NotebookTreeNode[] {
+  const folderNodes = new Map<string, NotebookTreeNode & { kind: 'folder' }>()
+  for (const g of orderedGroups(groups)) {
+    folderNodes.set(g.id, {
+      kind: 'folder',
+      id: g.id,
+      name: g.name,
+      parentId: g.parentId || '',
+      children: [],
+    })
+  }
+  const roots: NotebookTreeNode[] = []
+  for (const g of orderedGroups(groups)) {
+    const node = folderNodes.get(g.id)!
+    const parent = g.parentId ? folderNodes.get(g.parentId) : undefined
+    if (parent) parent.children.push(node)
+    else roots.push(node)
+  }
+  for (const note of [...summaries].sort(
+    (a, b) => a.sortOrder - b.sortOrder || b.updatedAt - a.updatedAt || a.title.localeCompare(b.title),
+  )) {
+    const leaf: NotebookTreeNode = { kind: 'note', note }
+    const parent = note.groupId ? folderNodes.get(note.groupId) : undefined
+    if (parent) parent.children.push(leaf)
+    else roots.push(leaf)
+  }
+  return roots
+}
+
+/** filterNotebookTree 按关键词过滤树（保留匹配路径）。 */
+export function filterNotebookTree(nodes: NotebookTreeNode[], q: string): NotebookTreeNode[] {
+  const query = q.trim().toLowerCase()
+  if (!query) return nodes
+  const walk = (list: NotebookTreeNode[]): NotebookTreeNode[] => {
+    const out: NotebookTreeNode[] = []
+    for (const n of list) {
+      if (n.kind === 'note') {
+        if (n.note.title.toLowerCase().includes(query)) out.push(n)
+      } else {
+        const children = walk(n.children)
+        if (n.name.toLowerCase().includes(query) || children.length) {
+          out.push({ ...n, children })
+        }
+      }
+    }
+    return out
+  }
+  return walk(nodes)
 }
 
 /** buildNotebookLayout 构建可持久化的侧栏布局（含根目录）。 */
