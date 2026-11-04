@@ -14,8 +14,15 @@ export function clampUiFontSize(value: number): UiFontSize {
 /** applyUiFontSize 把字号写到 document（zoom + CSS 变量）。 */
 export function applyUiFontSize(px: number) {
   const size = clampUiFontSize(px)
-  document.documentElement.style.setProperty('--ui-zoom', String(size / DEFAULT_UI_FONT_SIZE))
+  const zoom = size / DEFAULT_UI_FONT_SIZE
+  document.documentElement.style.setProperty('--ui-zoom', String(zoom))
   document.documentElement.style.setProperty('--ui-font-size', `${size}px`)
   document.documentElement.setAttribute('data-ui-font-size', String(size))
+  /**
+   * 仅在非 1× 时挂 data-ui-zoomed。
+   * 壳层写死 zoom:1 也会让 WebKit 里 Monaco 折行量宽错乱（叠字/当前行下跳）。
+   */
+  if (zoom === 1) document.documentElement.removeAttribute('data-ui-zoomed')
+  else document.documentElement.setAttribute('data-ui-zoomed', '1')
   return size
 }

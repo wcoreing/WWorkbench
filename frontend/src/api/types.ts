@@ -180,8 +180,59 @@ export interface SSHHost {
   hasPassword?: boolean
   /** 保存时显式清空已存密码 */
   clearPassword?: boolean
+  /** 阿里云账号 ID；空表示不绑 ECS 监控 */
+  cloudAccountId?: string
+  cloudRegion?: string
+  cloudInstanceId?: string
+  /** 保存时覆盖云监控绑定；不传则后端保留原绑定 */
+  touchCloud?: boolean
   createdAt: number
   updatedAt: number
+}
+
+/** CloudAccount 阿里云账号。密钥只在写入时提交。 */
+export interface CloudAccount {
+  id: string
+  name: string
+  provider: string
+  accessKeyId: string
+  accessKeySecret?: string
+  hasSecret?: boolean
+  createdAt: number
+  updatedAt: number
+}
+
+/** ECSMetricPoint 云监控采样点。 */
+export interface ECSMetricPoint {
+  timestamp: number
+  value: number
+}
+
+/** ECSMetricSeries 一条 ECS 指标。 */
+export interface ECSMetricSeries {
+  metric: string
+  unit: string
+  latest: number
+  points?: ECSMetricPoint[]
+  error?: string
+}
+
+/** ECSInstance 可绑定的阿里云 ECS。 */
+export interface ECSInstance {
+  instanceId: string
+  name: string
+  status: string
+  publicIp: string
+  privateIp: string
+}
+
+/** ECSMonitor 一台 ECS 最近一小时的云监控。 */
+export interface ECSMonitor {
+  instanceId: string
+  region: string
+  fetchedAt: number
+  series?: ECSMetricSeries[]
+  hint?: string
 }
 
 /** ShellHost 统一主机（SSH 或已注册 Docker 容器）。 */
@@ -200,6 +251,9 @@ export interface ShellHost {
   image?: string
   /** Docker：容器是否在运行；SSH 恒为 true */
   running?: boolean
+  cloudAccountId?: string
+  cloudRegion?: string
+  cloudInstanceId?: string
   createdAt: number
   updatedAt: number
 }
@@ -215,6 +269,9 @@ export function shellHostAsSSH(h: ShellHost): SSHHost | null {
     user: h.user || '',
     password: h.password || '',
     keyPath: h.keyPath || '',
+    cloudAccountId: h.cloudAccountId || '',
+    cloudRegion: h.cloudRegion || '',
+    cloudInstanceId: h.cloudInstanceId || '',
     createdAt: h.createdAt,
     updatedAt: h.updatedAt,
   }
@@ -560,4 +617,22 @@ export interface NoteSummary {
 export interface NotebookUI {
   openTabIds: string[]
   activeTabId: string
+}
+
+export interface NotebookAsset {
+  id: string
+  noteId: string
+  name: string
+  mime: string
+  url: string
+  markdown: string
+  isImage: boolean
+  size: number
+}
+
+export interface NotebookAssetUpload {
+  noteId: string
+  name: string
+  mime: string
+  data: string
 }

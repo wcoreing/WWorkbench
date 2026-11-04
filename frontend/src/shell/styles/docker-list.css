@@ -57,23 +57,22 @@
   background: var(--color-hover);
 }
 
-.docker-row.selected td {
-  background: var(--color-row-selected);
-  color: var(--color-row-selected-fg);
+/* Docker Desktop 风格：左侧选中条，无整行填色。 */
+.docker-row.selected td:first-child {
+  position: relative;
   box-shadow: none;
 }
 
-.docker-row.selected .docker-name,
-.docker-row.selected .docker-mono {
-  color: var(--color-row-selected-fg);
-}
-
-.docker-row.selected td:first-child {
-  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
-}
-
-.docker-row.selected td:last-child {
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+.docker-row.selected td:first-child::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+  pointer-events: none;
 }
 
 .docker-row.has-shell .docker-name::after {

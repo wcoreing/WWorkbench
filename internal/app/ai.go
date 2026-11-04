@@ -19,21 +19,31 @@ import (
 // wireAgentRunner 初始化 ningharness + Agent 编排器。
 func (s *Service) wireAgentRunner() {
 	emit := func(event string, payload map[string]interface{}) {
+		// MCP / Agent 动手时把窗口拉到前台，减少切窗口成本
+		switch event {
+		case "agent:ui_action", "mcp:confirm", "mcp:stage":
+			if s.ctx != nil {
+				runtime.WindowUnminimise(s.ctx)
+				runtime.WindowShow(s.ctx)
+			}
+		}
 		runtime.EventsEmit(s.ctx, event, payload)
 	}
 	radar := workbenchtools.NewRadarBus(emit)
 	s.radar = radar
+	mcpConfirm := workbenchtools.NewMCPConfirmGate(emit)
 	deps := &workbenchtools.Deps{
-		Conns:     s.conns,
-		SSHHosts:  s.sshHosts,
-		Sessions:  s.sessions,
-		Meta:      s.meta,
-		Queries:   s.queries,
-		Store:     s.store,
-		Notebook:  s.notebook,
-		Docker:    s.docker,
-		UIActions: workbenchtools.NewUIActionBus(emit),
-		Radar:     radar,
+		Conns:       s.conns,
+		SSHHosts:    s.sshHosts,
+		Sessions:    s.sessions,
+		Meta:        s.meta,
+		Queries:     s.queries,
+		Store:       s.store,
+		Notebook:    s.notebook,
+		Docker:      s.docker,
+		UIActions:   workbenchtools.NewUIActionBus(emit),
+		Radar:       radar,
+		MCPConfirm:  mcpConfirm,
 		Terminals:   s.terminals,
 		PluginPacks: s.pluginPacks,
 	}

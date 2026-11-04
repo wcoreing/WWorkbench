@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"WWorkbench/internal/model"
+
+	"github.com/google/uuid"
 )
 
 type openTerminalArgs struct {
@@ -71,25 +73,82 @@ func resolveSSHHost(d *Deps, hostID, hostOrName string) (*model.SSHHostDO, []mod
 }
 
 // toolOpenTerminal 打开终端并可选注入命令（UI 联动 shell_run）。
+// 风险命令（重定向写文件 / rm / docker rm 等）先返回 Confirm，外置 MCP 在工作台拍板后再注入。
 func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	var in openTerminalArgs
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return Fail("参数无效: " + err.Error())
 	}
+	if risky, reason := assessShellRisk(in.InitialCommand); risky {
+		preview, errMsg := shellRunConfirmPreview(d, in)
+		if errMsg != "" {
+			return Fail(errMsg)
+		}
+		preview["risk"] = reason
+		preview["command"] = strings.TrimSpace(in.InitialCommand)
+		return Confirm(uuid.NewString(), "终端注入："+reason, preview)
+	}
+	return dispatchShellRun(d, in)
+}
+
+// ShellRunConfirmed 用户确认后注入 shell_run（跳过风险检查）。
+func ShellRunConfirmed(_ context.Context, d *Deps, argsJSON string) ToolResult {
+	var in openTerminalArgs
+	if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
+		return Fail("参数无效: " + err.Error())
+	}
+	return dispatchShellRun(d, in)
+}
+
+func shellRunConfirmPreview(d *Deps, in openTerminalArgs) (map[string]interface{}, string) {
+	preview := map[string]interface{}{
+		"localShell":     in.LocalShell,
+		"initialCommand": strings.TrimSpace(in.InitialCommand),
+		"commandPreview": truncateCmdPreview(in.InitialCommand, 120),
+	}
+	if in.LocalShell {
+		preview["name"] = "本机"
+		preview["kind"] = "local"
+		return preview, ""
+	}
+	host, ambiguous, errMsg := resolveSSHHost(d, in.HostID, in.HostOrName)
+	if errMsg != "" {
+		if len(ambiguous) > 0 {
+			parts := make([]string, 0, len(ambiguous))
+			for _, h := range ambiguous {
+				parts = append(parts, fmt.Sprintf("%s %s@%s (id=%s)", h.Name, h.User, h.Host, h.ID))
+			}
+			return nil, errMsg + "：" + strings.Join(parts, "；")
+		}
+		return nil, errMsg
+	}
+	preview["hostId"] = host.ID
+	preview["name"] = host.Name
+	preview["host"] = host.Host
+	preview["user"] = host.User
+	preview["kind"] = "ssh"
+	return preview, ""
+}
+
+func dispatchShellRun(d *Deps, in openTerminalArgs) ToolResult {
 	cmd := normalizeTerminalCommand(in.InitialCommand)
 	if in.LocalShell {
 		if d.UIActions == nil {
 			return Fail("UI 联动未初始化")
 		}
+		preview := truncateCmdPreview(in.InitialCommand, 72)
 		d.UIActions.Dispatch(UIActionShellRun, map[string]interface{}{
 			"localShell":     true,
 			"initialCommand": cmd,
+			"name":           "本机",
+			"stageLabel":     stageLabelLocal(preview),
+			"commandPreview": preview,
 		})
 		return OKData(map[string]interface{}{
 			"opened":         true,
 			"kind":           "local",
 			"initialCommand": cmd,
-			"note":           "已切换到本机终端；命令将自动输入，请在终端面板查看输出",
+			"note":           "已切换到本机终端；命令将自动输入，请在终端面板查看输出。随后用 get_shell_output(waitMs) 等新输出。",
 		})
 	}
 	host, ambiguous, errMsg := resolveSSHHost(d, in.HostID, in.HostOrName)
@@ -106,9 +165,15 @@ func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 	if d.UIActions == nil {
 		return Fail("UI 联动未初始化")
 	}
+	preview := truncateCmdPreview(in.InitialCommand, 72)
 	d.UIActions.Dispatch(UIActionShellRun, map[string]interface{}{
 		"hostId":         host.ID,
 		"initialCommand": cmd,
+		"name":           host.Name,
+		"host":           host.Host,
+		"user":           host.User,
+		"stageLabel":     stageLabelSSH(host.Name, preview),
+		"commandPreview": preview,
 	})
 	return OKData(map[string]interface{}{
 		"opened":         true,
@@ -117,7 +182,50 @@ func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 		"host":           host.Host,
 		"user":           host.User,
 		"initialCommand": cmd,
-		"note":           "已切换到 SSH 终端；命令将自动输入，请在终端面板查看输出",
+		"note":           "已切换到 SSH 终端；命令将自动输入，请在终端面板查看输出。随后用 get_shell_output(waitMs) 等新输出。",
+	})
+}
+
+func truncateCmdPreview(cmd string, max int) string {
+	s := strings.TrimSpace(strings.ReplaceAll(cmd, "\r", " "))
+	s = strings.ReplaceAll(s, "\n", " · ")
+	if max <= 0 || len(s) <= max {
+		return s
+	}
+	return s[:max] + "…"
+}
+
+func stageLabelLocal(preview string) string {
+	if preview == "" {
+		return "MCP · 本机终端"
+	}
+	return "MCP · 本机 · " + preview
+}
+
+func stageLabelSSH(name, preview string) string {
+	label := strings.TrimSpace(name)
+	if label == "" {
+		label = "SSH"
+	}
+	if preview == "" {
+		return "MCP · " + label
+	}
+	return "MCP · " + label + " · " + preview
+}
+
+// stageSSHHost 打开/聚焦指定 SSH 主机的可见终端（不注入命令）。
+func stageSSHHost(d *Deps, host *model.SSHHostDO, action string) {
+	if d == nil || d.UIActions == nil || host == nil {
+		return
+	}
+	preview := strings.TrimSpace(action)
+	d.UIActions.Dispatch(UIActionShellRun, map[string]interface{}{
+		"hostId":         host.ID,
+		"name":           host.Name,
+		"host":           host.Host,
+		"user":           host.User,
+		"stageLabel":     stageLabelSSH(host.Name, preview),
+		"commandPreview": preview,
 	})
 }
 

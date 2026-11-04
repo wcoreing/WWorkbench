@@ -89,7 +89,16 @@ export function NotebookSidebar({
       }
     }
     walk(tree)
-    setExpanded((m) => ({ ...m, ...open }))
+    setExpanded((m) => {
+      let changed = false
+      for (const id of Object.keys(open)) {
+        if (!m[id]) {
+          changed = true
+          break
+        }
+      }
+      return changed ? { ...m, ...open } : m
+    })
   }, [filterActive, tree])
 
   useEffect(() => {

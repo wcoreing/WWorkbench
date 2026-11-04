@@ -539,6 +539,13 @@ export function DockerWorkbench() {
   }, [activeContextId, view])
 
   useWorkbenchCommand(Capability.DockerContextOpen, (cmd) => {
+    const contextId = payloadStr(cmd.payload, 'contextId')
+    if (contextId) {
+      setActiveContextId(contextId)
+      const label = payloadStr(cmd.payload, 'stageLabel')
+      if (label) setStatusMessage(label)
+      return
+    }
     const hostId = payloadStr(cmd.payload, 'hostId')
     setContextModalHostId(hostId)
     setContextModalOpen(true)

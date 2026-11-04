@@ -60,8 +60,10 @@ func dialSSHDocker(ctx context.Context, spec model.TunnelSpecDO) (*sshDockerClie
 	}
 
 	if cli, socket, err := tryUnixForwardDocker(ctx, sshClient); err == nil {
+		tunnel.KeepAlive(sshClient)
 		return &sshDockerClient{Client: cli, ssh: sshClient, socketPath: socket}, nil
 	} else if cli, stdio, err2 := tryDialStdioDocker(ctx, sshClient); err2 == nil {
+		tunnel.KeepAlive(sshClient)
 		return &sshDockerClient{Client: cli, ssh: sshClient, socketPath: "docker system dial-stdio", stdioConn: stdio}, nil
 	} else {
 		_ = sshClient.Close()

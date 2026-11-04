@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"context"
 	"regexp"
 	"strings"
 	"sync"
@@ -20,9 +21,11 @@ const maxTailBytes = 256 * 1024
 var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;?=]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b[()][0-2A-B]|\x1b[NO]`)
 
 type outputTail struct {
-	mu  sync.Mutex
-	buf []byte
-	at  time.Time
+	mu      sync.Mutex
+	buf     []byte
+	at      time.Time
+	gen     uint64
+	waiters []chan struct{}
 }
 
 func newOutputTail() *outputTail {
@@ -40,6 +43,55 @@ func (t *outputTail) append(p []byte) {
 		t.buf = append([]byte(nil), t.buf[len(t.buf)-maxTailBytes/2:]...)
 	}
 	t.at = time.Now()
+	t.gen++
+	for _, ch := range t.waiters {
+		select {
+		case ch <- struct{}{}:
+		default:
+		}
+	}
+	t.waiters = t.waiters[:0]
+}
+
+// meta 当前代数与更新时间（不加锁外调；调用方已持锁或用 snapshotMeta）。
+func (t *outputTail) snapshotMeta() (gen uint64, at time.Time) {
+	if t == nil {
+		return 0, time.Time{}
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.gen, t.at
+}
+
+// waitAfter 等到 gen 超过 afterGen，或 ctx 取消。
+func (t *outputTail) waitAfter(ctx context.Context, afterGen uint64) error {
+	if t == nil {
+		return errno.New(errno.CodeNotFound, "终端输出不可用", "")
+	}
+	t.mu.Lock()
+	if t.gen > afterGen {
+		t.mu.Unlock()
+		return nil
+	}
+	ch := make(chan struct{}, 1)
+	t.waiters = append(t.waiters, ch)
+	t.mu.Unlock()
+
+	select {
+	case <-ctx.Done():
+		t.mu.Lock()
+		// 尽量摘掉本 waiter，避免泄漏
+		for i, w := range t.waiters {
+			if w == ch {
+				t.waiters = append(t.waiters[:i], t.waiters[i+1:]...)
+				break
+			}
+		}
+		t.mu.Unlock()
+		return ctx.Err()
+	case <-ch:
+		return nil
+	}
 }
 
 func (t *outputTail) text(maxLines int) (string, time.Time) {

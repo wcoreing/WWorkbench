@@ -75,6 +75,7 @@ func (m *Manager) Open(ctx context.Context, hostID string) (*model.SFTPSessionIn
 		_ = client.Close()
 		return nil, errno.Wrap(errno.CodeConnFailed, "创建 SFTP 客户端失败", err)
 	}
+	tunnel.KeepAlive(client)
 	sid := uuid.NewString()
 	title := host.User + "@" + host.Host
 	m.mu.Lock()

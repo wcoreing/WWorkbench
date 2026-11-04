@@ -6,6 +6,10 @@
   height: 100%;
   overflow: hidden;
   background: var(--color-bg);
+}
+
+/* 仅非默认界面字号时启用 CSS zoom，避免 Monaco 在 zoom:1 下也折行错位。 */
+html[data-ui-zoomed='1'] .workbench-shell {
   zoom: var(--ui-zoom, 1);
 }
 

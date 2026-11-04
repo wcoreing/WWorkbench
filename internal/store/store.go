@@ -258,6 +258,28 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_docker_shell_hosts_ctx_ctr
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移 Docker Shell 主机表失败", err)
 	}
+	if err := s.ensureColumn("ssh_hosts", "cloud_account_id", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := s.ensureColumn("ssh_hosts", "cloud_region", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := s.ensureColumn("ssh_hosts", "cloud_instance_id", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	_, err = s.db.Exec(`
+CREATE TABLE IF NOT EXISTS cloud_accounts (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  provider TEXT NOT NULL DEFAULT 'aliyun',
+  access_key_id TEXT NOT NULL,
+  access_key_secret_enc TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);`)
+	if err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移云账号表失败", err)
+	}
 	// 历史 plaintext 笔记统一升为 markdown（视图/预览以 MD 为一等公民）
 	if _, err := s.db.Exec(`UPDATE notes SET language = 'markdown' WHERE language = 'plaintext'`); err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "升级笔记语言失败", err)

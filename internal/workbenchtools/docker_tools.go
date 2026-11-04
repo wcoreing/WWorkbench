@@ -53,6 +53,7 @@ func toolListContainers(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 	if ctxID == "" {
 		ctxID = dockersvc.LocalContextID
 	}
+	stageDockerContext(d, ctxID, "容器列表")
 	list, err := d.Docker.ListContainers(ctx, ctxID)
 	if err != nil {
 		return Fail(err.Error())
@@ -60,6 +61,40 @@ func toolListContainers(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 	return OKData(map[string]interface{}{
 		"contextId":  ctxID,
 		"containers": list,
+	})
+}
+
+// stageDockerContext MCP 操作 Docker：远端走统一 SSH 亮终端；本机亮 Docker 面板。
+func stageDockerContext(d *Deps, contextID, action string) {
+	if d == nil || d.UIActions == nil {
+		return
+	}
+	label := "Docker"
+	sshHostID := ""
+	if d.Docker != nil {
+		if list, err := d.Docker.ListContexts(context.Background()); err == nil {
+			for _, c := range list {
+				if c.ID != contextID {
+					continue
+				}
+				sshHostID = strings.TrimSpace(c.SSHHostID)
+				if n := strings.TrimSpace(c.Name); n != "" {
+					label = n
+				}
+				break
+			}
+		}
+	}
+	if action != "" {
+		label = label + " · " + action
+	}
+	if sshHostID != "" {
+		stageSSHByID(d, sshHostID, label)
+		return
+	}
+	d.UIActions.Dispatch(UIActionDockerContextOpen, map[string]interface{}{
+		"contextId":  contextID,
+		"stageLabel": "MCP · " + label,
 	})
 }
 
@@ -87,6 +122,7 @@ func toolGetContainerLogs(ctx context.Context, d *Deps, raw json.RawMessage) Too
 	if tail > maxDockerLogTail {
 		tail = maxDockerLogTail
 	}
+	stageDockerContext(d, ctxID, "日志 "+cid)
 	text, err := d.Docker.GetContainerLogs(ctx, ctxID, cid, tail)
 	if err != nil {
 		return Fail(err.Error())
@@ -125,6 +161,7 @@ func toolStartContainer(_ context.Context, d *Deps, raw json.RawMessage) ToolRes
 	if errMsg != "" {
 		return Fail(errMsg)
 	}
+	stageDockerContext(d, ctxID, "待确认启动 "+cid)
 	cmd := "docker start " + cid
 	return Confirm(uuid.NewString(), "启动容器 "+cid, map[string]interface{}{
 		"action": "start", "contextId": ctxID, "containerId": cid, "command": cmd,
@@ -140,6 +177,7 @@ func toolStopContainer(_ context.Context, d *Deps, raw json.RawMessage) ToolResu
 	if errMsg != "" {
 		return Fail(errMsg)
 	}
+	stageDockerContext(d, ctxID, "待确认停止 "+cid)
 	cmd := "docker stop " + cid
 	return Confirm(uuid.NewString(), "停止容器 "+cid, map[string]interface{}{
 		"action": "stop", "contextId": ctxID, "containerId": cid, "command": cmd,
@@ -155,6 +193,7 @@ func toolRemoveContainer(_ context.Context, d *Deps, raw json.RawMessage) ToolRe
 	if errMsg != "" {
 		return Fail(errMsg)
 	}
+	stageDockerContext(d, ctxID, "待确认删除 "+cid)
 	cmd := "docker rm -f " + cid
 	return Confirm(uuid.NewString(), "删除容器 "+cid, map[string]interface{}{
 		"action": "remove", "contextId": ctxID, "containerId": cid, "command": cmd,
@@ -198,6 +237,7 @@ func runContainerMutate(ctx context.Context, d *Deps, argsJSON, action string) T
 	if err != nil {
 		return Fail(err.Error())
 	}
+	stageDockerContext(d, ctxID, action+" "+cid)
 	op := workbench.RadarOpUpdate
 	if action == "remove" {
 		op = workbench.RadarOpDelete

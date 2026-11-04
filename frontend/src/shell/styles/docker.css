@@ -106,10 +106,6 @@
   background: var(--color-toolbar);
 }
 
-.docker-table-containers tr.selected td.docker-col-actions {
-  background: var(--color-selection);
-}
-
 .docker-table-containers tr:hover td.docker-col-actions {
   background: var(--color-hover);
 }

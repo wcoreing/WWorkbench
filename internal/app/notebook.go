@@ -1,9 +1,12 @@
 package app
 
 import (
+	"encoding/base64"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/workbench"
 
@@ -210,4 +213,61 @@ func (s *Service) SaveNotebookUI(ui model.NotebookUIDO) ApiResult[bool] {
 		return ErrResult[bool](err)
 	}
 	return OkResult(true)
+}
+
+// SaveNotebookAsset 保存笔记附件（粘贴/拖放/文件选择，data 为 base64 或 data URL）。
+func (s *Service) SaveNotebookAsset(in model.NotebookAssetUploadDO) ApiResult[model.NotebookAssetDO] {
+	out, err := s.notebook.SaveAsset(in)
+	if err != nil {
+		return ErrResult[model.NotebookAssetDO](err)
+	}
+	return OkResult(*out)
+}
+
+// PickNotebookAssets 通过系统对话框选择并保存附件；imagesOnly 为 true 时仅图片。
+func (s *Service) PickNotebookAssets(noteID string, imagesOnly bool) ApiResult[[]model.NotebookAssetDO] {
+	noteID = strings.TrimSpace(noteID)
+	if noteID == "" {
+		return ErrResult[[]model.NotebookAssetDO](errno.New(errno.CodeInvalidArg, "笔记 ID 不能为空", ""))
+	}
+	filters := []runtime.FileFilter{{DisplayName: "全部文件", Pattern: "*.*"}}
+	title := "插入附件"
+	if imagesOnly {
+		title = "插入图片"
+		filters = []runtime.FileFilter{
+			{DisplayName: "图片", Pattern: "*.png;*.jpg;*.jpeg;*.webp;*.gif"},
+			{DisplayName: "全部文件", Pattern: "*.*"},
+		}
+	}
+	paths, err := runtime.OpenMultipleFilesDialog(s.ctx, runtime.OpenDialogOptions{
+		Title:   title,
+		Filters: filters,
+	})
+	if err != nil {
+		return ErrResult[[]model.NotebookAssetDO](err)
+	}
+	if len(paths) == 0 {
+		return OkResult([]model.NotebookAssetDO{})
+	}
+	out := make([]model.NotebookAssetDO, 0, len(paths))
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return ErrResult[[]model.NotebookAssetDO](errno.Wrap(errno.CodeStoreFailed, "读取文件失败", err))
+		}
+		asset, err := s.notebook.SaveAsset(model.NotebookAssetUploadDO{
+			NoteID: noteID,
+			Name:   filepath.Base(path),
+			MIME:   "",
+			Data:   base64.StdEncoding.EncodeToString(data),
+		})
+		if err != nil {
+			return ErrResult[[]model.NotebookAssetDO](err)
+		}
+		if imagesOnly && !asset.IsImage {
+			continue
+		}
+		out = append(out, *asset)
+	}
+	return OkResult(out)
 }

@@ -519,28 +519,11 @@ func (r *Runner) emitOfferChoices(threadID string, batch []model.AgentPendingDO)
 }
 
 func (r *Runner) executeConfirmed(toolName, argsJSON string) workbenchtools.ToolResult {
-	switch toolName {
-	case "execute_sql":
-		return workbenchtools.ExecuteSQLConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
-	case "execute_http":
-		return workbenchtools.ExecuteHTTPConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
-	case "start_container":
-		return workbenchtools.StartContainerConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
-	case "stop_container":
-		return workbenchtools.StopContainerConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
-	case "remove_container":
-		return workbenchtools.RemoveContainerConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
-	case workbench.CapEditPluginPackFile:
-		return workbenchtools.EditPluginPackFileConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
-	case workbench.CapWritePluginPackFile:
-		return workbenchtools.WritePluginPackFileConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
-	case workbench.CapBuildPluginPackUI:
-		return workbenchtools.BuildPluginPackUIConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
-	case workbench.CapRollbackPluginPack:
-		return workbenchtools.RollbackPluginPackConfirmed(r.appCtx, r.tools.Deps(), argsJSON)
-	default:
+	res := workbenchtools.ExecuteConfirmed(r.appCtx, r.tools.Deps(), toolName, argsJSON)
+	if res.Error != "" && strings.HasPrefix(res.Error, "未知待确认工具:") && r.harness != nil {
 		return r.harness.CallTool(r.appCtx, toolName, json.RawMessage(argsJSON))
 	}
+	return res
 }
 
 // TestConnection 测试 LLM / Cursor Bridge 连接。

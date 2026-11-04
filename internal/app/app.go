@@ -51,7 +51,7 @@ type Service struct {
 	harnessHost   *harness.Host
 	toolsRegistry *workbenchtools.Registry
 	radar         *workbenchtools.RadarBus
-	mcpHTTP       *mcpserver.HTTPService
+	mcpHTTP       *mcpserver.Endpoint
 	mcpMu         sync.Mutex
 	mcpLastErr    string
 	sqlExportMu   sync.Mutex

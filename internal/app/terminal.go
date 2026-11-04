@@ -36,16 +36,19 @@ func (s *Service) ListShellHosts() ApiResult[[]model.ShellHostDO] {
 	for _, h := range sshList {
 		terminal.StripSecrets(&h)
 		out = append(out, model.ShellHostDO{
-			ID:        h.ID,
-			Kind:      model.ShellHostKindSSH,
-			Name:      h.Name,
-			Host:      h.Host,
-			Port:      h.Port,
-			User:      h.User,
-			KeyPath:   h.KeyPath,
-			Running:   true,
-			CreatedAt: h.CreatedAt,
-			UpdatedAt: h.UpdatedAt,
+			ID:              h.ID,
+			Kind:            model.ShellHostKindSSH,
+			Name:            h.Name,
+			Host:            h.Host,
+			Port:            h.Port,
+			User:            h.User,
+			KeyPath:         h.KeyPath,
+			Running:         true,
+			CloudAccountID:  h.CloudAccountID,
+			CloudRegion:     h.CloudRegion,
+			CloudInstanceID: h.CloudInstanceID,
+			CreatedAt:       h.CreatedAt,
+			UpdatedAt:       h.UpdatedAt,
 		})
 	}
 	ctx, cancel := session.WithTimeout(s.ctx, 20)
@@ -103,16 +106,19 @@ func (s *Service) GetShellHost(id string) ApiResult[model.ShellHostDO] {
 	}
 	terminal.StripSecrets(h)
 	return OkResult(model.ShellHostDO{
-		ID:        h.ID,
-		Kind:      model.ShellHostKindSSH,
-		Name:      h.Name,
-		Host:      h.Host,
-		Port:      h.Port,
-		User:      h.User,
-		Password:  h.Password,
-		KeyPath:   h.KeyPath,
-		CreatedAt: h.CreatedAt,
-		UpdatedAt: h.UpdatedAt,
+		ID:              h.ID,
+		Kind:            model.ShellHostKindSSH,
+		Name:            h.Name,
+		Host:            h.Host,
+		Port:            h.Port,
+		User:            h.User,
+		Password:        h.Password,
+		KeyPath:         h.KeyPath,
+		CloudAccountID:  h.CloudAccountID,
+		CloudRegion:     h.CloudRegion,
+		CloudInstanceID: h.CloudInstanceID,
+		CreatedAt:       h.CreatedAt,
+		UpdatedAt:       h.UpdatedAt,
 	})
 }
 

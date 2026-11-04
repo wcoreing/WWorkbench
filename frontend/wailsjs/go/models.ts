@@ -186,6 +186,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_CloudAccountDO_ {
+	    ok: boolean;
+	    data: model.CloudAccountDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_CloudAccountDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.CloudAccountDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_ComposeLogsDO_ {
 	    ok: boolean;
 	    data: model.ComposeLogsDO;
@@ -505,6 +539,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.DockerContextDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_model_ECSMonitorDO_ {
+	    ok: boolean;
+	    data: model.ECSMonitorDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_ECSMonitorDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.ECSMonitorDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -947,6 +1015,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.NoteDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_model_NotebookAssetDO_ {
+	    ok: boolean;
+	    data: model.NotebookAssetDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_NotebookAssetDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.NotebookAssetDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -1784,6 +1886,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult___WWorkbench_internal_model_CloudAccountDO_ {
+	    ok: boolean;
+	    data: model.CloudAccountDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_CloudAccountDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.CloudAccountDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult___WWorkbench_internal_model_ColumnMetaDO_ {
 	    ok: boolean;
 	    data: model.ColumnMetaDO[];
@@ -1967,6 +2103,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.DockerImageDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WWorkbench_internal_model_ECSInstanceDO_ {
+	    ok: boolean;
+	    data: model.ECSInstanceDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_ECSInstanceDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.ECSInstanceDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -2273,6 +2443,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.NoteSummaryDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WWorkbench_internal_model_NotebookAssetDO_ {
+	    ok: boolean;
+	    data: model.NotebookAssetDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_NotebookAssetDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.NotebookAssetDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -2996,6 +3200,23 @@ export namespace errno {
 
 }
 
+export namespace mcpserver {
+	
+	export class Endpoint {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Endpoint(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+
+}
+
 export namespace model {
 	
 	export class AgentAPIConfigSaveDO {
@@ -3529,6 +3750,32 @@ export namespace model {
 	        this.display = source["display"];
 	    }
 	}
+	export class CloudAccountDO {
+	    id: string;
+	    name: string;
+	    provider: string;
+	    accessKeyId: string;
+	    accessKeySecret: string;
+	    hasSecret: boolean;
+	    createdAt: number;
+	    updatedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CloudAccountDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.provider = source["provider"];
+	        this.accessKeyId = source["accessKeyId"];
+	        this.accessKeySecret = source["accessKeySecret"];
+	        this.hasSecret = source["hasSecret"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
 	export class ColumnMetaDO {
 	    name: string;
 	    dataType: string;
@@ -4033,6 +4280,116 @@ export namespace model {
 	        this.size = source["size"];
 	        this.createdAt = source["createdAt"];
 	    }
+	}
+	export class ECSInstanceDO {
+	    instanceId: string;
+	    name: string;
+	    status: string;
+	    publicIp: string;
+	    privateIp: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ECSInstanceDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.instanceId = source["instanceId"];
+	        this.name = source["name"];
+	        this.status = source["status"];
+	        this.publicIp = source["publicIp"];
+	        this.privateIp = source["privateIp"];
+	    }
+	}
+	export class ECSMetricPointDO {
+	    timestamp: number;
+	    value: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ECSMetricPointDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.timestamp = source["timestamp"];
+	        this.value = source["value"];
+	    }
+	}
+	export class ECSMetricSeriesDO {
+	    metric: string;
+	    unit: string;
+	    latest: number;
+	    points: ECSMetricPointDO[];
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ECSMetricSeriesDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.metric = source["metric"];
+	        this.unit = source["unit"];
+	        this.latest = source["latest"];
+	        this.points = this.convertValues(source["points"], ECSMetricPointDO);
+	        this.error = source["error"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ECSMonitorDO {
+	    instanceId: string;
+	    region: string;
+	    fetchedAt: number;
+	    series: ECSMetricSeriesDO[];
+	    hint: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ECSMonitorDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.instanceId = source["instanceId"];
+	        this.region = source["region"];
+	        this.fetchedAt = source["fetchedAt"];
+	        this.series = this.convertValues(source["series"], ECSMetricSeriesDO);
+	        this.hint = source["hint"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class EnvApplyResultDO {
 	    warnings: string[];
@@ -4552,6 +4909,50 @@ export namespace model {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class NotebookAssetDO {
+	    id: string;
+	    noteId: string;
+	    name: string;
+	    mime: string;
+	    url: string;
+	    markdown: string;
+	    isImage: boolean;
+	    size: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new NotebookAssetDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.noteId = source["noteId"];
+	        this.name = source["name"];
+	        this.mime = source["mime"];
+	        this.url = source["url"];
+	        this.markdown = source["markdown"];
+	        this.isImage = source["isImage"];
+	        this.size = source["size"];
+	    }
+	}
+	export class NotebookAssetUploadDO {
+	    noteId: string;
+	    name: string;
+	    mime: string;
+	    data: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new NotebookAssetUploadDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.noteId = source["noteId"];
+	        this.name = source["name"];
+	        this.mime = source["mime"];
+	        this.data = source["data"];
+	    }
+	}
 	export class NotebookGroupDO {
 	    id: string;
 	    name: string;
@@ -5020,6 +5421,10 @@ export namespace model {
 	    keyPath: string;
 	    hasPassword: boolean;
 	    clearPassword: boolean;
+	    cloudAccountId: string;
+	    cloudRegion: string;
+	    cloudInstanceId: string;
+	    touchCloud: boolean;
 	    createdAt: number;
 	    updatedAt: number;
 	
@@ -5038,6 +5443,10 @@ export namespace model {
 	        this.keyPath = source["keyPath"];
 	        this.hasPassword = source["hasPassword"];
 	        this.clearPassword = source["clearPassword"];
+	        this.cloudAccountId = source["cloudAccountId"];
+	        this.cloudRegion = source["cloudRegion"];
+	        this.cloudInstanceId = source["cloudInstanceId"];
+	        this.touchCloud = source["touchCloud"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	    }
@@ -5094,6 +5503,9 @@ export namespace model {
 	    containerName: string;
 	    image: string;
 	    running: boolean;
+	    cloudAccountId: string;
+	    cloudRegion: string;
+	    cloudInstanceId: string;
 	    createdAt: number;
 	    updatedAt: number;
 	
@@ -5116,6 +5528,9 @@ export namespace model {
 	        this.containerName = source["containerName"];
 	        this.image = source["image"];
 	        this.running = source["running"];
+	        this.cloudAccountId = source["cloudAccountId"];
+	        this.cloudRegion = source["cloudRegion"];
+	        this.cloudInstanceId = source["cloudInstanceId"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	    }

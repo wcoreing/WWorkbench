@@ -32,22 +32,40 @@ func (s *Service) applyMCPFromSettings() error {
 		s.mcpLastErr = "tool gateway 未就绪"
 		return fmt.Errorf("%s", s.mcpLastErr)
 	}
+	h, err := mcpserver.NewHandler(gw, s.toolsRegistry)
+	if err != nil {
+		s.mcpLastErr = err.Error()
+		return err
+	}
 	if s.mcpHTTP != nil && s.mcpHTTP.ListenAddr() == wantAddr {
+		s.mcpHTTP.SetHandler(h)
 		s.mcpLastErr = ""
+		log.Printf("mcp: workbench %s", s.mcpHTTP.WorkbenchEndpointURL())
 		return nil
 	}
 	if err := s.stopMCPLocked(); err != nil {
 		log.Printf("mcp: stop before restart: %v", err)
 	}
-	svc, err := mcpserver.StartHTTP(s.store.MCPAddr(), gw, s.toolsRegistry)
+	ep, err := mcpserver.Listen(wantAddr)
 	if err != nil {
 		s.mcpLastErr = err.Error()
 		return err
 	}
-	s.mcpHTTP = svc
+	ep.SetHandler(h)
+	s.mcpHTTP = ep
 	s.mcpLastErr = ""
-	log.Printf("mcp: workbench %s", svc.WorkbenchEndpointURL())
+	log.Printf("mcp: workbench %s", ep.WorkbenchEndpointURL())
 	return nil
+}
+
+// AttachMCP 接入进程启动时已占用的监听，避免 Cursor 在工作台就绪前连接被拒绝。
+func (s *Service) AttachMCP(ep *mcpserver.Endpoint) {
+	if s == nil || ep == nil {
+		return
+	}
+	s.mcpMu.Lock()
+	s.mcpHTTP = ep
+	s.mcpMu.Unlock()
 }
 
 func (s *Service) stopMCPLocked() error {

@@ -1,17 +1,23 @@
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react'
-import Editor, { type OnMount } from '@monaco-editor/react'
-import type { editor } from 'monaco-editor'
+import {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type DragEvent,
+  type KeyboardEvent,
+} from 'react'
 import type { NoteLanguage } from '../../api/types'
-import { bindSelectionGuard, zoomCompensatedPx } from '../../components/compat'
-import { useContainerHeight } from '../../hooks/useContainerHeight'
-import { useAppStore } from '../../stores/appStore'
+import { collectTransferFiles } from './notebookAssets'
 import { DEFAULT_NOTEBOOK_EDITOR_FONT } from './notebookEditorFont'
-
-const BASE_LINE_RATIO = 20 / 13
 
 export interface NoteEditorHandle {
   /** getSelectedText 获取选中文本，无选区则返回全文。 */
   getSelectedText: () => string
+  /** insertText 在光标处插入文本并恢复焦点。 */
+  insertText: (text: string) => void
+  /** focus 聚焦编辑区。 */
+  focus: () => void
 }
 
 interface Props {
@@ -21,97 +27,142 @@ interface Props {
   editorFontSize?: number
   onChange: (content: string) => void
   onRunSelection?: () => void
+  /** onInsertFiles 粘贴/拖入文件时上传并插入 Markdown。 */
+  onInsertFiles?: (files: File[]) => void | Promise<void>
 }
 
-/** NoteEditor Monaco 笔记编辑区。 */
+/**
+ * NoteEditor 笔记源码编辑区。
+ * 使用原生 textarea，避开 Monaco 在壳层 CSS zoom / 中文 IME 下的折行错位。
+ */
 export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEditor(
-  { noteId, language, content, editorFontSize = DEFAULT_NOTEBOOK_EDITOR_FONT, onChange, onRunSelection },
-  ref
+  {
+    noteId,
+    language,
+    content,
+    editorFontSize = DEFAULT_NOTEBOOK_EDITOR_FONT,
+    onChange,
+    onRunSelection,
+    onInsertFiles,
+  },
+  ref,
 ) {
-  const theme = useAppStore((s) => s.theme)
-  const uiFontSize = useAppStore((s) => s.uiFontSize)
-  const editorHostRef = useRef<HTMLDivElement>(null)
-  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
-  const onChangeRef = useRef(onChange)
-  const contentRef = useRef(content)
+  const taRef = useRef<HTMLTextAreaElement>(null)
   const onRunSelectionRef = useRef(onRunSelection)
-  onChangeRef.current = onChange
-  contentRef.current = content
   onRunSelectionRef.current = onRunSelection
-  const editorHeight = useContainerHeight(editorHostRef, 120)
-  const fontSize = zoomCompensatedPx(editorFontSize, uiFontSize)
-  const lineHeight = zoomCompensatedPx(Math.round(editorFontSize * BASE_LINE_RATIO), uiFontSize)
+  const onInsertFilesRef = useRef(onInsertFiles)
+  onInsertFilesRef.current = onInsertFiles
+  const [dragOver, setDragOver] = useState(false)
 
-  useImperativeHandle(ref, () => ({
-    getSelectedText: () => {
-      const ed = editorRef.current
-      if (!ed) return contentRef.current
-      const selection = ed.getSelection()
-      const model = ed.getModel()
-      if (!selection || !model || selection.isEmpty()) {
-        return ed.getValue()
+  const insertText = useCallback(
+    (text: string) => {
+      if (!text) return
+      const el = taRef.current
+      if (!el) {
+        onChange(content + text)
+        return
       }
-      return model.getValueInRange(selection).trim() || ed.getValue()
+      const start = el.selectionStart
+      const end = el.selectionEnd
+      const next = `${el.value.slice(0, start)}${text}${el.value.slice(end)}`
+      onChange(next)
+      const cursor = start + text.length
+      requestAnimationFrame(() => {
+        el.focus()
+        el.selectionStart = el.selectionEnd = cursor
+      })
     },
-  }))
-
-  const handleChange = useCallback((v?: string) => {
-    const next = v || ''
-    if (next === contentRef.current) return
-    onChangeRef.current(next)
-  }, [])
-
-  const options = useMemo(
-    () => ({
-      minimap: { enabled: false },
-      fontSize,
-      lineHeight,
-      fontFamily: 'var(--font-mono)',
-      wordWrap: 'on' as const,
-      automaticLayout: true,
-      scrollBeyondLastLine: false,
-      padding: { top: 8, bottom: 8 },
-      renderLineHighlight: 'none' as const,
-      overviewRulerBorder: false,
-      hideCursorInOverviewRuler: true,
-      scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
-    }),
-    [fontSize, lineHeight],
+    [content, onChange],
   )
 
-  const onMount: OnMount = useCallback((editorInstance, monaco) => {
-    editorRef.current = editorInstance
-    editorInstance.addAction({
-      id: 'run-note-selection',
-      label: 'Run in Terminal',
-      keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
-      run: () => onRunSelectionRef.current?.(),
-    })
-    const dom = editorInstance.getDomNode()
-    if (!dom) return
-    const unbind = bindSelectionGuard(dom, () => {
-      const pos = editorInstance.getPosition()
-      if (!pos) return
-      editorInstance.setSelection(monaco.Selection.fromPositions(pos, pos))
-    })
-    editorInstance.onDidDispose(unbind)
+  useImperativeHandle(
+    ref,
+    () => ({
+      getSelectedText: () => {
+        const el = taRef.current
+        if (!el) return content
+        const { selectionStart, selectionEnd, value } = el
+        if (selectionStart === selectionEnd) return value
+        return value.slice(selectionStart, selectionEnd).trim() || value
+      },
+      insertText,
+      focus: () => taRef.current?.focus(),
+    }),
+    [content, insertText],
+  )
+
+  const onKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault()
+        onRunSelectionRef.current?.()
+        return
+      }
+      if (e.key !== 'Tab' || e.metaKey || e.ctrlKey || e.altKey) return
+      e.preventDefault()
+      const el = e.currentTarget
+      const start = el.selectionStart
+      const end = el.selectionEnd
+      const next = `${el.value.slice(0, start)}  ${el.value.slice(end)}`
+      onChange(next)
+      requestAnimationFrame(() => {
+        el.selectionStart = el.selectionEnd = start + 2
+      })
+    },
+    [onChange],
+  )
+
+  const takeFiles = useCallback((dt: DataTransfer | null) => {
+    const files = collectTransferFiles(dt)
+    if (!files.length || !onInsertFilesRef.current) return false
+    void onInsertFilesRef.current(files)
+    return true
   }, [])
 
+  const onDragOver = useCallback((e: DragEvent) => {
+    if (![...e.dataTransfer.types].includes('Files')) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setDragOver(true)
+  }, [])
+
+  const onDragLeave = useCallback((e: DragEvent) => {
+    if (e.currentTarget.contains(e.relatedTarget as Node)) return
+    setDragOver(false)
+  }, [])
+
+  const onDrop = useCallback(
+    (e: DragEvent) => {
+      setDragOver(false)
+      if (!takeFiles(e.dataTransfer)) return
+      e.preventDefault()
+    },
+    [takeFiles],
+  )
+
   return (
-    <div className="note-editor-wrap" data-ww-focus-hog="">
-      <div ref={editorHostRef} className="note-editor-host ww-zoom-content">
-        <Editor
-          key={noteId}
-          height={editorHeight}
-          language={language}
-          theme={theme === 'dark' ? 'vs-dark' : 'vs'}
-          value={content}
-          onChange={handleChange}
-          loading={<div className="empty-hint">加载编辑器…</div>}
-          options={options}
-          onMount={onMount}
-        />
-      </div>
+    <div
+      className={`note-editor-wrap${dragOver ? ' is-drag-over' : ''}`}
+      data-ww-focus-hog=""
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      <textarea
+        key={noteId}
+        ref={taRef}
+        className="note-editor-textarea"
+        value={content}
+        spellCheck={language === 'markdown' || language === 'plaintext'}
+        wrap="soft"
+        style={{ fontSize: editorFontSize, lineHeight: 1.7 }}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
+        onPaste={(e) => {
+          if (takeFiles(e.clipboardData)) e.preventDefault()
+        }}
+        aria-label={language}
+      />
     </div>
   )
 })

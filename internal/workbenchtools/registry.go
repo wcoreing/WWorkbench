@@ -100,6 +100,8 @@ func (r *Registry) Invoke(ctx context.Context, name string, args json.RawMessage
 	if !ok {
 		return Fail(fmt.Sprintf("未知工具: %s", name))
 	}
+	// 统一规则：参数能解析到 SSH 主机 → 先打开/聚焦可见终端，再执行工具
+	ensureSSHTerminalStage(r.deps, name, args)
 	return t.Handler(ctx, r.deps, args)
 }
 
@@ -262,7 +264,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapShellRun,
-		Description: "给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。不返回 stdout；人在面板看输出。注入后用 get_shell_output 查看新输出，禁止编造 stdout。只读短探针才用 shell_probe。",
+		Description: "给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。会前置工作台并点亮对应终端+状态栏。风险命令（重定向写文件/rm/docker rm 等）先工作台拍板再注入。不返回 stdout；人在面板看输出。注入后立刻 get_shell_output(waitMs) 等新输出，禁止编造 stdout。只读短探针才用 shell_probe。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -310,7 +312,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapGetShellOutput,
-		Description: "分页读取可见 PTY scrollback（与终端面板同源）。offsetFromEnd=0 为最新一页；hasMoreOlder 为 true 时用 nextOffsetFromEnd 继续向历史翻。问「跑完了吗/报错/这段输出」先调本工具，不要编造。shell_run 注入后需再调本工具看新输出。",
+		Description: "分页读取可见 PTY scrollback（与终端面板同源）。offsetFromEnd=0 为最新一页；hasMoreOlder 为 true 时用 nextOffsetFromEnd 继续向历史翻。shell_run 注入后优先带 waitMs（如 8000～30000）等新输出，少盲目轮询；返回 timedOut/updatedAt 供下次 afterUpdatedAt。问「跑完了吗/报错/这段输出」先调本工具，不要编造。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -333,6 +335,14 @@ func (r *Registry) registerBuiltins() {
 				"offsetFromEnd": map[string]interface{}{
 					"type":        "integer",
 					"description": "从尾部向历史偏移行数；0=最新一页，翻页用返回的 nextOffsetFromEnd",
+				},
+				"waitMs": map[string]interface{}{
+					"type":        "integer",
+					"description": "阻塞等待新输出的毫秒数（最大 120000）。shell_run 后建议 8000～30000，减少空转轮询",
+				},
+				"afterUpdatedAt": map[string]interface{}{
+					"type":        "integer",
+					"description": "上次返回的 updatedAt；若已有更新则立即返回，否则等到新输出或 waitMs 超时",
 				},
 			},
 		},

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../../api/client'
 import type { Connection, Note, NoteLanguage, NoteSummary, NotebookGroup, ShellHost } from '../../api/types'
 import { model } from '../../../wailsjs/go/models'
-import { IconDatabase, IconNotebook, IconPlay, IconPlus } from '../../components/Icons'
+import { IconDatabase, IconNotebook, IconPlay, IconPlus, IconUpload } from '../../components/Icons'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { EmptyState } from '../../components/EmptyState'
 import { ProductLayout, rememberScalarSize, recallScalarSize, useResizable } from '../../components/layout'
@@ -18,6 +18,7 @@ import {
 } from '../../features/notebook/notebookEditorFont'
 import { saveAppSetting } from '../../stores/appPreferences'
 import { NoteEditor, type NoteEditorHandle } from '../../features/notebook/NoteEditor'
+import { fileToBase64DataURL } from '../../features/notebook/notebookAssets'
 import { NotebookGroupModal } from '../../features/notebook/NotebookGroupModal'
 import { NotebookSidebar } from '../../features/notebook/NotebookSidebar'
 import { openAgentDraft } from '../../features/agent/openAgentDraft'
@@ -84,15 +85,13 @@ function adoptNoteLanguage(note: Note): Note {
 /** NotebookWorkbench 笔记本产品线工作区。 */
 export function NotebookWorkbench() {
   const { t } = useI18n()
-  const {
-    setStatusMessage,
-    setActiveProduct,
-    activeProduct,
-    notebookFocusNoteId,
-    setNotebookFocusNoteId,
-    setNotebookActiveNoteId,
-    setAgentSurface,
-  } = useAppStore()
+  const setStatusMessage = useAppStore((s) => s.setStatusMessage)
+  const setActiveProduct = useAppStore((s) => s.setActiveProduct)
+  const activeProduct = useAppStore((s) => s.activeProduct)
+  const notebookFocusNoteId = useAppStore((s) => s.notebookFocusNoteId)
+  const setNotebookFocusNoteId = useAppStore((s) => s.setNotebookFocusNoteId)
+  const setNotebookActiveNoteId = useAppStore((s) => s.setNotebookActiveNoteId)
+  const setAgentSurface = useAppStore((s) => s.setAgentSurface)
   const languages: { id: NoteLanguage; label: string }[] = [
     { id: 'plaintext', label: t('notebook.langPlain') },
     { id: 'shell', label: t('notebook.langShell') },
@@ -145,6 +144,8 @@ export function NotebookWorkbench() {
   const [bootReady, setBootReady] = useState(false)
   const openNotesRef = useRef(openNotes)
   openNotesRef.current = openNotes
+  const saveByNoteRef = useRef(saveByNote)
+  saveByNoteRef.current = saveByNote
 
   const activeNote = activeTabId ? openNotes[activeTabId] ?? null : null
   const showNoteEditor = Boolean(activeNote) && mdViewMode !== 'preview'
@@ -152,6 +153,8 @@ export function NotebookWorkbench() {
   const noteEditorSplitClass =
     showNoteEditor && showNotePreview ? ' with-preview' : !showNoteEditor && showNotePreview ? ' preview-only' : ''
   const tabsRef = useScrollActiveTabIntoView(activeTabId)
+  /** 仅元数据进 Agent 表面；正文每次击键不刷 store，避免 Monaco 连带重渲染。 */
+  const openTabsBrief = openTabIds.map((id) => openNotes[id]?.title || id).join('\0')
 
   useEffect(() => {
     setNotebookActiveNoteId(activeTabId)
@@ -184,18 +187,22 @@ export function NotebookWorkbench() {
         sshHostId: activeNote?.sshHostId,
         connectionId: activeNote?.connectionId,
         openTabsBrief: briefList(
-          openTabIds.map((id) => openNotes[id]?.title || id),
+          openTabsBrief ? openTabsBrief.split('\0') : [],
           12,
         ),
       }),
     )
   }, [
     activeProduct,
-    activeNote,
+    activeNote?.id,
+    activeNote?.title,
+    activeNote?.language,
+    activeNote?.groupId,
+    activeNote?.sshHostId,
+    activeNote?.connectionId,
     activeTabId,
     groups,
-    openTabIds,
-    openNotes,
+    openTabsBrief,
     setAgentSurface,
   ])
 
@@ -326,10 +333,37 @@ export function NotebookWorkbench() {
       setSaveByNote((prev) => ({ ...prev, [note.id]: 'saving' }))
       try {
         const saved = (await api.saveNote(toNoteDO(note))) as Note
-        setOpenNotes((prev) => ({ ...prev, [note.id]: saved }))
-        setSummaries((prev) => [toSummary(saved), ...prev.filter((s) => s.id !== saved.id)])
-        markNoteSaved(saved)
-        if (!opts?.silent) setStatusMessage(t('notebook.saved'))
+        const current = openNotesRef.current[note.id]
+        const diverged =
+          !!current &&
+          (current.content !== note.content ||
+            current.title !== note.title ||
+            current.groupId !== note.groupId ||
+            current.language !== note.language ||
+            current.sshHostId !== note.sshHostId ||
+            current.connectionId !== note.connectionId)
+        if (diverged && current) {
+          // 保存期间用户继续输入：不回写正文，保持 dirty 并排队再存。
+          setOpenNotes((prev) => ({
+            ...prev,
+            [note.id]: { ...current, updatedAt: saved.updatedAt },
+          }))
+          setSummaries((prev) => [
+            toSummary({ ...saved, title: current.title, language: current.language, groupId: current.groupId }),
+            ...prev.filter((s) => s.id !== saved.id),
+          ])
+          setSaveByNote((prev) => ({ ...prev, [note.id]: 'dirty' }))
+          if (saveTimers.current[note.id]) clearTimeout(saveTimers.current[note.id])
+          saveTimers.current[note.id] = setTimeout(() => {
+            const again = openNotesRef.current[note.id]
+            if (again) void persistNote(again, { silent: true })
+          }, 400)
+        } else {
+          setOpenNotes((prev) => ({ ...prev, [note.id]: saved }))
+          setSummaries((prev) => [toSummary(saved), ...prev.filter((s) => s.id !== saved.id)])
+          markNoteSaved(saved)
+          if (!opts?.silent) setStatusMessage(t('notebook.saved'))
+        }
         return saved
       } catch (e) {
         setSaveByNote((prev) => ({ ...prev, [note.id]: 'dirty' }))
@@ -404,8 +438,12 @@ export function NotebookWorkbench() {
           return next
         })
       } else if (noteId && openNotesRef.current[noteId] && evt.op !== 'delete') {
+        // 本机 UI 自动保存已由 persistNote 合入；回拉会盖掉正在输入的正文并造成光标偏移。
+        if (evt.writeId === 'ui-notebook-save') return
+        const localStatus = saveByNoteRef.current[noteId]
+        if (localStatus === 'dirty' || localStatus === 'saving') return
         try {
-          const note = (await api.getNote(noteId)) as Note
+          const note = adoptNoteLanguage((await api.getNote(noteId)) as Note)
           markNoteSaved(note)
           setOpenNotes((prev) => ({ ...prev, [noteId]: note }))
         } catch {
@@ -578,7 +616,9 @@ export function NotebookWorkbench() {
     (note: Note) => {
       if (saveTimers.current[note.id]) clearTimeout(saveTimers.current[note.id])
       saveTimers.current[note.id] = setTimeout(() => {
-        void persistNote(note, { silent: true })
+        // 定时器触发时取最新正文，避免用过期快照覆盖后续输入。
+        const latest = openNotesRef.current[note.id] ?? note
+        void persistNote(latest, { silent: true })
       }, 400)
     },
     [persistNote],
@@ -736,6 +776,82 @@ export function NotebookWorkbench() {
     updateActiveNote({ content, language: 'markdown' })
     setStatusMessage(t('notebook.templateInserted'))
   }
+
+  /** appendAssetMarkdown 在光标插入附件 Markdown；非 markdown 笔记自动升为 markdown。 */
+  const appendAssetMarkdown = useCallback(
+    (snippets: string[]) => {
+      if (!activeNote || snippets.length === 0) return
+      const block = snippets.join('\n\n') + '\n'
+      if (editorRef.current) {
+        editorRef.current.insertText(block)
+        if (activeNote.language !== 'markdown') {
+          setOpenNotes((prev) => {
+            const cur = prev[activeNote.id]
+            if (!cur || cur.language === 'markdown') return prev
+            return { ...prev, [activeNote.id]: { ...cur, language: 'markdown' } }
+          })
+          markNoteDirty(activeNote.id)
+        }
+        return
+      }
+      const content = activeNote.content.trim()
+        ? `${activeNote.content}\n\n${block}`
+        : block
+      updateActiveNote({ content, language: 'markdown' })
+    },
+    // updateActiveNote / markNoteDirty 随 activeNote 闭包；与工作台其它写入口一致
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeNote],
+  )
+
+  const insertFilesAsAssets = useCallback(
+    async (files: File[]) => {
+      if (!activeNote || files.length === 0) return
+      try {
+        const snippets: string[] = []
+        for (const file of files) {
+          const data = await fileToBase64DataURL(file)
+          const asset = await api.saveNotebookAsset(
+            model.NotebookAssetUploadDO.createFrom({
+              noteId: activeNote.id,
+              name: file.name || (file.type.startsWith('image/') ? 'image.png' : 'file'),
+              mime: file.type || '',
+              data,
+            }),
+          )
+          snippets.push(asset.markdown)
+        }
+        appendAssetMarkdown(snippets)
+        setStatusMessage(
+          snippets.length === 1
+            ? t('notebook.assetInserted')
+            : t('notebook.assetsInserted', { count: snippets.length }),
+        )
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    },
+    [activeNote, appendAssetMarkdown, setStatusMessage, t],
+  )
+
+  const pickAssets = useCallback(
+    async (imagesOnly: boolean) => {
+      if (!activeNote) return
+      try {
+        const assets = await api.pickNotebookAssets(activeNote.id, imagesOnly)
+        if (!assets.length) return
+        appendAssetMarkdown(assets.map((a) => a.markdown))
+        setStatusMessage(
+          assets.length === 1
+            ? t('notebook.assetInserted')
+            : t('notebook.assetsInserted', { count: assets.length }),
+        )
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    },
+    [activeNote, appendAssetMarkdown, setStatusMessage, t],
+  )
 
   const closeTab = (id: string) => {
     setOpenTabIds((prev) => {
@@ -967,6 +1083,22 @@ export function NotebookWorkbench() {
           </button>
           {activeNote && (
             <>
+              <button
+                type="button"
+                className="wn-btn wn-btn-sm wn-btn-tool"
+                title={t('notebook.insertImageHint')}
+                {...pressProps(() => void pickAssets(true))}
+              >
+                {t('notebook.insertImage')}
+              </button>
+              <button
+                type="button"
+                className="wn-btn wn-btn-sm wn-btn-tool"
+                title={t('notebook.insertAttachmentHint')}
+                {...pressProps(() => void pickAssets(false))}
+              >
+                <IconUpload size={14} /> {t('notebook.insertAttachment')}
+              </button>
               <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(insertTemplate)}>
                 {t('notebook.insertTemplate')}
               </button>
@@ -1135,6 +1267,7 @@ export function NotebookWorkbench() {
                     editorFontSize={editorFontSize}
                     onChange={(content) => updateActiveNote({ content })}
                     onRunSelection={runInTerminal}
+                    onInsertFiles={insertFilesAsAssets}
                   />
                 )}
                 {showNotePreview && (

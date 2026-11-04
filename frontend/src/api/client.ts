@@ -7,6 +7,9 @@ import type {
   LocalPortKillResult,
   LocalPortProcess,
   SSHHost,
+  CloudAccount,
+  ECSInstance,
+  ECSMonitor,
   ShellHost,
   SftpBookmark,
   TransferConflict,
@@ -53,6 +56,10 @@ import {
   RemoveDockerHost,
   PruneStoppedDockerHosts,
   SaveSSHHost,
+  ListCloudAccounts,
+  SaveCloudAccount,
+  GetECSMonitor,
+  ListECSInstances,
   DeleteSSHHost,
   TestSSHHost,
   TrustSSHHost,
@@ -215,6 +222,8 @@ import {
   SaveNotebookUI,
   DuplicateNote,
   ExportNote,
+  SaveNotebookAsset,
+  PickNotebookAssets,
   ListPluginPacks,
   GetPluginPack,
   GetPluginProtocol,
@@ -226,6 +235,7 @@ import {
   ListPluginPackReleases,
   SnapshotPluginPack,
   RollbackPluginPack,
+  ResolveMCPConfirm,
 } from '../../wailsjs/go/app/Service'
 
 /** 兼容 Wails 返回的 plain object / 类实例字段名差异 */
@@ -321,8 +331,26 @@ export function toSSHHostDO(h: SSHHost): model.SSHHostDO {
     user: h.user,
     password: h.password,
     keyPath: h.keyPath,
+    cloudAccountId: h.cloudAccountId || '',
+    cloudRegion: h.cloudRegion || '',
+    cloudInstanceId: h.cloudInstanceId || '',
+    touchCloud: Boolean(h.touchCloud),
     createdAt: h.createdAt,
     updatedAt: h.updatedAt,
+  })
+}
+
+/** toCloudAccountDO 转为 Wails 绑定的云账号模型。 */
+export function toCloudAccountDO(a: CloudAccount): model.CloudAccountDO {
+  return model.CloudAccountDO.createFrom({
+    id: a.id,
+    name: a.name,
+    provider: a.provider || 'aliyun',
+    accessKeyId: a.accessKeyId,
+    accessKeySecret: a.accessKeySecret || '',
+    hasSecret: Boolean(a.hasSecret),
+    createdAt: a.createdAt,
+    updatedAt: a.updatedAt,
   })
 }
 
@@ -509,6 +537,11 @@ export const api = {
   removeDockerHost: (id: string) => unwrap(() => RemoveDockerHost(id)),
   pruneStoppedDockerHosts: () => unwrap(() => PruneStoppedDockerHosts()),
   saveSSHHost: (h: SSHHost) => unwrap(() => SaveSSHHost(toSSHHostDO(h))),
+  listCloudAccounts: async () => asArray(await unwrap(() => ListCloudAccounts())) as CloudAccount[],
+  saveCloudAccount: (a: CloudAccount) => unwrap(() => SaveCloudAccount(toCloudAccountDO(a))),
+  getECSMonitor: (hostId: string) => unwrap(() => GetECSMonitor(hostId)) as Promise<ECSMonitor>,
+  listECSInstances: async (accountId: string, region: string) =>
+    asArray(await unwrap(() => ListECSInstances(accountId, region))) as ECSInstance[],
   deleteSSHHost: (id: string) => unwrap(() => DeleteSSHHost(id)),
   testSSHHost: (h: SSHHost) => unwrap(() => TestSSHHost(toSSHHostDO(h))),
   trustSSHHost: (host: string, port: number) => unwrap(() => TrustSSHHost(host, port)),
@@ -722,6 +755,9 @@ export const api = {
   saveNotebookUI: (ui: model.NotebookUIDO) => unwrap(() => SaveNotebookUI(ui)),
   duplicateNote: async (id: string) => unwrap(() => DuplicateNote(id)),
   exportNote: async (id: string) => (await unwrap(() => ExportNote(id))).path,
+  saveNotebookAsset: (in_: model.NotebookAssetUploadDO) => unwrap(() => SaveNotebookAsset(in_)),
+  pickNotebookAssets: async (noteId: string, imagesOnly: boolean) =>
+    asArray(await unwrap(() => PickNotebookAssets(noteId, imagesOnly))),
   getAgentSettings: async () => unwrap(() => GetAgentSettings()),
   listAgentCapabilities: async () => asArray(await unwrap(() => ListAgentCapabilities())),
   applyAgentProviderPreset: async (provider: string) => unwrap(() => ApplyAgentProviderPreset(provider)),
@@ -776,4 +812,6 @@ export const api = {
     unwrap(() => SnapshotPluginPack(packId)) as Promise<import('./pluginPack').PluginPackReleaseInfo>,
   rollbackPluginPack: async (packId: string, releaseId: string) =>
     unwrap(() => RollbackPluginPack(packId, releaseId)) as Promise<import('./pluginPack').PluginPackInfo>,
+  resolveMCPConfirm: async (pendingId: string, approved: boolean) =>
+    unwrap(() => ResolveMCPConfirm(pendingId, approved)),
 }

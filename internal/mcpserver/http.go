@@ -1,10 +1,8 @@
 package mcpserver
 
 import (
-	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 
 	"WWorkbench/internal/workbenchtools"
@@ -17,12 +15,13 @@ import (
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
 // ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.54.316"
+const ServerVersion = "0.54.330"
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明。
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本等）。
 - 参数=schema 顶层字段（勿再包 {"arguments":…}）。
-- 写操作由工作台内 Agent 直接执行（不再侧栏二次确认）；外置 MCP 客户端仍可能看到 ww_confirm 文本，请在 App 内对话执行写工具。
+- 危险写操作在工作台弹窗拍板（工具会阻塞至用户确认/拒绝；确认和看过程同一视线）。含：SQL/容器/插件，以及 shell_run 风险命令（重定向写文件、rm、docker rm/stop、| sh 等）。勿再解析 ww_confirm 文本。
+- 凡参数能解析到 SSH（hostId / sshHostId / hostOrName / 远端 Docker contextId / SSH 日志源 / SSH 隧道库连接）的操作，都会先打开并聚焦对应终端 + 状态栏，再执行。shell_run 注入后立刻 get_shell_output(waitMs=8000～30000[, afterUpdatedAt]) 等新输出，少空转轮询。
 - 容器启停/删除用 start_container / stop_container / remove_container，勿用 shell_probe 跑 docker rm/start/stop。
 - 问终端输出用 get_shell_output（分页读可见 PTY scrollback；offsetFromEnd=0 最新页，nextOffsetFromEnd 向历史翻）。shell_run=给人看（注入 pip/下载/训练/脚本，不返回 stdout）。shell_probe=无头只读短探针，禁止改机器；看磁盘文件用 cat，不要 sed/awk。
 - 终端断开或出现「会话已结束」时先 terminal_reconnect（sessionId 或 hostId），再 shell_run / get_shell_output。
@@ -34,52 +33,38 @@ const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据�
 - 工具受「AI 能力权限」开关约束；关闭的能力会拒绝调用。
 - Cursor 请配置本端点 /mcp/workbench（非 /mcp）。`
 
-// HTTPService 包装 ningharness MCP HTTP，并暴露 workbench URL。
-type HTTPService struct {
-	*toolgateway.HTTPService
-}
-
-// WorkbenchEndpointURL 产品工具面 URL。
-func (s *HTTPService) WorkbenchEndpointURL() string {
-	if s == nil || s.HTTPService == nil {
-		return ""
-	}
-	return strings.TrimSuffix(s.EndpointURL(), "/mcp") + "/mcp/workbench"
-}
-
-// StartHTTP 启动 MCP HTTP：/mcp 核工具 + /mcp/workbench 工作台工具。
-func StartHTTP(addr string, gw *toolgateway.Gateway, reg *workbenchtools.Registry) (*HTTPService, error) {
+// NewHandler 组装 /mcp、/mcp/workbench、/health。不监听端口。
+// 两端都无状态：Cursor 空闲挂起后带着旧 session 再调，不会因会话失效被 404。
+func NewHandler(gw *toolgateway.Gateway, reg *workbenchtools.Registry) (http.Handler, error) {
 	if gw == nil {
 		return nil, fmt.Errorf("nil gateway")
 	}
 	if reg == nil {
 		return nil, fmt.Errorf("nil registry")
 	}
-	addr = strings.TrimSpace(addr)
-	if addr == "" {
-		addr = strings.TrimSpace(os.Getenv("WWORKBENCH_MCP_ADDR"))
-	}
-	if addr == "" {
-		addr = DefaultHTTPAddr
-	}
-	base, err := toolgateway.StartHTTP(toolgateway.HTTPConfig{
-		Addr:         addr,
-		ServerName:   "wworkbench",
-		Version:      ServerVersion,
-		Instructions: "ningharness core tools hosted by WWorkbench",
-		HealthName:   "wworkbench",
-		ExtraRoutes: func(mux *http.ServeMux, _ *toolgateway.Gateway) {
-			wbHTTP := server.NewStreamableHTTPServer(
-				NewWorkbenchMCPServer(gw, reg),
-				server.WithEndpointPath("/mcp/workbench"),
-			)
-			mux.Handle("/mcp/workbench", workbenchHTTPCORS(wbHTTP))
-		},
-	}, gw)
-	if err != nil {
-		return nil, err
-	}
-	return &HTTPService{HTTPService: base}, nil
+	core := server.NewStreamableHTTPServer(
+		toolgateway.NewMCPServer(gw, "wworkbench", ServerVersion, "ningharness core tools hosted by WWorkbench"),
+		server.WithEndpointPath("/mcp"),
+		server.WithStateLess(true),
+	)
+	wb := server.NewStreamableHTTPServer(
+		NewWorkbenchMCPServer(gw, reg),
+		server.WithEndpointPath("/mcp/workbench"),
+		server.WithStateLess(true),
+	)
+	mux := http.NewServeMux()
+	mux.Handle("/mcp", workbenchHTTPCORS(core))
+	mux.Handle("/mcp/workbench", workbenchHTTPCORS(wb))
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		writeCORS(w, r)
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"ok":true,"ready":true,"name":"wworkbench","mcp":"/mcp"}`))
+	})
+	return mux, nil
 }
 
 func workbenchHTTPCORS(next http.Handler) http.Handler {
@@ -98,12 +83,4 @@ func workbenchHTTPCORS(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-// Stop 关闭 MCP HTTP。
-func (s *HTTPService) Stop(ctx context.Context) error {
-	if s == nil || s.HTTPService == nil {
-		return nil
-	}
-	return s.HTTPService.Stop(ctx)
 }

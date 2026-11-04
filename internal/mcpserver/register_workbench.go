@@ -66,12 +66,7 @@ func invokeRegistryTool(ctx context.Context, reg *workbenchtools.Registry, name 
 	}
 	res := reg.Invoke(ctx, name, raw, nil)
 	if res.NeedsConfirm {
-		wire, _ := json.Marshal(map[string]any{
-			"ww_confirm": true,
-			"summary":    res.ConfirmSummary,
-			"preview":    json.RawMessage(res.Data),
-		})
-		return mcp.NewToolResultText(string(wire)), nil
+		res = workbenchtools.AwaitConfirmAndExecute(ctx, reg.Deps(), name, raw, res)
 	}
 	if res.NeedsChoice {
 		wire, _ := json.Marshal(map[string]any{

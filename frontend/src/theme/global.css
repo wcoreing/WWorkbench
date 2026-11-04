@@ -419,6 +419,35 @@ button {
   white-space: nowrap;
 }
 
+.app-statusbar .status-mcp-stage {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.app-statusbar .status-mcp-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--accent);
+  animation: terminal-status-pulse 1.2s ease-in-out infinite;
+}
+
+.app-statusbar .status-mcp-stage.is-confirm .status-mcp-dot {
+  background: var(--color-warning);
+}
+
+.app-statusbar .status-mcp-stage.is-confirm {
+  color: var(--color-warning);
+}
+
 .empty-hint {
   padding: var(--space-3) var(--space-2);
   font-size: 11px;

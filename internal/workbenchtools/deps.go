@@ -33,6 +33,7 @@ type Deps struct {
 	Docker      *dockersvc.Manager
 	UIActions   *UIActionBus
 	Radar       *RadarBus
+	MCPConfirm  *MCPConfirmGate
 	Terminals   *terminal.Manager
 	HarnessRoot func() string
 	Agent       AgentSync

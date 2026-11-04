@@ -33,12 +33,7 @@ func RegisterWorkbenchTools(gw *toolgateway.Gateway, reg *workbenchtools.Registr
 			}
 			res := reg.Invoke(ctx, toolName, raw, enabled)
 			if res.NeedsConfirm {
-				wire, _ := json.Marshal(map[string]any{
-					"ww_confirm": true,
-					"summary":    res.ConfirmSummary,
-					"preview":    json.RawMessage(res.Data),
-				})
-				return mcp.NewToolResultText(string(wire)), nil
+				res = workbenchtools.AwaitConfirmAndExecute(ctx, reg.Deps(), toolName, raw, res)
 			}
 			if res.NeedsChoice {
 				wire, _ := json.Marshal(map[string]any{

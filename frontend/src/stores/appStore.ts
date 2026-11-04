@@ -32,6 +32,14 @@ export interface ConnectionDraft {
   sshHostId?: string
 }
 
+/** McpStage MCP/Agent 舞台状态（状态栏高亮）。 */
+export interface McpStage {
+  kind: 'shell' | 'confirm'
+  label: string
+  detail?: string
+  at: number
+}
+
 interface AppState {
   version: string
   preferencesReady: boolean
@@ -46,6 +54,7 @@ interface AppState {
   activeTabId: string | null
   designDrafts: Record<string, TableDesignDraft>
   statusMessage: string
+  mcpStage: McpStage | null
   terminalOpacity: number
   uiFontSize: UiFontSize
   agentSurface: AgentSurface
@@ -62,6 +71,7 @@ interface AppState {
   setTabs: (tabs: WorkTab[]) => void
   setActiveTabId: (id: string | null) => void
   setStatusMessage: (msg: string) => void
+  setMcpStage: (stage: McpStage | null) => void
   setTerminalOpacity: (v: number) => void
   setUiFontSize: (px: number) => void
   setAgentSurface: (surface: AgentSurface) => void
@@ -91,6 +101,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeTabId: defaults.activeTabId,
   designDrafts: defaults.designDrafts,
   statusMessage: '就绪',
+  mcpStage: null,
   terminalOpacity: 0.92,
   uiFontSize: DEFAULT_UI_FONT_SIZE,
   agentSurface: emptyAgentSurface(),
@@ -140,6 +151,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   setActiveTabId: (activeTabId) => set({ activeTabId }),
   setStatusMessage: (statusMessage) => set({ statusMessage }),
+  setMcpStage: (mcpStage) => set({ mcpStage }),
   setTerminalOpacity: (terminalOpacity) => {
     const v = Math.min(1, Math.max(0.15, terminalOpacity))
     set({ terminalOpacity: v })

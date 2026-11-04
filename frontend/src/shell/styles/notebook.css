@@ -582,12 +582,37 @@
   background: var(--color-active);
 }
 
-.note-editor-wrap,
-.note-editor-host {
+.note-editor-wrap {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  background: var(--color-editor);
+}
+
+.note-editor-textarea {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin: 0;
+  padding: 12px 14px;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  color: var(--color-text);
+  caret-color: var(--accent);
+  font-family: var(--font-mono), 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', monospace;
+  font-size: var(--notebook-editor-font-size, 13px);
+  line-height: 1.7;
+  tab-size: 2;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  overflow: auto;
+}
+
+.note-editor-textarea::placeholder {
+  color: var(--color-text-muted);
 }
 
 .notebook-editor-split.preview-only {
@@ -700,6 +725,21 @@
 
 .notebook-md-preview a {
   color: var(--accent, #5b8def);
+}
+
+.notebook-md-preview img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.6em 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.note-editor-wrap.is-drag-over {
+  outline: 2px dashed var(--accent, #5b8def);
+  outline-offset: -4px;
+  background: color-mix(in srgb, var(--accent, #5b8def) 8%, transparent);
 }
 
 .notebook-md-preview blockquote {

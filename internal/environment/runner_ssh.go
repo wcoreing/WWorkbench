@@ -114,6 +114,7 @@ func (r *sshShellRunner) ensureClient(ctx context.Context) (*ssh.Client, error) 
 	if err != nil {
 		return nil, err
 	}
+	tunnel.KeepAlive(client)
 	r.client = client
 	return client, nil
 }

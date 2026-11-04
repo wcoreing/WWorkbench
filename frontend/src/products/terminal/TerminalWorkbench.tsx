@@ -30,6 +30,7 @@ import { LocalPortsDialog } from '../../features/terminal/LocalPortsPanel'
 import { SSHForwardPanel } from '../../features/terminal/SSHForwardPanel'
 import { TerminalSplitView } from '../../features/terminal/TerminalSplitView'
 import { TerminalTabStatusPane } from '../../features/terminal/TerminalTabStatusPane'
+import { ECSMonitorBar } from '../../features/terminal/ECSMonitorBar'
 import { focusTerminalSession } from '../../features/terminal/terminalFocus'
 import { terminalClipboard } from '../../features/terminal/terminalClipboard'
 import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
@@ -353,29 +354,48 @@ export function TerminalWorkbench() {
     setStatusMessage(t('terminal.cmdSent'))
   }
 
-  /** runTerminalLink 在已有或新建终端中写入命令。 */
+  /** runTerminalLink 打开/聚焦终端；有命令则注入。MCP 反复操作同一主机时复用已有标签。 */
   const runTerminalLink = async (hostId?: string, localShell?: boolean, initialCommand?: string) => {
-    if (initialCommand?.trim()) {
-      const existing = localShell
-        ? tabsRef.current.find((t) => t.kind === 'local' && t.connectState === 'ready')
-        : hostId
-          ? tabsRef.current.find(
+    const existing = localShell
+      ? tabsRef.current.find((t) => t.kind === 'local' && t.connectState === 'ready') ||
+        tabsRef.current.find((t) => t.kind === 'local')
+      : hostId
+        ? tabsRef.current.find(
             (t) =>
               (t.kind === 'ssh' || t.kind === 'docker') &&
               t.hostId === hostId &&
               t.connectState === 'ready',
+          ) ||
+          tabsRef.current.find(
+            (t) => (t.kind === 'ssh' || t.kind === 'docker') && t.hostId === hostId,
           )
-          : null
-      if (existing) {
+        : null
+    if (existing) {
+      setActiveTabId(existing.id)
+      setActiveProduct('terminal')
+      if (existing.connectState === 'ready' && initialCommand?.trim()) {
         const sessionId = firstSessionId(existing.layout)
         if (sessionId) {
-          setActiveTabId(existing.id)
-          setActiveProduct('terminal')
           await writeInitialCommand(sessionId, initialCommand)
           setStatusMessage(t('terminal.cmdExecuted'))
           return
         }
       }
+      if (existing.connectState === 'ready') {
+        setStatusMessage(t('terminal.connected', { title: existing.title }))
+        return
+      }
+      if (existing.connectState === 'failed') {
+        await retryTabConnect(existing.id)
+        if (initialCommand?.trim()) {
+          const tab = tabsRef.current.find((t) => t.id === existing.id)
+          const sessionId = tab ? firstSessionId(tab.layout) : ''
+          if (sessionId) await writeInitialCommand(sessionId, initialCommand)
+        }
+        return
+      }
+      // connecting：只聚焦，等连上
+      return
     }
     if (localShell) {
       await connectLocal(initialCommand)
@@ -1164,6 +1184,11 @@ export function TerminalWorkbench() {
                 className="terminal-pane-wrap"
                 style={{ display: t.id === activeTabId ? 'flex' : 'none' }}
               >
+                {(() => {
+                  const bound = hosts.find((h) => h.id === t.hostId)
+                  if (bound?.kind !== 'ssh' || !bound.cloudInstanceId) return null
+                  return <ECSMonitorBar hostId={bound.id} active={t.id === activeTabId} />
+                })()}
                 {t.connectState === 'ready' ? (
                   <TerminalSplitView
                     layout={t.layout}

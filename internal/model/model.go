@@ -242,8 +242,58 @@ type SSHHostDO struct {
 	KeyPath       string `json:"keyPath"`
 	HasPassword   bool   `json:"hasPassword"`   // 仅展示：库中是否已存密码（不回传明文）
 	ClearPassword bool   `json:"clearPassword"` // 保存时显式清空已存密码
-	CreatedAt     int64  `json:"createdAt"`
-	UpdatedAt     int64  `json:"updatedAt"`
+	// 阿里云 ECS 云监控绑定。TouchCloud 为 true 时按下面三字段覆盖；否则保存 SSH 时保留原绑定。
+	CloudAccountID  string `json:"cloudAccountId"`
+	CloudRegion     string `json:"cloudRegion"`
+	CloudInstanceID string `json:"cloudInstanceId"`
+	TouchCloud      bool   `json:"touchCloud"`
+	CreatedAt       int64  `json:"createdAt"`
+	UpdatedAt       int64  `json:"updatedAt"`
+}
+
+// CloudAccountDO 云账号。AccessKeySecret 只在写入时出现，读出时清空并用 HasSecret 表示已存。
+type CloudAccountDO struct {
+	ID              string `json:"id"`
+	Name            string `json:"name"`
+	Provider        string `json:"provider"` // aliyun
+	AccessKeyID     string `json:"accessKeyId"`
+	AccessKeySecret string `json:"accessKeySecret"`
+	HasSecret       bool   `json:"hasSecret"`
+	CreatedAt       int64  `json:"createdAt"`
+	UpdatedAt       int64  `json:"updatedAt"`
+}
+
+// ECSMetricPointDO 一个采样点。
+type ECSMetricPointDO struct {
+	Timestamp int64   `json:"timestamp"`
+	Value     float64 `json:"value"`
+}
+
+// ECSMetricSeriesDO 一条 ECS 指标（最近一小时）。
+type ECSMetricSeriesDO struct {
+	Metric string             `json:"metric"`
+	Unit   string             `json:"unit"`
+	Latest float64            `json:"latest"`
+	Points []ECSMetricPointDO `json:"points"`
+	Error  string             `json:"error"`
+}
+
+// ECSInstanceDO 一台可绑定的 ECS。
+type ECSInstanceDO struct {
+	InstanceID string `json:"instanceId"`
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	PublicIP   string `json:"publicIp"`
+	PrivateIP  string `json:"privateIp"`
+}
+
+// ECSMonitorDO 一台 ECS 的云监控快照。
+type ECSMonitorDO struct {
+	InstanceID string              `json:"instanceId"`
+	Region     string              `json:"region"`
+	FetchedAt  int64               `json:"fetchedAt"`
+	Series     []ECSMetricSeriesDO `json:"series"`
+	Hint       string              `json:"hint"`
 }
 
 const (
@@ -253,21 +303,24 @@ const (
 
 // ShellHostDO 统一 Shell 主机（SSH 或 Docker 容器）。
 type ShellHostDO struct {
-	ID            string `json:"id"`
-	Kind          string `json:"kind"` // ssh | docker
-	Name          string `json:"name"`
-	Host          string `json:"host"`
-	Port          int    `json:"port"`
-	User          string `json:"user"`
-	Password      string `json:"password"`
-	KeyPath       string `json:"keyPath"`
-	ContextID     string `json:"contextId"`
-	ContainerID   string `json:"containerId"`
-	ContainerName string `json:"containerName"`
-	Image         string `json:"image"`
-	Running       bool   `json:"running"` // Docker：容器是否在运行；SSH 恒为 true
-	CreatedAt     int64  `json:"createdAt"`
-	UpdatedAt     int64  `json:"updatedAt"`
+	ID              string `json:"id"`
+	Kind            string `json:"kind"` // ssh | docker
+	Name            string `json:"name"`
+	Host            string `json:"host"`
+	Port            int    `json:"port"`
+	User            string `json:"user"`
+	Password        string `json:"password"`
+	KeyPath         string `json:"keyPath"`
+	ContextID       string `json:"contextId"`
+	ContainerID     string `json:"containerId"`
+	ContainerName   string `json:"containerName"`
+	Image           string `json:"image"`
+	Running         bool   `json:"running"` // Docker：容器是否在运行；SSH 恒为 true
+	CloudAccountID  string `json:"cloudAccountId"`
+	CloudRegion     string `json:"cloudRegion"`
+	CloudInstanceID string `json:"cloudInstanceId"`
+	CreatedAt       int64  `json:"createdAt"`
+	UpdatedAt       int64  `json:"updatedAt"`
 }
 
 // DockerShellHostDO 已注册的 Docker 容器 Shell 主机。
@@ -766,6 +819,26 @@ type NotebookUIDO struct {
 type NotebookLayoutDO struct {
 	GroupOrder   []string            `json:"groupOrder"`
 	NotesByGroup map[string][]string `json:"notesByGroup"`
+}
+
+// NotebookAssetUploadDO 上传笔记附件（Data 为无前缀 base64 或 data URL）。
+type NotebookAssetUploadDO struct {
+	NoteID string `json:"noteId"`
+	Name   string `json:"name"`
+	MIME   string `json:"mime"`
+	Data   string `json:"data"`
+}
+
+// NotebookAssetDO 已保存的笔记附件（Markdown 可直接插入）。
+type NotebookAssetDO struct {
+	ID       string `json:"id"`
+	NoteID   string `json:"noteId"`
+	Name     string `json:"name"`
+	MIME     string `json:"mime"`
+	URL      string `json:"url"`
+	Markdown string `json:"markdown"`
+	IsImage  bool   `json:"isImage"`
+	Size     int64  `json:"size"`
 }
 
 // AgentCapabilityDO 单项 AI 能力（含开关状态）。

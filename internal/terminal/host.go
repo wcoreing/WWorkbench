@@ -67,6 +67,16 @@ func (s *HostService) Save(h model.SSHHostDO) (*model.SSHHostDO, error) {
 	if err != nil {
 		return nil, err
 	}
+	h, err = s.mergeCloud(h)
+	if err != nil {
+		return nil, err
+	}
+	h.CloudAccountID = strings.TrimSpace(h.CloudAccountID)
+	h.CloudRegion = strings.TrimSpace(h.CloudRegion)
+	h.CloudInstanceID = strings.TrimSpace(h.CloudInstanceID)
+	if err := s.validateCloud(h); err != nil {
+		return nil, err
+	}
 	if err := ValidateSSHHost(h); err != nil {
 		return nil, err
 	}
@@ -102,6 +112,38 @@ func (s *HostService) Test(ctx context.Context, h model.SSHHostDO) error {
 	}
 	defer sess.Close()
 	return sess.Run("echo ok")
+}
+
+// mergeCloud 未显式修改云监控绑定时，沿用库里的账号、地域和实例。
+func (s *HostService) mergeCloud(h model.SSHHostDO) (model.SSHHostDO, error) {
+	if h.TouchCloud || h.ID == "" {
+		return h, nil
+	}
+	existing, err := s.store.GetSSHHost(h.ID)
+	if err != nil {
+		if ae := errno.Extract(err); ae != nil && ae.Code == errno.CodeNotFound {
+			return h, nil
+		}
+		return h, err
+	}
+	h.CloudAccountID = existing.CloudAccountID
+	h.CloudRegion = existing.CloudRegion
+	h.CloudInstanceID = existing.CloudInstanceID
+	return h, nil
+}
+
+// validateCloud 绑定了任一项时，账号、地域、实例必须同时有效。
+func (s *HostService) validateCloud(h model.SSHHostDO) error {
+	if h.CloudAccountID == "" && h.CloudRegion == "" && h.CloudInstanceID == "" {
+		return nil
+	}
+	if h.CloudAccountID == "" || h.CloudRegion == "" || h.CloudInstanceID == "" {
+		return errno.New(errno.CodeInvalidArg, "绑定 ECS 监控需要云账号、地域和实例 ID", "")
+	}
+	if _, err := s.store.GetCloudAccount(h.CloudAccountID); err != nil {
+		return err
+	}
+	return nil
 }
 
 // StripSecrets 清除敏感字段；保留 HasPassword 供编辑态提示。

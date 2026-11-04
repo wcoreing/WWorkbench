@@ -8,17 +8,18 @@ import (
 	"WWorkbench/internal/model"
 )
 
-const sshHostSelectSQL = `SELECT id, name, host, port, user_name, password_enc, key_path, created_at, updated_at FROM ssh_hosts`
+const sshHostSelectSQL = `SELECT id, name, host, port, user_name, password_enc, key_path, cloud_account_id, cloud_region, cloud_instance_id, created_at, updated_at FROM ssh_hosts`
 
 // scanSSHHost 扫描一行 SSH 主机并解密密码。
 func (s *Store) scanSSHHost(
-	id, name, host, user, pwdEnc, keyPath string,
+	id, name, host, user, pwdEnc, keyPath, cloudAccountID, cloudRegion, cloudInstanceID string,
 	port int,
 	createdAt, updatedAt int64,
 ) (model.SSHHostDO, error) {
 	h := model.SSHHostDO{
 		ID: id, Name: name, Host: host, Port: port, User: user,
-		KeyPath: keyPath, CreatedAt: createdAt, UpdatedAt: updatedAt,
+		KeyPath: keyPath, CloudAccountID: cloudAccountID, CloudRegion: cloudRegion,
+		CloudInstanceID: cloudInstanceID, CreatedAt: createdAt, UpdatedAt: updatedAt,
 	}
 	if pwdEnc != "" {
 		pwd, err := s.encryptor.Decrypt(pwdEnc)
@@ -39,13 +40,13 @@ func (s *Store) ListSSHHosts() ([]model.SSHHostDO, error) {
 	defer rows.Close()
 	var list []model.SSHHostDO
 	for rows.Next() {
-		var id, name, host, user, pwdEnc, keyPath string
+		var id, name, host, user, pwdEnc, keyPath, cloudAccountID, cloudRegion, cloudInstanceID string
 		var port int
 		var createdAt, updatedAt int64
-		if err := rows.Scan(&id, &name, &host, &port, &user, &pwdEnc, &keyPath, &createdAt, &updatedAt); err != nil {
+		if err := rows.Scan(&id, &name, &host, &port, &user, &pwdEnc, &keyPath, &cloudAccountID, &cloudRegion, &cloudInstanceID, &createdAt, &updatedAt); err != nil {
 			return nil, errno.Wrap(errno.CodeStoreFailed, "读取 SSH 主机失败", err)
 		}
-		h, err := s.scanSSHHost(id, name, host, user, pwdEnc, keyPath, port, createdAt, updatedAt)
+		h, err := s.scanSSHHost(id, name, host, user, pwdEnc, keyPath, cloudAccountID, cloudRegion, cloudInstanceID, port, createdAt, updatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -60,16 +61,16 @@ func (s *Store) ListSSHHosts() ([]model.SSHHostDO, error) {
 // GetSSHHost 按 ID 获取 SSH 主机。
 func (s *Store) GetSSHHost(id string) (*model.SSHHostDO, error) {
 	row := s.db.QueryRow(sshHostSelectSQL+` WHERE id = ?`, id)
-	var hid, name, host, user, pwdEnc, keyPath string
+	var hid, name, host, user, pwdEnc, keyPath, cloudAccountID, cloudRegion, cloudInstanceID string
 	var port int
 	var createdAt, updatedAt int64
-	if err := row.Scan(&hid, &name, &host, &port, &user, &pwdEnc, &keyPath, &createdAt, &updatedAt); err != nil {
+	if err := row.Scan(&hid, &name, &host, &port, &user, &pwdEnc, &keyPath, &cloudAccountID, &cloudRegion, &cloudInstanceID, &createdAt, &updatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, errno.New(errno.CodeNotFound, "SSH 主机不存在", id)
 		}
 		return nil, errno.Wrap(errno.CodeStoreFailed, "读取 SSH 主机失败", err)
 	}
-	h, err := s.scanSSHHost(hid, name, host, user, pwdEnc, keyPath, port, createdAt, updatedAt)
+	h, err := s.scanSSHHost(hid, name, host, user, pwdEnc, keyPath, cloudAccountID, cloudRegion, cloudInstanceID, port, createdAt, updatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -96,13 +97,16 @@ func (s *Store) SaveSSHHost(h model.SSHHostDO) error {
 		h.CreatedAt = now
 	}
 	h.UpdatedAt = now
-	_, err = s.db.Exec(`INSERT INTO ssh_hosts (id, name, host, port, user_name, password_enc, key_path, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+	_, err = s.db.Exec(`INSERT INTO ssh_hosts (id, name, host, port, user_name, password_enc, key_path, cloud_account_id, cloud_region, cloud_instance_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 		name=excluded.name, host=excluded.host, port=excluded.port,
 		user_name=excluded.user_name, password_enc=excluded.password_enc,
-		key_path=excluded.key_path, updated_at=excluded.updated_at`,
-		h.ID, h.Name, h.Host, h.Port, h.User, pwdEnc, h.KeyPath, h.CreatedAt, h.UpdatedAt)
+		key_path=excluded.key_path, cloud_account_id=excluded.cloud_account_id,
+		cloud_region=excluded.cloud_region, cloud_instance_id=excluded.cloud_instance_id,
+		updated_at=excluded.updated_at`,
+		h.ID, h.Name, h.Host, h.Port, h.User, pwdEnc, h.KeyPath,
+		h.CloudAccountID, h.CloudRegion, h.CloudInstanceID, h.CreatedAt, h.UpdatedAt)
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "保存 SSH 主机失败", err)
 	}

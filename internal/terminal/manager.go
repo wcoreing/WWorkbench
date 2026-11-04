@@ -2,8 +2,12 @@ package terminal
 
 import (
 	"context"
+	"errors"
 	"io"
+	"net"
+	"strings"
 	"sync"
+	"time"
 
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
@@ -98,6 +102,7 @@ func (m *Manager) Open(ctx context.Context, hostID string, cols, rows int) (*mod
 		_ = client.Close()
 		return nil, errno.Wrap(errno.CodeConnFailed, "启动 Shell 失败", err)
 	}
+	tunnel.KeepAlive(client)
 
 	sid := uuid.NewString()
 	title := host.User + "@" + host.Host
@@ -151,21 +156,50 @@ func (m *Manager) emitter(sessionID string) func([]byte) {
 	}
 }
 
-// pump 读取终端输出流。
+const pumpTransientRetries = 3
+
+// pump 读取终端输出流。对端关掉才结束会话；超时类断流先重试。
 func (m *Manager) pump(r io.Reader, emit func([]byte), onDone func()) {
 	buf := make([]byte, 32*1024)
+	transient := 0
 	for {
 		n, err := r.Read(buf)
 		if n > 0 {
 			emit(buf[:n])
+			transient = 0
 		}
-		if err != nil {
-			if onDone != nil {
-				onDone()
-			}
-			return
+		if err == nil {
+			continue
 		}
+		if !readIsPeerClosed(err) && transient < pumpTransientRetries {
+			transient++
+			time.Sleep(time.Duration(transient) * 200 * time.Millisecond)
+			continue
+		}
+		if onDone != nil {
+			onDone()
+		}
+		return
 	}
+}
+
+// readIsPeerClosed 区分对端关闭与短暂断流。超时不算会话结束。
+func readIsPeerClosed(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+		return true
+	}
+	var ne net.Error
+	if errors.As(err, &ne) && ne.Timeout() {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	if strings.Contains(msg, "timeout") || strings.Contains(msg, "temporary") {
+		return false
+	}
+	return true
 }
 
 // finish 会话结束时清理资源并通知前端。

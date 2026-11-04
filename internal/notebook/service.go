@@ -15,12 +15,13 @@ const uiSettingKey = "notebook_ui"
 
 // Service 笔记本业务服务。
 type Service struct {
-	store *store.Store
+	store   *store.Store
+	dataDir string
 }
 
 // NewService 创建笔记本服务。
-func NewService(st *store.Store) *Service {
-	return &Service{store: st}
+func NewService(st *store.Store, dataDir string) *Service {
+	return &Service{store: st, dataDir: dataDir}
 }
 
 // ListGroups 列出分组（允许为空；笔记可挂在根目录 groupId=""）。
@@ -94,14 +95,25 @@ func (s *Service) SaveNote(n model.NoteDO) (*model.NoteDO, error) {
 	return saved, nil
 }
 
-// DeleteNote 删除笔记。
+// DeleteNote 删除笔记及其附件。
 func (s *Service) DeleteNote(id string) error {
-	return s.store.DeleteNote(id)
+	if err := s.store.DeleteNote(id); err != nil {
+		return err
+	}
+	s.DeleteNoteAssets(id)
+	return nil
 }
 
-// DeleteNotes 批量删除笔记。
+// DeleteNotes 批量删除笔记及其附件。
 func (s *Service) DeleteNotes(ids []string) (int, error) {
-	return s.store.DeleteNotes(ids)
+	deleted, err := s.store.DeleteNotes(ids)
+	if err != nil {
+		return deleted, err
+	}
+	for _, id := range ids {
+		s.DeleteNoteAssets(id)
+	}
+	return deleted, nil
 }
 
 // DuplicateNote 复制笔记。

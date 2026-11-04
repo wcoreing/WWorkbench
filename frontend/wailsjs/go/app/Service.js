@@ -38,6 +38,10 @@ export function ApplyTableMutations(arg1, arg2, arg3, arg4) {
   return window['go']['app']['Service']['ApplyTableMutations'](arg1, arg2, arg3, arg4);
 }
 
+export function AttachMCP(arg1) {
+  return window['go']['app']['Service']['AttachMCP'](arg1);
+}
+
 export function BatchDeleteHTTP(arg1, arg2) {
   return window['go']['app']['Service']['BatchDeleteHTTP'](arg1, arg2);
 }
@@ -290,6 +294,10 @@ export function GetDockerComposeDirectory(arg1) {
   return window['go']['app']['Service']['GetDockerComposeDirectory'](arg1);
 }
 
+export function GetECSMonitor(arg1) {
+  return window['go']['app']['Service']['GetECSMonitor'](arg1);
+}
+
 export function GetEnvScanPath() {
   return window['go']['app']['Service']['GetEnvScanPath']();
 }
@@ -386,6 +394,10 @@ export function ListAppSettings() {
   return window['go']['app']['Service']['ListAppSettings']();
 }
 
+export function ListCloudAccounts() {
+  return window['go']['app']['Service']['ListCloudAccounts']();
+}
+
 export function ListColumns(arg1, arg2, arg3) {
   return window['go']['app']['Service']['ListColumns'](arg1, arg2, arg3);
 }
@@ -408,6 +420,10 @@ export function ListDatabaseObjects(arg1, arg2) {
 
 export function ListDockerContexts() {
   return window['go']['app']['Service']['ListDockerContexts']();
+}
+
+export function ListECSInstances(arg1, arg2) {
+  return window['go']['app']['Service']['ListECSInstances'](arg1, arg2);
 }
 
 export function ListEnabledAgentSkills() {
@@ -550,6 +566,10 @@ export function PickLogFilePath() {
   return window['go']['app']['Service']['PickLogFilePath']();
 }
 
+export function PickNotebookAssets(arg1, arg2) {
+  return window['go']['app']['Service']['PickNotebookAssets'](arg1, arg2);
+}
+
 export function PickSFTPDownloadDir(arg1) {
   return window['go']['app']['Service']['PickSFTPDownloadDir'](arg1);
 }
@@ -610,6 +630,10 @@ export function ResolveContainerDatabaseLink(arg1, arg2) {
   return window['go']['app']['Service']['ResolveContainerDatabaseLink'](arg1, arg2);
 }
 
+export function ResolveMCPConfirm(arg1, arg2) {
+  return window['go']['app']['Service']['ResolveMCPConfirm'](arg1, arg2);
+}
+
 export function RestartContainer(arg1, arg2) {
   return window['go']['app']['Service']['RestartContainer'](arg1, arg2);
 }
@@ -646,6 +670,10 @@ export function SaveAgentSkillFile(arg1) {
   return window['go']['app']['Service']['SaveAgentSkillFile'](arg1);
 }
 
+export function SaveCloudAccount(arg1) {
+  return window['go']['app']['Service']['SaveCloudAccount'](arg1);
+}
+
 export function SaveConnection(arg1) {
   return window['go']['app']['Service']['SaveConnection'](arg1);
 }
@@ -680,6 +708,10 @@ export function SaveMCPConfig(arg1) {
 
 export function SaveNote(arg1) {
   return window['go']['app']['Service']['SaveNote'](arg1);
+}
+
+export function SaveNotebookAsset(arg1) {
+  return window['go']['app']['Service']['SaveNotebookAsset'](arg1);
 }
 
 export function SaveNotebookGroup(arg1) {

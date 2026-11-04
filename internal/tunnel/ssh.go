@@ -98,6 +98,7 @@ func DialPortForward(ctx context.Context, spec model.TunnelSpecDO, localPort int
 		defer tun.wg.Done()
 		tun.acceptLoop(target)
 	}()
+	KeepAlive(client)
 
 	return tun, nil
 }
@@ -109,6 +110,35 @@ func listenLocalTCP(localPort int) (net.Listener, error) {
 		addr = fmt.Sprintf("127.0.0.1:%d", localPort)
 	}
 	return net.Listen("tcp", addr)
+}
+
+// sshKeepaliveEvery TCP 与 SSH 层保活间隔。短探针也会开 TCP keepalive；SSH 请求只打在长连接上。
+const sshKeepaliveEvery = 30 * time.Second
+
+// KeepAlive 在长连接上周期发送 SSH keepalive，直到客户端被关闭。
+func KeepAlive(client *ssh.Client) {
+	if client == nil {
+		return
+	}
+	go func() {
+		t := time.NewTicker(sshKeepaliveEvery)
+		defer t.Stop()
+		for range t.C {
+			_, _, err := client.SendRequest("keepalive@openssh.com", true, nil)
+			if err != nil {
+				return
+			}
+		}
+	}()
+}
+
+func enableTCPKeepAlive(conn net.Conn) {
+	tc, ok := conn.(*net.TCPConn)
+	if !ok {
+		return
+	}
+	_ = tc.SetKeepAlive(true)
+	_ = tc.SetKeepAlivePeriod(sshKeepaliveEvery)
 }
 
 // sshIOTimeout TCP 拨号与 SSH 握手上限。
@@ -141,7 +171,7 @@ func DialSSH(ctx context.Context, spec model.TunnelSpecDO) (*ssh.Client, error) 
 			dialTimeout = remain
 		}
 	}
-	dialer := &net.Dialer{Timeout: dialTimeout}
+	dialer := &net.Dialer{Timeout: dialTimeout, KeepAlive: sshKeepaliveEvery}
 	conn, err := dialer.DialContext(ctx, "tcp", remote)
 	if err != nil {
 		return nil, wrapSSHDialErr(remote, "连接 SSH 服务器失败", err)
@@ -174,7 +204,9 @@ func DialSSH(ctx context.Context, spec model.TunnelSpecDO) (*ssh.Client, error) 
 			return nil, wrapSSHDialErr(remote, "SSH 握手失败", r.err)
 		}
 		_ = conn.SetDeadline(time.Time{})
-		return ssh.NewClient(r.conn, r.chans, r.reqs), nil
+		enableTCPKeepAlive(conn)
+		client := ssh.NewClient(r.conn, r.chans, r.reqs)
+		return client, nil
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 	"WWorkbench/internal/data"
 	dockersvc "WWorkbench/internal/docker"
 	"WWorkbench/internal/environment"
+	"WWorkbench/internal/mcpserver"
 	"WWorkbench/internal/meta"
 	"WWorkbench/internal/notebook"
 	"WWorkbench/internal/pluginpack"
@@ -67,7 +68,7 @@ func main() {
 	querySvc := query.NewService(sessMgr, st)
 	dataSvc := data.NewService(sessMgr)
 	envMgr := environment.NewManager(sshHostSvc)
-	notebookSvc := notebook.NewService(st)
+	notebookSvc := notebook.NewService(st, dataDir)
 
 	packMgr := pluginpack.NewManager(dataDir)
 	if err := packMgr.EnsureSeeded(); err != nil {
@@ -75,6 +76,14 @@ func main() {
 	}
 
 	api := app.NewService(AppVersion, st, connSvc, sshHostSvc, termMgr, forwardMgr, sftpMgr, dockerMgr, envMgr, notebookSvc, sessMgr, metaSvc, querySvc, dataSvc, packMgr)
+	if st.MCPEnabled() {
+		ep, listenErr := mcpserver.Listen(store.ResolveMCPListenAddr(st.MCPAddr()))
+		if listenErr != nil {
+			log.Printf("mcp: early listen: %v", listenErr)
+		} else {
+			api.AttachMCP(ep)
+		}
+	}
 
 	err = wails.Run(&options.App{
 		Title:     "WWorkbench",
@@ -83,7 +92,8 @@ func main() {
 		MinWidth:  1024,
 		MinHeight: 640,
 		AssetServer: &assetserver.Options{
-			Assets: assets,
+			Assets:  assets,
+			Handler: notebook.AssetHandler(dataDir),
 		},
 		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
 		Mac: &mac.Options{
