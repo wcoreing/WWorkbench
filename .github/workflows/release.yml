@@ -17,6 +17,8 @@ permissions:
 
 env:
   NODE_OPTIONS: --max-old-space-size=4096
+  # 禁止锁文件里的 npmmirror 在 GitHub runner 上 504
+  NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
 
 jobs:
   desktop:
@@ -57,6 +59,7 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: "22"
+          registry-url: https://registry.npmjs.org/
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -86,6 +89,24 @@ jobs:
 
       - name: Install Wails
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+
+      # wails build 会再 npm install；先用官方源装好，避免锁文件残留镜像域名 504。
+      - name: Install frontend deps
+        shell: bash
+        working-directory: frontend
+        run: |
+          set -euo pipefail
+          npm config set registry https://registry.npmjs.org/
+          # 若检出的是旧 tag（仍含 npmmirror），现场改写 resolved，不改 integrity。
+          if grep -q 'registry.npmmirror.com' package-lock.json; then
+            python - <<'PY'
+          from pathlib import Path
+          p = Path('package-lock.json')
+          p.write_text(p.read_text().replace('https://registry.npmmirror.com/', 'https://registry.npmjs.org/'))
+          print('rewrote npmmirror -> npmjs.org in package-lock.json')
+          PY
+          fi
+          npm ci --no-audit --no-fund
 
       - name: Build
         shell: bash
