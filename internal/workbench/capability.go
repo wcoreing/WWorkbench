@@ -8,7 +8,12 @@ package workbench
 //   - UICapabilities 列出的能力由前端 CommandBus 执行（可先切产品线再挂载 handler）。
 
 const (
+	CapGetAgentRules        = "get_agent_rules"
 	CapGetWorkbenchContext  = "get_workbench_context"
+	CapListBackupPolicies   = "list_backup_policies"
+	CapSaveBackupPolicy     = "save_backup_policy"
+	CapRunBackup            = "run_backup"
+	CapListBackupRuns       = "list_backup_runs"
 	CapListConnections      = "list_connections"
 	CapListSSHHosts         = "list_ssh_hosts"
 	CapShellRun             = "shell_run"
@@ -29,6 +34,7 @@ const (
 	CapSFTPOpen             = "sftp_open"
 	CapDockerContextOpen    = "docker_context_open"
 	CapLogsOpen             = "logs_open"
+	CapBackupOpen           = "backup_open"
 	CapHTTPAPIOpen          = "httpapi_open"
 	CapEnvironmentOpen      = "environment_open"
 	CapSSHForwardOpen       = "ssh_forward_open"
@@ -59,6 +65,7 @@ func UICapabilities() []string {
 		CapSFTPOpen,
 		CapDockerContextOpen,
 		CapLogsOpen,
+		CapBackupOpen,
 		CapHTTPAPIOpen,
 		CapEnvironmentOpen,
 		CapSSHForwardOpen,

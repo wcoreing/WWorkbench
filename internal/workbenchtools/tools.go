@@ -56,6 +56,7 @@ type executeSQLArgs struct {
 	Database  string `json:"database"`
 	SQL       string `json:"sql"`
 	Readonly  *bool  `json:"readonly"`
+	Intent    string `json:"intent"`
 }
 
 // toolGetWorkbenchContext 组装工作台上下文快照。
@@ -124,6 +125,17 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 			out["terminalSessionId"] = recent.SessionID
 			out["terminalTitle"] = recent.Title
 			out["terminalHostId"] = recent.HostID
+		}
+	}
+	if cards := ListIntentCards(20); len(cards) > 0 {
+		out["intentCards"] = cards
+	}
+	if d.Store != nil {
+		if pols, err := d.Store.ListBackupPolicies(); err == nil && len(pols) > 0 {
+			out["backupPolicies"] = pols
+		}
+		if runs, err := d.Store.ListBackupRuns("", 10); err == nil && len(runs) > 0 {
+			out["backupRuns"] = runs
 		}
 	}
 	return OKData(out)
@@ -260,7 +272,25 @@ func toolExecuteSQL(ctx context.Context, d *Deps, raw json.RawMessage) ToolResul
 			"sql":       sqlText,
 			"sqlKind":   "write",
 		}
-		return Confirm(uuid.NewString(), "执行写入 SQL："+truncate(sqlText, 120), preview)
+		connID := ""
+		if sess, err := d.Sessions.Get(in.SessionID); err == nil && sess != nil {
+			connID = sess.ConnectionID
+			preview["connectionId"] = connID
+			if pols := matchDBPoliciesForConnection(d, connID); len(pols) > 0 {
+				preview["backupBefore"] = true
+				names := make([]string, 0, len(pols))
+				for _, p := range pols {
+					names = append(names, p.Name)
+				}
+				preview["backupPolicies"] = names
+			}
+		}
+		summary := "执行写入 SQL：" + truncate(sqlText, 120)
+		if intent := strings.TrimSpace(in.Intent); intent != "" {
+			preview["intent"] = intent
+			summary = truncateRunes(intent, intentTitleMaxRune)
+		}
+		return Confirm(uuid.NewString(), summary, preview)
 	}
 	cctx, cancel := session.WithTimeout(ctx, 60)
 	defer cancel()
@@ -277,20 +307,25 @@ func toolExecuteSQL(ctx context.Context, d *Deps, raw json.RawMessage) ToolResul
 	return OKData(res)
 }
 
-// ExecuteSQLConfirmed 用户确认后执行待执行的写入 SQL。
+// ExecuteSQLConfirmed 用户确认后执行待执行的写入 SQL（有 beforeWrite 库策略则先备份）。
 func ExecuteSQLConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
 	var in executeSQLArgs
 	if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
 		return Fail("参数无效")
 	}
-	cctx, cancel := session.WithTimeout(ctx, 60)
-	defer cancel()
+	connID := ""
 	db := in.Database
-	if db == "" {
-		if sess, err := d.Sessions.Get(in.SessionID); err == nil {
+	if sess, err := d.Sessions.Get(in.SessionID); err == nil && sess != nil {
+		connID = sess.ConnectionID
+		if db == "" {
 			db = sess.Database
 		}
 	}
+	if bak := ensureDBBackupBeforeWrite(ctx, d, connID, strings.TrimSpace(in.Intent)); !bak.OK {
+		return bak
+	}
+	cctx, cancel := session.WithTimeout(ctx, 60)
+	defer cancel()
 	res, err := d.Queries.ExecuteSQL(cctx, in.SessionID, db, strings.TrimSpace(in.SQL))
 	if err != nil {
 		return Fail(sqlExecErr(err))

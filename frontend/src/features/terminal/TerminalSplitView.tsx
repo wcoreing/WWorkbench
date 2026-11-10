@@ -8,6 +8,8 @@ interface Props {
   activePaneId: string
   /** 所属标签页当前可见（非 display:none）。 */
   tabActive: boolean
+  /** 标签对应 SSH/Docker 主机；本机为空。 */
+  hostId?: string
   opacity: number
   onSelectPane: (paneId: string) => void
   onLayoutChange: (layout: PaneLayout) => void
@@ -20,6 +22,7 @@ export function TerminalSplitView({
   rootLayout,
   activePaneId,
   tabActive,
+  hostId = '',
   opacity,
   onSelectPane,
   onLayoutChange,
@@ -53,6 +56,7 @@ export function TerminalSplitView({
         )}
         <TerminalPane
           sessionId={layout.sessionId}
+          hostId={hostId}
           active={tabActive}
           focused={tabActive && layout.paneId === activePaneId}
           opacity={opacity}
@@ -67,6 +71,7 @@ export function TerminalSplitView({
       rootLayout={rootLayout}
       activePaneId={activePaneId}
       tabActive={tabActive}
+      hostId={hostId}
       opacity={opacity}
       onSelectPane={onSelectPane}
       onLayoutChange={onLayoutChange}
@@ -80,6 +85,7 @@ interface SplitNodeProps {
   rootLayout: PaneLayout
   activePaneId: string
   tabActive: boolean
+  hostId?: string
   opacity: number
   onSelectPane: (paneId: string) => void
   onLayoutChange: (layout: PaneLayout) => void
@@ -91,6 +97,7 @@ function SplitNode({
   rootLayout,
   activePaneId,
   tabActive,
+  hostId = '',
   opacity,
   onSelectPane,
   onLayoutChange,
@@ -127,6 +134,7 @@ function SplitNode({
           rootLayout={rootLayout}
           activePaneId={activePaneId}
           tabActive={tabActive}
+          hostId={hostId}
           opacity={opacity}
           onSelectPane={onSelectPane}
           onLayoutChange={onLayoutChange}
@@ -145,6 +153,7 @@ function SplitNode({
           rootLayout={rootLayout}
           activePaneId={activePaneId}
           tabActive={tabActive}
+          hostId={hostId}
           opacity={opacity}
           onSelectPane={onSelectPane}
           onLayoutChange={onLayoutChange}

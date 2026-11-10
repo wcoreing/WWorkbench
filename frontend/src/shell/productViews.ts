@@ -22,5 +22,6 @@ export const PRODUCT_VIEWS: Record<ProductId, ComponentType> = {
   skills: lazyNamed(() => import('../products/skills/SkillsWorkbench'), 'SkillsWorkbench'),
   httpapi: lazyNamed(() => import('../products/httpapi/HttpApiWorkbench'), 'HttpApiWorkbench'),
   logs: lazyNamed(() => import('../products/logs/LogCenterWorkbench'), 'LogCenterWorkbench'),
+  backup: lazyNamed(() => import('../products/backup/BackupWorkbench'), 'BackupWorkbench'),
   plugins: lazyNamed(() => import('../products/plugins/PluginsWorkbench'), 'PluginsWorkbench'),
 }

@@ -106,6 +106,10 @@ export function DeleteAgentSkill(arg1) {
   return window['go']['app']['Service']['DeleteAgentSkill'](arg1);
 }
 
+export function DeleteBackupPolicy(arg1) {
+  return window['go']['app']['Service']['DeleteBackupPolicy'](arg1);
+}
+
 export function DeleteConnection(arg1) {
   return window['go']['app']['Service']['DeleteConnection'](arg1);
 }
@@ -354,6 +358,10 @@ export function GetVersion() {
   return window['go']['app']['Service']['GetVersion']();
 }
 
+export function GrantMCPWriteDir(arg1) {
+  return window['go']['app']['Service']['GrantMCPWriteDir'](arg1);
+}
+
 export function ImportConnectionsFromFile() {
   return window['go']['app']['Service']['ImportConnectionsFromFile']();
 }
@@ -392,6 +400,14 @@ export function ListAgentThreads() {
 
 export function ListAppSettings() {
   return window['go']['app']['Service']['ListAppSettings']();
+}
+
+export function ListBackupPolicies() {
+  return window['go']['app']['Service']['ListBackupPolicies']();
+}
+
+export function ListBackupRuns(arg1, arg2) {
+  return window['go']['app']['Service']['ListBackupRuns'](arg1, arg2);
 }
 
 export function ListCloudAccounts() {
@@ -476,6 +492,10 @@ export function ListLocalPortProcesses(arg1) {
 
 export function ListLogSources() {
   return window['go']['app']['Service']['ListLogSources']();
+}
+
+export function ListMCPWriteDirs() {
+  return window['go']['app']['Service']['ListMCPWriteDirs']();
 }
 
 export function ListNotebookGroups() {
@@ -582,6 +602,10 @@ export function PickSFTPUploadPaths() {
   return window['go']['app']['Service']['PickSFTPUploadPaths']();
 }
 
+export function ProbeTerminalCwd(arg1) {
+  return window['go']['app']['Service']['ProbeTerminalCwd'](arg1);
+}
+
 export function PruneStoppedDockerHosts() {
   return window['go']['app']['Service']['PruneStoppedDockerHosts']();
 }
@@ -642,8 +666,16 @@ export function RevealPluginPackPath(arg1) {
   return window['go']['app']['Service']['RevealPluginPackPath'](arg1);
 }
 
+export function RevokeMCPWriteDir(arg1, arg2) {
+  return window['go']['app']['Service']['RevokeMCPWriteDir'](arg1, arg2);
+}
+
 export function RollbackPluginPack(arg1, arg2) {
   return window['go']['app']['Service']['RollbackPluginPack'](arg1, arg2);
+}
+
+export function RunBackupPolicy(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['RunBackupPolicy'](arg1, arg2, arg3);
 }
 
 export function RunContainer(arg1, arg2) {
@@ -668,6 +700,10 @@ export function SaveAgentSkill(arg1) {
 
 export function SaveAgentSkillFile(arg1) {
   return window['go']['app']['Service']['SaveAgentSkillFile'](arg1);
+}
+
+export function SaveBackupPolicy(arg1) {
+  return window['go']['app']['Service']['SaveBackupPolicy'](arg1);
 }
 
 export function SaveCloudAccount(arg1) {

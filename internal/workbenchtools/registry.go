@@ -100,9 +100,25 @@ func (r *Registry) Invoke(ctx context.Context, name string, args json.RawMessage
 	if !ok {
 		return Fail(fmt.Sprintf("未知工具: %s", name))
 	}
+	// 第三方 MCP：动手类工具前必须已读 get_agent_rules（内置 Agent 开跑会 Mark）
+	if requiresAgentRulesAck(name) && !AgentRulesAcked() {
+		return Fail(errNeedAgentRules)
+	}
+	// 意图声明卡：动手类须人话 intent（确认标题 / 舞台回放）
+	if requiresIntent(name, args) {
+		if errMsg := validateIntent(extractIntent(args)); errMsg != "" {
+			return Fail(errMsg)
+		}
+	}
 	// 统一规则：参数能解析到 SSH 主机 → 先打开/聚焦可见终端，再执行工具
 	ensureSSHTerminalStage(r.deps, name, args)
-	return t.Handler(ctx, r.deps, args)
+	res := t.Handler(ctx, r.deps, args)
+	if res.NeedsConfirm {
+		res = enrichConfirmWithIntent(name, args, res)
+	} else if intent := extractIntent(args); intent != "" && requiresIntent(name, args) {
+		RecordIntentCard(IntentCard{Tool: name, Intent: intent, Summary: intent})
+	}
+	return res
 }
 
 func (r *Registry) add(def ToolDef) {
@@ -112,8 +128,19 @@ func (r *Registry) add(def ToolDef) {
 
 func (r *Registry) registerBuiltins() {
 	r.add(ToolDef{
+		Name: workbench.CapGetAgentRules,
+		Description: "【第三方 Agent 强制首步】返回 WWorkbench 系统约束全文（舞台/确认/数据文件防护/终端用法等）并标记已读。" +
+			"新会话或重启后，在 shell_run / execute_sql / 容器与插件写等动手操作之前必须先调用；未读将被拒绝。",
+		Parameters: map[string]interface{}{
+			"type":       "object",
+			"properties": map[string]interface{}{},
+		},
+		MCPOnly: true,
+		Handler: toolGetAgentRules,
+	})
+	r.add(ToolDef{
 		Name:        "get_workbench_context",
-		Description: "工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）。问终端输出用 get_shell_output 按需分页拉取，不要为了看屏幕乱 shell_probe。",
+		Description: "工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）；含近期 intentCards（意图声明回放）。问终端输出用 get_shell_output。新会话请先 get_agent_rules。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -263,8 +290,64 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolDescribeTable,
 	})
 	r.add(ToolDef{
+		Name:        workbench.CapListBackupPolicies,
+		Description: "列出备份策略资产（files/sqlite/db）。写前防护与 run_backup 都引用这些策略。",
+		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
+		Handler:     toolListBackupPolicies,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapSaveBackupPolicy,
+		Description: "保存备份策略（对齐云盘快照）。kind=files|sqlite 须 path+可选 sshHostId；kind=db 须 connectionId。保留：retainDays>0 按天（默认 7），否则 retainCount 按份数配额（0=不清理）。cronExpr 五段定时。须填 intent。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"id":           map[string]interface{}{"type": "string"},
+				"name":         map[string]interface{}{"type": "string"},
+				"kind":         map[string]interface{}{"type": "string", "description": "files | sqlite | db"},
+				"sshHostId":    map[string]interface{}{"type": "string"},
+				"connectionId": map[string]interface{}{"type": "string"},
+				"path":         map[string]interface{}{"type": "string", "description": "files/sqlite 绝对路径"},
+				"destRoot":     map[string]interface{}{"type": "string"},
+				"beforeWrite":  map[string]interface{}{"type": "boolean"},
+				"retainDays":   map[string]interface{}{"type": "integer", "description": "自定义保留天数（优先）；默认 7"},
+				"retainCount":  map[string]interface{}{"type": "integer", "description": "持续保留配额份数；retainDays=0 时生效"},
+				"cronExpr":     map[string]interface{}{"type": "string", "description": "五段 cron；空=不定时"},
+				"enabled":      map[string]interface{}{"type": "boolean"},
+				"intent":       intentProp(),
+			},
+			"required": []interface{}{"name", "kind"},
+		},
+		Handler: toolSaveBackupPolicy,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapRunBackup,
+		Description: "按 policyId 无头执行备份（不跳终端）。成功后按 retainDays/retainCount 清理本策略旧份。写库前若 beforeWrite 且无新鲜备份会自动跑。须填 intent。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"policyId": map[string]interface{}{"type": "string"},
+				"intent":   intentProp(),
+				"force":    map[string]interface{}{"type": "boolean", "description": "忽略新鲜窗口强制再备"},
+			},
+			"required": []interface{}{"policyId"},
+		},
+		Handler: toolRunBackup,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapListBackupRuns,
+		Description: "列出备份执行记录（可按 policyId 过滤）。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"policyId": map[string]interface{}{"type": "string"},
+				"limit":    map[string]interface{}{"type": "integer"},
+			},
+		},
+		Handler: toolListBackupRuns,
+	})
+	r.add(ToolDef{
 		Name:        workbench.CapShellRun,
-		Description: "给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。会前置工作台并点亮对应终端+状态栏。风险命令（重定向写文件/rm/docker rm 等）先工作台拍板再注入。不返回 stdout；人在面板看输出。注入后立刻 get_shell_output(waitMs) 等新输出，禁止编造 stdout。只读短探针才用 shell_probe。",
+		Description: "给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。有 initialCommand 时必须填 intent（人话：要干什么、影响谁）。会前置工作台并点亮对应终端+状态栏。风险命令先工作台拍板（标题为人话意图）；目录护照不可免除数据硬风险。确认后对 rsync 自动 --exclude *.db/data/.env，并对目标做写前备份（命中 backup policy 则用其 destRoot）。不返回 stdout；注入后立刻 get_shell_output(waitMs)。只读短探针才用 shell_probe。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -284,6 +367,7 @@ func (r *Registry) registerBuiltins() {
 					"type":        "string",
 					"description": "连接后自动注入到可见 PTY，可多行。行首空格与空行会原样送进终端（Python/heredoc 可用）。不返回 stdout。",
 				},
+				"intent": intentProp(),
 			},
 		},
 		Handler: toolTerminalOpen,
@@ -397,7 +481,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        "execute_sql",
-		Description: "在指定会话执行 SQL。readonly=true 时仅允许查询；写入类 SQL 需用户确认后执行。",
+		Description: "在指定会话执行 SQL。readonly=true 时仅允许查询；写入类 SQL 需用户确认后执行，并须填 intent 意图声明。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -405,6 +489,7 @@ func (r *Registry) registerBuiltins() {
 				"database":  map[string]interface{}{"type": "string"},
 				"sql":       map[string]interface{}{"type": "string"},
 				"readonly":  map[string]interface{}{"type": "boolean", "description": "默认 true"},
+				"intent":    intentProp(),
 			},
 			"required": []interface{}{"sessionId", "sql"},
 		},
@@ -504,12 +589,13 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        "start_container",
-		Description: "启动已存在的容器（需用户确认）。勿用 shell_probe 执行 docker start。",
+		Description: "启动已存在的容器（需用户确认）。勿用 shell_probe 执行 docker start。须填 intent。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"contextId":   map[string]interface{}{"type": "string", "description": "Docker 上下文 ID，默认 local"},
 				"containerId": map[string]interface{}{"type": "string", "description": "容器名称或 ID"},
+				"intent":      intentProp(),
 			},
 			"required": []interface{}{"containerId"},
 		},
@@ -517,12 +603,13 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        "stop_container",
-		Description: "停止运行中的容器（需用户确认）。勿用 shell_probe 执行 docker stop。",
+		Description: "停止运行中的容器（需用户确认）。勿用 shell_probe 执行 docker stop。须填 intent。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"contextId":   map[string]interface{}{"type": "string"},
 				"containerId": map[string]interface{}{"type": "string"},
+				"intent":      intentProp(),
 			},
 			"required": []interface{}{"containerId"},
 		},
@@ -530,12 +617,13 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        "remove_container",
-		Description: "删除容器（force，需用户确认）。勿用 shell_probe 执行 docker rm。",
+		Description: "删除容器（force，需用户确认）。勿用 shell_probe 执行 docker rm。须填 intent。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"contextId":   map[string]interface{}{"type": "string"},
 				"containerId": map[string]interface{}{"type": "string"},
+				"intent":      intentProp(),
 			},
 			"required": []interface{}{"containerId"},
 		},
@@ -633,7 +721,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        "execute_http",
-		Description: "执行 HTTP 请求。优先 requestId 引用已保存资产；临时 URL 仅用于探路，探通后应 save_http_request。GET/HEAD 直接执行；写方法需确认。",
+		Description: "执行 HTTP 请求。优先 requestId 引用已保存资产；临时 URL 仅用于探路，探通后应 save_http_request。GET/HEAD 直接执行；写方法需确认。动手须填 intent。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -643,6 +731,7 @@ func (r *Registry) registerBuiltins() {
 				"body":      map[string]interface{}{"type": "string"},
 				"envId":     map[string]interface{}{"type": "string", "description": "环境变量预设 ID"},
 				"timeoutMs": map[string]interface{}{"type": "integer"},
+				"intent":    intentProp(),
 			},
 		},
 		Handler: toolExecuteHTTP,
@@ -666,6 +755,23 @@ func (r *Registry) registerBuiltins() {
 			},
 		},
 		Handler: toolLogsOpen,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapBackupOpen,
+		Description: "打开备份工作台：按 policyId 聚焦，或 create=true 按 path/sshHostId/connectionId 起草新策略。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"policyId":     map[string]interface{}{"type": "string"},
+				"name":         map[string]interface{}{"type": "string"},
+				"kind":         map[string]interface{}{"type": "string"},
+				"path":         map[string]interface{}{"type": "string"},
+				"sshHostId":    map[string]interface{}{"type": "string"},
+				"connectionId": map[string]interface{}{"type": "string"},
+				"create":       map[string]interface{}{"type": "boolean"},
+			},
+		},
+		Handler: toolBackupOpen,
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapHTTPAPIOpen,

@@ -21,6 +21,9 @@ func TestAssessShellRisk(t *testing.T) {
 		{"git reset --hard", true},
 		{"tee out.txt", true},
 		{"kill 1234", true},
+		{"rsync -av server/ /www/app/server/", true},
+		{"scp -r a/ b/", true},
+		{"mysql x < dump.sql", true},
 	}
 	for _, c := range cases {
 		got, _ := assessShellRisk(c.cmd)

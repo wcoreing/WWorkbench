@@ -11,7 +11,7 @@ import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildSftpSurface, briefList } from '../../stores/agentSurface'
 import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
-import { openNotebook, openTerminal, openLogs, openSSHForward, useWorkbenchCommand } from '../../stores/productLink'
+import { openNotebook, openTerminal, openLogs, openBackup, openSSHForward, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
@@ -1369,6 +1369,37 @@ export function SftpWorkbench() {
                 })}
               >
                 {t('sftp.openInLogs')}
+              </button>
+            )
+          })()}
+          {paneMenu.entry && activeTab && (() => {
+            const host = hosts.find((h) => h.id === activeTab.hostId)
+            if (host?.kind !== 'ssh') return null
+            const entry = paneMenu.entry!
+            const kind = entry.isDir
+              ? 'files'
+              : entry.name.toLowerCase().endsWith('.db')
+                ? 'sqlite'
+                : 'files'
+            return (
+              <button
+                type="button"
+                className="wn-context-item"
+                {...pressProps(() => {
+                  setPaneMenu(null)
+                  openBackup(
+                    {
+                      create: true,
+                      name: entry.name,
+                      kind,
+                      path: entry.path,
+                      sshHostId: host.id,
+                    },
+                    'sftp',
+                  )
+                })}
+              >
+                {t('sftp.createBackupPolicy')}
               </button>
             )
           })()}

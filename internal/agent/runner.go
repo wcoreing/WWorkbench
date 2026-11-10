@@ -727,6 +727,8 @@ func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool, sk
 			})
 		}
 	}()
+	// 内置 Agent 已有系统提示，视为已读规则，避免挡住 shell_run 等
+	workbenchtools.MarkAgentRulesAck()
 	th := r.ensureThread(threadID)
 	if th == nil || r.harness == nil {
 		r.emit("agent:done", map[string]interface{}{"threadId": threadID, "error": "会话或 harness 不可用"})
@@ -990,7 +992,9 @@ func (r *Runner) systemPrompt(mode string) string {
 1b. 前馈「@ 绑定」已有 SSH / Docker / 数据库时：优先当作默认操作对象并在回复里点名。用户未改口时不要用「有哪些机器」式空问；目标不确定或与绑定冲突时再问清。
 1c. 用户只回「1」「2」时：在**对话历史**里找上一轮助手的编号选项并对号执行；禁止因界面快照里没有列表就说「本轮没有选项」。
 2. 用户问「有哪些连接/链接」时，必须同时调用 list_connections（数据库）与 list_ssh_hosts（SSH），分开展示。
-3. Shell 合同：人看得见的工作（pip、下载、训练、写脚本、管道）必须 shell_run 注入可见 PTY，本轮不返回 stdout，禁止编造输出；注入后用 get_shell_output 看新输出。shell_probe 只做只读短探针（uptime / free / df / nvidia-smi / pip show / python -c print / ls / cat），另开会话、等结果、默认 30s；装包/下载/训练/跑脚本会被拒绝。看磁盘文件用 cat，不要 sed/awk。用户 PTY 正忙时不要用探针抢同一台的交互。问「跑完了吗」用 get_shell_output，不要为了看屏幕再跑一遍。会话断开或面板出现「会话已结束」时先 terminal_reconnect（sessionId 或 hostId），再继续 shell_run。
+3. Shell 合同：人看得见的工作（pip、下载、训练、写脚本、管道）必须 shell_run 注入可见 PTY，本轮不返回 stdout，禁止编造输出；注入后用 get_shell_output 看新输出。有 initialCommand 时必须填 intent（人话：要干什么、影响谁），确认弹窗与状态栏会展示。shell_probe 只做只读短探针（uptime / free / df / nvidia-smi / pip show / python -c print / ls / cat），另开会话、等结果、默认 30s；装包/下载/训练/跑脚本会被拒绝。看磁盘文件用 cat，不要 sed/awk。用户 PTY 正忙时不要用探针抢同一台的交互。问「跑完了吗」用 get_shell_output，不要为了看屏幕再跑一遍。会话断开或面板出现「会话已结束」时先 terminal_reconnect（sessionId 或 hostId），再继续 shell_run。
+3c. 意图声明卡：写入 SQL、容器启停删、插件写、save_*、写 HTTP、run_backup 等动手工具同样必须传 intent；禁止占位词。
+3d. 备份策略（云盘快照式）：save_backup_policy（files/sqlite 绑 path+sshHostId，或 db 绑 connectionId；可选 cronExpr；retainDays 按天默认 7，或 retainCount 按份数配额）；run_backup 无头执行。服务发现后须探测 *.db/data/.env 并自动建策略；写 SQL 若 beforeWrite 会先备份。
 3b. 长任务（大文件下载、pip、训练）：shell_run 注入后最多用 get_shell_output 查 1～2 次进度；若仍在进行，向用户汇报当前进度并结束本轮，请用户到终端看进度、完成后说「继续」或「查进度」。禁止在同一轮里反复「继续等待」空转轮询，否则会打满工具步数。
 4. 容器启停/删除必须用 start_container / stop_container / remove_container（会弹确认），禁止 docker rm/start/stop 走 shell_probe。
 5. 查库：database_open 或 open_database_session + execute_sql；默认 readonly=true。

@@ -13,7 +13,7 @@ import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/ag
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildTerminalSurface } from '../../stores/agentSurface'
-import { openNotebook, openDockerContextFromHost, openSftp, openLogs, openSSHForward, useWorkbenchCommand } from '../../stores/productLink'
+import { openNotebook, openDockerContextFromHost, openSftp, openLogs, openBackup, openSSHForward, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadBool, payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
@@ -1195,6 +1195,7 @@ export function TerminalWorkbench() {
                     rootLayout={t.layout}
                     activePaneId={t.activePaneId}
                     tabActive={t.id === activeTabId}
+                    hostId={t.kind === 'local' ? '' : t.hostId}
                     opacity={terminalOpacity}
                     onSelectPane={(paneId) => updateTab(t.id, { activePaneId: paneId })}
                     onLayoutChange={(layout) => updateTab(t.id, { layout })}
@@ -1326,6 +1327,60 @@ export function TerminalWorkbench() {
             })}
           >
             {t('terminal.ctxSftp')}
+          </button>
+          <button
+            type="button"
+            className="wn-context-item wn-context-item-indent"
+            {...pressProps(() => {
+              const host = ctxMenu.host
+              if (host === 'local') return
+              setCtxMenu(null)
+              void (async () => {
+                const tab =
+                  tabs.find((x) => x.id === activeTabId && x.hostId === host.id && x.connectState === 'ready') ||
+                  tabs.find((x) => x.hostId === host.id && x.connectState === 'ready')
+                const findSession = (
+                  node: NonNullable<typeof tab>['layout'],
+                  paneId: string,
+                ): string => {
+                  if (node.kind === 'leaf') return node.paneId === paneId ? node.sessionId : ''
+                  return findSession(node.first, paneId) || findSession(node.second, paneId)
+                }
+                const firstSession = (node: NonNullable<typeof tab>['layout']): string => {
+                  if (node.kind === 'leaf') return node.sessionId
+                  return firstSession(node.first) || firstSession(node.second)
+                }
+                let path = ''
+                if (tab) {
+                  const sid = findSession(tab.layout, tab.activePaneId) || firstSession(tab.layout)
+                  if (sid) {
+                    try {
+                      path = (await api.probeTerminalCwd(sid)).path || ''
+                    } catch {
+                      /* fall through */
+                    }
+                  }
+                }
+                if (!path.startsWith('/')) {
+                  setStatusMessage(t('terminal.backupNeedPath'))
+                  return
+                }
+                const base = path.split('/').filter(Boolean).pop() || host.name
+                openBackup(
+                  {
+                    create: true,
+                    name: base,
+                    kind: 'files',
+                    path,
+                    sshHostId: host.id,
+                  },
+                  'terminal',
+                )
+                setStatusMessage(t('terminal.backupDrafted', { path }))
+              })()
+            })}
+          >
+            {t('terminal.createBackupPolicy')}
           </button>
           {ctxMenu.host.kind === 'ssh' && (
             <button

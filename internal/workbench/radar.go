@@ -21,6 +21,7 @@ const (
 	RadarDomainSSHForward      = "ssh.forward"
 	RadarDomainAgentSkill      = "agent.skill"
 	RadarDomainPluginPack      = "plugin.pack"
+	RadarDomainBackupPolicy    = "backup.policy"
 )
 
 // 变更操作。

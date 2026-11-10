@@ -139,6 +139,31 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "backup_open", Label: "打开备份工作台", Risk: RiskSession,
+			Description:    "切换到备份产品线；可起草或聚焦策略",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "list_backup_policies", Label: "列出备份策略", Risk: RiskRead,
+			Description:    "files/sqlite/db 备份策略资产",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "save_backup_policy", Label: "保存备份策略", Risk: RiskWrite,
+			Description:    "统一备份策略（文件路径或数据库连接）；写前可强制",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "run_backup", Label: "执行备份", Risk: RiskWrite,
+			Description:    "按策略备份；需确认；写库前 beforeWrite 可自动触发",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "list_backup_runs", Label: "列出备份记录", Risk: RiskRead,
+			Description:    "备份执行历史（成功/失败/注入）",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "notebook_append_content", Label: "写入笔记本", Risk: RiskWrite,
 			Description:    "写入笔记本（按标题定位或新建，不要默认当前打开的草稿）",
 			DefaultEnabled: true,

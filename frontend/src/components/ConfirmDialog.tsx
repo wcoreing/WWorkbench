@@ -7,6 +7,8 @@ interface ConfirmDialogProps {
   open: boolean
   title: string
   message?: string
+  /** 命令/SQL 等，以等宽代码块展示 */
+  code?: string
   confirmLabel?: string
   danger?: boolean
   children?: ReactNode
@@ -19,6 +21,7 @@ export function ConfirmDialog({
   open,
   title,
   message,
+  code,
   confirmLabel,
   danger = false,
   children,
@@ -27,6 +30,7 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const { t } = useI18n()
   const okLabel = confirmLabel ?? t('common.confirm')
+  const hasCode = Boolean(code?.trim())
 
   if (!open) return null
 
@@ -37,7 +41,7 @@ export function ConfirmDialog({
       {...backdropDismissProps(onCancel)}
     >
       <div
-        className="wn-modal wn-modal-compact ssh-trust-dialog"
+        className={`wn-modal wn-modal-compact ssh-trust-dialog${hasCode ? ' is-code-confirm' : ''}`}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         role="dialog"
@@ -49,6 +53,13 @@ export function ConfirmDialog({
           </h2>
           {message && <p className="wn-modal-desc">{message}</p>}
         </header>
+        {hasCode ? (
+          <div className="wn-modal-body wn-confirm-code-wrap">
+            <pre className="wn-confirm-code" tabIndex={0}>
+              {code}
+            </pre>
+          </div>
+        ) : null}
         {children ? <div className="wn-modal-body">{children}</div> : null}
         <footer className="wn-modal-footer">
           <button type="button" className="wn-btn wn-btn-tool" {...pressProps(onCancel)}>

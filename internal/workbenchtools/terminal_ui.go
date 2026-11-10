@@ -12,10 +12,11 @@ import (
 )
 
 type openTerminalArgs struct {
-	LocalShell      bool   `json:"localShell"`
-	HostID          string `json:"hostId"`
-	HostOrName      string `json:"hostOrName"`
-	InitialCommand  string `json:"initialCommand"`
+	LocalShell     bool   `json:"localShell"`
+	HostID         string `json:"hostId"`
+	HostOrName     string `json:"hostOrName"`
+	InitialCommand string `json:"initialCommand"`
+	Intent         string `json:"intent"`
 }
 
 // normalizeTerminalCommand 将多行命令规范为可写入 PTY 的格式（每行以 \r 结尾）。
@@ -80,23 +81,56 @@ func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 		return Fail("参数无效: " + err.Error())
 	}
 	if risky, reason := assessShellRisk(in.InitialCommand); risky {
+		hostKey := "local"
+		if !in.LocalShell {
+			if h, _, errMsg := resolveSSHHost(d, in.HostID, in.HostOrName); errMsg == "" && h != nil {
+				hostKey = h.ID
+			}
+		}
+		if d.WriteAllows != nil && d.WriteAllows.WaiveSoftFileRisk(hostKey, in.InitialCommand, reason) {
+			return dispatchShellRun(d, in)
+		}
 		preview, errMsg := shellRunConfirmPreview(d, in)
 		if errMsg != "" {
 			return Fail(errMsg)
 		}
 		preview["risk"] = reason
 		preview["command"] = strings.TrimSpace(in.InitialCommand)
-		return Confirm(uuid.NewString(), "终端注入："+reason, preview)
+		if intent := strings.TrimSpace(in.Intent); intent != "" {
+			preview["intent"] = intent
+		}
+		if isHardShellRiskReason(reason) {
+			preview["dataGuard"] = true
+			preview["backupDir"] = defaultDataBackupRoot
+			if reason == riskSyncNoDataExclude || (isRsyncCmd(in.InitialCommand) && !hasDataExcludes(in.InitialCommand)) {
+				preview["autoExclude"] = "*.db / data / .env"
+			}
+			if shouldApplyDataGuardOnConfirm(reason) {
+				preview["backupBefore"] = true
+			}
+		}
+		summary := "终端注入：" + reason
+		if intent := strings.TrimSpace(in.Intent); intent != "" {
+			summary = truncateRunes(intent, intentTitleMaxRune)
+		}
+		return Confirm(uuid.NewString(), summary, preview)
 	}
 	return dispatchShellRun(d, in)
 }
 
-// ShellRunConfirmed 用户确认后注入 shell_run（跳过风险检查）。
+// ShellRunConfirmed 用户确认后注入 shell_run（跳过风险检查；数据防护仍自动 exclude + 写前备份）。
 func ShellRunConfirmed(_ context.Context, d *Deps, argsJSON string) ToolResult {
 	var in openTerminalArgs
 	if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
 		return Fail("参数无效: " + err.Error())
 	}
+	hostKey := "local"
+	if !in.LocalShell {
+		if h, _, errMsg := resolveSSHHost(d, in.HostID, in.HostOrName); errMsg == "" && h != nil {
+			hostKey = h.ID
+		}
+	}
+	in.InitialCommand, _ = applyDataGuardOnConfirm(d, hostKey, in.InitialCommand)
 	return dispatchShellRun(d, in)
 }
 
@@ -105,6 +139,9 @@ func shellRunConfirmPreview(d *Deps, in openTerminalArgs) (map[string]interface{
 		"localShell":     in.LocalShell,
 		"initialCommand": strings.TrimSpace(in.InitialCommand),
 		"commandPreview": truncateCmdPreview(in.InitialCommand, 120),
+	}
+	if intent := strings.TrimSpace(in.Intent); intent != "" {
+		preview["intent"] = intent
 	}
 	if in.LocalShell {
 		preview["name"] = "本机"
@@ -130,6 +167,14 @@ func shellRunConfirmPreview(d *Deps, in openTerminalArgs) (map[string]interface{
 	return preview, ""
 }
 
+func stagePreviewWithIntent(intent, cmdPreview string) string {
+	intent = strings.TrimSpace(intent)
+	if intent != "" {
+		return truncateRunes(intent, 48)
+	}
+	return cmdPreview
+}
+
 func dispatchShellRun(d *Deps, in openTerminalArgs) ToolResult {
 	cmd := normalizeTerminalCommand(in.InitialCommand)
 	if in.LocalShell {
@@ -137,13 +182,18 @@ func dispatchShellRun(d *Deps, in openTerminalArgs) ToolResult {
 			return Fail("UI 联动未初始化")
 		}
 		preview := truncateCmdPreview(in.InitialCommand, 72)
-		d.UIActions.Dispatch(UIActionShellRun, map[string]interface{}{
+		stagePrev := stagePreviewWithIntent(in.Intent, preview)
+		payload := map[string]interface{}{
 			"localShell":     true,
 			"initialCommand": cmd,
 			"name":           "本机",
-			"stageLabel":     stageLabelLocal(preview),
+			"stageLabel":     stageLabelLocal(stagePrev),
 			"commandPreview": preview,
-		})
+		}
+		if intent := strings.TrimSpace(in.Intent); intent != "" {
+			payload["intent"] = intent
+		}
+		d.UIActions.Dispatch(UIActionShellRun, payload)
 		return OKData(map[string]interface{}{
 			"opened":         true,
 			"kind":           "local",
@@ -166,15 +216,20 @@ func dispatchShellRun(d *Deps, in openTerminalArgs) ToolResult {
 		return Fail("UI 联动未初始化")
 	}
 	preview := truncateCmdPreview(in.InitialCommand, 72)
-	d.UIActions.Dispatch(UIActionShellRun, map[string]interface{}{
+	stagePrev := stagePreviewWithIntent(in.Intent, preview)
+	payload := map[string]interface{}{
 		"hostId":         host.ID,
 		"initialCommand": cmd,
 		"name":           host.Name,
 		"host":           host.Host,
 		"user":           host.User,
-		"stageLabel":     stageLabelSSH(host.Name, preview),
+		"stageLabel":     stageLabelSSH(host.Name, stagePrev),
 		"commandPreview": preview,
-	})
+	}
+	if intent := strings.TrimSpace(in.Intent); intent != "" {
+		payload["intent"] = intent
+	}
+	d.UIActions.Dispatch(UIActionShellRun, payload)
 	return OKData(map[string]interface{}{
 		"opened":         true,
 		"hostId":         host.ID,

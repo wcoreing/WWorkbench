@@ -56,6 +56,8 @@ export function CreateDatabase(arg1:string,arg2:string,arg3:string,arg4:string):
 
 export function DeleteAgentSkill(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function DeleteBackupPolicy(arg1:string):Promise<app.ApiResult_bool_>;
+
 export function DeleteConnection(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteDockerContext(arg1:string):Promise<app.ApiResult_bool_>;
@@ -180,6 +182,8 @@ export function GetTableDataPage(arg1:string,arg2:string,arg3:string,arg4:model.
 
 export function GetVersion():Promise<app.ApiResult_WWorkbench_internal_model_VersionDO_>;
 
+export function GrantMCPWriteDir(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_MCPWriteAllowDO_>;
+
 export function ImportConnectionsFromFile():Promise<app.ApiResult_int_>;
 
 export function InstallEnvManager(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
@@ -199,6 +203,10 @@ export function ListAgentSkills():Promise<app.ApiResult___WWorkbench_internal_mo
 export function ListAgentThreads():Promise<app.ApiResult___WWorkbench_internal_model_AgentThreadDO_>;
 
 export function ListAppSettings():Promise<app.ApiResult_map_string_string_>;
+
+export function ListBackupPolicies():Promise<app.ApiResult___WWorkbench_internal_model_BackupPolicyDO_>;
+
+export function ListBackupRuns(arg1:string,arg2:number):Promise<app.ApiResult___WWorkbench_internal_model_BackupRunDO_>;
 
 export function ListCloudAccounts():Promise<app.ApiResult___WWorkbench_internal_model_CloudAccountDO_>;
 
@@ -241,6 +249,8 @@ export function ListLocalDir(arg1:string):Promise<app.ApiResult_WWorkbench_inter
 export function ListLocalPortProcesses(arg1:number):Promise<app.ApiResult___WWorkbench_internal_model_LocalPortProcessDO_>;
 
 export function ListLogSources():Promise<app.ApiResult___WWorkbench_internal_model_LogSourceDO_>;
+
+export function ListMCPWriteDirs():Promise<app.ApiResult___WWorkbench_internal_model_MCPWriteAllowDO_>;
 
 export function ListNotebookGroups():Promise<app.ApiResult___WWorkbench_internal_model_NotebookGroupDO_>;
 
@@ -294,6 +304,8 @@ export function PickSFTPUploadDir():Promise<app.ApiResult_string_>;
 
 export function PickSFTPUploadPaths():Promise<app.ApiResult___string_>;
 
+export function ProbeTerminalCwd(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_TerminalCwdDO_>;
+
 export function PruneStoppedDockerHosts():Promise<app.ApiResult_int_>;
 
 export function PublishAgentSkill(arg1:model.AgentSkillPublishDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
@@ -324,7 +336,11 @@ export function RestartContainer(arg1:string,arg2:string):Promise<app.ApiResult_
 
 export function RevealPluginPackPath(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function RevokeMCPWriteDir(arg1:string,arg2:string):Promise<app.ApiResult_int_>;
+
 export function RollbackPluginPack(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_pluginpack_PackInfo_>;
+
+export function RunBackupPolicy(arg1:string,arg2:string,arg3:boolean):Promise<app.ApiResult_map_string_interface____>;
 
 export function RunContainer(arg1:string,arg2:model.ContainerRunDO):Promise<app.ApiResult_WWorkbench_internal_model_ContainerDO_>;
 
@@ -337,6 +353,8 @@ export function SaveAgentSettings(arg1:model.AgentSettingsSaveDO):Promise<app.Ap
 export function SaveAgentSkill(arg1:model.AgentSkillSaveDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
 
 export function SaveAgentSkillFile(arg1:model.AgentSkillFileSaveDO):Promise<app.ApiResult_bool_>;
+
+export function SaveBackupPolicy(arg1:model.BackupPolicyDO):Promise<app.ApiResult_WWorkbench_internal_model_BackupPolicyDO_>;
 
 export function SaveCloudAccount(arg1:model.CloudAccountDO):Promise<app.ApiResult_WWorkbench_internal_model_CloudAccountDO_>;
 

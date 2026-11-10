@@ -11,8 +11,10 @@ import { openAgentDraft } from '../agent/openAgentDraft'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { useAgentStore } from '../../stores/agentStore'
+import { openBackup } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { openCapability } from '../../workbench/workbenchCommandBus'
+import { joinRemotePath } from '../sftp/sftpUtils'
 import { registerTerminalFocus } from './terminalFocus'
 import {
   AGENT_SHELL_TAIL_LINES,
@@ -24,9 +26,20 @@ import {
   setActiveTerminalTailSession,
   writeAppClipboard,
 } from './terminalClipboard'
+import {
+  formatFrequentPathLabel,
+  frequentPathsHostKey,
+  loadFrequentPaths,
+  shellSingleQuote,
+  topFrequentPaths,
+  touchFrequentPath,
+  type FrequentPathEntry,
+} from './frequentPaths'
 
 interface Props {
   sessionId: string
+  /** SSH / Docker ShellHost id；本机终端为空。 */
+  hostId?: string
   active: boolean
   /** 当前分屏焦点窗格（写入 Agent 上下文的那一路 Shell）。 */
   focused?: boolean
@@ -58,8 +71,22 @@ function termFontSizeForUi(uiFontSize: number): number {
   return Math.max(11, zoomCompensatedPx(BASE_TERM_FONT_PX, uiFontSize))
 }
 
+/** normalizeTerminalPathToken 取选区首行首段路径 token；拒绝 shell 提示符等噪音。 */
+function normalizeTerminalPathToken(raw: string): string {
+  const line = raw.trim().split(/\r?\n/)[0]?.trim() || ''
+  const token = line.split(/\s+/)[0]?.replace(/^['"]+|['"]+$/g, '') || ''
+  if (!token) return ''
+  // user@host:~# / root@ip:~$ 等提示符
+  if (/@/.test(token) && /[:#]/.test(token)) return ''
+  if (/[~#$]$/.test(token)) return ''
+  if (token.includes(']') && token.includes('[')) return ''
+  // 仅允许路径安全字符（相对名 data、绝对 /www/...）
+  if (!/^[\w./+-]+$/.test(token)) return ''
+  return token
+}
+
 /** xterm 终端视图：sessionId 变更时热绑定，保留 scrollback。 */
-export function TerminalPane({ sessionId, active, focused = false, opacity }: Props) {
+export function TerminalPane({ sessionId, hostId = '', active, focused = false, opacity }: Props) {
   const { t } = useI18n()
   const tRef = useRef(t)
   tRef.current = t
@@ -73,6 +100,9 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
   const uiFontSize = useAppStore((s) => s.uiFontSize)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
   const [sessionEnded, setSessionEnded] = useState(false)
+  const [frequentPaths, setFrequentPaths] = useState<FrequentPathEntry[]>([])
+  const hostKeyRef = useRef(frequentPathsHostKey(hostId))
+  hostKeyRef.current = frequentPathsHostKey(hostId)
 
   // 生命周期内只建一次 xterm，避免重连清空历史
   useEffect(() => {
@@ -276,6 +306,38 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
     if (focused) setActiveTerminalTailSession(sessionId)
   }, [focused, sessionId])
 
+  /** 右键打开时：探测 cwd 累计使用，并刷新常用路径菜单。 */
+  useEffect(() => {
+    if (!ctxMenu) return
+    let cancelled = false
+    void (async () => {
+      try {
+        let hostKey = hostKeyRef.current
+        let cwdPath = ''
+        try {
+          const probed = await api.probeTerminalCwd(sessionIdRef.current)
+          if (probed.hostKey) hostKey = frequentPathsHostKey(probed.hostKey)
+          cwdPath = (probed.path || '').trim()
+        } catch {
+          /* 探测失败仍展示已有常用路径 */
+        }
+        hostKeyRef.current = hostKey
+        let list: FrequentPathEntry[]
+        if (cwdPath.startsWith('/')) {
+          list = await touchFrequentPath(hostKey, cwdPath)
+        } else {
+          list = await loadFrequentPaths(hostKey)
+        }
+        if (!cancelled) setFrequentPaths(topFrequentPaths(list))
+      } catch {
+        if (!cancelled) setFrequentPaths([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [ctxMenu, sessionId])
+
   useEffect(() => {
     const term = termRef.current
     if (!active) {
@@ -323,6 +385,99 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
     })
   }
 
+  const grantMcpWriteDir = () => {
+    setCtxMenu(null)
+    if (sessionEnded) {
+      setStatusMessage(t('terminal.mcpWriteNeedReconnect'))
+      return
+    }
+    void (async () => {
+      try {
+        setStatusMessage(t('terminal.mcpWriteGranting'))
+        const allow = await api.grantMCPWriteDir(sessionIdRef.current)
+        setStatusMessage(t('terminal.mcpWriteGranted', { path: allow.path }))
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  }
+
+  const revokeMcpWriteDir = () => {
+    setCtxMenu(null)
+    void (async () => {
+      try {
+        await api.revokeMCPWriteDir(sessionIdRef.current, '')
+        setStatusMessage(t('terminal.mcpWriteRevoked'))
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  }
+
+  /** jumpToFrequentPath 注入 cd 进入常用路径，并再记一次使用。 */
+  const jumpToFrequentPath = (path: string) => {
+    setCtxMenu(null)
+    if (sessionEnded) {
+      setStatusMessage(t('terminal.mcpWriteNeedReconnect'))
+      return
+    }
+    void (async () => {
+      try {
+        await pasteIntoTerminal(sessionIdRef.current, `cd ${shellSingleQuote(path)}\n`)
+        const list = await touchFrequentPath(hostKeyRef.current, path)
+        setFrequentPaths(topFrequentPaths(list))
+        setStatusMessage(t('terminal.frequentPathJumped', { path }))
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  }
+
+  /** createBackupFromTerminal 用选区路径（或当前目录）起草备份策略。 */
+  const createBackupFromTerminal = () => {
+    setCtxMenu(null)
+    void (async () => {
+      try {
+        const sel = termRef.current ? normalizeTerminalPathToken(readXtermCopyText(termRef.current)) : ''
+        let cwd = ''
+        try {
+          const probed = await api.probeTerminalCwd(sessionIdRef.current)
+          cwd = (probed.path || '').trim()
+        } catch {
+          /* 选区已是绝对路径时可不依赖 cwd */
+        }
+        let path = ''
+        if (sel.startsWith('/')) {
+          path = sel
+        } else if (sel && cwd.startsWith('/')) {
+          path = joinRemotePath(cwd, sel)
+        } else if (cwd.startsWith('/')) {
+          // 选区非法（提示符等）时回退当前目录
+          path = cwd
+        }
+        if (!path.startsWith('/')) {
+          setStatusMessage(t('terminal.backupNeedPath'))
+          return
+        }
+        const base = path.split('/').filter(Boolean).pop() || path
+        const kind = base.toLowerCase().endsWith('.db') ? 'sqlite' : 'files'
+        openBackup(
+          {
+            create: true,
+            name: base,
+            kind,
+            path,
+            sshHostId: hostId || undefined,
+          },
+          'terminal',
+        )
+        setStatusMessage(t('terminal.backupDrafted', { path }))
+      } catch (e) {
+        setStatusMessage((e as Error).message)
+      }
+    })()
+  }
+
   return (
     <div className="terminal-pane-stack">
       <div
@@ -352,6 +507,36 @@ export function TerminalPane({ sessionId, active, focused = false, opacity }: Pr
           </button>
           <button type="button" className="wn-context-item" {...pressProps(runPaste)}>
             {t('terminal.paste')}
+          </button>
+          <div className="wn-context-sep" />
+          <div className="wn-context-submenu-label">{t('terminal.frequentPaths')}</div>
+          {frequentPaths.length === 0 ? (
+            <div className="wn-context-item wn-context-item-indent is-muted">
+              {t('terminal.frequentPathsEmpty')}
+            </div>
+          ) : (
+            frequentPaths.map((item) => (
+              <button
+                key={item.path}
+                type="button"
+                className="wn-context-item wn-context-item-indent"
+                title={`${item.path} · ×${item.count}`}
+                {...pressProps(() => jumpToFrequentPath(item.path))}
+              >
+                {formatFrequentPathLabel(item.path)}
+              </button>
+            ))
+          )}
+          <div className="wn-context-sep" />
+          <button type="button" className="wn-context-item" {...pressProps(createBackupFromTerminal)}>
+            {t('terminal.createBackupPolicy')}
+          </button>
+          <div className="wn-context-sep" />
+          <button type="button" className="wn-context-item" {...pressProps(grantMcpWriteDir)}>
+            {t('terminal.mcpWriteAllow')}
+          </button>
+          <button type="button" className="wn-context-item" {...pressProps(revokeMcpWriteDir)}>
+            {t('terminal.mcpWriteRevoke')}
           </button>
           {sessionEnded && (
             <>

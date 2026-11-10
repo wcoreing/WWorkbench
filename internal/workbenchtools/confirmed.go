@@ -15,6 +15,8 @@ func ExecuteConfirmed(ctx context.Context, d *Deps, toolName, argsJSON string) T
 		return ShellRunConfirmed(ctx, d, argsJSON)
 	case "execute_sql":
 		return ExecuteSQLConfirmed(ctx, d, argsJSON)
+	case workbench.CapRunBackup:
+		return RunBackupConfirmed(ctx, d, argsJSON)
 	case "execute_http":
 		return ExecuteHTTPConfirmed(ctx, d, argsJSON)
 	case "start_container":
@@ -56,6 +58,8 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 	if err != nil {
 		return Fail(err.Error())
 	}
+	intent := extractIntent(args)
+	MarkLatestIntentApproved(toolName, intent, approved)
 	if !approved {
 		return Fail("用户已在工作台拒绝：" + res.ConfirmSummary)
 	}

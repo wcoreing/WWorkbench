@@ -17,6 +17,7 @@ export function ConfirmHost() {
       open={!!req}
       title={req?.title ?? ''}
       message={req?.message}
+      code={req?.code}
       confirmLabel={req?.confirmLabel ?? t('common.confirm')}
       danger={req?.danger}
       onConfirm={() => resolveConfirm(true)}

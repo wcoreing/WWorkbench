@@ -93,6 +93,45 @@ func toolLogsOpen(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult 
 	})
 }
 
+type backupOpenArgs struct {
+	PolicyID     string `json:"policyId"`
+	Name         string `json:"name"`
+	Kind         string `json:"kind"`
+	Path         string `json:"path"`
+	SSHHostID    string `json:"sshHostId"`
+	ConnectionID string `json:"connectionId"`
+	Create       *bool  `json:"create"` // true=按草稿新建并聚焦
+}
+
+// toolBackupOpen 打开备份工作台（UI 联动 backup_open）。
+func toolBackupOpen(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
+	var in backupOpenArgs
+	if err := json.Unmarshal(raw, &in); err != nil {
+		return Fail("参数无效: " + err.Error())
+	}
+	if d.UIActions == nil {
+		return Fail("UI 联动未初始化")
+	}
+	create := false
+	if in.Create != nil {
+		create = *in.Create
+	}
+	d.UIActions.Dispatch(UIActionBackupOpen, map[string]interface{}{
+		"policyId":     in.PolicyID,
+		"name":         in.Name,
+		"kind":         in.Kind,
+		"path":         in.Path,
+		"sshHostId":    in.SSHHostID,
+		"connectionId": in.ConnectionID,
+		"create":       create,
+	})
+	return OKData(map[string]interface{}{
+		"opened":   true,
+		"policyId": in.PolicyID,
+		"note":     "已切换到备份工作台",
+	})
+}
+
 type httpAPIOpenArgs struct {
 	RequestID string `json:"requestId"`
 }

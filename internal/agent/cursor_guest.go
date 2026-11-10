@@ -10,6 +10,7 @@ import (
 
 	"WWorkbench/internal/cursorbridge"
 	"WWorkbench/internal/store"
+	"WWorkbench/internal/workbenchtools"
 
 	"github.com/google/uuid"
 	"github.com/wcoreing/ningharness/history"
@@ -25,6 +26,7 @@ func (r *Runner) runCursorTurn(ctx context.Context, threadID, prompt, feedforwar
 		r.cursorTurnCtx = nil
 		r.cursorMu.Unlock()
 	}()
+	workbenchtools.MarkAgentRulesAck()
 
 	settings := r.store.GetAgentSettings()
 	apiKey := r.store.AgentAPIKey()

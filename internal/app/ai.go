@@ -32,6 +32,7 @@ func (s *Service) wireAgentRunner() {
 	radar := workbenchtools.NewRadarBus(emit)
 	s.radar = radar
 	mcpConfirm := workbenchtools.NewMCPConfirmGate(emit)
+	writeAllows := workbenchtools.NewMCPWriteAllowBook(s.store)
 	deps := &workbenchtools.Deps{
 		Conns:       s.conns,
 		SSHHosts:    s.sshHosts,
@@ -44,6 +45,7 @@ func (s *Service) wireAgentRunner() {
 		UIActions:   workbenchtools.NewUIActionBus(emit),
 		Radar:       radar,
 		MCPConfirm:  mcpConfirm,
+		WriteAllows: writeAllows,
 		Terminals:   s.terminals,
 		PluginPacks: s.pluginPacks,
 	}

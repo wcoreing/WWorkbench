@@ -18,6 +18,8 @@ export function capabilityToProductId(capability: string): ProductId | null {
       return 'docker'
     case Capability.LogsOpen:
       return 'logs'
+    case Capability.BackupOpen:
+      return 'backup'
     case Capability.HttpApiOpen:
       return 'httpapi'
     case Capability.EnvironmentOpen:

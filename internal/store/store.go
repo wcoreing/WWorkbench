@@ -166,9 +166,41 @@ CREATE TABLE IF NOT EXISTS log_sources (
 CREATE TABLE IF NOT EXISTS app_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS backup_policies (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  ssh_host_id TEXT NOT NULL DEFAULT '',
+  connection_id TEXT NOT NULL DEFAULT '',
+  path TEXT NOT NULL DEFAULT '',
+  dest_root TEXT NOT NULL DEFAULT '',
+  before_write INTEGER NOT NULL DEFAULT 0,
+  retain_days INTEGER NOT NULL DEFAULT 0,
+  retain_count INTEGER NOT NULL DEFAULT 10,
+  cron_expr TEXT NOT NULL DEFAULT '',
+  enabled INTEGER NOT NULL DEFAULT 1,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS backup_runs (
+  id TEXT PRIMARY KEY,
+  policy_id TEXT NOT NULL,
+  trigger TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL,
+  dest_path TEXT NOT NULL DEFAULT '',
+  detail TEXT NOT NULL DEFAULT '',
+  intent TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
 );`)
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移应用设置表失败", err)
+	}
+	if err := s.ensureColumn("backup_policies", "cron_expr", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := s.ensureColumn("backup_policies", "retain_days", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
 	}
 	if err := s.ensureAgentPendingSchema(); err != nil {
 		return err

@@ -19,11 +19,14 @@ var (
 )
 
 // assessShellRisk 判断注入终端的命令是否需工作台拍板。
-// 空命令（仅开终端）不风险；只读类不拦。
+// 空命令（仅开终端）不风险；只读类不拦。数据文件 / 递归同步优先标硬风险。
 func assessShellRisk(cmd string) (risky bool, reason string) {
 	s := strings.TrimSpace(cmd)
 	if s == "" {
 		return false, ""
+	}
+	if ok, why := assessDataGuardRisk(s); ok {
+		return true, why
 	}
 	if hasWriteRedirect(s) {
 		return true, "写入文件（含重定向 > / >>）"

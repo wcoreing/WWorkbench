@@ -26,6 +26,7 @@ declare module '@wworkbench/host' {
     openTerminal: (...args: any[]) => void
     openSftp: (...args: any[]) => void
     openNotebook: (...args: any[]) => void
+    openBackup: (...args: any[]) => void
     useWorkbenchCommand: (...args: any[]) => void
     openAgentDraft: (...args: any[]) => void
     mentionDatabase: (...args: any[]) => void

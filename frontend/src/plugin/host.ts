@@ -49,7 +49,7 @@ import { TableDataEditor } from '../features/table-data/TableDataEditor'
 import { useAppStore } from '../stores/appStore'
 import type { ConnectionDraft } from '../stores/appStore'
 import { buildDatabaseSurface } from '../stores/agentSurface'
-import { openTerminal, openSftp, openNotebook, useWorkbenchCommand } from '../stores/productLink'
+import { openTerminal, openSftp, openNotebook, openBackup, useWorkbenchCommand } from '../stores/productLink'
 import { Capability } from '../workbench/capabilities'
 import { payloadBool, payloadStr } from '../workbench/commandPayload'
 import {
@@ -87,6 +87,7 @@ export type WWHostNav = {
   openTerminal: typeof openTerminal
   openSftp: typeof openSftp
   openNotebook: typeof openNotebook
+  openBackup: typeof openBackup
   useWorkbenchCommand: typeof useWorkbenchCommand
   openAgentDraft: typeof openAgentDraft
   mentionDatabase: typeof mentionDatabase
@@ -183,6 +184,7 @@ export function installWWHost() {
       openTerminal,
       openSftp,
       openNotebook,
+      openBackup,
       useWorkbenchCommand,
       openAgentDraft,
       mentionDatabase,

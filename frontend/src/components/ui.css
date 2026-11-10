@@ -934,6 +934,33 @@ button.wn-select-trigger {
   font-size: var(--font-size-ui-sm);
   line-height: var(--line-height-ui);
   color: var(--color-text-secondary);
+  white-space: pre-line;
+}
+
+.wn-modal.is-code-confirm {
+  width: min(680px, calc(100vw - 32px));
+  max-width: min(680px, calc(100vw - 32px));
+}
+
+.wn-confirm-code-wrap {
+  padding-top: 0;
+}
+
+.wn-confirm-code {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  max-height: min(360px, 50vh);
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  tab-size: 2;
 }
 
 .wn-modal-body {
@@ -1248,6 +1275,12 @@ button.wn-select-trigger {
 
 .wn-context-item-indent {
   padding-left: 18px;
+}
+
+.wn-context-item.is-muted {
+  color: var(--color-text-muted);
+  cursor: default;
+  pointer-events: none;
 }
 
 .wn-context-sep {

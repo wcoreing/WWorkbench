@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ProductId } from './products'
 
-/** 同时挂载 DOM 的产品上限：当前 + 最近 1 个；其余卸载（JS chunk 仍由浏览器缓存）。 */
+/** 同时挂载 DOM 的产品上限：当前 + 最近若干；其余卸载（JS chunk 仍由浏览器缓存）。 */
 const MAX_MOUNTED_PRODUCTS = 5
 
 /** 卸载时尽量保留：终端 xterm/会话重建成本高。 */
@@ -34,7 +34,12 @@ export function useMountedProductViews(activeProduct: ProductId) {
     setMountOrder((prev) => touchMountOrder(prev, activeProduct))
   }, [activeProduct])
 
-  const mountedProducts = useMemo(() => new Set(mountOrder), [mountOrder])
+  // 切产品当帧就要挂载目标视图，不能等 useEffect，否则 openCapability 会丢首包命令。
+  const mountedProducts = useMemo(() => {
+    const order =
+      mountOrder[0] === activeProduct ? mountOrder : touchMountOrder(mountOrder, activeProduct)
+    return new Set(order)
+  }, [mountOrder, activeProduct])
 
   return { mountedProducts, mountOrder }
 }

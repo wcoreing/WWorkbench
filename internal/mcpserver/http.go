@@ -15,12 +15,15 @@ import (
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
 // ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.54.330"
+const ServerVersion = "0.54.356"
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明。
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本等）。
+- 【强制首步】第三方 Agent 新会话/重启后必须先调用 get_agent_rules 阅读系统约束；未读时 shell_run / execute_sql / 容器与插件写 / save_* 等动手工具会被拒绝。完整约束以 get_agent_rules 返回为准。
+- 【意图声明卡】动手类工具必须传 intent（人话：要干什么、影响谁）；确认弹窗标题与舞台状态栏优先展示；可用 get_workbench_context.intentCards 回放。
+- 【备份策略】save_backup_policy（files/sqlite/db；cronExpr；retainDays 按天或 retainCount 按份数）→ run_backup 无头执行并清理本策略旧份 / list_backup_runs；服务发现后须探测 *.db/data/.env 并自动建策略。
 - 参数=schema 顶层字段（勿再包 {"arguments":…}）。
-- 危险写操作在工作台弹窗拍板（工具会阻塞至用户确认/拒绝；确认和看过程同一视线）。含：SQL/容器/插件，以及 shell_run 风险命令（重定向写文件、rm、docker rm/stop、| sh 等）。勿再解析 ww_confirm 文本。
+- 危险写操作在工作台弹窗拍板（工具会阻塞至用户确认/拒绝；确认和看过程同一视线）。含：SQL/容器/插件/run_backup，以及 shell_run 风险命令（重定向写文件、rm、docker rm/stop、| sh、rsync/scp -r/cp -r、*.db/data/.env、mysql< 等）。终端右键「允许 MCP 写入当前目录」后，该目录内软文件写（重定向/tee/rm）免确认；数据硬风险（同步/库文件/导入）不可免。确认后：rsync 自动 exclude *.db/data/.env；写前备份到策略 destRoot 或 /www/backup/wworkbench。勿再解析 ww_confirm 文本。
 - 凡参数能解析到 SSH（hostId / sshHostId / hostOrName / 远端 Docker contextId / SSH 日志源 / SSH 隧道库连接）的操作，都会先打开并聚焦对应终端 + 状态栏，再执行。shell_run 注入后立刻 get_shell_output(waitMs=8000～30000[, afterUpdatedAt]) 等新输出，少空转轮询。
 - 容器启停/删除用 start_container / stop_container / remove_container，勿用 shell_probe 跑 docker rm/start/stop。
 - 问终端输出用 get_shell_output（分页读可见 PTY scrollback；offsetFromEnd=0 最新页，nextOffsetFromEnd 向历史翻）。shell_run=给人看（注入 pip/下载/训练/脚本，不返回 stdout）。shell_probe=无头只读短探针，禁止改机器；看磁盘文件用 cat，不要 sed/awk。

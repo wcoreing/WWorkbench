@@ -10,6 +10,7 @@ export type ProductId =
   | 'skills'
   | 'httpapi'
   | 'logs'
+  | 'backup'
   | 'plugins'
 
 export interface ProductDef {
@@ -27,6 +28,7 @@ export const PRODUCTS: ProductDef[] = [
   { id: 'skills', available: true },
   { id: 'httpapi', available: true },
   { id: 'logs', available: true },
+  { id: 'backup', available: true },
   { id: 'plugins', available: true },
 ]
 

@@ -22,7 +22,7 @@ const {
   saveAppSetting,
   buildDatabaseSurface,
 } = store
-const { openTerminal, openSftp, openNotebook, useWorkbenchCommand, openAgentDraft, mentionDatabase } = nav
+const { openTerminal, openSftp, openNotebook, openBackup, useWorkbenchCommand, openAgentDraft, mentionDatabase } = nav
 const {
   Capability,
   payloadBool,
@@ -1676,6 +1676,40 @@ export function DatabaseWorkbench() {
             })}
           >
             {t('agent.sendToAgent')}
+          </button>
+          <button
+            type="button"
+            className="wn-context-item"
+            {...pressProps(() => {
+              const c = connCtxMenu.conn
+              setConnCtxMenu(null)
+              const isSqlite = String(c.dbType || '').toLowerCase() === 'sqlite'
+              if (isSqlite) {
+                openBackup(
+                  {
+                    create: true,
+                    name: c.name,
+                    kind: 'sqlite',
+                    path: c.host || '',
+                    sshHostId: c.sshHostId || '',
+                  },
+                  'database',
+                )
+                return
+              }
+              openBackup(
+                {
+                  create: true,
+                  name: c.name,
+                  kind: 'db',
+                  connectionId: c.id,
+                  sshHostId: c.sshEnabled ? c.sshHostId || '' : '',
+                },
+                'database',
+              )
+            })}
+          >
+            {t('database.createBackupPolicy')}
           </button>
           <button
             type="button"

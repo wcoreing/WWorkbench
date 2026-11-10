@@ -451,6 +451,39 @@ export interface HTTPHeaderKV {
   value: string
 }
 
+export type BackupKind = 'files' | 'sqlite' | 'db'
+
+export interface BackupPolicy {
+  id: string
+  name: string
+  kind: BackupKind
+  sshHostId: string
+  connectionId: string
+  path: string
+  destRoot: string
+  beforeWrite: boolean
+  /** >0：按天保留（优先）；对齐云盘快照「自定义时长」 */
+  retainDays: number
+  /** retainDays=0 且 >0：按份数配额（持续保留）；皆 0=不清理 */
+  retainCount: number
+  /** 五段 cron；空=不定时（仅手动/写前） */
+  cronExpr: string
+  enabled: boolean
+  createdAt: number
+  updatedAt: number
+}
+
+export interface BackupRun {
+  id: string
+  policyId: string
+  trigger: string
+  status: string
+  destPath: string
+  detail: string
+  intent: string
+  createdAt: number
+}
+
 export type LogSourceType = 'local_file' | 'ssh_file' | 'docker' | 'compose'
 
 export interface LogSource {

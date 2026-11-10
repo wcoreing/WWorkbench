@@ -14,6 +14,7 @@ const (
 	UIActionSFTPOpen          UIActionKind = UIActionKind(workbench.CapSFTPOpen)
 	UIActionDockerContextOpen UIActionKind = UIActionKind(workbench.CapDockerContextOpen)
 	UIActionLogsOpen          UIActionKind = UIActionKind(workbench.CapLogsOpen)
+	UIActionBackupOpen        UIActionKind = UIActionKind(workbench.CapBackupOpen)
 	UIActionHTTPAPIOpen       UIActionKind = UIActionKind(workbench.CapHTTPAPIOpen)
 	UIActionEnvironmentOpen   UIActionKind = UIActionKind(workbench.CapEnvironmentOpen)
 	UIActionSSHForwardOpen    UIActionKind = UIActionKind(workbench.CapSSHForwardOpen)

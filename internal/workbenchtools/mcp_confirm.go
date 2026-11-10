@@ -139,7 +139,7 @@ func ProductForTool(toolName string) string {
 	case "start_container", "stop_container", "remove_container":
 		// 与「看过程」同一视线：确认时留在终端舞台（远端已由 stageDockerContext 打开 SSH）
 		return "terminal"
-	case "shell_run", "open_terminal", "terminal.open", "terminal_open":
+	case "shell_run", "open_terminal", "terminal.open", "terminal_open", "run_backup":
 		return "terminal"
 	case "edit_plugin_pack_file", "write_plugin_pack_file", "build_plugin_pack_ui", "rollback_plugin_pack":
 		return "plugins"

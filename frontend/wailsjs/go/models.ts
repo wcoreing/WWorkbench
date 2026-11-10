@@ -186,6 +186,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_BackupPolicyDO_ {
+	    ok: boolean;
+	    data: model.BackupPolicyDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_BackupPolicyDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.BackupPolicyDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_CloudAccountDO_ {
 	    ok: boolean;
 	    data: model.CloudAccountDO;
@@ -1002,6 +1036,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_MCPWriteAllowDO_ {
+	    ok: boolean;
+	    data: model.MCPWriteAllowDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_MCPWriteAllowDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.MCPWriteAllowDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_NoteDO_ {
 	    ok: boolean;
 	    data: model.NoteDO;
@@ -1512,6 +1580,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_TerminalCwdDO_ {
+	    ok: boolean;
+	    data: model.TerminalCwdDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_TerminalCwdDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.TerminalCwdDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_TerminalSessionInfoDO_ {
 	    ok: boolean;
 	    data: model.TerminalSessionInfoDO;
@@ -1865,6 +1967,74 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.AgentThreadDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WWorkbench_internal_model_BackupPolicyDO_ {
+	    ok: boolean;
+	    data: model.BackupPolicyDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_BackupPolicyDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.BackupPolicyDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WWorkbench_internal_model_BackupRunDO_ {
+	    ok: boolean;
+	    data: model.BackupRunDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_BackupRunDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.BackupRunDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -2409,6 +2579,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.LogSourceDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WWorkbench_internal_model_MCPWriteAllowDO_ {
+	    ok: boolean;
+	    data: model.MCPWriteAllowDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_MCPWriteAllowDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.MCPWriteAllowDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -3049,6 +3253,40 @@ export namespace app {
 	
 	    static createFrom(source: any = {}) {
 	        return new ApiResult_interface____(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = source["data"];
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_map_string_interface____ {
+	    ok: boolean;
+	    data: Record<string, any>;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_map_string_interface____(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -3733,6 +3971,70 @@ export namespace model {
 		    }
 		    return a;
 		}
+	}
+	export class BackupPolicyDO {
+	    id: string;
+	    name: string;
+	    kind: string;
+	    sshHostId: string;
+	    connectionId: string;
+	    path: string;
+	    destRoot: string;
+	    beforeWrite: boolean;
+	    retainDays: number;
+	    retainCount: number;
+	    cronExpr: string;
+	    enabled: boolean;
+	    createdAt: number;
+	    updatedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new BackupPolicyDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.kind = source["kind"];
+	        this.sshHostId = source["sshHostId"];
+	        this.connectionId = source["connectionId"];
+	        this.path = source["path"];
+	        this.destRoot = source["destRoot"];
+	        this.beforeWrite = source["beforeWrite"];
+	        this.retainDays = source["retainDays"];
+	        this.retainCount = source["retainCount"];
+	        this.cronExpr = source["cronExpr"];
+	        this.enabled = source["enabled"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	export class BackupRunDO {
+	    id: string;
+	    policyId: string;
+	    trigger: string;
+	    status: string;
+	    destPath: string;
+	    detail: string;
+	    intent: string;
+	    createdAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new BackupRunDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.policyId = source["policyId"];
+	        this.trigger = source["trigger"];
+	        this.status = source["status"];
+	        this.destPath = source["destPath"];
+	        this.detail = source["detail"];
+	        this.intent = source["intent"];
+	        this.createdAt = source["createdAt"];
+	    }
 	}
 	export class CellValueDO {
 	    value?: string;
@@ -4853,6 +5155,24 @@ export namespace model {
 	        this.error = source["error"];
 	    }
 	}
+	export class MCPWriteAllowDO {
+	    hostKey: string;
+	    path: string;
+	    at: number;
+	    kind?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MCPWriteAllowDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.hostKey = source["hostKey"];
+	        this.path = source["path"];
+	        this.at = source["at"];
+	        this.kind = source["kind"];
+	    }
+	}
 	export class NoteDO {
 	    id: string;
 	    groupId: string;
@@ -5682,6 +6002,24 @@ export namespace model {
 	
 	
 	
+	export class TerminalCwdDO {
+	    sessionId: string;
+	    hostKey: string;
+	    kind: string;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TerminalCwdDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sessionId = source["sessionId"];
+	        this.hostKey = source["hostKey"];
+	        this.kind = source["kind"];
+	        this.path = source["path"];
+	    }
+	}
 	export class TerminalSessionInfoDO {
 	    sessionId: string;
 	    hostId: string;

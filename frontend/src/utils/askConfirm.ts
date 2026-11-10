@@ -2,7 +2,10 @@
 
 export type ConfirmRequest = {
   title: string
+  /** 普通说明（工具名、主机、风险等） */
   message?: string
+  /** 命令 / SQL 等，弹窗内以代码块展示 */
+  code?: string
   confirmLabel?: string
   danger?: boolean
 }
@@ -37,6 +40,7 @@ export function askConfirm(req: ConfirmRequest): Promise<boolean> {
   current = {
     title: req.title,
     message: req.message,
+    code: req.code?.trim() ? req.code : undefined,
     confirmLabel: req.confirmLabel,
     danger: !!req.danger,
   }

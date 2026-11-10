@@ -152,6 +152,11 @@ import {
   ListHTTPEnvironments,
   SaveHTTPEnvironment,
   DeleteHTTPEnvironment,
+  ListBackupPolicies,
+  SaveBackupPolicy,
+  DeleteBackupPolicy,
+  ListBackupRuns,
+  RunBackupPolicy,
   ListLogSources,
   SaveLogSource,
   DeleteLogSource,
@@ -236,6 +241,10 @@ import {
   SnapshotPluginPack,
   RollbackPluginPack,
   ResolveMCPConfirm,
+  GrantMCPWriteDir,
+  RevokeMCPWriteDir,
+  ListMCPWriteDirs,
+  ProbeTerminalCwd,
 } from '../../wailsjs/go/app/Service'
 
 /** 兼容 Wails 返回的 plain object / 类实例字段名差异 */
@@ -698,6 +707,14 @@ export const api = {
   listHTTPEnvironments: async () => asArray(await unwrap(() => ListHTTPEnvironments())),
   saveHTTPEnvironment: (e: model.HTTPEnvironmentDO) => unwrap(() => SaveHTTPEnvironment(e)),
   deleteHTTPEnvironment: (id: string) => unwrap(() => DeleteHTTPEnvironment(id)),
+  listBackupPolicies: async () => asArray(await unwrap(() => ListBackupPolicies())) as import('./types').BackupPolicy[],
+  saveBackupPolicy: (p: model.BackupPolicyDO) =>
+    unwrap(() => SaveBackupPolicy(p)) as Promise<import('./types').BackupPolicy>,
+  deleteBackupPolicy: (id: string) => unwrap(() => DeleteBackupPolicy(id)),
+  listBackupRuns: async (policyId = '', limit = 30) =>
+    asArray(await unwrap(() => ListBackupRuns(policyId, limit))) as import('./types').BackupRun[],
+  runBackupPolicy: (policyId: string, intent: string, force = false) =>
+    unwrap(() => RunBackupPolicy(policyId, intent, force)),
   listLogSources: async () => asArray(await unwrap(() => ListLogSources())),
   saveLogSource: (src: model.LogSourceDO) => unwrap(() => SaveLogSource(src)),
   deleteLogSource: (id: string) => unwrap(() => DeleteLogSource(id)),
@@ -814,4 +831,27 @@ export const api = {
     unwrap(() => RollbackPluginPack(packId, releaseId)) as Promise<import('./pluginPack').PluginPackInfo>,
   resolveMCPConfirm: async (pendingId: string, approved: boolean) =>
     unwrap(() => ResolveMCPConfirm(pendingId, approved)),
+  probeTerminalCwd: async (sessionId: string) =>
+    unwrap(() => ProbeTerminalCwd(sessionId)) as Promise<{
+      sessionId: string
+      hostKey: string
+      kind: string
+      path: string
+    }>,
+  grantMCPWriteDir: async (sessionId: string) =>
+    unwrap(() => GrantMCPWriteDir(sessionId)) as Promise<{
+      hostKey: string
+      path: string
+      at: number
+      kind?: string
+    }>,
+  revokeMCPWriteDir: async (sessionId: string, path = '') =>
+    unwrap(() => RevokeMCPWriteDir(sessionId, path)),
+  listMCPWriteDirs: async () =>
+    asArray(await unwrap(() => ListMCPWriteDirs())) as Array<{
+      hostKey: string
+      path: string
+      at: number
+      kind?: string
+    }>,
 }

@@ -342,6 +342,22 @@ type TerminalSessionInfoDO struct {
 	Kind      string `json:"kind"` // local | ssh | docker
 }
 
+// TerminalCwdDO 可见终端当前工作目录探测结果。
+type TerminalCwdDO struct {
+	SessionID string `json:"sessionId"`
+	HostKey   string `json:"hostKey"`
+	Kind      string `json:"kind"`
+	Path      string `json:"path"`
+}
+
+// MCPWriteAllowDO MCP 在指定主机目录下软文件写免确认授权。
+type MCPWriteAllowDO struct {
+	HostKey string `json:"hostKey"`
+	Path    string `json:"path"`
+	At      int64  `json:"at"`
+	Kind    string `json:"kind,omitempty"`
+}
+
 // SFTPSessionInfoDO SFTP 会话信息。
 type SFTPSessionInfoDO struct {
 	SessionID string `json:"sessionId"`
@@ -629,6 +645,43 @@ type LogSourceDO struct {
 	SortOrder       int    `json:"sortOrder"`
 	CreatedAt       int64  `json:"createdAt"`
 	UpdatedAt       int64  `json:"updatedAt"`
+}
+
+// 备份策略类型。
+const (
+	BackupKindFiles  = "files"  // 文件/目录（含 sqlite *.db）
+	BackupKindSQLite = "sqlite" // 单库文件（同 files 执行器）
+	BackupKindDB     = "db"     // 连接级 mysqldump/pg_dump
+)
+
+// BackupPolicyDO 统一备份策略资产（文件 / SQLite / 库 dump）。
+type BackupPolicyDO struct {
+	ID           string `json:"id"`
+	Name         string `json:"name"`
+	Kind         string `json:"kind"` // files | sqlite | db
+	SSHHostID    string `json:"sshHostId"`
+	ConnectionID string `json:"connectionId"`
+	Path         string `json:"path"`     // files/sqlite：源路径
+	DestRoot     string `json:"destRoot"` // 备份根目录
+	BeforeWrite  bool   `json:"beforeWrite"`
+	RetainDays   int    `json:"retainDays"`  // >0：按天保留（优先）；对齐云盘快照「自定义时长」
+	RetainCount  int    `json:"retainCount"` // RetainDays=0 且 >0：按份数配额；两者皆 0=不清理
+	CronExpr     string `json:"cronExpr"`    // 空=不定时；非空则装到 SSH 主机 crontab
+	Enabled      bool   `json:"enabled"`
+	CreatedAt    int64  `json:"createdAt"`
+	UpdatedAt    int64  `json:"updatedAt"`
+}
+
+// BackupRunDO 一次备份执行记录（舞台回放 / 写前校验）。
+type BackupRunDO struct {
+	ID        string `json:"id"`
+	PolicyID  string `json:"policyId"`
+	Trigger   string `json:"trigger"` // manual | cron | mcp_confirm | pre_write | data_guard
+	Status    string `json:"status"`  // ok | fail | injected
+	DestPath  string `json:"destPath"`
+	Detail    string `json:"detail"`
+	Intent    string `json:"intent"`
+	CreatedAt int64  `json:"createdAt"`
 }
 
 // LogFetchResultDO 拉取日志结果。

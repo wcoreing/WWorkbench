@@ -13,6 +13,7 @@ export type CommandSource =
   | 'logs'
   | 'httpapi'
   | 'agent'
+  | 'backup'
 
 export interface WorkbenchCommand {
   id: string
@@ -30,7 +31,19 @@ type CommandHandler = (cmd: WorkbenchCommand) => void | Promise<void>
 
 let cmdSeq = 0
 const handlers = new Map<string, Set<CommandHandler>>()
+/** 工作台尚未挂载时的排队命令。 */
 const pendingByCapability = new Map<string, WorkbenchCommand[]>()
+/**
+ * UI 打开类命令的粘性副本：覆盖「先切产品再挂载」与 React StrictMode 双挂载。
+ * 成功处理后清除；新命令覆盖旧粘性。
+ */
+const stickyUIOpen = new Map<string, WorkbenchCommand>()
+
+function clearStickyIfSame(capability: string, cmdId: string) {
+  if (stickyUIOpen.get(capability)?.id === cmdId) {
+    stickyUIOpen.delete(capability)
+  }
+}
 
 /** registerWorkbenchHandler 注册某能力的处理器（工作台挂载时调用）。 */
 export function registerWorkbenchHandler(capability: string, fn: CommandHandler): () => void {
@@ -40,15 +53,26 @@ export function registerWorkbenchHandler(capability: string, fn: CommandHandler)
     handlers.set(capability, set)
   }
   set.add(fn)
-  const queued = pendingByCapability.get(capability)
-  if (queued?.length) {
-    pendingByCapability.delete(capability)
-    for (const cmd of queued) {
-      for (const h of set) {
-        void runHandler(capability, cmd, h)
-      }
-    }
+
+  const queued = pendingByCapability.get(capability) ?? []
+  if (queued.length) pendingByCapability.delete(capability)
+  const sticky = stickyUIOpen.get(capability)
+  const seen = new Set<string>()
+  const toDeliver: WorkbenchCommand[] = []
+  // 粘性优先（最新一次打开意图）
+  if (sticky) {
+    toDeliver.push(sticky)
+    seen.add(sticky.id)
   }
+  for (const cmd of queued) {
+    if (seen.has(cmd.id)) continue
+    toDeliver.push(cmd)
+    seen.add(cmd.id)
+  }
+  for (const cmd of toDeliver) {
+    void runHandler(capability, cmd, fn)
+  }
+
   return () => {
     set?.delete(fn)
     if (set?.size === 0) handlers.delete(capability)
@@ -70,6 +94,10 @@ async function runHandler(capability: string, cmd: WorkbenchCommand, fn: Command
   try {
     await fn(cmd)
     reportCommandResult(cmd.id, { ok: true }, capability)
+    // 仍有处理器挂着时才清粘性，避免 StrictMode 卸挂瞬间把意图清掉
+    if ((handlers.get(capability)?.size ?? 0) > 0) {
+      clearStickyIfSame(capability, cmd.id)
+    }
   } catch (e) {
     reportCommandResult(cmd.id, { ok: false, error: (e as Error).message }, capability)
   }
@@ -87,6 +115,7 @@ export async function dispatchWorkbenchCommand(
   }
 
   if (UI_CAPABILITIES.has(cmd.capability)) {
+    stickyUIOpen.set(cmd.capability, cmd)
     activateProductForCapability(cmd.capability)
     const set = handlers.get(cmd.capability)
     if (!set || set.size === 0) {

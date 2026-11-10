@@ -9,6 +9,7 @@ export {
   openNotebook,
   openDockerContextFromHost,
   openLogs,
+  openBackup,
   openHttpApi,
   openEnvironment,
   openSSHForward,

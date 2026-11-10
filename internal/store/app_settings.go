@@ -17,6 +17,7 @@ const (
 	SettingLocale             = "locale"
 	SettingEnvScanPath        = "env_scan_path"
 	SettingDockerComposeDir   = "docker_compose_dir"
+	SettingTerminalFrequentPaths = "terminal.frequent_paths" // JSON：hostKey → [{path,count,lastAt}]
 )
 
 // 产品线扩展执行顺序（实现时按 phase 递增，勿跳号）：

@@ -32,11 +32,12 @@ type MenuPos = { top: number; left: number; width: number; maxHeight: number }
 
 /** isGroupedOptions 判断是否为分组选项。 */
 function isGroupedOptions(options: SelectOption[] | SelectGroup[]): options is SelectGroup[] {
-  return options.length > 0 && 'options' in options[0]
+  return Array.isArray(options) && options.length > 0 && 'options' in options[0]
 }
 
 /** flattenOptions 展开分组选项，便于查找当前标签。 */
-function flattenOptions(options: SelectOption[] | SelectGroup[]): SelectOption[] {
+function flattenOptions(options: SelectOption[] | SelectGroup[] | undefined): SelectOption[] {
+  if (!Array.isArray(options)) return []
   if (!isGroupedOptions(options)) return options
   return options.flatMap((g) => g.options)
 }
@@ -50,7 +51,7 @@ export function Select({
   id,
   className = '',
   value,
-  options,
+  options = [],
   placeholder,
   disabled = false,
   title,
@@ -62,7 +63,8 @@ export function Select({
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<MenuPos | null>(null)
 
-  const flat = useMemo(() => flattenOptions(options), [options])
+  const safeOptions = Array.isArray(options) ? options : []
+  const flat = useMemo(() => flattenOptions(safeOptions), [safeOptions])
   const current = flat.find((o) => o.value === value)
   const label = current?.label || placeholder || ''
 
@@ -163,8 +165,8 @@ export function Select({
               maxHeight: pos.maxHeight,
             }}
           >
-            {isGroupedOptions(options)
-              ? options.map((g) => (
+            {isGroupedOptions(safeOptions)
+              ? safeOptions.map((g) => (
                   <div key={g.label} className="wn-select-group" role="group" aria-label={g.label}>
                     <div className="wn-select-group-label">{g.label}</div>
                     {g.options.map((opt) => (
@@ -177,7 +179,7 @@ export function Select({
                     ))}
                   </div>
                 ))
-              : options.map((opt) => (
+              : safeOptions.map((opt) => (
                   <SelectItem
                     key={opt.value}
                     option={opt}

@@ -24,9 +24,19 @@ export function openTerminal(
   )
 }
 
-/** openSftp 打开 SFTP（hostId 可为 SSH 或 Docker ShellHost）。 */
-export function openSftp(opts: { hostId: string }, source: CommandSource = 'user') {
-  openCapability(Capability.SftpOpen, { hostId: opts.hostId }, source)
+/** openSftp 打开文件模块（hostId 可为 SSH / Docker ShellHost；可空仅切产品线）。 */
+export function openSftp(
+  opts: { hostId?: string; path?: string } = {},
+  source: CommandSource = 'user',
+) {
+  openCapability(
+    Capability.SftpOpen,
+    {
+      hostId: opts.hostId,
+      path: opts.path,
+    },
+    source,
+  )
 }
 
 /** openDatabase 打开数据库工作台。 */
@@ -90,6 +100,27 @@ export function openLogs(
   source: CommandSource = 'user',
 ) {
   openCapability(Capability.LogsOpen, { ...opts }, source)
+}
+
+/** openBackup 打开备份工作台（已有 policyId，或 create 起草 files/sqlite/db 策略）。 */
+export function openBackup(
+  opts: {
+    policyId?: string
+    name?: string
+    kind?: string
+    path?: string
+    destRoot?: string
+    sshHostId?: string
+    connectionId?: string
+    beforeWrite?: boolean
+    retainDays?: number
+    retainCount?: number
+    enabled?: boolean
+    create?: boolean
+  } = {},
+  source: CommandSource = 'user',
+) {
+  openCapability(Capability.BackupOpen, { ...opts }, source)
 }
 
 /** openHttpApi 打开 API 工作台并可选聚焦请求。 */

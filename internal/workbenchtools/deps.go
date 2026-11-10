@@ -34,6 +34,7 @@ type Deps struct {
 	UIActions   *UIActionBus
 	Radar       *RadarBus
 	MCPConfirm  *MCPConfirmGate
+	WriteAllows *MCPWriteAllowBook
 	Terminals   *terminal.Manager
 	HarnessRoot func() string
 	Agent       AgentSync
