@@ -340,6 +340,8 @@ type TerminalSessionInfoDO struct {
 	HostID    string `json:"hostId"`
 	Title     string `json:"title"`
 	Kind      string `json:"kind"` // local | ssh | docker
+	Reused    bool   `json:"reused,omitempty"` // 命中主机级 SSH 热连接
+	DialMs    int64  `json:"dialMs,omitempty"` // 取得连接耗时（毫秒）
 }
 
 // TerminalCwdDO 可见终端当前工作目录探测结果。
@@ -363,6 +365,13 @@ type SFTPSessionInfoDO struct {
 	SessionID string `json:"sessionId"`
 	HostID    string `json:"hostId"`
 	Title     string `json:"title"`
+	Reused    bool   `json:"reused,omitempty"`
+	DialMs    int64  `json:"dialMs,omitempty"`
+}
+
+// BrowserExtPathDO 浏览器扩展释放目录（供加载已解压扩展）。
+type BrowserExtPathDO struct {
+	Path string `json:"path"`
 }
 
 // FileEntryDO 文件项（本地/远程通用）。
@@ -684,6 +693,102 @@ type BackupRunDO struct {
 	CreatedAt int64  `json:"createdAt"`
 }
 
+// TaskRunDO 一次浏览器/舞台任务运行（任务日志；可蒸馏为剧本）。
+type TaskRunDO struct {
+	ID        string `json:"id"`
+	Session   string `json:"session"`
+	Title     string `json:"title"`
+	Intent    string `json:"intent"`
+	Status    string `json:"status"` // running | done | failed | cancelled
+	Source    string `json:"source"` // browser | mcp | ui
+	StepCount int    `json:"stepCount,omitempty"`
+	StartedAt int64  `json:"startedAt"`
+	EndedAt   int64  `json:"endedAt,omitempty"`
+}
+
+// TaskStepDO 任务中的一步（存定位策略摘要，少依赖脆弱 @eN）。
+type TaskStepDO struct {
+	ID       string `json:"id"`
+	RunID    string `json:"runId"`
+	Seq      int    `json:"seq"`
+	Tool     string `json:"tool"`
+	Action   string `json:"action"`
+	Intent   string `json:"intent"`
+	Summary  string `json:"summary"`
+	ArgsJSON string `json:"argsJson,omitempty"`
+	Locator  string `json:"locator,omitempty"` // JSON：ref/selector/name/frame/url
+	Result   string `json:"result,omitempty"`  // JSON 摘要
+	OK       bool   `json:"ok"`
+	Error    string `json:"error,omitempty"`
+	Approved bool   `json:"approved"`
+	CreatedAt int64 `json:"createdAt"`
+}
+
+// TaskRunDetailDO 任务详情（含步骤，供 get_task_run / 舞台时间线）。
+type TaskRunDetailDO struct {
+	Run   TaskRunDO    `json:"run"`
+	Steps []TaskStepDO `json:"steps"`
+}
+
+// WorkflowStepDO 工作流中的一步（稳定定位，少用 @eN）。
+type WorkflowStepDO struct {
+	Action  string                 `json:"action"`
+	Summary string                 `json:"summary,omitempty"`
+	Intent  string                 `json:"intent,omitempty"`
+	Locator map[string]interface{} `json:"locator,omitempty"`
+	Args    map[string]interface{} `json:"args,omitempty"`
+}
+
+// WorkflowDO 从日志蒸馏的可复用工作流（SSOT=role=skill 笔记）。
+type WorkflowDO struct {
+	ID          string            `json:"id"`
+	Name        string            `json:"name"` // 稳定短名，如 xhs-draft
+	Title       string            `json:"title"`
+	Description string            `json:"description,omitempty"`
+	Intent      string            `json:"intent,omitempty"`
+	Steps       []WorkflowStepDO  `json:"steps"`
+	SourceRunID string            `json:"sourceRunId,omitempty"`
+	NoteID      string            `json:"noteId,omitempty"`
+	Source      string            `json:"source,omitempty"` // note | builtin
+	CreatedAt   int64             `json:"createdAt"`
+	UpdatedAt   int64             `json:"updatedAt"`
+}
+
+// HostHealthFindingDO 工作目录扫描出的可备份项。
+type HostHealthFindingDO struct {
+	ID           string `json:"id"`
+	Severity     string `json:"severity"` // ok | warn | critical
+	Kind         string `json:"kind"`     // asset_uncovered | asset_covered | info
+	Title        string `json:"title"`
+	Detail       string `json:"detail"`
+	SuggestKind  string `json:"suggestKind"` // files | sqlite
+	Path         string `json:"path"`
+	ConnectionID string `json:"connectionId"`
+	Fixable      bool   `json:"fixable"` // true=可选创建策略
+}
+
+// HostHealthReportDO 指定工作目录的备份资产扫描报告。
+type HostHealthReportDO struct {
+	SSHHostID    string                `json:"sshHostId"`
+	WorkDir      string                `json:"workDir"`
+	HostLabel    string                `json:"hostLabel"`
+	ScannedAt    int64                 `json:"scannedAt"`
+	Score        int                   `json:"score"` // 0-100 覆盖率
+	Summary      string                `json:"summary"`
+	DiskBrief    string                `json:"diskBrief"`
+	Findings     []HostHealthFindingDO `json:"findings"`
+	PolicyCount  int                   `json:"policyCount"`
+	CoveredCount int                   `json:"coveredCount"`
+	FixableCount int                   `json:"fixableCount"`
+}
+
+// EnsureHostBackupResultDO 按勾选创建备份策略的结果。
+type EnsureHostBackupResultDO struct {
+	Created []BackupPolicyDO   `json:"created"`
+	Skipped int                `json:"skipped"`
+	Report  HostHealthReportDO `json:"report"`
+}
+
 // LogFetchResultDO 拉取日志结果。
 type LogFetchResultDO struct {
 	Content string `json:"content"`
@@ -836,6 +941,13 @@ type NotebookGroupDO struct {
 	UpdatedAt int64  `json:"updatedAt"`
 }
 
+// 笔记角色（frontmatter role / notes.role）。skill = 工作流。
+const (
+	NoteRoleNote   = "note"
+	NoteRoleMemory = "memory"
+	NoteRoleSkill  = "skill"
+)
+
 // NoteDO 笔记全文。
 type NoteDO struct {
 	ID           string `json:"id"`
@@ -843,6 +955,7 @@ type NoteDO struct {
 	Title        string `json:"title"`
 	Content      string `json:"content"`
 	Language     string `json:"language"`
+	Role         string `json:"role"` // note|memory|skill
 	SSHHostID    string `json:"sshHostId"`
 	ConnectionID string `json:"connectionId"`
 	SortOrder    int    `json:"sortOrder"`
@@ -856,6 +969,7 @@ type NoteSummaryDO struct {
 	GroupID      string `json:"groupId"`
 	Title        string `json:"title"`
 	Language     string `json:"language"`
+	Role         string `json:"role"`
 	SSHHostID    string `json:"sshHostId"`
 	ConnectionID string `json:"connectionId"`
 	SortOrder    int    `json:"sortOrder"`
@@ -980,6 +1094,7 @@ type AgentContextDO struct {
 	SelectionBrief    string           `json:"selectionBrief,omitempty"`
 	ShellTail         string           `json:"shellTail,omitempty"` // 当前 Shell 最近约 100 行（与面板一致）
 	TerminalSessionID string           `json:"terminalSessionId,omitempty"`
+	HostID            string           `json:"hostId,omitempty"` // SSH/Docker shell 主机（记忆绑定）
 	NoteID            string           `json:"noteId,omitempty"` // 当前打开的笔记
 	Mentions          []AgentMentionDO `json:"mentions"`
 	SkillIDs          []string         `json:"skillIds,omitempty"` // 本对话绑定的 / 技能

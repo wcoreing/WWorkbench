@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Connection, Note, NoteLanguage, NotebookGroup, ShellHost } from '../../api/types'
+import type { Connection, Note, NoteLanguage, NoteRole, NotebookGroup, ShellHost } from '../../api/types'
 import { IconDatabase, IconDocker, IconServer, IconSettings } from '../../components/Icons'
 import { Select, pressProps, useDismissOverlays } from '../../components/compat'
 import { useI18n } from '../../i18n'
@@ -21,6 +21,8 @@ type Props = {
   onEditorFontSizeChange: (size: NotebookEditorFontSize) => void
   onPatch: (patch: Partial<Note>) => void
   onConnectionLink: (connectionId: string) => void
+  /** openSignal 递增时强制打开设置（IDE 状态栏点文件类型）。 */
+  openSignal?: number
 }
 
 /** NotebookNoteSettingsMenu 笔记设置：分组/语言/关联/编辑字号。 */
@@ -34,11 +36,16 @@ export function NotebookNoteSettingsMenu({
   onEditorFontSizeChange,
   onPatch,
   onConnectionLink,
+  openSignal = 0,
 }: Props) {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   useDismissOverlays(() => setOpen(false))
+
+  useEffect(() => {
+    if (openSignal > 0) setOpen(true)
+  }, [openSignal])
 
   useEffect(() => {
     if (!open) return
@@ -50,6 +57,7 @@ export function NotebookNoteSettingsMenu({
   }, [open])
 
   const linked = Boolean(note.sshHostId) || Boolean(note.connectionId)
+  const languageIsPreset = languages.some((l) => l.id === note.language)
 
   return (
     <div className="notebook-settings-menu" ref={rootRef}>
@@ -98,12 +106,46 @@ export function NotebookNoteSettingsMenu({
             />
           </label>
           <label className="notebook-settings-field">
-            <span>{t('notebook.language')}</span>
+            <span>{t('notebook.fileType')}</span>
             <Select
               className="notebook-settings-select"
-              value={note.language}
-              options={languages.map((l) => ({ value: l.id, label: l.label }))}
-              onChange={(v) => onPatch({ language: v as NoteLanguage })}
+              value={languageIsPreset ? note.language : '__custom__'}
+              options={[
+                ...languages.map((l) => ({ value: l.id, label: l.label })),
+                { value: '__custom__', label: t('notebook.langCustom') },
+              ]}
+              onChange={(v) => {
+                if (v === '__custom__') {
+                  if (!languageIsPreset) return
+                  onPatch({ language: 'toml' })
+                  return
+                }
+                onPatch({ language: v as NoteLanguage })
+              }}
+            />
+          </label>
+          {!languageIsPreset && (
+            <label className="notebook-settings-field">
+              <span>{t('notebook.langCustomId')}</span>
+              <input
+                className="notebook-settings-input"
+                value={note.language}
+                placeholder={t('notebook.langCustomPlaceholder')}
+                onChange={(e) => onPatch({ language: e.target.value.trim() || 'custom' })}
+              />
+            </label>
+          )}
+          <label className="notebook-settings-field">
+            <span>{t('notebook.role')}</span>
+            <Select
+              className="notebook-settings-select"
+              value={note.role || 'note'}
+              options={[
+                { value: 'note', label: t('notebook.roleNote') },
+                { value: 'memory', label: t('notebook.roleMemory') },
+                { value: 'skill', label: t('notebook.roleSkill') },
+              ]}
+              onChange={(v) => onPatch({ role: v as NoteRole })}
             />
           </label>
           <label className="notebook-settings-field">

@@ -23,30 +23,14 @@ func IsMemoryTool(name string) bool {
 	return ok
 }
 
-// SkillToolDefs 供 LLM 的 ningharness Skill 工具定义。
+// SkillToolDefs 仅保留磁盘 read_file；list_skills / get_skill 由工作台笔记 SSOT 注册。
 func SkillToolDefs() []workbenchtools.ToolDef {
 	return []workbenchtools.ToolDef{
 		{
-			Name:        "list_skills",
-			Description: "列出项目 system/skills/*/SKILL.md（id / name / description / hasLessons）。/ 菜单或选技能前可先调本工具。",
-			Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
-		},
-		{
-			Name:        "get_skill",
-			Description: "读取某 skill 的 SKILL.md 正文，并附 lesson_entry 经验。用户 / 挂载或你要按技能流程执行时，首轮必须先调本工具；scripts 用 read_file 读 system/skills/<id>/scripts/…。",
-			Parameters: map[string]interface{}{
-				"type": "object",
-				"required": []string{"skill"},
-				"properties": map[string]interface{}{
-					"skill": map[string]interface{}{"type": "string", "description": "skill id 或 frontmatter name"},
-				},
-			},
-		},
-		{
 			Name:        "read_file",
-			Description: "读取项目内文本（相对 ningharness 根）。读 skill 脚本示例 {\"rel_path\":\"system/skills/<id>/scripts/probe.sh\"}。",
+			Description: "读取项目内文本（相对 ningharness 根）。工作流脚本优先看笔记本 工作流/{name}/scripts/ 与「## 脚本」。",
 			Parameters: map[string]interface{}{
-				"type": "object",
+				"type":     "object",
 				"required": []string{"rel_path"},
 				"properties": map[string]interface{}{
 					"rel_path": map[string]interface{}{"type": "string", "description": "相对项目根路径"},

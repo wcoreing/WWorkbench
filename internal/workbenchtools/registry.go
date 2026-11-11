@@ -140,7 +140,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        "get_workbench_context",
-		Description: "工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）；含近期 intentCards（意图声明回放）。问终端输出用 get_shell_output。新会话请先 get_agent_rules。",
+		Description: "工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）；含近期 intentCards、taskRuns、memoryNotes（焦点绑定的记忆）。问终端输出用 get_shell_output。新会话请先 get_agent_rules。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -346,8 +346,37 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolListBackupRuns,
 	})
 	r.add(ToolDef{
+		Name:        workbench.CapHostHealthScan,
+		Description: "在指定工作目录扫描可备份资产（*.db/.env/data 与目录本身）。须 sshHostId+绝对 workDir；禁止全盘扫。结果交用户勾选后再 ensure_host_backup_policies。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"sshHostId": map[string]interface{}{"type": "string", "description": "SSH 主机 ID"},
+				"workDir":   map[string]interface{}{"type": "string", "description": "绝对工作目录，例如 /www/wwwroot/app"},
+			},
+			"required": []interface{}{"sshHostId", "workDir"},
+		},
+		Handler: toolHostHealthScan,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapEnsureHostBackupPolicies,
+		Description: "仅为用户勾选的 findingIds 创建备份策略（写前+7 天；默认每天 3:00）。须 sshHostId+workDir+findingIds+intent；禁止默认全选。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"sshHostId":   map[string]interface{}{"type": "string"},
+				"workDir":     map[string]interface{}{"type": "string"},
+				"findingIds":  map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "description": "host_health_scan 返回的可选 finding.id"},
+				"withCron":    map[string]interface{}{"type": "boolean", "description": "是否装定时，默认 true"},
+				"intent":      intentProp(),
+			},
+			"required": []interface{}{"sshHostId", "workDir", "findingIds", "intent"},
+		},
+		Handler: toolEnsureHostBackupPolicies,
+	})
+	r.add(ToolDef{
 		Name:        workbench.CapShellRun,
-		Description: "给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。有 initialCommand 时必须填 intent（人话：要干什么、影响谁）。会前置工作台并点亮对应终端+状态栏。风险命令先工作台拍板（标题为人话意图）；目录护照不可免除数据硬风险。确认后对 rsync 自动 --exclude *.db/data/.env，并对目标做写前备份（命中 backup policy 则用其 destRoot）。不返回 stdout；注入后立刻 get_shell_output(waitMs)。只读短探针才用 shell_probe。",
+		Description: "给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。有 initialCommand 时必须填 intent（人话：要干什么、影响谁）。会前置工作台并点亮对应终端+状态栏。风险命令先工作台拍板（标题为人话意图）；目录护照不可免除数据硬风险。确认后对 rsync 自动 --exclude *.db/data/.env，并对目标做写前备份（命中 backup policy 则用其 destRoot）。不返回 stdout；返回 sessionId/updatedAt（毫秒基线）。注入后立刻 get_shell_output(waitMs, afterUpdatedAt=updatedAt)。只读短探针才用 shell_probe。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -396,7 +425,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapGetShellOutput,
-		Description: "分页读取可见 PTY scrollback（与终端面板同源）。offsetFromEnd=0 为最新一页；hasMoreOlder 为 true 时用 nextOffsetFromEnd 继续向历史翻。shell_run 注入后优先带 waitMs（如 8000～30000）等新输出，少盲目轮询；返回 timedOut/updatedAt 供下次 afterUpdatedAt。问「跑完了吗/报错/这段输出」先调本工具，不要编造。",
+		Description: "分页读取可见 PTY scrollback（与终端面板同源）。offsetFromEnd=0 为最新一页；hasMoreOlder 为 true 时用 nextOffsetFromEnd 继续向历史翻。shell_run 后务必带 afterUpdatedAt=其 updatedAt，并设 waitMs（短命令 3～8s，长任务 15～30s）；已有新输出则立刻返回。返回 waitedMs（真实耗时）/timedOut/updatedAt。问「跑完了吗/报错/这段输出」先调本工具，不要编造。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -422,11 +451,11 @@ func (r *Registry) registerBuiltins() {
 				},
 				"waitMs": map[string]interface{}{
 					"type":        "integer",
-					"description": "阻塞等待新输出的毫秒数（最大 120000）。shell_run 后建议 8000～30000，减少空转轮询",
+					"description": "阻塞等待新输出的毫秒数（最大 120000）。短命令 3000～8000，长任务 15000～30000",
 				},
 				"afterUpdatedAt": map[string]interface{}{
 					"type":        "integer",
-					"description": "上次返回的 updatedAt；若已有更新则立即返回，否则等到新输出或 waitMs 超时",
+					"description": "shell_run/上次返回的 updatedAt（毫秒；秒值亦兼容）。当前已有更新则立刻返回，否则等到新输出或 waitMs 超时",
 				},
 			},
 		},
@@ -496,18 +525,26 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolExecuteSQL,
 	})
 	r.add(ToolDef{
-		Name:        workbench.CapListNotes,
-		Description: "列出工作台笔记摘要（标题、noteId、分组，无正文）。读某篇必须 get_note(noteId)。笔记在库内，禁止 cat 文件，禁止用 recall_resource 当笔记。",
-		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
-		Handler:     toolListNotes,
-	})
-	r.add(ToolDef{
-		Name:        workbench.CapSearchNotes,
-		Description: "按标题或正文关键词搜索笔记摘要。找到 noteId 后用 get_note 取全文。",
+		Name: workbench.CapListNotes,
+		Description: "列出运维知识库文件摘要（标题、noteId、language、role、sshHostId，无正文）。" +
+			"管某台服务器时传 sshHostId；找记忆传 role=memory。读全文用 get_note。禁止 cat / recall_resource。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"query": map[string]interface{}{"type": "string", "description": "标题或正文关键词"},
+				"sshHostId": map[string]interface{}{"type": "string", "description": "只列绑定该 SSH 主机的文件"},
+				"role":      map[string]interface{}{"type": "string", "description": "note|memory|skill（工作流）"},
+			},
+		},
+		Handler: toolListNotes,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapSearchNotes,
+		Description: "按标题/正文搜运维知识库。可加 sshHostId 限定主机。找到 noteId 后 get_note。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"query":     map[string]interface{}{"type": "string", "description": "标题或正文关键词"},
+				"sshHostId": map[string]interface{}{"type": "string", "description": "限定绑定该 SSH 主机"},
 			},
 			"required": []interface{}{"query"},
 		},
@@ -515,7 +552,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapGetNote,
-		Description: "按 noteId 读取笔记 Markdown 全文。用户说「这篇/当前笔记」时用界面快照里的 noteId。不要 cat，不要 recall_resource。",
+		Description: "按 noteId 读知识库全文（脚本/配置/记忆均可）。动手改某台机前先读其 memory。不要 cat，不要 recall_resource。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -526,16 +563,20 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolGetNote,
 	})
 	r.add(ToolDef{
-		Name:        workbench.CapNotebookAppend,
-		Description: "将 Markdown 写入笔记本：新建（须明确 title）或追加到 appendToNoteId。当前打开的笔记常是无关草稿，禁止默认用前馈 noteId。写训练/巡检先 list_notes 按标题定位。界面会打开写入的那篇。",
+		Name: workbench.CapNotebookAppend,
+		Description: "把服务器运维知识写入笔记本 IDE：巡检记录、shell 脚本、配置片段、主机记忆。" +
+			"新建须 title；管某台机必填 sshHostId。脚本用 language=shell；主机长期上下文用 role=memory。" +
+			"禁止默认往当前打开的草稿追加；先 list_notes(sshHostId) 定位。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"title":          map[string]interface{}{"type": "string", "description": "新笔记标题（追加时可省略）"},
-				"content":        map[string]interface{}{"type": "string", "description": "Markdown 正文"},
-				"sshHostId":      map[string]interface{}{"type": "string", "description": "关联 SSH 主机 ID（可选）"},
+				"title":          map[string]interface{}{"type": "string", "description": "新文件标题（追加时可省略）"},
+				"content":        map[string]interface{}{"type": "string", "description": "正文（md/脚本/配置）"},
+				"language":       map[string]interface{}{"type": "string", "description": "文件类型：markdown|shell|yaml|sql|json|python… 默认 markdown"},
+				"role":           map[string]interface{}{"type": "string", "description": "note|memory|skill（工作流）；主机长期上下文用 memory"},
+				"sshHostId":      map[string]interface{}{"type": "string", "description": "关联 SSH 主机（管服务器时强烈建议）"},
 				"connectionId":   map[string]interface{}{"type": "string", "description": "关联数据库连接 ID（可选）"},
-				"appendToNoteId": map[string]interface{}{"type": "string", "description": "追加目标笔记 ID；须 list_notes 按标题确认，不要用当前打开的草稿 ID"},
+				"appendToNoteId": map[string]interface{}{"type": "string", "description": "追加目标；须 list_notes 确认，勿用无关打开草稿"},
 			},
 			"required": []interface{}{"content"},
 		},
@@ -811,28 +852,51 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolSSHForwardOpen,
 	})
 	r.add(ToolDef{
-		Name:        workbench.CapPublishAgentSkill,
-		Description: "首次从笔记发布 Skill（/ 手动调用）。写入 SKILL.md 并在来源笔记加 wwb-skill 关联标记；已有关联的 skill 请用 update_agent_skill 改正文。",
+		Name: workbench.CapListSkills,
+		Description: "列出笔记本工作流（~/.wworkbench/notebook/工作流/）。返回 id/name/description/noteId/diskPath/hasSteps。",
+		Parameters: map[string]interface{}{
+			"type":       "object",
+			"properties": map[string]interface{}{},
+		},
+		Handler: toolListSkills,
+	})
+	r.add(ToolDef{
+		Name: workbench.CapGetSkill,
+		Description: "读取笔记本工作流/Skill 正文（~/.wworkbench/notebook/工作流/{name}/SKILL.md）。返回 content + diskPath/skillDir/assetsDir；优先读后自己用工具执行。含步骤时也可选 run_skill。参数 skill=id|name。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"id":          map[string]interface{}{"type": "string", "description": "技能 id，字母数字开头"},
+				"skill": map[string]interface{}{"type": "string", "description": "skill id 或 name"},
+				"id":    map[string]interface{}{"type": "string"},
+				"name":  map[string]interface{}{"type": "string"},
+			},
+			"required": []interface{}{"skill"},
+		},
+		Handler: toolGetSkill,
+	})
+	r.add(ToolDef{
+		Name: workbench.CapPublishAgentSkill,
+		Description: "将笔记标为工作流（role=skill + skillId）。真源仅笔记本目录；优先传 noteId 与 id（短名）。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"id":          map[string]interface{}{"type": "string", "description": "工作流 id；空则从笔记关联/标题推导"},
 				"name":        map[string]interface{}{"type": "string", "description": "显示名"},
 				"description": map[string]interface{}{"type": "string", "description": "/ 菜单一句话说明"},
-				"content":     map[string]interface{}{"type": "string", "description": "SKILL.md 正文（不含 frontmatter 与 wwb-skill 标记）"},
-				"noteId":      map[string]interface{}{"type": "string", "description": "来源笔记 ID，用于写入关联标记"},
+				"content":     map[string]interface{}{"type": "string", "description": "可选；空则读笔记"},
+				"noteId":      map[string]interface{}{"type": "string", "description": "来源笔记 ID（推荐）"},
 			},
-			"required": []interface{}{"id", "content", "noteId"},
+			"required": []interface{}{"noteId"},
 		},
 		Handler: toolPublishAgentSkill,
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapUpdateAgentSkill,
-		Description: "更新已有 Skill 正文或元数据（/ 手动调用）。只写 system/skills/<id>/SKILL.md，不修改任何笔记。",
+		Description: "已废弃：勿写 system/skills。请改用 update_skill 写笔记本工作流。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"id":            map[string]interface{}{"type": "string", "description": "技能 id"},
+				"id":            map[string]interface{}{"type": "string", "description": "工作流 id"},
 				"content":       map[string]interface{}{"type": "string", "description": "SKILL.md 正文（不含 frontmatter）"},
 				"name":          map[string]interface{}{"type": "string", "description": "显示名"},
 				"description":   map[string]interface{}{"type": "string", "description": "/ 菜单一句话说明"},
@@ -1012,4 +1076,5 @@ func (r *Registry) registerBuiltins() {
 		},
 		Handler: toolAgentConfirm,
 	})
+	registerBrowserTools(r)
 }

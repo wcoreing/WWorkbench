@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/notebook"
 	"WWorkbench/internal/workbench"
 
 	"github.com/google/uuid"
@@ -15,13 +16,15 @@ import (
 type notebookAppendArgs struct {
 	Title          string `json:"title"`
 	Content        string `json:"content"`
+	Language       string `json:"language"`
+	Role           string `json:"role"`
 	SSHHostID      string `json:"sshHostId"`
 	ConnectionID   string `json:"connectionId"`
 	AppendToNoteID string `json:"appendToNoteId"`
 	Reveal         *bool  `json:"reveal"`
 }
 
-// toolNotebookAppend 创建或追加 Markdown 笔记。
+// toolNotebookAppend 创建或追加运维文件/笔记（Cursor 管服务器的知识落盘）。
 func toolNotebookAppend(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	if d.Notebook == nil {
 		return Fail("笔记本服务未就绪")
@@ -36,7 +39,15 @@ func toolNotebookAppend(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 	}
 	title := strings.TrimSpace(in.Title)
 	if title == "" {
-		title = "AI 巡检 " + time.Now().Format("2006-01-02 15:04")
+		title = "运维记录 " + time.Now().Format("2006-01-02 15:04")
+	}
+	lang := strings.TrimSpace(in.Language)
+	if lang == "" {
+		lang = "markdown"
+	}
+	role := notebook.NormalizeNoteRole(strings.TrimSpace(in.Role))
+	if role == "" {
+		role = model.NoteRoleNote
 	}
 	reveal := true
 	if in.Reveal != nil {
@@ -52,6 +63,12 @@ func toolNotebookAppend(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 			n.Content += "\n\n---\n\n"
 		}
 		n.Content += content
+		if host := strings.TrimSpace(in.SSHHostID); host != "" {
+			n.SSHHostID = host
+		}
+		if conn := strings.TrimSpace(in.ConnectionID); conn != "" {
+			n.ConnectionID = conn
+		}
 		n.UpdatedAt = time.Now().Unix()
 		saved, err := d.Notebook.SaveNote(*n)
 		if err != nil {
@@ -62,14 +79,16 @@ func toolNotebookAppend(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 		}
 		revealNotebook(d, saved.ID, reveal)
 		return OKData(map[string]interface{}{
-			"noteId": saved.ID, "title": saved.Title, "appended": true,
+			"noteId": saved.ID, "title": saved.Title, "language": saved.Language,
+			"role": saved.Role, "sshHostId": saved.SSHHostID, "appended": true,
 		})
 	}
 
 	now := time.Now().Unix()
 	n := model.NoteDO{
 		ID: uuid.NewString(), Title: title, Content: content,
-		Language: "markdown", SSHHostID: strings.TrimSpace(in.SSHHostID),
+		Language: lang, Role: role,
+		SSHHostID: strings.TrimSpace(in.SSHHostID),
 		ConnectionID: strings.TrimSpace(in.ConnectionID),
 		CreatedAt: now, UpdatedAt: now,
 	}
@@ -82,7 +101,8 @@ func toolNotebookAppend(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 	}
 	revealNotebook(d, saved.ID, reveal)
 	return OKData(map[string]interface{}{
-		"noteId": saved.ID, "title": saved.Title, "created": true,
+		"noteId": saved.ID, "title": saved.Title, "language": saved.Language,
+		"role": saved.Role, "sshHostId": saved.SSHHostID, "created": true,
 	})
 }
 

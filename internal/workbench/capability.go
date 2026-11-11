@@ -10,10 +10,12 @@ package workbench
 const (
 	CapGetAgentRules        = "get_agent_rules"
 	CapGetWorkbenchContext  = "get_workbench_context"
-	CapListBackupPolicies   = "list_backup_policies"
-	CapSaveBackupPolicy     = "save_backup_policy"
-	CapRunBackup            = "run_backup"
-	CapListBackupRuns       = "list_backup_runs"
+	CapListBackupPolicies       = "list_backup_policies"
+	CapSaveBackupPolicy         = "save_backup_policy"
+	CapRunBackup                = "run_backup"
+	CapListBackupRuns           = "list_backup_runs"
+	CapHostHealthScan           = "host_health_scan"
+	CapEnsureHostBackupPolicies = "ensure_host_backup_policies"
 	CapListConnections      = "list_connections"
 	CapListSSHHosts         = "list_ssh_hosts"
 	CapShellRun             = "shell_run"
@@ -53,6 +55,40 @@ const (
 	CapAgentChat            = "agent_chat"
 	CapAgentConfirm         = "agent_confirm"
 	CapOfferChoices         = "offer_choices"
+	CapBrowserStatus        = "browser_status"
+	CapBrowserListTabs      = "browser_list_tabs"
+	CapBrowserAttach        = "browser_attach"
+	CapBrowserFindTab       = "browser_find_tab"
+	CapBrowserSnapshot      = "browser_snapshot"
+	CapBrowserFind          = "browser_find"
+	CapBrowserWait          = "browser_wait"
+	CapBrowserRun           = "browser_run"
+	CapBrowserEvaluate      = "browser_evaluate"
+	CapBrowserReadPage      = "browser_read_page"
+	CapBrowserUpload        = "browser_upload"
+	CapBrowserNetwork       = "browser_network"
+	CapBrowserSelectOption  = "browser_select_option"
+	CapBrowserDrag          = "browser_drag"
+	CapBrowserKeys          = "browser_keys"
+	CapBrowserScreenshot    = "browser_screenshot"
+	CapBrowserClick         = "browser_click"
+	CapBrowserFill          = "browser_fill"
+	CapBrowserNavigate      = "browser_navigate"
+	CapBrowserOpenFrame     = "browser_open_frame"
+	CapBrowserCloseSession  = "browser_close_session"
+	CapBrowserGroupSession  = "browser_group_session"
+	CapBrowserOpen          = "browser_open"
+	CapListTaskRuns         = "list_task_runs"
+	CapGetTaskRun           = "get_task_run"
+	CapReplayTaskStep       = "replay_task_step"
+	CapDistillWorkflow      = "distill_workflow"
+	CapListWorkflows        = "list_workflows"
+	CapGetWorkflow          = "get_workflow"
+	CapSaveWorkflow         = "save_workflow"
+	CapUpdateSkill          = "update_skill"
+	CapRunSkill             = "run_skill"
+	CapListSkills           = "list_skills"
+	CapGetSkill             = "get_skill"
 )
 
 // UICapabilities 需前端执行的 UI 联动能力（切产品线 + CommandBus handler）。
@@ -69,6 +105,7 @@ func UICapabilities() []string {
 		CapHTTPAPIOpen,
 		CapEnvironmentOpen,
 		CapSSHForwardOpen,
+		CapBrowserOpen,
 	}
 }
 

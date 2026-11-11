@@ -313,6 +313,7 @@ export function useAgentSession(opts: {
       tabTitle: agentSurface.tabTitle || '',
       openTabsBrief: agentSurface.openTabsBrief || '',
       selectionBrief: agentSurface.selectionBrief || '',
+      hostId: agentSurface.hostId || '',
       noteId: agentSurface.noteId || '',
       mentions: toContextMentions(mentions),
       ...(pluginPackId ? { pluginPackId } : {}),

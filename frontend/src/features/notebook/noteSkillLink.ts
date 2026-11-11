@@ -8,12 +8,19 @@ export function readLinkedSkillId(content: string): string {
   return m?.[1] ?? ''
 }
 
-/** withLinkedSkillId 写入/更新关联标记，返回新正文。 */
+const FM_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
+
+/** withLinkedSkillId 写入/更新关联标记（放在 frontmatter 之后）。 */
 export function withLinkedSkillId(content: string, skillId: string): string {
   const id = skillId.trim()
   const mark = `<!-- wwb-skill: ${id} -->`
   if (SKILL_MARK_RE.test(content)) {
     return content.replace(SKILL_MARK_RE, mark)
+  }
+  const m = content.match(FM_RE)
+  if (m) {
+    const body = content.slice(m[0].length).replace(/^\s+/, '')
+    return `${m[0]}\n${mark}\n\n${body}`
   }
   const trimmed = content.replace(/^\s+/, '')
   return `${mark}\n\n${trimmed}`

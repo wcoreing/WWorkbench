@@ -444,6 +444,12 @@ export function TerminalWorkbench() {
       : withSSHHostTrust(host.host || '', host.port || 22, open, confirmTrust)
   }
 
+  const connectedStatus = (title: string, info: { reused?: boolean; dialMs?: number }) => {
+    if (typeof info.dialMs !== 'number') return t('terminal.connected', { title })
+    if (info.reused) return t('terminal.connectedHot', { title, ms: info.dialMs })
+    return t('terminal.connectedCold', { title, ms: info.dialMs })
+  }
+
   const openSessionForTab = async (tab: TerminalTab): Promise<string> => {
     if (tab.kind === 'local') {
       const info = await api.openLocalTerminal(120, 32)
@@ -474,7 +480,7 @@ export function TerminalWorkbench() {
       const info = await openRemoteSession(host)
       if (!tabsRef.current.some((t) => t.id === tabId)) return
       activateTab(tabId, { sessionId: info.sessionId, title: info.title || title })
-      setStatusMessage(t('terminal.connected', { title: info.title || title }))
+      setStatusMessage(connectedStatus(info.title || title, info))
       await writeInitialCommand(info.sessionId, initialCommand)
     } catch (e) {
       const message = (e as Error).message
@@ -495,13 +501,14 @@ export function TerminalWorkbench() {
         const info = await api.openLocalTerminal(120, 32)
         if (!tabsRef.current.some((t) => t.id === tabId)) return
         activateTab(tabId, { sessionId: info.sessionId, title: info.title || tab.title })
+        setStatusMessage(t('terminal.connected', { title: tab.title }))
       } else {
         const host = tab.connectHost ?? (await resolveHost(tab.hostId))
         const info = await openRemoteSession(host)
         if (!tabsRef.current.some((t) => t.id === tabId)) return
         activateTab(tabId, { sessionId: info.sessionId, title: info.title || tab.title })
+        setStatusMessage(connectedStatus(info.title || tab.title, info))
       }
-      setStatusMessage(t('terminal.connected', { title: tab.title }))
     } catch (e) {
       const message = (e as Error).message
       if (!tabsRef.current.some((t) => t.id === tabId)) return

@@ -1,5 +1,5 @@
 import type { ProductId } from '../shell/products'
-import { PRODUCTS } from '../shell/products'
+import { normalizeProductId } from '../shell/products'
 import { api } from '../api/client'
 import type { AppLocale } from '../i18n/types'
 import { clampUiFontSize, DEFAULT_UI_FONT_SIZE, type UiFontSize } from '../shell/uiFontSize'
@@ -13,6 +13,7 @@ export const APP_SETTING_KEYS = {
   uiFontSize: 'ui_font_size',
   lastConnectionId: 'last_connection_id',
   lastDockerContextId: 'last_docker_context_id',
+  browserAskConfirm: 'browser_ask_confirm',
 } as const
 
 export interface AppPreferences {
@@ -40,9 +41,7 @@ function parsePreferences(settings: Record<string, string>): AppPreferences {
   const theme = settings[APP_SETTING_KEYS.theme] === 'dark' ? 'dark' : 'light'
   const localeRaw = settings[APP_SETTING_KEYS.locale]
   const locale: AppLocale = localeRaw === 'en' ? 'en' : 'zh'
-  const product = settings[APP_SETTING_KEYS.activeProduct] as ProductId
-  const valid = new Set(PRODUCTS.map((p) => p.id))
-  const activeProduct: ProductId = valid.has(product) ? product : 'terminal'
+  const activeProduct = normalizeProductId(settings[APP_SETTING_KEYS.activeProduct])
   const opacity = Number(settings[APP_SETTING_KEYS.terminalOpacity])
   const fontRaw = Number(settings[APP_SETTING_KEYS.uiFontSize])
   return {

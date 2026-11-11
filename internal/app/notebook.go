@@ -3,11 +3,14 @@ package app
 import (
 	"encoding/base64"
 	"os"
+	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/notebook"
 	"WWorkbench/internal/workbench"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -270,4 +273,157 @@ func (s *Service) PickNotebookAssets(noteID string, imagesOnly bool) ApiResult[[
 		out = append(out, *asset)
 	}
 	return OkResult(out)
+}
+
+// NotebookWorkspacePath 返回固定磁盘工作区绝对路径。
+func (s *Service) NotebookWorkspacePath() ApiResult[string] {
+	p := s.notebook.WorkspacePath()
+	if p == "" {
+		return ErrResult[string](errno.New(errno.CodeStoreFailed, "笔记本工作区未就绪", ""))
+	}
+	return OkResult(p)
+}
+
+// NoteDiskPath 返回笔记内容文件绝对路径。
+func (s *Service) NoteDiskPath(noteID string) ApiResult[string] {
+	p, err := s.notebook.NoteDiskPath(noteID)
+	if err != nil {
+		return ErrResult[string](err)
+	}
+	return OkResult(p)
+}
+
+// RevealNotebookNote 在访达/资源管理器中显示笔记文件（Skill 显示其目录）。
+func (s *Service) RevealNotebookNote(noteID string) ApiResult[bool] {
+	noteID = strings.TrimSpace(noteID)
+	if noteID == "" {
+		return s.RevealNotebookWorkspace()
+	}
+	dir, err := s.notebook.NoteDirPath(noteID)
+	if err != nil {
+		// 非笔记路径：按工作区相对路径揭示
+		return s.RevealNotebookPath(noteID)
+	}
+	file, ferr := s.notebook.NoteDiskPath(noteID)
+	if ferr == nil {
+		return revealInFileManager(file, true)
+	}
+	return revealInFileManager(dir, false)
+}
+
+// RevealNotebookPath 在访达中显示工作区内相对路径（文件选中 / 目录打开）。
+func (s *Service) RevealNotebookPath(rel string) ApiResult[bool] {
+	rel = strings.TrimSpace(rel)
+	if rel == "" {
+		return s.RevealNotebookWorkspace()
+	}
+	root := s.notebook.WorkspacePath()
+	if root == "" {
+		return ErrResult[bool](errno.New(errno.CodeStoreFailed, "笔记本工作区未就绪", ""))
+	}
+	abs := filepath.Join(root, filepath.FromSlash(rel))
+	info, err := os.Stat(abs)
+	if err != nil {
+		return ErrResult[bool](errno.Wrap(errno.CodeNotFound, "路径不存在", err))
+	}
+	return revealInFileManager(abs, !info.IsDir())
+}
+
+// RenameNotebookPath 重命名工作区内文件/目录。
+func (s *Service) RenameNotebookPath(rel, newName string) ApiResult[notebook.PathMutation] {
+	out, err := s.notebook.RenameRel(rel, newName)
+	if err != nil {
+		return ErrResult[notebook.PathMutation](err)
+	}
+	return OkResult(out)
+}
+
+// MoveNotebookPath 移动到目标目录。
+func (s *Service) MoveNotebookPath(fromRel, destDirRel string) ApiResult[notebook.PathMutation] {
+	out, err := s.notebook.MoveRel(fromRel, destDirRel)
+	if err != nil {
+		return ErrResult[notebook.PathMutation](err)
+	}
+	return OkResult(out)
+}
+
+// CopyNotebookPath 复制到目标目录。
+func (s *Service) CopyNotebookPath(fromRel, destDirRel string) ApiResult[notebook.PathMutation] {
+	out, err := s.notebook.CopyRel(fromRel, destDirRel)
+	if err != nil {
+		return ErrResult[notebook.PathMutation](err)
+	}
+	return OkResult(out)
+}
+
+// DeleteNotebookPath 删除工作区内文件/目录。
+func (s *Service) DeleteNotebookPath(rel string) ApiResult[bool] {
+	if err := s.notebook.DeleteRel(rel); err != nil {
+		return ErrResult[bool](err)
+	}
+	return OkResult(true)
+}
+
+// CreateNotebookDir 新建目录。
+func (s *Service) CreateNotebookDir(parentRel, name string) ApiResult[string] {
+	id, err := s.notebook.CreateDir(parentRel, name)
+	if err != nil {
+		return ErrResult[string](err)
+	}
+	return OkResult(id)
+}
+
+// CreateNotebookFile 在目录下新建空笔记文件。
+func (s *Service) CreateNotebookFile(parentRel, name string) ApiResult[model.NoteDO] {
+	n, err := s.notebook.CreateNoteFile(parentRel, name)
+	if err != nil {
+		return ErrResult[model.NoteDO](err)
+	}
+	return OkResult(*n)
+}
+
+// RevealNotebookWorkspace 在访达中打开笔记本工作区根目录。
+func (s *Service) RevealNotebookWorkspace() ApiResult[bool] {
+	p := s.notebook.WorkspacePath()
+	if p == "" {
+		return ErrResult[bool](errno.New(errno.CodeStoreFailed, "笔记本工作区未就绪", ""))
+	}
+	if err := os.MkdirAll(p, 0o700); err != nil {
+		return ErrResult[bool](errno.Wrap(errno.CodeStoreFailed, "创建工作区失败", err))
+	}
+	return revealInFileManager(p, false)
+}
+
+func revealInFileManager(path string, selectFile bool) ApiResult[bool] {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return ErrResult[bool](errno.New(errno.CodeInvalidArg, "路径为空", ""))
+	}
+	if _, err := os.Stat(path); err != nil {
+		return ErrResult[bool](errno.Wrap(errno.CodeInvalidArg, "路径不存在", err))
+	}
+	var cmd *exec.Cmd
+	switch goruntime.GOOS {
+	case "darwin":
+		if selectFile {
+			cmd = exec.Command("open", "-R", path)
+		} else {
+			cmd = exec.Command("open", path)
+		}
+	case "windows":
+		if selectFile {
+			cmd = exec.Command("explorer", "/select,", path)
+		} else {
+			cmd = exec.Command("explorer", path)
+		}
+	default:
+		cmd = exec.Command("xdg-open", path)
+		if selectFile {
+			cmd = exec.Command("xdg-open", filepath.Dir(path))
+		}
+	}
+	if err := cmd.Start(); err != nil {
+		return ErrResult[bool](errno.Wrap(errno.CodeStoreFailed, "打开文件管理器失败", err))
+	}
+	return OkResult(true)
 }

@@ -1,6 +1,40 @@
 package terminal
 
-import "testing"
+import (
+	"context"
+	"testing"
+	"time"
+)
+
+func TestCoerceUpdatedAtMs(t *testing.T) {
+	if CoerceUpdatedAtMs(0) != 0 {
+		t.Fatal("zero")
+	}
+	if CoerceUpdatedAtMs(1_700_000_000) != 1_700_000_000_000 {
+		t.Fatal("seconds should scale to ms")
+	}
+	if CoerceUpdatedAtMs(1_700_000_000_123) != 1_700_000_000_123 {
+		t.Fatal("millis passthrough")
+	}
+}
+
+func TestWaitQuietReturnsAfterSilence(t *testing.T) {
+	tail := newOutputTail()
+	tail.append([]byte("hi\n"))
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	start := time.Now()
+	if err := tail.waitQuiet(ctx, 50*time.Millisecond); err != nil {
+		t.Fatal(err)
+	}
+	elapsed := time.Since(start)
+	if elapsed < 40*time.Millisecond {
+		t.Fatalf("returned too early: %v", elapsed)
+	}
+	if elapsed > 500*time.Millisecond {
+		t.Fatalf("too slow: %v", elapsed)
+	}
+}
 
 func TestClipPTYTailKeepsLastLines(t *testing.T) {
 	raw := "a\nb\nc\nd\ne"

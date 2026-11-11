@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"WWorkbench/internal/workbench"
+
 	"github.com/google/uuid"
 )
 
@@ -141,8 +143,23 @@ func ProductForTool(toolName string) string {
 		return "terminal"
 	case "shell_run", "open_terminal", "terminal.open", "terminal_open", "run_backup":
 		return "terminal"
+	case workbench.CapEnsureHostBackupPolicies, workbench.CapHostHealthScan, workbench.CapBackupOpen:
+		return "backup"
 	case "edit_plugin_pack_file", "write_plugin_pack_file", "build_plugin_pack_ui", "rollback_plugin_pack":
 		return "plugins"
+	case workbench.CapBrowserClick, workbench.CapBrowserFill, workbench.CapBrowserUpload,
+		workbench.CapBrowserSelectOption, workbench.CapBrowserDrag,
+		workbench.CapBrowserNavigate, workbench.CapBrowserKeys, workbench.CapBrowserOpenFrame,
+		workbench.CapBrowserStatus, workbench.CapBrowserListTabs,
+		workbench.CapBrowserAttach, workbench.CapBrowserSnapshot, workbench.CapBrowserFind,
+		workbench.CapBrowserWait, workbench.CapBrowserScreenshot, workbench.CapBrowserReadPage,
+		workbench.CapBrowserOpen, workbench.CapBrowserFindTab, workbench.CapBrowserGroupSession,
+		workbench.CapBrowserCloseSession, workbench.CapBrowserRun, workbench.CapBrowserEvaluate,
+		workbench.CapBrowserNetwork, workbench.CapListTaskRuns, workbench.CapGetTaskRun,
+		workbench.CapReplayTaskStep, workbench.CapDistillWorkflow, workbench.CapListWorkflows,
+		workbench.CapGetWorkflow, workbench.CapSaveWorkflow, workbench.CapUpdateSkill, workbench.CapRunSkill,
+		workbench.CapListSkills, workbench.CapGetSkill:
+		return "browser"
 	default:
 		return "terminal"
 	}

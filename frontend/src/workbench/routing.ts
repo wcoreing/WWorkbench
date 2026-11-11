@@ -24,6 +24,8 @@ export function capabilityToProductId(capability: string): ProductId | null {
       return 'httpapi'
     case Capability.EnvironmentOpen:
       return 'environment'
+    case Capability.BrowserOpen:
+      return 'browser'
     default:
       return null
   }

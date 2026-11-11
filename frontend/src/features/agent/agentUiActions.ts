@@ -83,6 +83,9 @@ export function dispatchAgentUiAction(raw: Record<string, unknown>) {
         useAppStore.getState().setStatusMessage('AI：已打开环境工作台')
       } else if (kind === Capability.SSHForwardOpen) {
         useAppStore.getState().setStatusMessage('AI：已打开 SSH 隧道')
+      } else if (kind === Capability.BrowserOpen) {
+        const label = String(payload.stageLabel ?? '')
+        useAppStore.getState().setStatusMessage(label || 'AI：已打开浏览器舞台')
       } else if (kind === Capability.DockerContextOpen) {
         const label = String(payload.stageLabel ?? '')
         if (label) setShellStage(label)
@@ -254,6 +257,7 @@ function formatMcpConfirmBody(
 
 function asProductId(v: unknown): ProductId | null {
   const id = String(v ?? '')
+  if (id === 'skills') return 'notebook'
   const allowed: ProductId[] = [
     'database',
     'terminal',
@@ -261,10 +265,10 @@ function asProductId(v: unknown): ProductId | null {
     'docker',
     'environment',
     'notebook',
-    'skills',
     'httpapi',
     'logs',
     'backup',
+    'browser',
     'plugins',
   ]
   return (allowed as string[]).includes(id) ? (id as ProductId) : null

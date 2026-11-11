@@ -50,6 +50,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_browser_Status_ {
+	    ok: boolean;
+	    data: browser.Status;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_browser_Status_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], browser.Status);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_AgentChatResultDO_ {
 	    ok: boolean;
 	    data: model.AgentChatResultDO;
@@ -199,6 +233,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.BackupPolicyDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_model_BrowserExtPathDO_ {
+	    ok: boolean;
+	    data: model.BrowserExtPathDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_BrowserExtPathDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.BrowserExtPathDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -628,6 +696,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_EnsureHostBackupResultDO_ {
+	    ok: boolean;
+	    data: model.EnsureHostBackupResultDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_EnsureHostBackupResultDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.EnsureHostBackupResultDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_EnvApplyResultDO_ {
 	    ok: boolean;
 	    data: model.EnvApplyResultDO;
@@ -845,6 +947,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.HTTPSavedRequestDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_model_HostHealthReportDO_ {
+	    ok: boolean;
+	    data: model.HostHealthReportDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_HostHealthReportDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.HostHealthReportDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -1580,6 +1716,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_TaskRunDetailDO_ {
+	    ok: boolean;
+	    data: model.TaskRunDetailDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_TaskRunDetailDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.TaskRunDetailDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_TerminalCwdDO_ {
 	    ok: boolean;
 	    data: model.TerminalCwdDO;
@@ -1729,6 +1899,74 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.VersionDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_model_WorkflowDO_ {
+	    ok: boolean;
+	    data: model.WorkflowDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_WorkflowDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.WorkflowDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_notebook_PathMutation_ {
+	    ok: boolean;
+	    data: notebook.PathMutation;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_notebook_PathMutation_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], notebook.PathMutation);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -3076,6 +3314,74 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult___WWorkbench_internal_model_TaskRunDO_ {
+	    ok: boolean;
+	    data: model.TaskRunDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_TaskRunDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.TaskRunDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WWorkbench_internal_model_WorkflowDO_ {
+	    ok: boolean;
+	    data: model.WorkflowDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_WorkflowDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.WorkflowDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult___WWorkbench_internal_pluginpack_PackInfo_ {
 	    ok: boolean;
 	    data: pluginpack.PackInfo[];
@@ -3185,6 +3491,40 @@ export namespace app {
 	
 	    static createFrom(source: any = {}) {
 	        return new ApiResult_bool_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = source["data"];
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_encoding_json_RawMessage_ {
+	    ok: boolean;
+	    data: number[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_encoding_json_RawMessage_(source);
 	    }
 	
 	    constructor(source: any = {}) {
@@ -3417,6 +3757,45 @@ export namespace app {
 
 }
 
+export namespace browser {
+	
+	export class Status {
+	    listening: boolean;
+	    addr: string;
+	    extensionConnected: boolean;
+	    attachedTabId?: number;
+	    extDir: string;
+	    extVersion?: string;
+	    seedVersion?: string;
+	    versionMismatch?: boolean;
+	    capabilities?: string[];
+	    recording?: boolean;
+	    recordingSession?: string;
+	    lastError?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Status(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.listening = source["listening"];
+	        this.addr = source["addr"];
+	        this.extensionConnected = source["extensionConnected"];
+	        this.attachedTabId = source["attachedTabId"];
+	        this.extDir = source["extDir"];
+	        this.extVersion = source["extVersion"];
+	        this.seedVersion = source["seedVersion"];
+	        this.versionMismatch = source["versionMismatch"];
+	        this.capabilities = source["capabilities"];
+	        this.recording = source["recording"];
+	        this.recordingSession = source["recordingSession"];
+	        this.lastError = source["lastError"];
+	    }
+	}
+
+}
+
 export namespace errno {
 	
 	export class AppError {
@@ -3540,6 +3919,7 @@ export namespace model {
 	    selectionBrief?: string;
 	    shellTail?: string;
 	    terminalSessionId?: string;
+	    hostId?: string;
 	    noteId?: string;
 	    mentions: AgentMentionDO[];
 	    skillIds?: string[];
@@ -3566,6 +3946,7 @@ export namespace model {
 	        this.selectionBrief = source["selectionBrief"];
 	        this.shellTail = source["shellTail"];
 	        this.terminalSessionId = source["terminalSessionId"];
+	        this.hostId = source["hostId"];
 	        this.noteId = source["noteId"];
 	        this.mentions = this.convertValues(source["mentions"], AgentMentionDO);
 	        this.skillIds = source["skillIds"];
@@ -4034,6 +4415,18 @@ export namespace model {
 	        this.detail = source["detail"];
 	        this.intent = source["intent"];
 	        this.createdAt = source["createdAt"];
+	    }
+	}
+	export class BrowserExtPathDO {
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BrowserExtPathDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
 	    }
 	}
 	export class CellValueDO {
@@ -4693,6 +5086,118 @@ export namespace model {
 		    return a;
 		}
 	}
+	export class HostHealthFindingDO {
+	    id: string;
+	    severity: string;
+	    kind: string;
+	    title: string;
+	    detail: string;
+	    suggestKind: string;
+	    path: string;
+	    connectionId: string;
+	    fixable: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new HostHealthFindingDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.severity = source["severity"];
+	        this.kind = source["kind"];
+	        this.title = source["title"];
+	        this.detail = source["detail"];
+	        this.suggestKind = source["suggestKind"];
+	        this.path = source["path"];
+	        this.connectionId = source["connectionId"];
+	        this.fixable = source["fixable"];
+	    }
+	}
+	export class HostHealthReportDO {
+	    sshHostId: string;
+	    workDir: string;
+	    hostLabel: string;
+	    scannedAt: number;
+	    score: number;
+	    summary: string;
+	    diskBrief: string;
+	    findings: HostHealthFindingDO[];
+	    policyCount: number;
+	    coveredCount: number;
+	    fixableCount: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new HostHealthReportDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sshHostId = source["sshHostId"];
+	        this.workDir = source["workDir"];
+	        this.hostLabel = source["hostLabel"];
+	        this.scannedAt = source["scannedAt"];
+	        this.score = source["score"];
+	        this.summary = source["summary"];
+	        this.diskBrief = source["diskBrief"];
+	        this.findings = this.convertValues(source["findings"], HostHealthFindingDO);
+	        this.policyCount = source["policyCount"];
+	        this.coveredCount = source["coveredCount"];
+	        this.fixableCount = source["fixableCount"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class EnsureHostBackupResultDO {
+	    created: BackupPolicyDO[];
+	    skipped: number;
+	    report: HostHealthReportDO;
+	
+	    static createFrom(source: any = {}) {
+	        return new EnsureHostBackupResultDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.created = this.convertValues(source["created"], BackupPolicyDO);
+	        this.skipped = source["skipped"];
+	        this.report = this.convertValues(source["report"], HostHealthReportDO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class EnvApplyResultDO {
 	    warnings: string[];
 	
@@ -4958,6 +5463,8 @@ export namespace model {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	
+	
 	export class IndexMetaDO {
 	    name: string;
 	    column: string;
@@ -5179,6 +5686,7 @@ export namespace model {
 	    title: string;
 	    content: string;
 	    language: string;
+	    role: string;
 	    sshHostId: string;
 	    connectionId: string;
 	    sortOrder: number;
@@ -5196,6 +5704,7 @@ export namespace model {
 	        this.title = source["title"];
 	        this.content = source["content"];
 	        this.language = source["language"];
+	        this.role = source["role"];
 	        this.sshHostId = source["sshHostId"];
 	        this.connectionId = source["connectionId"];
 	        this.sortOrder = source["sortOrder"];
@@ -5208,6 +5717,7 @@ export namespace model {
 	    groupId: string;
 	    title: string;
 	    language: string;
+	    role: string;
 	    sshHostId: string;
 	    connectionId: string;
 	    sortOrder: number;
@@ -5223,6 +5733,7 @@ export namespace model {
 	        this.groupId = source["groupId"];
 	        this.title = source["title"];
 	        this.language = source["language"];
+	        this.role = source["role"];
 	        this.sshHostId = source["sshHostId"];
 	        this.connectionId = source["connectionId"];
 	        this.sortOrder = source["sortOrder"];
@@ -5619,6 +6130,8 @@ export namespace model {
 	    sessionId: string;
 	    hostId: string;
 	    title: string;
+	    reused?: boolean;
+	    dialMs?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new SFTPSessionInfoDO(source);
@@ -5629,6 +6142,8 @@ export namespace model {
 	        this.sessionId = source["sessionId"];
 	        this.hostId = source["hostId"];
 	        this.title = source["title"];
+	        this.reused = source["reused"];
+	        this.dialMs = source["dialMs"];
 	    }
 	}
 	export class SFTPTextFileDO {
@@ -6002,6 +6517,105 @@ export namespace model {
 	
 	
 	
+	export class TaskRunDO {
+	    id: string;
+	    session: string;
+	    title: string;
+	    intent: string;
+	    status: string;
+	    source: string;
+	    stepCount?: number;
+	    startedAt: number;
+	    endedAt?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TaskRunDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.session = source["session"];
+	        this.title = source["title"];
+	        this.intent = source["intent"];
+	        this.status = source["status"];
+	        this.source = source["source"];
+	        this.stepCount = source["stepCount"];
+	        this.startedAt = source["startedAt"];
+	        this.endedAt = source["endedAt"];
+	    }
+	}
+	export class TaskStepDO {
+	    id: string;
+	    runId: string;
+	    seq: number;
+	    tool: string;
+	    action: string;
+	    intent: string;
+	    summary: string;
+	    argsJson?: string;
+	    locator?: string;
+	    result?: string;
+	    ok: boolean;
+	    error?: string;
+	    approved: boolean;
+	    createdAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TaskStepDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.runId = source["runId"];
+	        this.seq = source["seq"];
+	        this.tool = source["tool"];
+	        this.action = source["action"];
+	        this.intent = source["intent"];
+	        this.summary = source["summary"];
+	        this.argsJson = source["argsJson"];
+	        this.locator = source["locator"];
+	        this.result = source["result"];
+	        this.ok = source["ok"];
+	        this.error = source["error"];
+	        this.approved = source["approved"];
+	        this.createdAt = source["createdAt"];
+	    }
+	}
+	export class TaskRunDetailDO {
+	    run: TaskRunDO;
+	    steps: TaskStepDO[];
+	
+	    static createFrom(source: any = {}) {
+	        return new TaskRunDetailDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.run = this.convertValues(source["run"], TaskRunDO);
+	        this.steps = this.convertValues(source["steps"], TaskStepDO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class TerminalCwdDO {
 	    sessionId: string;
 	    hostKey: string;
@@ -6025,6 +6639,8 @@ export namespace model {
 	    hostId: string;
 	    title: string;
 	    kind: string;
+	    reused?: boolean;
+	    dialMs?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new TerminalSessionInfoDO(source);
@@ -6036,6 +6652,8 @@ export namespace model {
 	        this.hostId = source["hostId"];
 	        this.title = source["title"];
 	        this.kind = source["kind"];
+	        this.reused = source["reused"];
+	        this.dialMs = source["dialMs"];
 	    }
 	}
 	export class TransferConflictDO {
@@ -6090,6 +6708,95 @@ export namespace model {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.version = source["version"];
+	    }
+	}
+	export class WorkflowStepDO {
+	    action: string;
+	    summary?: string;
+	    intent?: string;
+	    locator?: Record<string, any>;
+	    args?: Record<string, any>;
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkflowStepDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.action = source["action"];
+	        this.summary = source["summary"];
+	        this.intent = source["intent"];
+	        this.locator = source["locator"];
+	        this.args = source["args"];
+	    }
+	}
+	export class WorkflowDO {
+	    id: string;
+	    name: string;
+	    title: string;
+	    description?: string;
+	    intent?: string;
+	    steps: WorkflowStepDO[];
+	    sourceRunId?: string;
+	    noteId?: string;
+	    source?: string;
+	    createdAt: number;
+	    updatedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkflowDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.title = source["title"];
+	        this.description = source["description"];
+	        this.intent = source["intent"];
+	        this.steps = this.convertValues(source["steps"], WorkflowStepDO);
+	        this.sourceRunId = source["sourceRunId"];
+	        this.noteId = source["noteId"];
+	        this.source = source["source"];
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
+export namespace notebook {
+	
+	export class PathMutation {
+	    from: string;
+	    to: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PathMutation(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.from = source["from"];
+	        this.to = source["to"];
 	    }
 	}
 
@@ -6202,6 +6909,61 @@ export namespace pluginpack {
 	        this.active = source["active"];
 	        this.path = source["path"];
 	    }
+	}
+
+}
+
+export namespace workbenchtools {
+	
+	export class UpdateSkillArgs {
+	    name: string;
+	    title: string;
+	    description: string;
+	    intent: string;
+	    lessons: string;
+	    script: string;
+	    scriptLang: string;
+	    resourcePaths: string[];
+	    steps: model.WorkflowStepDO[];
+	    sourceRunId: string;
+	    replaceSteps?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateSkillArgs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.title = source["title"];
+	        this.description = source["description"];
+	        this.intent = source["intent"];
+	        this.lessons = source["lessons"];
+	        this.script = source["script"];
+	        this.scriptLang = source["scriptLang"];
+	        this.resourcePaths = source["resourcePaths"];
+	        this.steps = this.convertValues(source["steps"], model.WorkflowStepDO);
+	        this.sourceRunId = source["sourceRunId"];
+	        this.replaceSteps = source["replaceSteps"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 
 }

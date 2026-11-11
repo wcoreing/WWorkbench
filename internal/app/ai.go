@@ -47,6 +47,7 @@ func (s *Service) wireAgentRunner() {
 		MCPConfirm:  mcpConfirm,
 		WriteAllows: writeAllows,
 		Terminals:   s.terminals,
+		Browser:     s.browserBridge,
 		PluginPacks: s.pluginPacks,
 	}
 	reg := workbenchtools.NewRegistry(deps)
@@ -72,10 +73,12 @@ func (s *Service) wireAgentRunner() {
 		}
 	}
 	s.agentRunner = agent.NewRunner(s.store, reg, host, s.ctx, emit)
+	s.agentRunner.SetNotebook(s.notebook)
 	deps.Agent = s.agentRunner
-	if err := s.notebook.RemoveLegacySkillNotesGroup(); err != nil {
-		log.Printf("notebook: remove legacy skill group: %v", err)
+	if err := s.notebook.EnsureFSNotebook(); err != nil {
+		log.Printf("notebook: ensure fs workspace: %v", err)
 	}
+	log.Printf("notebook: workspace %s", s.notebook.WorkspacePath())
 	if err := s.applyMCPFromSettings(); err != nil {
 		log.Printf("mcp: start failed: %v", err)
 	}

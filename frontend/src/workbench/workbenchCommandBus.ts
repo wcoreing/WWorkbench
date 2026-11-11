@@ -14,6 +14,7 @@ export type CommandSource =
   | 'httpapi'
   | 'agent'
   | 'backup'
+  | 'browser'
 
 export interface WorkbenchCommand {
   id: string

@@ -60,6 +60,8 @@ interface AppState {
   agentSurface: AgentSurface
   notebookFocusNoteId: string | null
   notebookActiveNoteId: string | null
+  /** 笔记本角色过滤（工作流入口跳转时置为 skill） */
+  notebookRoleFilter: '' | 'memory' | 'skill'
   setVersion: (v: string) => void
   setTheme: (t: 'light' | 'dark') => void
   setLocale: (locale: AppLocale) => void
@@ -77,6 +79,7 @@ interface AppState {
   setAgentSurface: (surface: AgentSurface) => void
   setNotebookFocusNoteId: (id: string | null) => void
   setNotebookActiveNoteId: (id: string | null) => void
+  setNotebookRoleFilter: (role: '' | 'memory' | 'skill') => void
   addTab: (tab: WorkTab) => void
   replaceTab: (oldId: string, tab: WorkTab) => void
   updateSqlTab: (id: string, sql: string) => void
@@ -107,6 +110,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   agentSurface: emptyAgentSurface(),
   notebookFocusNoteId: null,
   notebookActiveNoteId: null,
+  notebookRoleFilter: '',
   setVersion: (version) => set({ version }),
   setTheme: (theme) => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -165,6 +169,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setAgentSurface: (agentSurface) => set({ agentSurface }),
   setNotebookFocusNoteId: (notebookFocusNoteId) => set({ notebookFocusNoteId }),
   setNotebookActiveNoteId: (notebookActiveNoteId) => set({ notebookActiveNoteId }),
+  setNotebookRoleFilter: (notebookRoleFilter) => set({ notebookRoleFilter }),
   addTab: (tab) => {
     const tabs = [...get().tabs, tab]
     set({ tabs, activeTabId: tab.id })

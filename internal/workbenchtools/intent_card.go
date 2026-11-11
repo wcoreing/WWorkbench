@@ -95,6 +95,13 @@ func requiresIntent(name string, args json.RawMessage) bool {
 			return false
 		}
 		return true
+	case workbench.CapBrowserAttach, workbench.CapBrowserFind, workbench.CapBrowserWait,
+		workbench.CapBrowserStatus, workbench.CapBrowserListTabs, workbench.CapBrowserSnapshot,
+		workbench.CapBrowserScreenshot, workbench.CapBrowserOpen:
+		return false // 只读/定位，可不填 intent
+	case workbench.CapBrowserClick, workbench.CapBrowserFill, workbench.CapBrowserNavigate,
+		workbench.CapBrowserKeys, workbench.CapBrowserOpenFrame, workbench.CapRunSkill:
+		return true
 	default:
 		return true
 	}

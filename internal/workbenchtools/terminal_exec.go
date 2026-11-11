@@ -69,13 +69,14 @@ func toolTerminalExec(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 
 // execSSHArgv 在远端按 argv 执行（POSIX 单引号，避免 sshd 的 shell -c 再拆语句）。
 func execSSHArgv(ctx context.Context, d *Deps, host model.SSHHostDO, argv []string, timeoutSec int) (string, error) {
-	client, err := tunnel.DialSSH(ctx, terminal.HostToSpec(host))
+	client, _, err := tunnel.AcquireSSH(ctx, terminal.HostToSpec(host))
 	if err != nil {
 		return "", err
 	}
-	defer client.Close()
+	defer tunnel.ReleaseSSH(client)
 	sess, err := client.NewSession()
 	if err != nil {
+		tunnel.DropSSH(client)
 		return "", errno.Wrap(errno.CodeConnFailed, "创建 SSH 会话失败", err)
 	}
 	defer sess.Close()
@@ -95,7 +96,6 @@ func execSSHArgv(ctx context.Context, d *Deps, host model.SSHHostDO, argv []stri
 	select {
 	case <-runCtx.Done():
 		_ = sess.Close()
-		_ = client.Close()
 		return "", errno.New(errno.CodeConnFailed, "命令执行超时", cmdline)
 	case r := <-done:
 		text := strings.TrimSpace(string(r.out))

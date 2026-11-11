@@ -94,6 +94,29 @@ func (t *outputTail) waitAfter(ctx context.Context, afterGen uint64) error {
 	}
 }
 
+// waitQuiet 等到「quiet 时间内无新输出」或父 ctx 取消。
+// 有新输出则重置安静计时；quiet 到期返回 nil（视为一段输出结束）。
+func (t *outputTail) waitQuiet(ctx context.Context, quiet time.Duration) error {
+	if t == nil || quiet <= 0 {
+		return nil
+	}
+	for {
+		gen, _ := t.snapshotMeta()
+		qCtx, cancel := context.WithTimeout(ctx, quiet)
+		err := t.waitAfter(qCtx, gen)
+		cancel()
+		if err == nil {
+			// 又有新输出，继续等下一段安静
+			continue
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		// quiet 超时且父 ctx 仍有效 → 安静结束
+		return nil
+	}
+}
+
 func (t *outputTail) text(maxLines int) (string, time.Time) {
 	if t == nil {
 		return "", time.Time{}
@@ -196,7 +219,7 @@ type SessionTail struct {
 	Kind       string `json:"kind"`
 	Tail       string `json:"tail,omitempty"`
 	TotalLines int    `json:"totalLines,omitempty"`
-	UpdatedAt  int64  `json:"updatedAt,omitempty"`
+	UpdatedAt  int64  `json:"updatedAt,omitempty"` // Unix 毫秒；供 get_shell_output.afterUpdatedAt
 }
 
 // RecentOpenSession 最近活动的打开终端（含无输出的会话，供元数据指针）。
@@ -218,7 +241,7 @@ func (m *Manager) RecentOpenSession() SessionTail {
 				TotalLines: page.TotalLines,
 			}
 			if !at.IsZero() {
-				best.UpdatedAt = at.Unix()
+				best.UpdatedAt = at.UnixMilli()
 			}
 		}
 	}
@@ -247,7 +270,7 @@ func (m *Manager) RecentShellTail(maxLines int) SessionTail {
 				Title:     s.Title,
 				Kind:      string(s.Kind),
 				Tail:      text,
-				UpdatedAt: at.Unix(),
+				UpdatedAt: at.UnixMilli(),
 			}
 		}
 	}
@@ -270,11 +293,32 @@ func (m *Manager) ListSessionTails(maxLines int) []SessionTail {
 			TotalLines: page.TotalLines,
 		}
 		if !at.IsZero() {
-			item.UpdatedAt = at.Unix()
+			item.UpdatedAt = at.UnixMilli()
 		}
 		out = append(out, item)
 	}
 	return out
+}
+
+// PeekShellMeta 按 sessionId 或 hostId 取可见终端元数据（注入命令前基线；无会话则报错）。
+func (m *Manager) PeekShellMeta(sessionID, hostID string) (SessionTail, error) {
+	s, err := m.resolveShellSession(sessionID, hostID)
+	if err != nil {
+		return SessionTail{}, err
+	}
+	_, at := s.tail.snapshotMeta()
+	page, _ := s.tail.page(0, 0)
+	meta := SessionTail{
+		SessionID:  s.ID,
+		HostID:     s.HostID,
+		Title:      s.Title,
+		Kind:       string(s.Kind),
+		TotalLines: page.TotalLines,
+	}
+	if !at.IsZero() {
+		meta.UpdatedAt = at.UnixMilli()
+	}
+	return meta, nil
 }
 
 // GetShellOutput 按 sessionId 或 hostId 分页读取可见 PTY scrollback。
@@ -292,7 +336,7 @@ func (m *Manager) GetShellOutput(sessionID, hostID string, offsetFromEnd, lines 
 		TotalLines: page.TotalLines,
 	}
 	if !at.IsZero() {
-		meta.UpdatedAt = at.Unix()
+		meta.UpdatedAt = at.UnixMilli()
 	}
 	return meta, page, nil
 }

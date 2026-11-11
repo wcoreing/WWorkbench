@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"WWorkbench/internal/docker"
 	"WWorkbench/internal/errno"
@@ -66,16 +67,31 @@ func (m *Manager) Open(ctx context.Context, hostID string) (*model.SFTPSessionIn
 	if err != nil {
 		return nil, err
 	}
-	client, err := tunnel.DialSSH(ctx, terminal.HostToSpec(*host))
+	start := time.Now()
+	client, reused, err := tunnel.AcquireSSH(ctx, terminal.HostToSpec(*host))
 	if err != nil {
 		return nil, err
 	}
+	dialMs := time.Since(start).Milliseconds()
 	sftpClient, err := pkgsftp.NewClient(client)
 	if err != nil {
-		_ = client.Close()
-		return nil, errno.Wrap(errno.CodeConnFailed, "创建 SFTP 客户端失败", err)
+		tunnel.DropSSH(client)
+		if reused {
+			start = time.Now()
+			client, reused, err = tunnel.AcquireSSH(ctx, terminal.HostToSpec(*host))
+			if err != nil {
+				return nil, err
+			}
+			dialMs = time.Since(start).Milliseconds()
+			sftpClient, err = pkgsftp.NewClient(client)
+			if err != nil {
+				tunnel.DropSSH(client)
+				return nil, errno.Wrap(errno.CodeConnFailed, "创建 SFTP 客户端失败", err)
+			}
+		} else {
+			return nil, errno.Wrap(errno.CodeConnFailed, "创建 SFTP 客户端失败", err)
+		}
 	}
-	tunnel.KeepAlive(client)
 	sid := uuid.NewString()
 	title := host.User + "@" + host.Host
 	m.mu.Lock()
@@ -90,6 +106,8 @@ func (m *Manager) Open(ctx context.Context, hostID string) (*model.SFTPSessionIn
 		SessionID: sid,
 		HostID:    hostID,
 		Title:     title,
+		Reused:    reused,
+		DialMs:    dialMs,
 	}, nil
 }
 

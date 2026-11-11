@@ -3,6 +3,7 @@
 import {model} from '../models';
 import {app} from '../models';
 import {mcpserver} from '../models';
+import {workbenchtools} from '../models';
 
 export function AgentChat(arg1:model.AgentChatRequestDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentChatResultDO_>;
 
@@ -22,9 +23,29 @@ export function ApplyNotebookLayout(arg1:model.NotebookLayoutDO):Promise<app.Api
 
 export function ApplyTableMutations(arg1:string,arg2:string,arg3:string,arg4:model.RowMutationBatchDO):Promise<app.ApiResult_bool_>;
 
+export function AttachBrowserTab(arg1:number):Promise<app.ApiResult_encoding_json_RawMessage_>;
+
 export function AttachMCP(arg1:mcpserver.Endpoint):Promise<void>;
 
 export function BatchDeleteHTTP(arg1:Array<string>,arg2:Array<string>):Promise<app.ApiResult_bool_>;
+
+export function BrowserClick(arg1:string,arg2:string,arg3:string,arg4:string):Promise<app.ApiResult_encoding_json_RawMessage_>;
+
+export function BrowserFill(arg1:string,arg2:string,arg3:string,arg4:string):Promise<app.ApiResult_encoding_json_RawMessage_>;
+
+export function BrowserFind(arg1:string,arg2:number,arg3:string):Promise<app.ApiResult_encoding_json_RawMessage_>;
+
+export function BrowserKeys(arg1:string,arg2:string,arg3:string,arg4:number,arg5:string):Promise<app.ApiResult_encoding_json_RawMessage_>;
+
+export function BrowserNavigate(arg1:string,arg2:boolean):Promise<app.ApiResult_encoding_json_RawMessage_>;
+
+export function BrowserOpenFrame(arg1:string,arg2:boolean):Promise<app.ApiResult_encoding_json_RawMessage_>;
+
+export function BrowserScreenshot(arg1:string,arg2:number):Promise<app.ApiResult_map_string_interface____>;
+
+export function BrowserSnapshot(arg1:number,arg2:string):Promise<app.ApiResult_encoding_json_RawMessage_>;
+
+export function BrowserWait(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:number,arg7:string):Promise<app.ApiResult_encoding_json_RawMessage_>;
 
 export function BuildPluginPackUI(arg1:string):Promise<app.ApiResult_WWorkbench_internal_pluginpack_BuildResult_>;
 
@@ -40,6 +61,8 @@ export function CloseSFTPSession(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function CloseSession(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function CloseTaskRun(arg1:string):Promise<app.ApiResult_bool_>;
+
 export function CloseTerminal(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function ComposeDown(arg1:string,arg2:string):Promise<app.ApiResult_string_>;
@@ -50,11 +73,19 @@ export function ComposeRestart(arg1:string,arg2:string,arg3:string):Promise<app.
 
 export function ComposeUp(arg1:string,arg2:string):Promise<app.ApiResult_string_>;
 
+export function CopyNotebookPath(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_notebook_PathMutation_>;
+
 export function CreateAgentSkill(arg1:model.AgentSkillCreateDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
 
 export function CreateDatabase(arg1:string,arg2:string,arg3:string,arg4:string):Promise<app.ApiResult_bool_>;
 
+export function CreateNotebookDir(arg1:string,arg2:string):Promise<app.ApiResult_string_>;
+
+export function CreateNotebookFile(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_NoteDO_>;
+
 export function DeleteAgentSkill(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function DeleteBackupPolicies(arg1:Array<string>):Promise<app.ApiResult_map_string_interface____>;
 
 export function DeleteBackupPolicy(arg1:string):Promise<app.ApiResult_bool_>;
 
@@ -80,6 +111,8 @@ export function DeleteNote(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteNotebookGroup(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function DeleteNotebookPath(arg1:string):Promise<app.ApiResult_bool_>;
+
 export function DeleteNotes(arg1:Array<string>):Promise<app.ApiResult_int_>;
 
 export function DeleteSFTPBookmark(arg1:string):Promise<app.ApiResult_bool_>;
@@ -89,6 +122,10 @@ export function DeleteSFTPPath(arg1:string,arg2:string):Promise<app.ApiResult_bo
 export function DeleteSSHForwardPreset(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteSSHHost(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function DeleteTaskRuns(arg1:Array<string>):Promise<app.ApiResult_int_>;
+
+export function DistillWorkflow(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<app.ApiResult_map_string_interface____>;
 
 export function DownloadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferResultDO_>;
 
@@ -101,6 +138,8 @@ export function DuplicateNote(arg1:string):Promise<app.ApiResult_WWorkbench_inte
 export function EnsureDockerHost(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_ShellHostDO_>;
 
 export function EnsureEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
+
+export function EnsureHostBackupPolicies(arg1:string,arg2:string,arg3:Array<string>,arg4:boolean):Promise<app.ApiResult_WWorkbench_internal_model_EnsureHostBackupResultDO_>;
 
 export function EnsureSSHHostFromConnection(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_SSHHostDO_>;
 
@@ -130,6 +169,8 @@ export function FetchLogSource(arg1:string,arg2:number,arg3:number):Promise<app.
 
 export function FetchLogSourceConfig(arg1:model.LogSourceDO,arg2:number,arg3:number):Promise<app.ApiResult_WWorkbench_internal_model_LogFetchResultDO_>;
 
+export function FinishBrowserReplay(arg1:string):Promise<app.ApiResult_bool_>;
+
 export function GetAgentSettings():Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 
 export function GetAgentSkill(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
@@ -137,6 +178,8 @@ export function GetAgentSkill(arg1:string):Promise<app.ApiResult_WWorkbench_inte
 export function GetAgentSkillFile(arg1:string):Promise<app.ApiResult_string_>;
 
 export function GetAgentThread(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_AgentThreadDetailDO_>;
+
+export function GetBrowserStatus():Promise<app.ApiResult_WWorkbench_internal_browser_Status_>;
 
 export function GetComposeLogs(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WWorkbench_internal_model_ComposeLogsDO_>;
 
@@ -180,7 +223,11 @@ export function GetTableDDL(arg1:string,arg2:string,arg3:string):Promise<app.Api
 
 export function GetTableDataPage(arg1:string,arg2:string,arg3:string,arg4:model.TableDataQueryDO):Promise<app.ApiResult_WWorkbench_internal_model_TableDataPageDO_>;
 
+export function GetTaskRun(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_TaskRunDetailDO_>;
+
 export function GetVersion():Promise<app.ApiResult_WWorkbench_internal_model_VersionDO_>;
+
+export function GetWorkflow(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_WorkflowDO_>;
 
 export function GrantMCPWriteDir(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_MCPWriteAllowDO_>;
 
@@ -207,6 +254,8 @@ export function ListAppSettings():Promise<app.ApiResult_map_string_string_>;
 export function ListBackupPolicies():Promise<app.ApiResult___WWorkbench_internal_model_BackupPolicyDO_>;
 
 export function ListBackupRuns(arg1:string,arg2:number):Promise<app.ApiResult___WWorkbench_internal_model_BackupRunDO_>;
+
+export function ListBrowserTabs():Promise<app.ApiResult_encoding_json_RawMessage_>;
 
 export function ListCloudAccounts():Promise<app.ApiResult___WWorkbench_internal_model_CloudAccountDO_>;
 
@@ -274,6 +323,10 @@ export function ListShellHosts():Promise<app.ApiResult___WWorkbench_internal_mod
 
 export function ListSkillsDir(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_FileEntryDO_>;
 
+export function ListTaskRuns(arg1:string,arg2:number):Promise<app.ApiResult___WWorkbench_internal_model_TaskRunDO_>;
+
+export function ListWorkflows(arg1:number):Promise<app.ApiResult___WWorkbench_internal_model_WorkflowDO_>;
+
 export function LoadWorkspace(arg1:string):Promise<app.ApiResult_string_>;
 
 export function MkdirLocalPath(arg1:string):Promise<app.ApiResult_bool_>;
@@ -281,6 +334,14 @@ export function MkdirLocalPath(arg1:string):Promise<app.ApiResult_bool_>;
 export function MkdirSFTPRemote(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
 export function MoveHTTPRequestToFolder(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
+export function MoveNotebookPath(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_notebook_PathMutation_>;
+
+export function NoteDiskPath(arg1:string):Promise<app.ApiResult_string_>;
+
+export function NotebookWorkspacePath():Promise<app.ApiResult_string_>;
+
+export function OpenChromeExtensionsPage():Promise<app.ApiResult_map_string_interface____>;
 
 export function OpenLocalTerminal(arg1:number,arg2:number):Promise<app.ApiResult_WWorkbench_internal_model_TerminalSessionInfoDO_>;
 
@@ -310,6 +371,10 @@ export function PruneStoppedDockerHosts():Promise<app.ApiResult_int_>;
 
 export function PublishAgentSkill(arg1:model.AgentSkillPublishDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
 
+export function PublishNoteAsSkill(arg1:model.AgentSkillPublishDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
+
+export function PublishWorkflow(arg1:string,arg2:string):Promise<app.ApiResult_map_string_interface____>;
+
 export function QuerySQLPage(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<app.ApiResult_WWorkbench_internal_model_QueryPageDO_>;
 
 export function ReadPluginPackUIFile(arg1:string,arg2:string):Promise<app.ApiResult_string_>;
@@ -324,7 +389,13 @@ export function RemoveDockerHost(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function RenameLocalPath(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
+export function RenameNotebookPath(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_notebook_PathMutation_>;
+
 export function RenameSFTPRemote(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
+
+export function RenameTaskRun(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
+export function ReplayTaskStep(arg1:string,arg2:number,arg3:boolean,arg4:string):Promise<app.ApiResult_map_string_interface____>;
 
 export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<app.ApiResult_bool_>;
 
@@ -333,6 +404,14 @@ export function ResolveContainerDatabaseLink(arg1:string,arg2:string):Promise<ap
 export function ResolveMCPConfirm(arg1:string,arg2:boolean):Promise<app.ApiResult_bool_>;
 
 export function RestartContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
+export function RevealBrowserExtDir():Promise<app.ApiResult_WWorkbench_internal_model_BrowserExtPathDO_>;
+
+export function RevealNotebookNote(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function RevealNotebookPath(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function RevealNotebookWorkspace():Promise<app.ApiResult_bool_>;
 
 export function RevealPluginPackPath(arg1:string):Promise<app.ApiResult_bool_>;
 
@@ -343,6 +422,8 @@ export function RollbackPluginPack(arg1:string,arg2:string):Promise<app.ApiResul
 export function RunBackupPolicy(arg1:string,arg2:string,arg3:boolean):Promise<app.ApiResult_map_string_interface____>;
 
 export function RunContainer(arg1:string,arg2:model.ContainerRunDO):Promise<app.ApiResult_WWorkbench_internal_model_ContainerDO_>;
+
+export function RunWorkflow(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_map_string_interface____>;
 
 export function SaveAgentAPIConfig(arg1:model.AgentAPIConfigSaveDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 
@@ -388,9 +469,13 @@ export function SaveSSHForwardPreset(arg1:model.SSHForwardPresetDO):Promise<app.
 
 export function SaveSSHHost(arg1:model.SSHHostDO):Promise<app.ApiResult_WWorkbench_internal_model_SSHHostDO_>;
 
+export function SaveWorkflow(arg1:model.WorkflowDO):Promise<app.ApiResult_WWorkbench_internal_model_WorkflowDO_>;
+
 export function SaveWorkspace(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
 export function ScanEnvProjects(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_ProjectEnvHintDO_>;
+
+export function ScanHostHealth(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_HostHealthReportDO_>;
 
 export function SearchNotes(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_NoteSummaryDO_>;
 
@@ -410,11 +495,15 @@ export function SetPluginPackEnabled(arg1:string,arg2:boolean):Promise<app.ApiRe
 
 export function SnapshotPluginPack(arg1:string):Promise<app.ApiResult_WWorkbench_internal_pluginpack_ReleaseInfo_>;
 
+export function StartBrowserRecording(arg1:string):Promise<app.ApiResult_map_string_interface____>;
+
 export function StartContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
 export function StartLogFollow(arg1:model.LogSourceDO,arg2:number):Promise<app.ApiResult_string_>;
 
 export function StartSSHForward(arg1:model.SSHForwardStartDO):Promise<app.ApiResult_WWorkbench_internal_model_SSHForwardActiveDO_>;
+
+export function StopBrowserRecording():Promise<app.ApiResult_map_string_interface____>;
 
 export function StopContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
@@ -439,6 +528,8 @@ export function TrustSSHHost(arg1:string,arg2:number):Promise<app.ApiResult_bool
 export function UninstallEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
 
 export function UpdateContainerSpec(arg1:string,arg2:string,arg3:model.ContainerUpdateDO):Promise<app.ApiResult_WWorkbench_internal_model_ContainerDO_>;
+
+export function UpdateSkill(arg1:workbenchtools.UpdateSkillArgs):Promise<app.ApiResult_map_string_interface____>;
 
 export function UploadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferResultDO_>;
 

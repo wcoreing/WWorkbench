@@ -595,3 +595,79 @@
   box-shadow: var(--shadow);
 }
 
+/* 方法桥：笔记真源 + 磁盘导出缓存 */
+.skills-body.skills-bridge {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  overflow: auto;
+}
+
+.skills-bridge-pane h2 {
+  margin: 0 0 6px;
+  font-size: var(--font-size-ui);
+}
+
+.skills-bridge-hint {
+  margin: 0 0 12px;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-ui-sm);
+}
+
+.skills-bridge-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skills-bridge-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skills-bridge-item {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  border: 0;
+  background: var(--color-hover);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.skills-bridge-item strong {
+  font-size: var(--font-size-ui-sm);
+}
+
+.skills-bridge-item span {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skills-bridge-enabled {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+@container skills-workbench (max-width: 720px) {
+  .skills-body.skills-bridge {
+    grid-template-columns: 1fr;
+  }
+}
+

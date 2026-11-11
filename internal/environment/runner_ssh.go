@@ -46,12 +46,12 @@ func newSSHShellRunner(host model.SSHHostDO) (*sshShellRunner, error) {
 	return r, nil
 }
 
-// Close 关闭复用的 SSH 连接。
+// Close 归还复用的 SSH 连接。
 func (r *sshShellRunner) Close() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.client != nil {
-		_ = r.client.Close()
+		tunnel.ReleaseSSH(r.client)
 		r.client = nil
 	}
 }
@@ -110,11 +110,10 @@ func (r *sshShellRunner) ensureClient(ctx context.Context) (*ssh.Client, error) 
 	if r.client != nil {
 		return r.client, nil
 	}
-	client, err := tunnel.DialSSH(ctx, hostToTunnelSpec(r.host))
+	client, _, err := tunnel.AcquireSSH(ctx, hostToTunnelSpec(r.host))
 	if err != nil {
 		return nil, err
 	}
-	tunnel.KeepAlive(client)
 	r.client = client
 	return client, nil
 }
@@ -123,7 +122,7 @@ func (r *sshShellRunner) resetClient() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.client != nil {
-		_ = r.client.Close()
+		tunnel.DropSSH(r.client)
 		r.client = nil
 	}
 }

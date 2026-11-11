@@ -1,0 +1,143 @@
+package notebook
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+// WorkspaceSchemaVersion 磁盘工作区协议版本；升级时直接重置工作区（不迁移旧数据）。
+const WorkspaceSchemaVersion = 3
+
+// EnsureFSNotebook 确保磁盘工作区：协议不对齐则清空重建；只种子系统目录与记忆入门。
+// 幂等且可重入：热路径 ListGroups/GetNote 可安全调用，不会递归炸栈。
+func (s *Service) EnsureFSNotebook() error {
+	if s == nil {
+		return errnoNotebook("笔记本未就绪")
+	}
+	s.ensureMu.Lock()
+	defer s.ensureMu.Unlock()
+	if s.fsReady {
+		return nil
+	}
+	if err := s.EnsureWorkspace(); err != nil {
+		return err
+	}
+	reset, err := s.resetWorkspaceIfNeeded()
+	if err != nil {
+		return err
+	}
+	if reset {
+		if s.store != nil {
+			_ = s.store.ClearNotebookTables()
+		}
+		_ = os.RemoveAll(filepath.Join(s.dataDir, "notebook-assets"))
+	}
+	if err := s.ensureSystemDirs(); err != nil {
+		return err
+	}
+	if err := s.ensureMemorySeedFS(); err != nil {
+		return err
+	}
+	if err := s.seedBuiltinWorkflowsFS(); err != nil {
+		return err
+	}
+	s.fsReady = true
+	return nil
+}
+
+func (s *Service) resetWorkspaceIfNeeded() (reset bool, err error) {
+	m := s.readMeta()
+	if m.Version >= WorkspaceSchemaVersion {
+		return false, nil
+	}
+	root := s.workspaceRoot()
+	entries, err := os.ReadDir(root)
+	if err != nil && !os.IsNotExist(err) {
+		return false, err
+	}
+	for _, e := range entries {
+		name := e.Name()
+		if name == MetaFileName {
+			continue
+		}
+		_ = os.RemoveAll(filepath.Join(root, name))
+	}
+	if err := s.writeMeta(workspaceMeta{
+		Version: WorkspaceSchemaVersion,
+		ResetAt: time.Now().Unix(),
+	}); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *Service) ensureSystemDirs() error {
+	for _, name := range []string{SkillGroupName, MemoryGroupName} {
+		if err := os.MkdirAll(filepath.Join(s.workspaceRoot(), name), 0o700); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) ensureMemorySeedFS() error {
+	path := filepath.Join(s.workspaceRoot(), MemoryGroupName, "怎么用记忆区.md")
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	}
+	content := "---\nrole: memory\n---\n\n# 怎么用记忆区\n\n" +
+		"把**某台机 / 某个库**反复踩过的坑、约定、口令位置写成记忆笔记：\n\n" +
+		"1. 设置 → 角色选「记忆」\n" +
+		"2. 关联 SSH 主机或数据库连接\n" +
+		"3. Agent 开跑时会自动带上匹配的记忆索引；动手前会先读\n\n" +
+		"全局习惯（不绑主机）也会注入。成长感来自「记得你上次踩的坑」，不是又一套脚本。\n"
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(content), 0o600)
+}
+
+// seedBuiltinWorkflowsFS 直接写盘种子，禁止再走 ListGroups/GetNote（避免 Ensure 递归）。
+func (s *Service) seedBuiltinWorkflowsFS() error {
+	for _, p := range BuiltinWorkflows() {
+		name := strings.TrimSpace(p.Name)
+		if name == "" {
+			continue
+		}
+		noteID := SkillNoteID(name)
+		dir, _, ok := s.skillDirAbs(noteID)
+		if !ok {
+			continue
+		}
+		path := filepath.Join(dir, SkillEntryFile)
+		if _, err := os.Stat(path); err == nil {
+			continue
+		}
+		p.NoteID = noteID
+		content := FormatWorkflowNoteContent(p, WorkflowNoteBodyExtras{})
+		if err := os.MkdirAll(filepath.Join(dir, SkillAssetsDir), 0o700); err != nil {
+			return err
+		}
+		_ = os.MkdirAll(filepath.Join(dir, SkillScriptsDir), 0o700)
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ResolveSkillPaths 按 skill name 返回笔记 id / 目录 / 附件目录（磁盘相对约定）。
+func (s *Service) ResolveSkillPaths(skillName string) (noteID, absDir, absAssets string, err error) {
+	skillName = strings.TrimSpace(skillName)
+	if skillName == "" {
+		return "", "", "", errnoNotebook("skill name 为空")
+	}
+	noteID = SkillNoteID(skillName)
+	dir, _, ok := s.skillDirAbs(noteID)
+	if !ok {
+		return "", "", "", errnoNotebook("非法 skill name")
+	}
+	return noteID, dir, filepath.Join(dir, SkillAssetsDir), nil
+}

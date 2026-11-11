@@ -38,12 +38,52 @@ export function ApplyTableMutations(arg1, arg2, arg3, arg4) {
   return window['go']['app']['Service']['ApplyTableMutations'](arg1, arg2, arg3, arg4);
 }
 
+export function AttachBrowserTab(arg1) {
+  return window['go']['app']['Service']['AttachBrowserTab'](arg1);
+}
+
 export function AttachMCP(arg1) {
   return window['go']['app']['Service']['AttachMCP'](arg1);
 }
 
 export function BatchDeleteHTTP(arg1, arg2) {
   return window['go']['app']['Service']['BatchDeleteHTTP'](arg1, arg2);
+}
+
+export function BrowserClick(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['Service']['BrowserClick'](arg1, arg2, arg3, arg4);
+}
+
+export function BrowserFill(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['Service']['BrowserFill'](arg1, arg2, arg3, arg4);
+}
+
+export function BrowserFind(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['BrowserFind'](arg1, arg2, arg3);
+}
+
+export function BrowserKeys(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['app']['Service']['BrowserKeys'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function BrowserNavigate(arg1, arg2) {
+  return window['go']['app']['Service']['BrowserNavigate'](arg1, arg2);
+}
+
+export function BrowserOpenFrame(arg1, arg2) {
+  return window['go']['app']['Service']['BrowserOpenFrame'](arg1, arg2);
+}
+
+export function BrowserScreenshot(arg1, arg2) {
+  return window['go']['app']['Service']['BrowserScreenshot'](arg1, arg2);
+}
+
+export function BrowserSnapshot(arg1, arg2) {
+  return window['go']['app']['Service']['BrowserSnapshot'](arg1, arg2);
+}
+
+export function BrowserWait(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['app']['Service']['BrowserWait'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function BuildPluginPackUI(arg1) {
@@ -74,6 +114,10 @@ export function CloseSession(arg1) {
   return window['go']['app']['Service']['CloseSession'](arg1);
 }
 
+export function CloseTaskRun(arg1) {
+  return window['go']['app']['Service']['CloseTaskRun'](arg1);
+}
+
 export function CloseTerminal(arg1) {
   return window['go']['app']['Service']['CloseTerminal'](arg1);
 }
@@ -94,6 +138,10 @@ export function ComposeUp(arg1, arg2) {
   return window['go']['app']['Service']['ComposeUp'](arg1, arg2);
 }
 
+export function CopyNotebookPath(arg1, arg2) {
+  return window['go']['app']['Service']['CopyNotebookPath'](arg1, arg2);
+}
+
 export function CreateAgentSkill(arg1) {
   return window['go']['app']['Service']['CreateAgentSkill'](arg1);
 }
@@ -102,8 +150,20 @@ export function CreateDatabase(arg1, arg2, arg3, arg4) {
   return window['go']['app']['Service']['CreateDatabase'](arg1, arg2, arg3, arg4);
 }
 
+export function CreateNotebookDir(arg1, arg2) {
+  return window['go']['app']['Service']['CreateNotebookDir'](arg1, arg2);
+}
+
+export function CreateNotebookFile(arg1, arg2) {
+  return window['go']['app']['Service']['CreateNotebookFile'](arg1, arg2);
+}
+
 export function DeleteAgentSkill(arg1) {
   return window['go']['app']['Service']['DeleteAgentSkill'](arg1);
+}
+
+export function DeleteBackupPolicies(arg1) {
+  return window['go']['app']['Service']['DeleteBackupPolicies'](arg1);
 }
 
 export function DeleteBackupPolicy(arg1) {
@@ -154,6 +214,10 @@ export function DeleteNotebookGroup(arg1) {
   return window['go']['app']['Service']['DeleteNotebookGroup'](arg1);
 }
 
+export function DeleteNotebookPath(arg1) {
+  return window['go']['app']['Service']['DeleteNotebookPath'](arg1);
+}
+
 export function DeleteNotes(arg1) {
   return window['go']['app']['Service']['DeleteNotes'](arg1);
 }
@@ -172,6 +236,14 @@ export function DeleteSSHForwardPreset(arg1) {
 
 export function DeleteSSHHost(arg1) {
   return window['go']['app']['Service']['DeleteSSHHost'](arg1);
+}
+
+export function DeleteTaskRuns(arg1) {
+  return window['go']['app']['Service']['DeleteTaskRuns'](arg1);
+}
+
+export function DistillWorkflow(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['app']['Service']['DistillWorkflow'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function DownloadSFTPFile(arg1, arg2) {
@@ -196,6 +268,10 @@ export function EnsureDockerHost(arg1, arg2) {
 
 export function EnsureEnvVersion(arg1, arg2, arg3) {
   return window['go']['app']['Service']['EnsureEnvVersion'](arg1, arg2, arg3);
+}
+
+export function EnsureHostBackupPolicies(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['Service']['EnsureHostBackupPolicies'](arg1, arg2, arg3, arg4);
 }
 
 export function EnsureSSHHostFromConnection(arg1) {
@@ -254,6 +330,10 @@ export function FetchLogSourceConfig(arg1, arg2, arg3) {
   return window['go']['app']['Service']['FetchLogSourceConfig'](arg1, arg2, arg3);
 }
 
+export function FinishBrowserReplay(arg1) {
+  return window['go']['app']['Service']['FinishBrowserReplay'](arg1);
+}
+
 export function GetAgentSettings() {
   return window['go']['app']['Service']['GetAgentSettings']();
 }
@@ -268,6 +348,10 @@ export function GetAgentSkillFile(arg1) {
 
 export function GetAgentThread(arg1) {
   return window['go']['app']['Service']['GetAgentThread'](arg1);
+}
+
+export function GetBrowserStatus() {
+  return window['go']['app']['Service']['GetBrowserStatus']();
 }
 
 export function GetComposeLogs(arg1, arg2, arg3, arg4) {
@@ -354,8 +438,16 @@ export function GetTableDataPage(arg1, arg2, arg3, arg4) {
   return window['go']['app']['Service']['GetTableDataPage'](arg1, arg2, arg3, arg4);
 }
 
+export function GetTaskRun(arg1) {
+  return window['go']['app']['Service']['GetTaskRun'](arg1);
+}
+
 export function GetVersion() {
   return window['go']['app']['Service']['GetVersion']();
+}
+
+export function GetWorkflow(arg1) {
+  return window['go']['app']['Service']['GetWorkflow'](arg1);
 }
 
 export function GrantMCPWriteDir(arg1) {
@@ -408,6 +500,10 @@ export function ListBackupPolicies() {
 
 export function ListBackupRuns(arg1, arg2) {
   return window['go']['app']['Service']['ListBackupRuns'](arg1, arg2);
+}
+
+export function ListBrowserTabs() {
+  return window['go']['app']['Service']['ListBrowserTabs']();
 }
 
 export function ListCloudAccounts() {
@@ -542,6 +638,14 @@ export function ListSkillsDir(arg1) {
   return window['go']['app']['Service']['ListSkillsDir'](arg1);
 }
 
+export function ListTaskRuns(arg1, arg2) {
+  return window['go']['app']['Service']['ListTaskRuns'](arg1, arg2);
+}
+
+export function ListWorkflows(arg1) {
+  return window['go']['app']['Service']['ListWorkflows'](arg1);
+}
+
 export function LoadWorkspace(arg1) {
   return window['go']['app']['Service']['LoadWorkspace'](arg1);
 }
@@ -556,6 +660,22 @@ export function MkdirSFTPRemote(arg1, arg2) {
 
 export function MoveHTTPRequestToFolder(arg1, arg2) {
   return window['go']['app']['Service']['MoveHTTPRequestToFolder'](arg1, arg2);
+}
+
+export function MoveNotebookPath(arg1, arg2) {
+  return window['go']['app']['Service']['MoveNotebookPath'](arg1, arg2);
+}
+
+export function NoteDiskPath(arg1) {
+  return window['go']['app']['Service']['NoteDiskPath'](arg1);
+}
+
+export function NotebookWorkspacePath() {
+  return window['go']['app']['Service']['NotebookWorkspacePath']();
+}
+
+export function OpenChromeExtensionsPage() {
+  return window['go']['app']['Service']['OpenChromeExtensionsPage']();
 }
 
 export function OpenLocalTerminal(arg1, arg2) {
@@ -614,6 +734,14 @@ export function PublishAgentSkill(arg1) {
   return window['go']['app']['Service']['PublishAgentSkill'](arg1);
 }
 
+export function PublishNoteAsSkill(arg1) {
+  return window['go']['app']['Service']['PublishNoteAsSkill'](arg1);
+}
+
+export function PublishWorkflow(arg1, arg2) {
+  return window['go']['app']['Service']['PublishWorkflow'](arg1, arg2);
+}
+
 export function QuerySQLPage(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['app']['Service']['QuerySQLPage'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -642,8 +770,20 @@ export function RenameLocalPath(arg1, arg2) {
   return window['go']['app']['Service']['RenameLocalPath'](arg1, arg2);
 }
 
+export function RenameNotebookPath(arg1, arg2) {
+  return window['go']['app']['Service']['RenameNotebookPath'](arg1, arg2);
+}
+
 export function RenameSFTPRemote(arg1, arg2, arg3) {
   return window['go']['app']['Service']['RenameSFTPRemote'](arg1, arg2, arg3);
+}
+
+export function RenameTaskRun(arg1, arg2) {
+  return window['go']['app']['Service']['RenameTaskRun'](arg1, arg2);
+}
+
+export function ReplayTaskStep(arg1, arg2, arg3, arg4) {
+  return window['go']['app']['Service']['ReplayTaskStep'](arg1, arg2, arg3, arg4);
 }
 
 export function ResizeTerminal(arg1, arg2, arg3) {
@@ -660,6 +800,22 @@ export function ResolveMCPConfirm(arg1, arg2) {
 
 export function RestartContainer(arg1, arg2) {
   return window['go']['app']['Service']['RestartContainer'](arg1, arg2);
+}
+
+export function RevealBrowserExtDir() {
+  return window['go']['app']['Service']['RevealBrowserExtDir']();
+}
+
+export function RevealNotebookNote(arg1) {
+  return window['go']['app']['Service']['RevealNotebookNote'](arg1);
+}
+
+export function RevealNotebookPath(arg1) {
+  return window['go']['app']['Service']['RevealNotebookPath'](arg1);
+}
+
+export function RevealNotebookWorkspace() {
+  return window['go']['app']['Service']['RevealNotebookWorkspace']();
 }
 
 export function RevealPluginPackPath(arg1) {
@@ -680,6 +836,10 @@ export function RunBackupPolicy(arg1, arg2, arg3) {
 
 export function RunContainer(arg1, arg2) {
   return window['go']['app']['Service']['RunContainer'](arg1, arg2);
+}
+
+export function RunWorkflow(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['RunWorkflow'](arg1, arg2, arg3);
 }
 
 export function SaveAgentAPIConfig(arg1) {
@@ -770,12 +930,20 @@ export function SaveSSHHost(arg1) {
   return window['go']['app']['Service']['SaveSSHHost'](arg1);
 }
 
+export function SaveWorkflow(arg1) {
+  return window['go']['app']['Service']['SaveWorkflow'](arg1);
+}
+
 export function SaveWorkspace(arg1, arg2) {
   return window['go']['app']['Service']['SaveWorkspace'](arg1, arg2);
 }
 
 export function ScanEnvProjects(arg1) {
   return window['go']['app']['Service']['ScanEnvProjects'](arg1);
+}
+
+export function ScanHostHealth(arg1, arg2) {
+  return window['go']['app']['Service']['ScanHostHealth'](arg1, arg2);
 }
 
 export function SearchNotes(arg1) {
@@ -814,6 +982,10 @@ export function SnapshotPluginPack(arg1) {
   return window['go']['app']['Service']['SnapshotPluginPack'](arg1);
 }
 
+export function StartBrowserRecording(arg1) {
+  return window['go']['app']['Service']['StartBrowserRecording'](arg1);
+}
+
 export function StartContainer(arg1, arg2) {
   return window['go']['app']['Service']['StartContainer'](arg1, arg2);
 }
@@ -824,6 +996,10 @@ export function StartLogFollow(arg1, arg2) {
 
 export function StartSSHForward(arg1) {
   return window['go']['app']['Service']['StartSSHForward'](arg1);
+}
+
+export function StopBrowserRecording() {
+  return window['go']['app']['Service']['StopBrowserRecording']();
 }
 
 export function StopContainer(arg1, arg2) {
@@ -872,6 +1048,10 @@ export function UninstallEnvVersion(arg1, arg2, arg3) {
 
 export function UpdateContainerSpec(arg1, arg2, arg3) {
   return window['go']['app']['Service']['UpdateContainerSpec'](arg1, arg2, arg3);
+}
+
+export function UpdateSkill(arg1) {
+  return window['go']['app']['Service']['UpdateSkill'](arg1);
 }
 
 export function UploadSFTPFile(arg1, arg2) {

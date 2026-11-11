@@ -25,7 +25,7 @@ func Catalog() []Item {
 	return []Item{
 		{
 			Name: "get_workbench_context", Label: "读取工作台上下文", Risk: RiskRead,
-			Description:    "产品线/连接/SSH，以及打开中的终端列表（不含正文）",
+			Description:    "产品线/连接/SSH、打开中的终端列表（不含正文）、memoryNotes（焦点绑定记忆）",
 			DefaultEnabled: true,
 		},
 		{
@@ -44,18 +44,23 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
-			Name: "list_skills", Label: "列出技能", Risk: RiskRead,
-			Description:    "列出 system/skills 下已启用技能（id / name / description）",
+			Name: "list_skills", Label: "列出工作流", Risk: RiskRead,
+			Description:    "列出笔记本工作流（~/.wworkbench/notebook/工作流/）",
 			DefaultEnabled: true,
 		},
 		{
-			Name: "get_skill", Label: "加载技能正文", Risk: RiskRead,
-			Description:    "读取 SKILL.md 与 lesson 经验；/ 挂载后首轮须调用",
+			Name: "get_skill", Label: "读取工作流", Risk: RiskRead,
+			Description:    "读取工作流正文与 diskPath；/ 挂载后首轮须调用",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "run_skill", Label: "运行工作流", Risk: RiskWrite,
+			Description:    "可选：机械逐步跑工作流步骤；主路径 get_skill 后 Agent 自己干，再 update_skill 沉淀",
 			DefaultEnabled: true,
 		},
 		{
 			Name: "read_file", Label: "读取项目文件", Risk: RiskRead,
-			Description:    "读取 ningharness 项目内文本（含 skill scripts）",
+			Description:    "读取 ningharness 项目内文本（相对根路径）",
 			DefaultEnabled: true,
 		},
 		{
@@ -161,6 +166,16 @@ func Catalog() []Item {
 		{
 			Name: "list_backup_runs", Label: "列出备份记录", Risk: RiskRead,
 			Description:    "备份执行历史（成功/失败/注入）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "host_health_scan", Label: "工作目录扫描", Risk: RiskRead,
+			Description:    "在指定绝对目录扫描 *.db/.env/data；禁止全盘扫",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "ensure_host_backup_policies", Label: "为所选创建备份", Risk: RiskWrite,
+			Description:    "仅为用户勾选的 findingIds 创建策略；需确认；禁止默认全选",
 			DefaultEnabled: true,
 		},
 		{
@@ -279,6 +294,161 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "browser_status", Label: "浏览器舞台状态", Risk: RiskRead,
+			Description:    "桥监听/扩展是否已连接/扩展目录；动手前先查",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_list_tabs", Label: "列出浏览器标签", Risk: RiskRead,
+			Description:    "Chromium 可操作标签（保留登录态）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_attach", Label: "附着浏览器标签", Risk: RiskSession,
+			Description:    "指定 tabId，后续快照/点击/填表作用于此页",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_find_tab", Label: "定位并附着标签", Risk: RiskSession,
+			Description:    "按 url/host 或 active=true 附着；少一次 list→attach",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_snapshot", Label: "浏览器页面快照", Risk: RiskRead,
+			Description:    "默认 aria 文本树；format=json 返回 nodes",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_find", Label: "浏览器查找节点", Risk: RiskRead,
+			Description:    "按文案/角色子串查找 @e 节点",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_run", Label: "浏览器只读批跑", Risk: RiskRead,
+			Description:    "steps 一次往返（snapshot/find/wait/evaluate…）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_evaluate", Label: "页内执行 JS", Risk: RiskRead,
+			Description:    "只读提取；建议 IIFE",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_read_page", Label: "读页面正文", Risk: RiskRead,
+			Description:    "分页读 body 文本；complete/nextStart 续读",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_wait", Label: "浏览器等待", Risk: RiskRead,
+			Description:    "等待文案/节点/readyState",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_upload", Label: "浏览器上传文件", Risk: RiskWrite,
+			Description:    "CDP 设置 file input；须 intent；询问开时确认",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_network", Label: "浏览器网络捕获", Risk: RiskRead,
+			Description:    "start/list/detail/stop；调试接口与登录失败",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_select_option", Label: "选择下拉项", Risk: RiskWrite,
+			Description:    "原生/Ant/Element 下拉；询问开时确认",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_drag", Label: "浏览器拖拽", Risk: RiskWrite,
+			Description:    "真指针拖放；询问开时确认",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_screenshot", Label: "浏览器截图", Risk: RiskRead,
+			Description:    "截取附着标签可视区，返回本机 path",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_click", Label: "浏览器点击", Risk: RiskWrite,
+			Description:    "点击 ref/selector（默认真指针）；须 intent；询问开时确认",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_keys", Label: "浏览器按键", Risk: RiskWrite,
+			Description:    "发送 Enter/Escape/Mod+A 等；须 intent；询问开时确认",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_fill", Label: "浏览器填表", Risk: RiskWrite,
+			Description:    "填写输入框；须 intent；询问开时确认",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_navigate", Label: "浏览器导航", Risk: RiskWrite,
+			Description:    "打开 URL；须 intent；询问开时确认；优先附着已登录页",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_open_frame", Label: "打开跨域 iframe", Risk: RiskWrite,
+			Description:    "将 #fN 以新标签打开并附着",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_close_session", Label: "关闭浏览器任务组", Risk: RiskSession,
+			Description:    "关闭 session 标签组内 Agent 打开的页；借用标签保留",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_group_session", Label: "收纳到标签组", Risk: RiskSession,
+			Description:    "按 url/tabIds 把已开标签收进彩色组（可见 group_title）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "browser_open", Label: "打开浏览器舞台", Risk: RiskSession,
+			Description:    "切换到浏览器产品线",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "list_task_runs", Label: "列出日志", Risk: RiskRead,
+			Description:    "浏览器日志列表（可按 session 过滤），用于复盘",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "get_task_run", Label: "日志详情", Risk: RiskRead,
+			Description:    "一条日志的步骤时间线（含 locator / intent）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "replay_task_step", Label: "试跑日志一步", Risk: RiskWrite,
+			Description:    "教练式：按 locator 重定位后执行/跳过一步，返回 nextSeq",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "distill_workflow", Label: "生成工作流", Risk: RiskWrite,
+			Description:    "从日志蒸馏工作流笔记（说明/步骤/脚本/资源；可 dropSeqs）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "list_workflows", Label: "列出工作流", Risk: RiskRead,
+			Description:    "含步骤的工作流笔记 + 内置 cms_new_article",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "get_workflow", Label: "工作流详情", Risk: RiskRead,
+			Description:    "读取工作流步骤 locator/args",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "save_workflow", Label: "保存工作流步骤", Risk: RiskWrite,
+			Description:    "覆盖保存工作流笔记步骤（编辑后写回）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "update_skill", Label: "沉淀更新 Skill", Risk: RiskWrite,
+			Description:    "把经验/优化步骤/脚本/资源写回工作流笔记；跑通或踩坑后应调用",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "list_plugin_packs", Label: "列出插件包", Risk: RiskRead,
 			Description:    "用户可写插件源码（~/.wworkbench/plugins），不是数据库连接",
 			DefaultEnabled: true,
@@ -329,14 +499,14 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
-			Name: "publish_agent_skill", Label: "发布技能", Risk: RiskWrite,
-			Description:    "首次从笔记发布为 / 可调用的 Skill；须 noteId 写关联标记",
+			Name: "publish_agent_skill", Label: "标为工作流", Risk: RiskWrite,
+			Description:    "笔记标 role=skill；真源仅笔记本 工作流/{name}/；优先传 noteId",
 			DefaultEnabled: true,
 		},
 		{
-			Name: "update_agent_skill", Label: "更新技能", Risk: RiskWrite,
-			Description:    "更新已有 Skill 正文或元数据；不写笔记",
-			DefaultEnabled: true,
+			Name: "update_agent_skill", Label: "更新工作流投影（已废弃）", Risk: RiskWrite,
+			Description:    "已废弃 system/skills 投影；请用 update_skill 写笔记本",
+			DefaultEnabled: false,
 		},
 		{
 			Name: "offer_choices", Label: "向用户提问选项", Risk: RiskRead,

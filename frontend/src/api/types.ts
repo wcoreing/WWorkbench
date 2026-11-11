@@ -333,12 +333,18 @@ export interface TerminalSessionInfo {
   hostId: string
   title: string
   kind: 'local' | 'ssh' | 'docker'
+  /** 命中主机级 SSH 热连接 */
+  reused?: boolean
+  /** 取得连接耗时（毫秒） */
+  dialMs?: number
 }
 
 export interface SFTPSessionInfo {
   sessionId: string
   hostId: string
   title: string
+  reused?: boolean
+  dialMs?: number
 }
 
 export interface SFTPTextFile {
@@ -484,6 +490,98 @@ export interface BackupRun {
   createdAt: number
 }
 
+export interface TaskRun {
+  id: string
+  session: string
+  title: string
+  intent: string
+  status: string
+  source: string
+  stepCount?: number
+  startedAt: number
+  endedAt?: number
+}
+
+export interface TaskStep {
+  id: string
+  runId: string
+  seq: number
+  tool: string
+  action: string
+  intent: string
+  summary: string
+  argsJson?: string
+  locator?: string
+  result?: string
+  ok: boolean
+  error?: string
+  approved: boolean
+  createdAt: number
+}
+
+export interface TaskRunDetail {
+  run: TaskRun
+  steps: TaskStep[]
+}
+
+export interface WorkflowStep {
+  action: string
+  summary?: string
+  intent?: string
+  locator?: Record<string, unknown>
+  args?: Record<string, unknown>
+}
+
+export interface Workflow {
+  id: string
+  name: string
+  title: string
+  description?: string
+  intent?: string
+  steps: WorkflowStep[]
+  sourceRunId?: string
+  /** 工作流笔记 id；有则编辑应打开笔记本 */
+  noteId?: string
+  /** note | builtin */
+  source?: string
+  createdAt: number
+  updatedAt: number
+}
+
+export type HostHealthSeverity = 'ok' | 'warn' | 'critical'
+
+export interface HostHealthFinding {
+  id: string
+  severity: HostHealthSeverity
+  kind: string
+  title: string
+  detail: string
+  suggestKind: string
+  path: string
+  connectionId: string
+  fixable: boolean
+}
+
+export interface HostHealthReport {
+  sshHostId: string
+  workDir: string
+  hostLabel: string
+  scannedAt: number
+  score: number
+  summary: string
+  diskBrief: string
+  findings: HostHealthFinding[]
+  policyCount: number
+  coveredCount: number
+  fixableCount: number
+}
+
+export interface EnsureHostBackupResult {
+  created: BackupPolicy[]
+  skipped: number
+  report: HostHealthReport
+}
+
 export type LogSourceType = 'local_file' | 'ssh_file' | 'docker' | 'compose'
 
 export interface LogSource {
@@ -612,7 +710,8 @@ export interface EnvApplyResult {
   warnings: string[]
 }
 
-export type NoteLanguage = 'plaintext' | 'shell' | 'markdown'
+/** 笔记文件类型：内置预设见 noteFileTypes；可自定义任意字符串。 */
+export type NoteLanguage = string
 
 export interface NotebookGroup {
   id: string
@@ -623,12 +722,16 @@ export interface NotebookGroup {
   updatedAt: number
 }
 
+/** 笔记角色：普通 / 记忆 / 方法 / 剧本 */
+export type NoteRole = 'note' | 'memory' | 'skill'
+
 export interface Note {
   id: string
   groupId: string
   title: string
   content: string
   language: NoteLanguage
+  role: NoteRole
   sshHostId: string
   connectionId: string
   sortOrder: number
@@ -641,6 +744,7 @@ export interface NoteSummary {
   groupId: string
   title: string
   language: NoteLanguage
+  role: NoteRole
   sshHostId: string
   connectionId: string
   sortOrder: number

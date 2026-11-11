@@ -155,8 +155,24 @@ import {
   ListBackupPolicies,
   SaveBackupPolicy,
   DeleteBackupPolicy,
+  DeleteBackupPolicies,
   ListBackupRuns,
+  ListTaskRuns,
+  GetTaskRun,
+  RenameTaskRun,
+  DeleteTaskRuns,
+  CloseTaskRun,
+  FinishBrowserReplay,
+  ReplayTaskStep,
+  DistillWorkflow,
+  PublishWorkflow,
+  ListWorkflows,
+  GetWorkflow,
+  RunWorkflow,
+  SaveWorkflow,
   RunBackupPolicy,
+  ScanHostHealth,
+  EnsureHostBackupPolicies,
   ListLogSources,
   SaveLogSource,
   DeleteLogSource,
@@ -195,6 +211,7 @@ import {
   CreateAgentSkill,
   DeleteAgentSkill,
   PublishAgentSkill,
+  PublishNoteAsSkill,
   ListAppSettings,
   SetAppSetting,
   LoadWorkspace,
@@ -229,6 +246,17 @@ import {
   ExportNote,
   SaveNotebookAsset,
   PickNotebookAssets,
+  NotebookWorkspacePath,
+  NoteDiskPath,
+  RevealNotebookNote,
+  RevealNotebookPath,
+  RevealNotebookWorkspace,
+  RenameNotebookPath,
+  MoveNotebookPath,
+  CopyNotebookPath,
+  DeleteNotebookPath,
+  CreateNotebookDir,
+  CreateNotebookFile,
   ListPluginPacks,
   GetPluginPack,
   GetPluginProtocol,
@@ -245,6 +273,22 @@ import {
   RevokeMCPWriteDir,
   ListMCPWriteDirs,
   ProbeTerminalCwd,
+  GetBrowserStatus,
+  ListBrowserTabs,
+  AttachBrowserTab,
+  BrowserSnapshot,
+  BrowserClick,
+  BrowserFill,
+  BrowserFind,
+  BrowserWait,
+  BrowserKeys,
+  BrowserScreenshot,
+  BrowserNavigate,
+  BrowserOpenFrame,
+  StartBrowserRecording,
+  StopBrowserRecording,
+  RevealBrowserExtDir,
+  OpenChromeExtensionsPage,
 } from '../../wailsjs/go/app/Service'
 
 /** 兼容 Wails 返回的 plain object / 类实例字段名差异 */
@@ -711,10 +755,90 @@ export const api = {
   saveBackupPolicy: (p: model.BackupPolicyDO) =>
     unwrap(() => SaveBackupPolicy(p)) as Promise<import('./types').BackupPolicy>,
   deleteBackupPolicy: (id: string) => unwrap(() => DeleteBackupPolicy(id)),
+  deleteBackupPolicies: async (ids: string[]) =>
+    (await unwrap(() => DeleteBackupPolicies(ids))) as {
+      deleted: number
+      requested: number
+      cronErrors?: string[]
+      note?: string
+    },
   listBackupRuns: async (policyId = '', limit = 30) =>
     asArray(await unwrap(() => ListBackupRuns(policyId, limit))) as import('./types').BackupRun[],
+  listTaskRuns: async (session = '', limit = 30) =>
+    asArray(await unwrap(() => ListTaskRuns(session, limit))) as import('./types').TaskRun[],
+  getTaskRun: async (runId: string) =>
+    (await unwrap(() => GetTaskRun(runId))) as import('./types').TaskRunDetail,
+  renameTaskRun: (runId: string, title: string) => unwrap(() => RenameTaskRun(runId, title)),
+  deleteTaskRuns: async (ids: string[]) =>
+    (await unwrap(() => DeleteTaskRuns(ids))) as number,
+  closeTaskRun: (runId: string) => unwrap(() => CloseTaskRun(runId)),
+  finishBrowserReplay: (sourceRunId: string) => unwrap(() => FinishBrowserReplay(sourceRunId)),
+  replayTaskStep: async (runId: string, seq: number, skip = false, intent = '舞台逐步重放') =>
+    (await unwrap(() => ReplayTaskStep(runId, seq, skip, intent))) as {
+      ok?: boolean
+      seq?: number
+      nextSeq?: number | null
+      skipped?: boolean
+      action?: string
+      resolveNote?: string
+      coach?: string
+      log?: string
+      sourceRunId?: string
+      taskRunId?: string
+    },
+  distillWorkflow: async (
+    runId: string,
+    name = '',
+    title = '',
+    intent = '舞台生成工作流',
+    dropSeqs: number[] = [],
+  ) =>
+    (await unwrap(() =>
+      DistillWorkflow(runId, name, title, intent, dropSeqs.length ? JSON.stringify(dropSeqs) : ''),
+    )) as {
+      ok?: boolean
+      workflow?: import('./types').Workflow
+      noteId?: string
+      note?: string
+    },
+  /** 工作流笔记 → 关联 skillId（笔记 SSOT） */
+  publishWorkflow: async (noteId: string, skillId = '') =>
+    (await unwrap(() => PublishWorkflow(noteId, skillId))) as {
+      ok?: boolean
+      skill?: { id?: string; name?: string }
+      noteId?: string
+      skillId?: string
+      note?: string
+    },
+  listWorkflows: async (limit = 30) =>
+    asArray(await unwrap(() => ListWorkflows(limit))) as import('./types').Workflow[],
+  getWorkflow: async (nameOrId: string) =>
+    (await unwrap(() => GetWorkflow(nameOrId))) as import('./types').Workflow,
+  runWorkflow: async (name: string, session = '', intent = '舞台运行工作流') =>
+    (await unwrap(() => RunWorkflow(name, session, intent))) as {
+      ok?: boolean
+      workflow?: string
+      paused?: boolean
+      executed?: unknown[]
+      total?: number
+      coach?: string
+      note?: string
+    },
+  saveWorkflow: async (workflow: import('./types').Workflow) =>
+    (await unwrap(() => SaveWorkflow(workflow as never))) as import('./types').Workflow,
   runBackupPolicy: (policyId: string, intent: string, force = false) =>
     unwrap(() => RunBackupPolicy(policyId, intent, force)),
+  scanHostHealth: async (sshHostId: string, workDir: string) =>
+    (await unwrap(() => ScanHostHealth(sshHostId, workDir))) as import('./types').HostHealthReport,
+  ensureHostBackupPolicies: async (
+    sshHostId: string,
+    workDir: string,
+    findingIds: string[],
+    withCron = true,
+  ) =>
+    (await unwrap(() =>
+      EnsureHostBackupPolicies(sshHostId, workDir, findingIds, withCron),
+    )) as import('./types').EnsureHostBackupResult,
   listLogSources: async () => asArray(await unwrap(() => ListLogSources())),
   saveLogSource: (src: model.LogSourceDO) => unwrap(() => SaveLogSource(src)),
   deleteLogSource: (id: string) => unwrap(() => DeleteLogSource(id)),
@@ -775,6 +899,21 @@ export const api = {
   saveNotebookAsset: (in_: model.NotebookAssetUploadDO) => unwrap(() => SaveNotebookAsset(in_)),
   pickNotebookAssets: async (noteId: string, imagesOnly: boolean) =>
     asArray(await unwrap(() => PickNotebookAssets(noteId, imagesOnly))),
+  notebookWorkspacePath: async () => (await unwrap(() => NotebookWorkspacePath())) ?? '',
+  noteDiskPath: async (noteId: string) => (await unwrap(() => NoteDiskPath(noteId))) ?? '',
+  revealNotebookNote: (noteId: string) => unwrap(() => RevealNotebookNote(noteId)),
+  revealNotebookPath: (rel: string) => unwrap(() => RevealNotebookPath(rel)),
+  revealNotebookWorkspace: () => unwrap(() => RevealNotebookWorkspace()),
+  renameNotebookPath: (rel: string, newName: string) =>
+    unwrap(() => RenameNotebookPath(rel, newName)) as Promise<{ from: string; to: string }>,
+  moveNotebookPath: (fromRel: string, destDirRel: string) =>
+    unwrap(() => MoveNotebookPath(fromRel, destDirRel)) as Promise<{ from: string; to: string }>,
+  copyNotebookPath: (fromRel: string, destDirRel: string) =>
+    unwrap(() => CopyNotebookPath(fromRel, destDirRel)) as Promise<{ from: string; to: string }>,
+  deleteNotebookPath: (rel: string) => unwrap(() => DeleteNotebookPath(rel)),
+  createNotebookDir: (parentRel: string, name: string) =>
+    unwrap(() => CreateNotebookDir(parentRel, name)) as Promise<string>,
+  createNotebookFile: (parentRel: string, name: string) => unwrap(() => CreateNotebookFile(parentRel, name)),
   getAgentSettings: async () => unwrap(() => GetAgentSettings()),
   listAgentCapabilities: async () => asArray(await unwrap(() => ListAgentCapabilities())),
   applyAgentProviderPreset: async (provider: string) => unwrap(() => ApplyAgentProviderPreset(provider)),
@@ -802,6 +941,7 @@ export const api = {
   createAgentSkill: async (inDO: model.AgentSkillCreateDO) => unwrap(() => CreateAgentSkill(inDO)),
   deleteAgentSkill: async (id: string) => unwrap(() => DeleteAgentSkill(id)),
   publishAgentSkill: async (inDO: model.AgentSkillPublishDO) => unwrap(() => PublishAgentSkill(inDO)),
+  publishNoteAsSkill: async (inDO: model.AgentSkillPublishDO) => unwrap(() => PublishNoteAsSkill(inDO)),
   getAgentThread: async (threadId: string) => unwrap(() => GetAgentThread(threadId)),
   setAgentThreadBindings: async (
     threadId: string,
@@ -854,4 +994,69 @@ export const api = {
       at: number
       kind?: string
     }>,
+  getBrowserStatus: () => unwrap(() => GetBrowserStatus()),
+  listBrowserTabs: () => unwrap(() => ListBrowserTabs()),
+  attachBrowserTab: (tabId: number) => unwrap(() => AttachBrowserTab(tabId)),
+  browserSnapshot: (maxNodes: number, frame = '') => unwrap(() => BrowserSnapshot(maxNodes, frame)),
+  browserClick: (ref: string, selector = '', mode = 'auto', frame = '') =>
+    unwrap(() => BrowserClick(ref, selector, mode, frame)),
+  browserFill: (ref: string, value: string, selector = '', frame = '') =>
+    unwrap(() => BrowserFill(ref, selector, value, frame)),
+  browserFind: (query: string, maxNodes = 200, frame = '') =>
+    unwrap(() => BrowserFind(query, maxNodes, frame)),
+  browserWait: (opts: {
+    text?: string
+    textGone?: string
+    nameIncludes?: string
+    ref?: string
+    selector?: string
+    timeoutMs?: number
+    frame?: string
+  }) =>
+    unwrap(() =>
+      BrowserWait(
+        opts.text || '',
+        opts.textGone || '',
+        opts.nameIncludes || '',
+        opts.ref || '',
+        opts.selector || '',
+        opts.timeoutMs || 0,
+        opts.frame || '',
+      ),
+    ),
+  browserKeys: (keys: string, ref = '', selector = '', repeat = 1, frame = '') =>
+    unwrap(() => BrowserKeys(keys, ref, selector, repeat, frame)),
+  browserScreenshot: (format = 'jpeg', quality = 72) =>
+    unwrap(() => BrowserScreenshot(format, quality)) as Promise<{
+      path: string
+      sizeBytes: number
+      format: string
+      url?: string
+      title?: string
+      dataUrl?: string
+      viewport?: { width: number; height: number; dpr?: number }
+    }>,
+  browserNavigate: (url: string, newTab = false) => unwrap(() => BrowserNavigate(url, newTab)),
+  browserOpenFrame: (frame: string, forceNewTab = false) =>
+    unwrap(() => BrowserOpenFrame(frame, forceNewTab)),
+  startBrowserRecording: async (title = '') =>
+    (await unwrap(() => StartBrowserRecording(title))) as {
+      ok?: boolean
+      recording?: boolean
+      session?: string
+      taskRunId?: string
+      tabId?: number
+      url?: string
+      title?: string
+    },
+  stopBrowserRecording: async () =>
+    (await unwrap(() => StopBrowserRecording())) as {
+      ok?: boolean
+      recording?: boolean
+      session?: string
+    },
+  revealBrowserExtDir: () =>
+    unwrap(() => RevealBrowserExtDir()) as Promise<{ path: string }>,
+  openChromeExtensionsPage: () =>
+    unwrap(() => OpenChromeExtensionsPage()) as Promise<{ opened: boolean; url?: string; hint?: string }>,
 }

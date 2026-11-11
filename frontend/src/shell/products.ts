@@ -7,10 +7,10 @@ export type ProductId =
   | 'docker'
   | 'environment'
   | 'notebook'
-  | 'skills'
   | 'httpapi'
   | 'logs'
   | 'backup'
+  | 'browser'
   | 'plugins'
 
 export interface ProductDef {
@@ -25,12 +25,19 @@ export const PRODUCTS: ProductDef[] = [
   { id: 'docker', available: true },
   { id: 'environment', available: true },
   { id: 'notebook', available: true },
-  { id: 'skills', available: true },
   { id: 'httpapi', available: true },
   { id: 'logs', available: true },
   { id: 'backup', available: true },
+  { id: 'browser', available: true },
   { id: 'plugins', available: true },
 ]
+
+/** normalizeProductId 旧版 skills 产品线并入笔记本。 */
+export function normalizeProductId(id: string | null | undefined): ProductId {
+  if (id === 'skills') return 'notebook'
+  if (PRODUCTS.some((p) => p.id === id)) return id as ProductId
+  return 'terminal'
+}
 
 /** getProduct 按 id 查找产品线元数据。 */
 export function getProduct(id: ProductId): ProductDef {

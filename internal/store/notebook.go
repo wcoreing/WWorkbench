@@ -11,8 +11,8 @@ import (
 
 const (
 	notebookGroupSelectSQL = `SELECT id, name, parent_id, sort_order, created_at, updated_at FROM notebook_groups`
-	noteSelectSQL          = `SELECT id, group_id, title, content, language, ssh_host_id, connection_id, sort_order, created_at, updated_at FROM notes`
-	noteSummarySelectSQL   = `SELECT id, group_id, title, language, ssh_host_id, connection_id, sort_order, updated_at FROM notes`
+	noteSelectSQL          = `SELECT id, group_id, title, content, language, role, ssh_host_id, connection_id, sort_order, created_at, updated_at FROM notes`
+	noteSummarySelectSQL   = `SELECT id, group_id, title, language, role, ssh_host_id, connection_id, sort_order, updated_at FROM notes`
 )
 
 // ListNotebookGroups 列出笔记本分组。
@@ -171,18 +171,21 @@ func (s *Store) SaveNote(n model.NoteDO) error {
 	if n.Language == "" {
 		n.Language = "markdown"
 	}
+	if n.Role == "" {
+		n.Role = model.NoteRoleNote
+	}
 	now := time.Now().Unix()
 	if n.CreatedAt == 0 {
 		n.CreatedAt = now
 	}
 	n.UpdatedAt = now
-	_, err := s.db.Exec(`INSERT INTO notes (id, group_id, title, content, language, ssh_host_id, connection_id, sort_order, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	_, err := s.db.Exec(`INSERT INTO notes (id, group_id, title, content, language, role, ssh_host_id, connection_id, sort_order, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET
 		group_id=excluded.group_id, title=excluded.title, content=excluded.content,
-		language=excluded.language, ssh_host_id=excluded.ssh_host_id, connection_id=excluded.connection_id,
+		language=excluded.language, role=excluded.role, ssh_host_id=excluded.ssh_host_id, connection_id=excluded.connection_id,
 		sort_order=excluded.sort_order, updated_at=excluded.updated_at`,
-		n.ID, n.GroupID, n.Title, n.Content, n.Language, n.SSHHostID, n.ConnectionID, n.SortOrder, n.CreatedAt, n.UpdatedAt)
+		n.ID, n.GroupID, n.Title, n.Content, n.Language, n.Role, n.SSHHostID, n.ConnectionID, n.SortOrder, n.CreatedAt, n.UpdatedAt)
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "保存笔记失败", err)
 	}
@@ -224,6 +227,17 @@ func (s *Store) ApplyNotebookLayout(layout model.NotebookLayoutDO) error {
 	}
 	if err := tx.Commit(); err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "保存笔记本布局失败", err)
+	}
+	return nil
+}
+
+// ClearNotebookTables 清空 SQLite 中笔记/分组表（磁盘工作区已成为真源后调用）。
+func (s *Store) ClearNotebookTables() error {
+	if _, err := s.db.Exec(`DELETE FROM notes`); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "清空笔记表失败", err)
+	}
+	if _, err := s.db.Exec(`DELETE FROM notebook_groups`); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "清空笔记分组表失败", err)
 	}
 	return nil
 }
@@ -291,8 +305,11 @@ func scanNotebookGroup(scan func(dest ...any) error) (model.NotebookGroupDO, err
 // scanNoteSummary 扫描笔记摘要行。
 func scanNoteSummary(scan func(dest ...any) error) (model.NoteSummaryDO, error) {
 	var n model.NoteSummaryDO
-	if err := scan(&n.ID, &n.GroupID, &n.Title, &n.Language, &n.SSHHostID, &n.ConnectionID, &n.SortOrder, &n.UpdatedAt); err != nil {
+	if err := scan(&n.ID, &n.GroupID, &n.Title, &n.Language, &n.Role, &n.SSHHostID, &n.ConnectionID, &n.SortOrder, &n.UpdatedAt); err != nil {
 		return n, err
+	}
+	if n.Role == "" {
+		n.Role = model.NoteRoleNote
 	}
 	return n, nil
 }
@@ -300,8 +317,11 @@ func scanNoteSummary(scan func(dest ...any) error) (model.NoteSummaryDO, error) 
 // scanNote 扫描笔记全文行。
 func scanNote(scan func(dest ...any) error) (model.NoteDO, error) {
 	var n model.NoteDO
-	if err := scan(&n.ID, &n.GroupID, &n.Title, &n.Content, &n.Language, &n.SSHHostID, &n.ConnectionID, &n.SortOrder, &n.CreatedAt, &n.UpdatedAt); err != nil {
+	if err := scan(&n.ID, &n.GroupID, &n.Title, &n.Content, &n.Language, &n.Role, &n.SSHHostID, &n.ConnectionID, &n.SortOrder, &n.CreatedAt, &n.UpdatedAt); err != nil {
 		return n, errno.Wrap(errno.CodeStoreFailed, "读取笔记失败", err)
+	}
+	if n.Role == "" {
+		n.Role = model.NoteRoleNote
 	}
 	return n, nil
 }

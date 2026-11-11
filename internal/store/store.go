@@ -232,6 +232,7 @@ CREATE TABLE IF NOT EXISTS notes (
   title TEXT NOT NULL,
   content TEXT NOT NULL DEFAULT '',
   language TEXT NOT NULL DEFAULT 'markdown',
+  role TEXT NOT NULL DEFAULT 'note',
   ssh_host_id TEXT NOT NULL DEFAULT '',
   connection_id TEXT NOT NULL DEFAULT '',
   sort_order INTEGER NOT NULL DEFAULT 0,
@@ -250,6 +251,9 @@ CREATE TABLE IF NOT EXISTS notes (
 	}
 	if err := s.ensureColumn("notes", "sort_order", "INTEGER NOT NULL DEFAULT 0"); err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移笔记 sort_order 失败", err)
+	}
+	if err := s.ensureColumn("notes", "role", "TEXT NOT NULL DEFAULT 'note'"); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移笔记 role 失败", err)
 	}
 	if err := s.ensureColumn("http_requests", "params_json", "TEXT NOT NULL DEFAULT '[]'"); err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移 HTTP 请求 params_json 失败", err)
@@ -315,6 +319,42 @@ CREATE TABLE IF NOT EXISTS cloud_accounts (
 	// 历史 plaintext 笔记统一升为 markdown（视图/预览以 MD 为一等公民）
 	if _, err := s.db.Exec(`UPDATE notes SET language = 'markdown' WHERE language = 'plaintext'`); err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "升级笔记语言失败", err)
+	}
+	_, err = s.db.Exec(`
+CREATE TABLE IF NOT EXISTS task_runs (
+  id TEXT PRIMARY KEY,
+  session TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '',
+  intent TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'running',
+  source TEXT NOT NULL DEFAULT 'browser',
+  started_at INTEGER NOT NULL,
+  ended_at INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS task_steps (
+  id TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL,
+  seq INTEGER NOT NULL,
+  tool TEXT NOT NULL DEFAULT '',
+  action TEXT NOT NULL DEFAULT '',
+  intent TEXT NOT NULL DEFAULT '',
+  summary TEXT NOT NULL DEFAULT '',
+  args_json TEXT NOT NULL DEFAULT '{}',
+  locator_json TEXT NOT NULL DEFAULT '',
+  result_json TEXT NOT NULL DEFAULT '',
+  ok INTEGER NOT NULL DEFAULT 1,
+  error TEXT NOT NULL DEFAULT '',
+  approved INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_task_runs_started ON task_runs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_task_steps_run ON task_steps(run_id, seq);
+`)
+	if err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移任务日志表失败", err)
+	}
+	if err := s.EnsureMemoryZone(); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "写入记忆区失败", err)
 	}
 	return nil
 }

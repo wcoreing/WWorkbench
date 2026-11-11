@@ -37,11 +37,11 @@ export function ConfirmDialog({
   return (
     <ModalPortal>
     <div
-      className="wn-modal-backdrop wn-modal-backdrop-top ssh-trust-backdrop"
+      className="wn-modal-backdrop wn-modal-backdrop-top"
       {...backdropDismissProps(onCancel)}
     >
       <div
-        className={`wn-modal wn-modal-compact ssh-trust-dialog${hasCode ? ' is-code-confirm' : ''}`}
+        className={`wn-modal wn-modal-compact${hasCode ? ' is-code-confirm' : ''}`}
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         role="dialog"

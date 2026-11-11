@@ -15,6 +15,8 @@ const (
 	SettingLastConnectionID   = "last_connection_id"
 	SettingLastDockerContext  = "last_docker_context_id"
 	SettingLocale             = "locale"
+	// SettingBrowserAskConfirm 浏览器执行逐步询问（默认关：MCP click/fill 等不弹窗）。
+	SettingBrowserAskConfirm  = "browser_ask_confirm"
 	SettingEnvScanPath        = "env_scan_path"
 	SettingDockerComposeDir   = "docker_compose_dir"
 	SettingTerminalFrequentPaths = "terminal.frequent_paths" // JSON：hostKey → [{path,count,lastAt}]

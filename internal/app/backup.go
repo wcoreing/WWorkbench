@@ -81,21 +81,70 @@ func (s *Service) SaveBackupPolicy(p model.BackupPolicyDO) ApiResult[model.Backu
 
 // DeleteBackupPolicy 删除备份策略。
 func (s *Service) DeleteBackupPolicy(id string) ApiResult[bool] {
-	id = strings.TrimSpace(id)
-	var existing *model.BackupPolicyDO
-	if cur, err := s.store.GetBackupPolicy(id); err == nil {
-		existing = cur
-	}
-	if err := s.store.DeleteBackupPolicy(id); err != nil {
-		return ErrResult[bool](err)
-	}
-	if existing != nil && s.toolsRegistry != nil {
-		_ = workbenchtools.RemoveBackupCron(s.ctx, s.toolsRegistry.Deps(), *existing)
-	}
-	if s.radar != nil {
-		s.radar.EmitAsset(workbench.RadarDomainBackupPolicy, "backup", workbench.RadarOpDelete, id, "ui-backup-delete", "", false)
+	res := s.DeleteBackupPolicies([]string{id})
+	if !res.Ok {
+		if res.Error != nil {
+			return ErrResult[bool](res.Error)
+		}
+		return ErrResult[bool](errno.New(errno.CodeUnknown, "删除备份策略失败", id))
 	}
 	return OkResult(true)
+}
+
+// DeleteBackupPolicies 批量删除备份策略：先落库删完，再卸 crontab 并删除远端 .ww-cron 脚本。
+func (s *Service) DeleteBackupPolicies(ids []string) ApiResult[map[string]interface{}] {
+	uniq := make([]string, 0, len(ids))
+	seen := map[string]struct{}{}
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		uniq = append(uniq, id)
+	}
+	if len(uniq) == 0 {
+		return OkResult(map[string]interface{}{"deleted": 0, "requested": 0})
+	}
+
+	toClean := make([]model.BackupPolicyDO, 0, len(uniq))
+	for _, id := range uniq {
+		cur, err := s.store.GetBackupPolicy(id)
+		if err != nil || cur == nil {
+			continue
+		}
+		if strings.TrimSpace(cur.SSHHostID) == "" {
+			continue
+		}
+		toClean = append(toClean, *cur)
+	}
+
+	deleted, err := s.store.DeleteBackupPolicies(uniq)
+	if err != nil {
+		return ErrResult[map[string]interface{}](err)
+	}
+
+	cronErrors := []string{}
+	if s.toolsRegistry != nil && len(toClean) > 0 {
+		if cerr := workbenchtools.RemoveBackupCrons(s.ctx, s.toolsRegistry.Deps(), toClean); cerr != nil {
+			cronErrors = append(cronErrors, cerr.Error())
+		}
+	}
+	if s.radar != nil && deleted > 0 {
+		s.radar.EmitAsset(workbench.RadarDomainBackupPolicy, "backup", workbench.RadarOpDelete, strings.Join(uniq, ","), "ui-backup-delete", "", false)
+	}
+	out := map[string]interface{}{
+		"deleted":   deleted,
+		"requested": len(uniq),
+	}
+	if len(cronErrors) > 0 {
+		out["cronErrors"] = cronErrors
+		out["note"] = "策略已删除；部分主机 crontab/脚本清理失败，可稍后在该机手动检查"
+	}
+	return OkResult(out)
 }
 
 // ListBackupRuns 列出备份执行记录（先同步远端 cron 产物到本地记录）。
@@ -130,4 +179,35 @@ func (s *Service) RunBackupPolicy(policyID, intent string, force bool) ApiResult
 		data = map[string]interface{}{"ok": true}
 	}
 	return OkResult(data)
+}
+
+// ScanHostHealth 在指定工作目录扫描可备份资产（只读）。
+func (s *Service) ScanHostHealth(sshHostID, workDir string) ApiResult[model.HostHealthReportDO] {
+	if s.toolsRegistry == nil {
+		return ErrResult[model.HostHealthReportDO](errno.New(errno.CodeInvalidArg, "工具注册表未就绪", ""))
+	}
+	report, err := workbenchtools.ScanHostHealth(s.ctx, s.toolsRegistry.Deps(), strings.TrimSpace(sshHostID), strings.TrimSpace(workDir))
+	if err != nil {
+		return ErrResult[model.HostHealthReportDO](err)
+	}
+	return OkResult(report)
+}
+
+// EnsureHostBackupPolicies 仅为勾选的扫描项创建备份策略。
+func (s *Service) EnsureHostBackupPolicies(sshHostID, workDir string, findingIDs []string, withCron bool) ApiResult[model.EnsureHostBackupResultDO] {
+	if s.toolsRegistry == nil {
+		return ErrResult[model.EnsureHostBackupResultDO](errno.New(errno.CodeInvalidArg, "工具注册表未就绪", ""))
+	}
+	out, err := workbenchtools.EnsureHostBackupPolicies(
+		s.ctx,
+		s.toolsRegistry.Deps(),
+		strings.TrimSpace(sshHostID),
+		strings.TrimSpace(workDir),
+		findingIDs,
+		withCron,
+	)
+	if err != nil {
+		return ErrResult[model.EnsureHostBackupResultDO](err)
+	}
+	return OkResult(out)
 }

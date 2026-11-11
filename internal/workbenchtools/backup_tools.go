@@ -46,6 +46,115 @@ type listBackupRunsArgs struct {
 	Limit    int    `json:"limit"`
 }
 
+type hostHealthArgs struct {
+	SSHHostID   string   `json:"sshHostId"`
+	WorkDir     string   `json:"workDir"`
+	FindingIDs  []string `json:"findingIds"`
+	Intent      string   `json:"intent"`
+	WithCron    *bool    `json:"withCron"`
+}
+
+// toolHostHealthScan 指定工作目录扫描可备份资产（只读）。
+func toolHostHealthScan(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
+	var in hostHealthArgs
+	if err := json.Unmarshal(raw, &in); err != nil {
+		return Fail("参数无效")
+	}
+	report, err := ScanHostHealth(ctx, d, strings.TrimSpace(in.SSHHostID), strings.TrimSpace(in.WorkDir))
+	if err != nil {
+		return Fail(err.Error())
+	}
+	return OKData(map[string]interface{}{
+		"ok":     true,
+		"report": report,
+		"note":   "把可选 finding.id 交给用户勾选后，再 ensure_host_backup_policies(sshHostId, workDir, findingIds)。禁止默认全选。",
+	})
+}
+
+// toolEnsureHostBackupPolicies 仅为勾选 findingIds 创建策略（需确认）。
+func toolEnsureHostBackupPolicies(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
+	var in hostHealthArgs
+	if err := json.Unmarshal(raw, &in); err != nil {
+		return Fail("参数无效")
+	}
+	hostID := strings.TrimSpace(in.SSHHostID)
+	workDir := strings.TrimSpace(in.WorkDir)
+	if hostID == "" {
+		return Fail("sshHostId 不能为空")
+	}
+	if workDir == "" || !strings.HasPrefix(workDir, "/") {
+		return Fail("workDir 须为绝对路径")
+	}
+	if len(in.FindingIDs) == 0 {
+		return Fail("findingIds 不能为空：须由用户勾选后再创建")
+	}
+	report, err := ScanHostHealth(ctx, d, hostID, workDir)
+	if err != nil {
+		return Fail(err.Error())
+	}
+	want := map[string]struct{}{}
+	for _, id := range in.FindingIDs {
+		id = strings.TrimSpace(id)
+		if id != "" {
+			want[id] = struct{}{}
+		}
+	}
+	items := make([]map[string]interface{}, 0, len(want))
+	for _, f := range report.Findings {
+		if _, ok := want[f.ID]; !ok || !f.Fixable {
+			continue
+		}
+		items = append(items, map[string]interface{}{
+			"id": f.ID, "title": f.Title, "kind": f.SuggestKind, "path": f.Path, "detail": f.Detail,
+		})
+	}
+	if len(items) == 0 {
+		return Fail("所选 findingIds 均不可创建（可能已覆盖或不在本次扫描结果中）")
+	}
+	withCron := true
+	if in.WithCron != nil {
+		withCron = *in.WithCron
+	}
+	summary := strings.TrimSpace(in.Intent)
+	if summary == "" {
+		summary = fmt.Sprintf("为所选 %d 项创建备份策略", len(items))
+	}
+	preview := map[string]interface{}{
+		"sshHostId":  hostID,
+		"workDir":    workDir,
+		"hostLabel":  report.HostLabel,
+		"count":      len(items),
+		"withCron":   withCron,
+		"cronExpr":   hostHealthDefaultCron,
+		"retainDays": hostHealthDefaultRetain,
+		"items":      items,
+		"findingIds": in.FindingIDs,
+		"intent":     strings.TrimSpace(in.Intent),
+		"risk":       "将为勾选路径创建备份策略并可选安装远端 crontab",
+	}
+	return Confirm(uuid.NewString(), truncateRunes(summary, intentTitleMaxRune), preview)
+}
+
+// EnsureHostBackupPoliciesConfirmed 用户确认后按勾选创建策略。
+func EnsureHostBackupPoliciesConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
+	var in hostHealthArgs
+	if err := json.Unmarshal([]byte(argsJSON), &in); err != nil {
+		return Fail("参数无效")
+	}
+	withCron := true
+	if in.WithCron != nil {
+		withCron = *in.WithCron
+	}
+	out, err := EnsureHostBackupPolicies(ctx, d, strings.TrimSpace(in.SSHHostID), strings.TrimSpace(in.WorkDir), in.FindingIDs, withCron)
+	if err != nil {
+		return Fail(err.Error())
+	}
+	return OKData(map[string]interface{}{
+		"ok": true, "created": out.Created, "skipped": out.Skipped, "report": out.Report,
+		"note": fmt.Sprintf("已为勾选项创建 %d 条策略。", len(out.Created)),
+	})
+}
+
 // toolListBackupPolicies 列出备份策略资产。
 func toolListBackupPolicies(_ context.Context, d *Deps, _ json.RawMessage) ToolResult {
 	if d == nil || d.Store == nil {

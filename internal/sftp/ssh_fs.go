@@ -9,6 +9,7 @@ import (
 
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/tunnel"
 
 	pkgsftp "github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -26,9 +27,11 @@ func newSSHFS(sshClient *ssh.Client, sftpClient *pkgsftp.Client) *sshFS {
 func (f *sshFS) Close() {
 	if f.sftp != nil {
 		_ = f.sftp.Close()
+		f.sftp = nil
 	}
 	if f.ssh != nil {
-		_ = f.ssh.Close()
+		tunnel.ReleaseSSH(f.ssh)
+		f.ssh = nil
 	}
 }
 

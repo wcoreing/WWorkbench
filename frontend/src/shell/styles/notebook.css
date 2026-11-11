@@ -1,26 +1,230 @@
-/* 笔记工作台：列表负责定位，编辑器负责沉淀，预览区保持稳定阅读宽度。 */
+/* 笔记工作台：IDE 隐喻 —— Explorer / Editor / StatusBar。 */
 .notebook-workbench {
   container-type: inline-size;
   container-name: notebook-workbench;
 }
 
-.notebook-toolbar {
-  border-bottom: 1px solid var(--color-divider);
+.notebook-workbench.is-ide .notebook-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-.notebook-toolbar .product-actions {
-  min-width: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
+.notebook-explorer-header .sidebar-header-title {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 650;
 }
 
-.notebook-toolbar .product-actions::-webkit-scrollbar {
-  display: none;
-}
-
-.notebook-toolbar .product-toolbar-status {
+.notebook-tab-dirty {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-text-muted);
   flex-shrink: 0;
-  border-left: 1px solid var(--color-border);
+  margin-right: 2px;
+}
+
+.wn-tab.is-dirty .notebook-tab-dirty {
+  background: var(--color-warning, #c9a227);
+}
+
+.notebook-tab-ext {
+  margin-left: 2px;
+  opacity: 0.55;
+  font-size: 11px;
+}
+
+.notebook-ide-bar {
+  gap: 8px;
+}
+
+.notebook-breadcrumb {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.notebook-breadcrumb-part {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notebook-breadcrumb-sep {
+  opacity: 0.45;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.notebook-breadcrumb-title.notebook-title-input {
+  flex: 1;
+  min-width: 80px;
+  margin: 0;
+  height: 26px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.notebook-breadcrumb-ext {
+  flex-shrink: 0;
+  opacity: 0.55;
+  font-size: 12px;
+  padding-right: 4px;
+}
+
+.notebook-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  min-height: 22px;
+  padding: 0 8px;
+  border-top: 1px solid var(--color-divider);
+  background: var(--color-toolbar);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.notebook-status-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.notebook-status-item.is-button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.notebook-status-item.is-button:hover,
+.notebook-status-item.is-button:focus-visible {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.notebook-status-key {
+  opacity: 0.65;
+}
+
+.notebook-status-path {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-header-title.is-button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.sidebar-header-title.is-button:hover,
+.sidebar-header-title.is-button:focus-visible {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.notebook-status-item.is-role.is-memory {
+  color: #2f6f5e;
+}
+
+.notebook-status-item.is-role.is-skill {
+  color: #4a5f9c;
+}
+
+.notebook-status-item.is-save.is-dirty {
+  color: var(--color-warning, #c9a227);
+}
+
+.notebook-status-spacer {
+  flex: 1;
+}
+
+.notebook-more-menu {
+  position: relative;
+}
+
+.notebook-more-glyph {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.notebook-more-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 40;
+  min-width: 188px;
+  padding: 6px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--shadow);
+}
+
+.notebook-more-dropdown-head {
+  padding: 4px 8px 8px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.notebook-more-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 12px;
+  text-align: left;
+  padding: 7px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.notebook-more-item:hover {
+  background: var(--color-hover);
+}
+
+.notebook-more-item.is-danger {
+  color: var(--color-danger, #c44);
+}
+
+.notebook-more-sep {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--color-border);
 }
 
 .notebook-workbench .notebook-sidebar {
@@ -119,6 +323,24 @@
   background: var(--color-sidebar-selected);
 }
 
+.notebook-tree-folder.is-drop-over {
+  background: var(--color-active);
+  outline: 1px dashed var(--color-accent, #3b82f6);
+}
+
+.notebook-tree-inline {
+  flex: 1;
+  min-width: 0;
+  height: 18px;
+  margin: 0;
+  padding: 0 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+  background: var(--color-surface, #fff);
+  font: inherit;
+  color: inherit;
+}
+
 .notebook-tree-note.is-batch-selected {
   background: var(--color-active);
 }
@@ -149,6 +371,56 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.notebook-tree-ext {
+  margin-left: 4px;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.75;
+}
+
+.notebook-role-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.notebook-role-filter {
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.notebook-role-filter.is-on,
+.notebook-role-filter:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.notebook-role-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  color: var(--color-text-muted);
+  background: var(--color-hover);
+  letter-spacing: 0.02em;
+}
+
+.notebook-role-badge.is-memory {
+  color: var(--color-accent, #2a6f6a);
+  background: color-mix(in srgb, var(--color-accent, #2a6f6a) 14%, transparent);
+}
+
+.notebook-role-badge.is-skill {
+  color: var(--color-text-secondary, #5a6570);
 }
 
 .notebook-tree-note .notebook-note-check {
@@ -472,7 +744,8 @@
   background: var(--color-border);
 }
 
-.notebook-settings-select {
+.notebook-settings-select,
+.notebook-settings-input {
   width: 100%;
   padding: 5px 8px;
   border-radius: var(--radius-sm);
@@ -480,6 +753,11 @@
   background: var(--color-surface);
   color: var(--color-text);
   font-size: 12px;
+}
+
+.notebook-settings-input:focus {
+  outline: none;
+  border-color: var(--color-accent, var(--color-primary));
 }
 
 .notebook-settings-badges {
@@ -588,6 +866,37 @@
   display: flex;
   flex-direction: column;
   background: var(--color-editor);
+}
+
+.note-editor-host {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.notebook-new-file-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notebook-new-file-name .wn-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.notebook-new-file-ext {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.notebook-new-file-hint {
+  margin: -4px 0 10px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
 }
 
 .note-editor-textarea {
@@ -767,11 +1076,7 @@
 }
 
 @container notebook-workbench (max-width: 980px) {
-  .notebook-toolbar .product-actions .wn-btn-tool {
-    padding-inline: 6px;
-  }
-
-  .notebook-toolbar .product-toolbar-status {
+  .notebook-toolbar-status {
     display: none;
   }
 

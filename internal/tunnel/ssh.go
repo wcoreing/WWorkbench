@@ -53,9 +53,8 @@ func (t *sshTunnel) Close() error {
 	case <-time.After(3 * time.Second):
 	}
 	if t.client != nil {
-		if e := t.client.Close(); e != nil && err == nil {
-			err = e
-		}
+		ReleaseSSH(t.client)
+		t.client = nil
 	}
 	return err
 }
@@ -73,7 +72,7 @@ func DialPortForward(ctx context.Context, spec model.TunnelSpecDO, localPort int
 	if targetPort <= 0 || targetPort > 65535 {
 		return nil, errno.New(errno.CodeInvalidArg, "请填写有效远端端口", strconv.Itoa(targetPort))
 	}
-	client, err := DialSSH(ctx, spec)
+	client, _, err := AcquireSSH(ctx, spec)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +80,7 @@ func DialPortForward(ctx context.Context, spec model.TunnelSpecDO, localPort int
 
 	ln, err := listenLocalTCP(localPort)
 	if err != nil {
-		_ = client.Close()
+		ReleaseSSH(client)
 		return nil, errno.Wrap(errno.CodeConnFailed, "创建本地转发端口失败", err)
 	}
 	host, portStr, _ := net.SplitHostPort(ln.Addr().String())
@@ -98,7 +97,6 @@ func DialPortForward(ctx context.Context, spec model.TunnelSpecDO, localPort int
 		defer tun.wg.Done()
 		tun.acceptLoop(target)
 	}()
-	KeepAlive(client)
 
 	return tun, nil
 }

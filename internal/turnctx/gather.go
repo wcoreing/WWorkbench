@@ -54,6 +54,9 @@ func Gather(ctx model.AgentContextDO, userText string) string {
 	} else if ctx.SessionID != "" {
 		fmt.Fprintf(&b, "- **会话** sessionId=`%s`\n", ctx.SessionID)
 	}
+	if hid := strings.TrimSpace(ctx.HostID); hid != "" {
+		fmt.Fprintf(&b, "- **焦点主机** hostId=`%s`\n", hid)
+	}
 
 	if ctx.TabTitle != "" {
 		fmt.Fprintf(&b, "- **当前标签**：%s\n", trimBrief(ctx.TabTitle, 80))

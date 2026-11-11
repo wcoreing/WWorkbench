@@ -32,7 +32,7 @@ type sshDockerClient struct {
 	stdioConn  *stdioConn
 }
 
-// Close 关闭 Docker 与 SSH 连接。
+// Close 关闭 Docker 客户端并归还共享 SSH 连接。
 func (c *sshDockerClient) Close() error {
 	if c.Client != nil {
 		_ = c.Client.Close()
@@ -41,7 +41,8 @@ func (c *sshDockerClient) Close() error {
 		_ = c.stdioConn.Close()
 	}
 	if c.ssh != nil {
-		return c.ssh.Close()
+		tunnel.ReleaseSSH(c.ssh)
+		c.ssh = nil
 	}
 	return nil
 }
@@ -52,21 +53,33 @@ if [ -n "$s" ] && [ -S "$s" ] 2>/dev/null; then echo "$s"; exit 0; fi
 done
 exit 1`
 
-// dialSSHDocker 经 SSH 隧道连接远端 Docker 引擎。
+// dialSSHDocker 经 SSH 隧道连接远端 Docker 引擎（复用主机级 SSH 池）。
 func dialSSHDocker(ctx context.Context, spec model.TunnelSpecDO) (*sshDockerClient, error) {
-	sshClient, err := tunnel.DialSSH(ctx, spec)
+	sshClient, reused, err := tunnel.AcquireSSH(ctx, spec)
 	if err != nil {
 		return nil, err
 	}
 
 	if cli, socket, err := tryUnixForwardDocker(ctx, sshClient); err == nil {
-		tunnel.KeepAlive(sshClient)
 		return &sshDockerClient{Client: cli, ssh: sshClient, socketPath: socket}, nil
 	} else if cli, stdio, err2 := tryDialStdioDocker(ctx, sshClient); err2 == nil {
-		tunnel.KeepAlive(sshClient)
 		return &sshDockerClient{Client: cli, ssh: sshClient, socketPath: "docker system dial-stdio", stdioConn: stdio}, nil
 	} else {
-		_ = sshClient.Close()
+		tunnel.DropSSH(sshClient)
+		if reused {
+			sshClient, _, err = tunnel.AcquireSSH(ctx, spec)
+			if err != nil {
+				return nil, err
+			}
+			if cli, socket, err3 := tryUnixForwardDocker(ctx, sshClient); err3 == nil {
+				return &sshDockerClient{Client: cli, ssh: sshClient, socketPath: socket}, nil
+			} else if cli, stdio, err4 := tryDialStdioDocker(ctx, sshClient); err4 == nil {
+				return &sshDockerClient{Client: cli, ssh: sshClient, socketPath: "docker system dial-stdio", stdioConn: stdio}, nil
+			} else {
+				tunnel.DropSSH(sshClient)
+				return nil, wrapRemoteDockerError(err3, err4)
+			}
+		}
 		return nil, wrapRemoteDockerError(err, err2)
 	}
 }

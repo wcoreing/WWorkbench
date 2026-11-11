@@ -3,6 +3,7 @@ package workbenchtools
 import (
 	"context"
 
+	"WWorkbench/internal/browser"
 	"WWorkbench/internal/conn"
 	dockersvc "WWorkbench/internal/docker"
 	"WWorkbench/internal/meta"
@@ -36,6 +37,7 @@ type Deps struct {
 	MCPConfirm  *MCPConfirmGate
 	WriteAllows *MCPWriteAllowBook
 	Terminals   *terminal.Manager
+	Browser     *browser.Bridge
 	HarnessRoot func() string
 	Agent       AgentSync
 	PluginPacks *pluginpack.Manager

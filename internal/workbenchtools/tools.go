@@ -9,6 +9,7 @@ import (
 	"WWorkbench/internal/conn"
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/notebook"
 	"WWorkbench/internal/session"
 	"WWorkbench/internal/terminal"
 	"WWorkbench/internal/turnctx"
@@ -27,6 +28,7 @@ type ctxArgs struct {
 	TabTitle       string                 `json:"tabTitle"`
 	OpenTabsBrief  string                 `json:"openTabsBrief"`
 	SelectionBrief string                 `json:"selectionBrief"`
+	HostID         string                 `json:"hostId"`
 	NoteID         string                 `json:"noteId"`
 	Mentions       []model.AgentMentionDO `json:"mentions"`
 }
@@ -94,7 +96,7 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 		"openSessions":  open,
 		"recentQueries": history,
 	}
-	turnctx.ApplySnapshot(out, model.AgentContextDO{
+	snap := model.AgentContextDO{
 		ActiveProduct:  in.ActiveProduct,
 		SessionID:      in.SessionID,
 		ConnectionID:   in.ConnectionID,
@@ -105,9 +107,11 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 		TabTitle:       in.TabTitle,
 		OpenTabsBrief:  in.OpenTabsBrief,
 		SelectionBrief: in.SelectionBrief,
+		HostID:         in.HostID,
 		NoteID:         in.NoteID,
 		Mentions:       in.Mentions,
-	})
+	}
+	turnctx.ApplySnapshot(out, snap)
 	if d.Docker != nil {
 		if ctxList, err := d.Docker.ListContexts(ctx); err == nil {
 			out["dockerContexts"] = ctxList
@@ -136,6 +140,34 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 		}
 		if runs, err := d.Store.ListBackupRuns("", 10); err == nil && len(runs) > 0 {
 			out["backupRuns"] = runs
+		}
+		if taskRuns, err := d.Store.ListTaskRuns("", 10); err == nil && len(taskRuns) > 0 {
+			out["taskRuns"] = taskRuns
+		}
+		if d.Notebook != nil {
+			if workflows := d.Notebook.ListWorkflowsSSOT(10); len(workflows) > 0 {
+				out["workflows"] = workflows
+			}
+		}
+		hosts := notebook.ContextHostIDs(snap)
+		if d.Notebook != nil {
+			if mem, err := d.Notebook.ListMemoryNotesForContext(hosts, snap.ConnectionID, 5); err == nil && len(mem) > 0 {
+				items := make([]map[string]interface{}, 0, len(mem))
+				for _, n := range mem {
+					items = append(items, map[string]interface{}{
+						"noteId":       n.ID,
+						"title":        n.Title,
+						"role":         n.Role,
+						"sshHostId":    n.SSHHostID,
+						"connectionId": n.ConnectionID,
+						"updatedAt":    n.UpdatedAt,
+					})
+				}
+				out["memoryNotes"] = items
+			}
+			if wp := d.Notebook.WorkspacePath(); wp != "" {
+				out["notebookWorkspace"] = wp
+			}
 		}
 	}
 	return OKData(out)

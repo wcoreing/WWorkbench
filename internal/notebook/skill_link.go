@@ -3,9 +3,6 @@ package notebook
 import (
 	"regexp"
 	"strings"
-	"time"
-
-	"WWorkbench/internal/model"
 )
 
 var skillMarkRE = regexp.MustCompile(`<!--\s*wwb-skill:\s*([a-zA-Z0-9][a-zA-Z0-9_-]{0,63})\s*-->`)
@@ -19,12 +16,17 @@ func ReadLinkedSkillID(content string) string {
 	return strings.TrimSpace(m[1])
 }
 
-// WithLinkedSkillID 写入/更新关联标记。
+// WithLinkedSkillID 写入/更新关联标记（放在 frontmatter 之后，避免破坏 YAML 头）。
 func WithLinkedSkillID(content, skillID string) string {
 	id := strings.TrimSpace(skillID)
 	mark := "<!-- wwb-skill: " + id + " -->"
 	if skillMarkRE.MatchString(content) {
 		return skillMarkRE.ReplaceAllString(content, mark)
+	}
+	fm, body, ok := splitFrontmatterMap(content)
+	if ok {
+		body = mark + "\n\n" + strings.TrimLeft(body, " \t\r\n")
+		return joinFrontmatterMap(fm, body)
 	}
 	trimmed := strings.TrimLeft(content, " \t\r\n")
 	return mark + "\n\n" + trimmed
@@ -36,7 +38,7 @@ func StripSkillMark(content string) string {
 	return strings.TrimLeft(out, " \t\r\n")
 }
 
-// LinkSkillNote 发布后在来源笔记写入 skill 关联标记。
+// LinkSkillNote 把笔记标成工作流（role=skill + 关联标记 + 工作流目录）。
 func (s *Service) LinkSkillNote(skillID, noteID string) error {
 	if s == nil {
 		return nil
@@ -46,68 +48,6 @@ func (s *Service) LinkSkillNote(skillID, noteID string) error {
 	if skillID == "" || noteID == "" {
 		return nil
 	}
-	n, err := s.GetNote(noteID)
-	if err != nil {
-		return err
-	}
-	next := WithLinkedSkillID(n.Content, skillID)
-	if next == n.Content {
-		return nil
-	}
-	n.Content = next
-	n.UpdatedAt = time.Now().Unix()
-	_, err = s.SaveNote(*n)
+	_, err := s.MarkNoteAsSkill(noteID, skillID)
 	return err
-}
-
-// LegacySkillNotesGroupName 旧版 Skill 镜像分组（已废弃）。
-const LegacySkillNotesGroupName = "方法包"
-
-const legacySkillNoteIDPrefix = "skill-note-"
-
-// RemoveLegacySkillNotesGroup 删除「方法包」分组及其 Skill 镜像笔记。
-func (s *Service) RemoveLegacySkillNotesGroup() error {
-	if s == nil {
-		return nil
-	}
-	groups, err := s.ListGroups()
-	if err != nil {
-		return err
-	}
-	var groupID string
-	for _, g := range groups {
-		if strings.TrimSpace(g.Name) == LegacySkillNotesGroupName {
-			groupID = g.ID
-			break
-		}
-	}
-	if groupID == "" {
-		return nil
-	}
-	notes, err := s.ListNotes()
-	if err != nil {
-		return err
-	}
-	for _, summary := range notes {
-		if summary.GroupID != groupID {
-			continue
-		}
-		if !isLegacySkillMirrorNote(summary) {
-			continue
-		}
-		if err := s.DeleteNote(summary.ID); err != nil {
-			return err
-		}
-	}
-	return s.DeleteGroup(groupID)
-}
-
-func isLegacySkillMirrorNote(n model.NoteSummaryDO) bool {
-	if strings.HasPrefix(strings.TrimSpace(n.Title), "方法：") {
-		return true
-	}
-	if strings.HasPrefix(n.ID, legacySkillNoteIDPrefix) {
-		return true
-	}
-	return false
 }

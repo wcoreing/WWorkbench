@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"WWorkbench/internal/docker"
+	"WWorkbench/internal/tunnel"
 
 	gopty "github.com/aymanbagabas/go-pty"
 	"golang.org/x/crypto/ssh"
@@ -37,9 +38,11 @@ type Session struct {
 func (s *Session) cleanup() {
 	if s.sshSess != nil {
 		_ = s.sshSess.Close()
+		s.sshSess = nil
 	}
 	if s.client != nil {
-		_ = s.client.Close()
+		tunnel.ReleaseSSH(s.client)
+		s.client = nil
 	}
 	if s.localCmd != nil && s.localCmd.Process != nil {
 		_ = s.localCmd.Process.Kill()

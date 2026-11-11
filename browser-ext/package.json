@@ -1,0 +1,22 @@
+{
+  "name": "wworkbench-browser-ext",
+  "private": true,
+  "version": "0.3.8",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/build.mjs --watch",
+    "build": "node scripts/build.mjs",
+    "sync": "node scripts/build.mjs --sync-only"
+  },
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.11",
+    "vue-tsc": "^2.2.0"
+  }
+}

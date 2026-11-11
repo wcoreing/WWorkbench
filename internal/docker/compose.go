@@ -84,11 +84,11 @@ func (m *Manager) runRemoteCompose(ctx context.Context, contextID, dir string, a
 	if err != nil {
 		return "", err
 	}
-	sshClient, err := tunnel.DialSSH(ctx, sshHostToTunnel(*host))
+	sshClient, _, err := tunnel.AcquireSSH(ctx, sshHostToTunnel(*host))
 	if err != nil {
 		return "", err
 	}
-	defer sshClient.Close()
+	defer tunnel.ReleaseSSH(sshClient)
 
 	quotedDir := shellQuote(dir)
 	cmdLine := "docker " + strings.Join(quoteArgs(args), " ")

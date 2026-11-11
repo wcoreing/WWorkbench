@@ -106,15 +106,52 @@ func (s *Store) SaveBackupPolicy(p model.BackupPolicyDO) (model.BackupPolicyDO, 
 
 // DeleteBackupPolicy 删除策略（不删历史 runs）。
 func (s *Store) DeleteBackupPolicy(id string) error {
-	res, err := s.db.Exec(`DELETE FROM backup_policies WHERE id = ?`, id)
+	n, err := s.DeleteBackupPolicies([]string{id})
 	if err != nil {
-		return errno.Wrap(errno.CodeStoreFailed, "删除备份策略失败", err)
+		return err
 	}
-	n, _ := res.RowsAffected()
 	if n == 0 {
 		return errno.New(errno.CodeNotFound, "备份策略不存在", id)
 	}
 	return nil
+}
+
+// DeleteBackupPolicies 批量删除策略，返回实际删除条数（不删历史 runs）。
+func (s *Store) DeleteBackupPolicies(ids []string) (int, error) {
+	uniq := make([]string, 0, len(ids))
+	seen := map[string]struct{}{}
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		uniq = append(uniq, id)
+	}
+	if len(uniq) == 0 {
+		return 0, nil
+	}
+	tx, err := s.db.Begin()
+	if err != nil {
+		return 0, errno.Wrap(errno.CodeStoreFailed, "删除备份策略失败", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	deleted := 0
+	for _, id := range uniq {
+		res, err := tx.Exec(`DELETE FROM backup_policies WHERE id = ?`, id)
+		if err != nil {
+			return 0, errno.Wrap(errno.CodeStoreFailed, "删除备份策略失败", err)
+		}
+		n, _ := res.RowsAffected()
+		deleted += int(n)
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, errno.Wrap(errno.CodeStoreFailed, "删除备份策略失败", err)
+	}
+	return deleted, nil
 }
 
 // InsertBackupRun 写入一次备份记录。

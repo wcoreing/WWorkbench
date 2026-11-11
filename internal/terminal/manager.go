@@ -48,7 +48,7 @@ func (m *Manager) SetHandlers(onOutput OutputHandler, onClose CloseHandler) {
 	m.onClose = onClose
 }
 
-// Open 打开 SSH 终端会话。
+// Open 打开 SSH 终端会话（主机级连接池：二次打开复用热连接）。
 func (m *Manager) Open(ctx context.Context, hostID string, cols, rows int) (*model.TerminalSessionInfoDO, error) {
 	if cols <= 0 {
 		cols = 80
@@ -60,49 +60,33 @@ func (m *Manager) Open(ctx context.Context, hostID string, cols, rows int) (*mod
 	if err != nil {
 		return nil, err
 	}
-	client, err := tunnel.DialSSH(ctx, HostToSpec(*host))
+	spec := HostToSpec(*host)
+	start := time.Now()
+	client, reused, err := tunnel.AcquireSSH(ctx, spec)
 	if err != nil {
 		return nil, err
 	}
-	sess, err := client.NewSession()
+	dialMs := time.Since(start).Milliseconds()
+
+	sess, stdin, stdout, stderr, err := openSSHShell(client, cols, rows)
 	if err != nil {
-		_ = client.Close()
-		return nil, errno.Wrap(errno.CodeConnFailed, "创建 SSH 会话失败", err)
+		tunnel.DropSSH(client)
+		if reused {
+			start = time.Now()
+			client, reused, err = tunnel.AcquireSSH(ctx, spec)
+			if err != nil {
+				return nil, err
+			}
+			dialMs = time.Since(start).Milliseconds()
+			sess, stdin, stdout, stderr, err = openSSHShell(client, cols, rows)
+			if err != nil {
+				tunnel.DropSSH(client)
+				return nil, err
+			}
+		} else {
+			return nil, err
+		}
 	}
-	modes := ssh.TerminalModes{
-		ssh.ECHO:          1,
-		ssh.TTY_OP_ISPEED: 14400,
-		ssh.TTY_OP_OSPEED: 14400,
-	}
-	if err := sess.RequestPty("xterm-256color", rows, cols, modes); err != nil {
-		_ = sess.Close()
-		_ = client.Close()
-		return nil, errno.Wrap(errno.CodeConnFailed, "请求 PTY 失败", err)
-	}
-	stdin, err := sess.StdinPipe()
-	if err != nil {
-		_ = sess.Close()
-		_ = client.Close()
-		return nil, errno.Wrap(errno.CodeConnFailed, "打开 stdin 失败", err)
-	}
-	stdout, err := sess.StdoutPipe()
-	if err != nil {
-		_ = sess.Close()
-		_ = client.Close()
-		return nil, errno.Wrap(errno.CodeConnFailed, "打开 stdout 失败", err)
-	}
-	stderr, err := sess.StderrPipe()
-	if err != nil {
-		_ = sess.Close()
-		_ = client.Close()
-		return nil, errno.Wrap(errno.CodeConnFailed, "打开 stderr 失败", err)
-	}
-	if err := sess.Shell(); err != nil {
-		_ = sess.Close()
-		_ = client.Close()
-		return nil, errno.Wrap(errno.CodeConnFailed, "启动 Shell 失败", err)
-	}
-	tunnel.KeepAlive(client)
 
 	sid := uuid.NewString()
 	title := host.User + "@" + host.Host
@@ -123,7 +107,45 @@ func (m *Manager) Open(ctx context.Context, hostID string, cols, rows int) (*mod
 		HostID:    hostID,
 		Title:     title,
 		Kind:      string(kindSSH),
+		Reused:    reused,
+		DialMs:    dialMs,
 	}, nil
+}
+
+func openSSHShell(client *ssh.Client, cols, rows int) (*ssh.Session, io.WriteCloser, io.Reader, io.Reader, error) {
+	sess, err := client.NewSession()
+	if err != nil {
+		return nil, nil, nil, nil, errno.Wrap(errno.CodeConnFailed, "创建 SSH 会话失败", err)
+	}
+	modes := ssh.TerminalModes{
+		ssh.ECHO:          1,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
+	}
+	if err := sess.RequestPty("xterm-256color", rows, cols, modes); err != nil {
+		_ = sess.Close()
+		return nil, nil, nil, nil, errno.Wrap(errno.CodeConnFailed, "请求 PTY 失败", err)
+	}
+	stdin, err := sess.StdinPipe()
+	if err != nil {
+		_ = sess.Close()
+		return nil, nil, nil, nil, errno.Wrap(errno.CodeConnFailed, "打开 stdin 失败", err)
+	}
+	stdout, err := sess.StdoutPipe()
+	if err != nil {
+		_ = sess.Close()
+		return nil, nil, nil, nil, errno.Wrap(errno.CodeConnFailed, "打开 stdout 失败", err)
+	}
+	stderr, err := sess.StderrPipe()
+	if err != nil {
+		_ = sess.Close()
+		return nil, nil, nil, nil, errno.Wrap(errno.CodeConnFailed, "打开 stderr 失败", err)
+	}
+	if err := sess.Shell(); err != nil {
+		_ = sess.Close()
+		return nil, nil, nil, nil, errno.Wrap(errno.CodeConnFailed, "启动 Shell 失败", err)
+	}
+	return sess, stdin, stdout, stderr, nil
 }
 
 // registerSession 注册会话并启动输出泵。

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"WWorkbench/internal/agent"
+	"WWorkbench/internal/browser"
 	"WWorkbench/internal/conn"
 	"WWorkbench/internal/data"
 	dockersvc "WWorkbench/internal/docker"
@@ -23,6 +24,7 @@ import (
 	sftpsvc "WWorkbench/internal/sftp"
 	"WWorkbench/internal/store"
 	"WWorkbench/internal/terminal"
+	"WWorkbench/internal/tunnel"
 	"WWorkbench/internal/workbench"
 	"WWorkbench/internal/workbenchtools"
 
@@ -57,6 +59,7 @@ type Service struct {
 	sqlExportMu   sync.Mutex
 	sqlExportCancels map[string]context.CancelFunc
 	pluginPacks   *pluginpack.Manager
+	browserBridge *browser.Bridge
 }
 
 // NewService 创建应用服务。
@@ -105,6 +108,7 @@ func (s *Service) Startup(ctx context.Context) {
 	s.wireTerminalEvents()
 	s.wireSftpEvents()
 	s.wireEnvEvents()
+	s.startBrowserBridge() // 须在 wireAgentRunner 前，Deps.Browser 才能注入工具
 	s.wireAgentRunner()
 }
 
@@ -116,6 +120,10 @@ func (s *Service) Shutdown(ctx context.Context) {
 	s.terminals.CloseAll()
 	s.forwards.CloseAll()
 	s.sftp.CloseAll()
+	if s.browserBridge != nil {
+		s.browserBridge.Stop()
+	}
+	tunnel.CloseSSHPool()
 	s.mcpMu.Lock()
 	_ = s.stopMCPLocked()
 	s.mcpMu.Unlock()

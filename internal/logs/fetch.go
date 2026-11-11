@@ -199,14 +199,15 @@ func tailSSHFile(ctx context.Context, hosts *terminal.HostService, hostID, path 
 	if err != nil {
 		return "", err
 	}
-	client, err := tunnel.DialSSH(ctx, terminal.HostToSpec(*h))
+	client, _, err := tunnel.AcquireSSH(ctx, terminal.HostToSpec(*h))
 	if err != nil {
 		return "", err
 	}
-	defer client.Close()
+	defer tunnel.ReleaseSSH(client)
 
 	sess, err := client.NewSession()
 	if err != nil {
+		tunnel.DropSSH(client)
 		return "", errno.Wrap(errno.CodeConnFailed, "创建 SSH 会话失败", err)
 	}
 	defer sess.Close()

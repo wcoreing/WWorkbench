@@ -193,13 +193,16 @@ func dispatchShellRun(d *Deps, in openTerminalArgs) ToolResult {
 		if intent := strings.TrimSpace(in.Intent); intent != "" {
 			payload["intent"] = intent
 		}
-		d.UIActions.Dispatch(UIActionShellRun, payload)
-		return OKData(map[string]interface{}{
+		// 注入前快照基线，供 get_shell_output(afterUpdatedAt) 立刻判断「已有新输出」。
+		out := map[string]interface{}{
 			"opened":         true,
 			"kind":           "local",
 			"initialCommand": cmd,
-			"note":           "已切换到本机终端；命令将自动输入，请在终端面板查看输出。随后用 get_shell_output(waitMs) 等新输出。",
-		})
+			"note":           "已切换到本机终端；命令将自动输入。随后 get_shell_output(waitMs, afterUpdatedAt=本返回的 updatedAt)。",
+		}
+		attachShellBaseline(d, out, "", "")
+		d.UIActions.Dispatch(UIActionShellRun, payload)
+		return OKData(out)
 	}
 	host, ambiguous, errMsg := resolveSSHHost(d, in.HostID, in.HostOrName)
 	if errMsg != "" {
@@ -229,16 +232,33 @@ func dispatchShellRun(d *Deps, in openTerminalArgs) ToolResult {
 	if intent := strings.TrimSpace(in.Intent); intent != "" {
 		payload["intent"] = intent
 	}
-	d.UIActions.Dispatch(UIActionShellRun, payload)
-	return OKData(map[string]interface{}{
+	out := map[string]interface{}{
 		"opened":         true,
 		"hostId":         host.ID,
 		"name":           host.Name,
 		"host":           host.Host,
 		"user":           host.User,
 		"initialCommand": cmd,
-		"note":           "已切换到 SSH 终端；命令将自动输入，请在终端面板查看输出。随后用 get_shell_output(waitMs) 等新输出。",
-	})
+		"note":           "已切换到 SSH 终端；命令将自动输入。随后 get_shell_output(waitMs, afterUpdatedAt=本返回的 updatedAt)。",
+	}
+	attachShellBaseline(d, out, "", host.ID)
+	d.UIActions.Dispatch(UIActionShellRun, payload)
+	return OKData(out)
+}
+
+// attachShellBaseline 写入注入前的 sessionId/updatedAt（毫秒），供后续 afterUpdatedAt。
+func attachShellBaseline(d *Deps, out map[string]interface{}, sessionID, hostID string) {
+	if d == nil || d.Terminals == nil || out == nil {
+		return
+	}
+	meta, err := d.Terminals.PeekShellMeta(sessionID, hostID)
+	if err != nil {
+		return
+	}
+	if meta.SessionID != "" {
+		out["sessionId"] = meta.SessionID
+	}
+	out["updatedAt"] = meta.UpdatedAt
 }
 
 func truncateCmdPreview(cmd string, max int) string {

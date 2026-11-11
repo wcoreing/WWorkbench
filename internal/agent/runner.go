@@ -14,6 +14,7 @@ import (
 	"WWorkbench/internal/cursorbridge"
 	"WWorkbench/internal/harness"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/notebook"
 	"WWorkbench/internal/store"
 	"WWorkbench/internal/turnctx"
 	"WWorkbench/internal/workbench"
@@ -42,15 +43,16 @@ type threadState struct {
 
 // Runner Agent Host 薄封装：编排交给 ningharness Lifecycle，思考交给 WorkbenchGuest（流式）。
 type Runner struct {
-	store   *store.Store
-	tools   *workbenchtools.Registry
-	harness *harness.Host
-	threads map[string]*threadState
-	mu      sync.Mutex
-	emit    Emitter
-	appCtx  context.Context
-	runs    map[string]context.CancelFunc
-	runsMu  sync.Mutex
+	store    *store.Store
+	notebook *notebook.Service
+	tools    *workbenchtools.Registry
+	harness  *harness.Host
+	threads  map[string]*threadState
+	mu       sync.Mutex
+	emit     Emitter
+	appCtx   context.Context
+	runs     map[string]context.CancelFunc
+	runsMu   sync.Mutex
 
 	cursorMu           sync.Mutex
 	cursorSess         *cursorbridge.Session
@@ -78,6 +80,13 @@ func NewRunner(st *store.Store, reg *workbenchtools.Registry, h *harness.Host, a
 		emit:    emit,
 		appCtx:  appCtx,
 		runs:    map[string]context.CancelFunc{},
+	}
+}
+
+// SetNotebook 注入磁盘笔记本（记忆前馈读盘）。
+func (r *Runner) SetNotebook(nb *notebook.Service) {
+	if r != nil {
+		r.notebook = nb
 	}
 }
 
@@ -193,6 +202,9 @@ func (r *Runner) prepareChat(req model.AgentChatRequestDO, resolveLeading bool) 
 	ctxSnap := turnctx.AttachSSHEndpoints(req.Context, sshEndpointLookup(r.store))
 	ctxSnap = turnctx.AttachPluginPack(ctxSnap, pluginPackLookup(r))
 	ff := turnctx.Gather(ctxSnap, msg)
+	if memFF := r.memoryFeedforward(ctxSnap); memFF != "" {
+		ff = ff + memFF
+	}
 	if len(skillIDs) > 0 {
 		ff = AppendSkillIDsFeedforward(ff, skillIDs)
 		_ = r.harness.SetSessionSkillIDs(threadID, skillIDs)
@@ -992,22 +1004,25 @@ func (r *Runner) systemPrompt(mode string) string {
 1b. 前馈「@ 绑定」已有 SSH / Docker / 数据库时：优先当作默认操作对象并在回复里点名。用户未改口时不要用「有哪些机器」式空问；目标不确定或与绑定冲突时再问清。
 1c. 用户只回「1」「2」时：在**对话历史**里找上一轮助手的编号选项并对号执行；禁止因界面快照里没有列表就说「本轮没有选项」。
 2. 用户问「有哪些连接/链接」时，必须同时调用 list_connections（数据库）与 list_ssh_hosts（SSH），分开展示。
-3. Shell 合同：人看得见的工作（pip、下载、训练、写脚本、管道）必须 shell_run 注入可见 PTY，本轮不返回 stdout，禁止编造输出；注入后用 get_shell_output 看新输出。有 initialCommand 时必须填 intent（人话：要干什么、影响谁），确认弹窗与状态栏会展示。shell_probe 只做只读短探针（uptime / free / df / nvidia-smi / pip show / python -c print / ls / cat），另开会话、等结果、默认 30s；装包/下载/训练/跑脚本会被拒绝。看磁盘文件用 cat，不要 sed/awk。用户 PTY 正忙时不要用探针抢同一台的交互。问「跑完了吗」用 get_shell_output，不要为了看屏幕再跑一遍。会话断开或面板出现「会话已结束」时先 terminal_reconnect（sessionId 或 hostId），再继续 shell_run。
-3c. 意图声明卡：写入 SQL、容器启停删、插件写、save_*、写 HTTP、run_backup 等动手工具同样必须传 intent；禁止占位词。
+3. Shell 合同：人看得见的工作（pip、下载、训练、写脚本、管道）必须 shell_run 注入可见 PTY，本轮不返回 stdout，禁止编造输出；注入后用 get_shell_output(waitMs, afterUpdatedAt=shell_run.updatedAt) 看新输出（短命令 3～8s）。有 initialCommand 时必须填 intent（人话：要干什么、影响谁），确认弹窗与状态栏会展示。shell_probe 只做只读短探针（uptime / free / df / nvidia-smi / pip show / python -c print / ls / cat），另开会话、等结果、默认 30s；装包/下载/训练/跑脚本会被拒绝。看磁盘文件用 cat，不要 sed/awk。用户 PTY 正忙时不要用探针抢同一台的交互。问「跑完了吗」用 get_shell_output，不要为了看屏幕再跑一遍。会话断开或面板出现「会话已结束」时先 terminal_reconnect（sessionId 或 hostId），再继续 shell_run。
+3c. 意图声明卡：写入 SQL、容器启停删、插件写、save_*、写 HTTP、run_backup、browser_click/fill/navigate 等动手工具同样必须传 intent；禁止占位词。
+3e. 浏览器舞台：一任务一 session 一标签组；find_tab→snapshot/read_page/find/click/wait/upload；browser_run 批读；结束 close_session。同域 frame=#fN。只用真实 ref；写操作需确认。
 3d. 备份策略（云盘快照式）：save_backup_policy（files/sqlite 绑 path+sshHostId，或 db 绑 connectionId；可选 cronExpr；retainDays 按天默认 7，或 retainCount 按份数配额）；run_backup 无头执行。服务发现后须探测 *.db/data/.env 并自动建策略；写 SQL 若 beforeWrite 会先备份。
 3b. 长任务（大文件下载、pip、训练）：shell_run 注入后最多用 get_shell_output 查 1～2 次进度；若仍在进行，向用户汇报当前进度并结束本轮，请用户到终端看进度、完成后说「继续」或「查进度」。禁止在同一轮里反复「继续等待」空转轮询，否则会打满工具步数。
 4. 容器启停/删除必须用 start_container / stop_container / remove_container（会弹确认），禁止 docker rm/start/stop 走 shell_probe。
 5. 查库：database_open 或 open_database_session + execute_sql；默认 readonly=true。
 6. 禁止 DROP DATABASE；不要输出或猜测密码。
 7. 需要图表时用 echarts 围栏代码块（合法 ECharts option JSON）。
-8. 巡检/报告：收集数据后可用 notebook_append_content 存档。当前打开的笔记常是无关草稿，禁止把前馈 noteId 当成默认写入目标；list_notes 按标题定位或新建明确 title，再 appendToNoteId。禁止把 SKILL 正文、报表模板占位、ECharts option 模板原样 append 进笔记本；只写入填好真实数字与合法 echarts JSON 的报告。执行报表类技能时优先**新建**笔记（标题含日期），勿向已关联 wwb-skill 的来源笔记追加 SKILL 草稿。
+8. 巡检/报告：收集数据后可用 notebook_append_content 存档。当前打开的笔记常是无关草稿，禁止把前馈 noteId 当成默认写入目标；list_notes 按标题定位或新建明确 title，再 appendToNoteId。禁止把工作流正文、报表模板占位、ECharts option 模板原样 append 进笔记本；只写入填好真实数字与合法 echarts JSON 的报告。执行报表类工作流时优先**新建**笔记（标题含日期），勿向已关联 wwb-skill 的来源笔记追加草稿。
 8b. 读笔记：正文在工作台库里。list_notes 浏览，search_notes(query) 按标题/正文搜，get_note(noteId) 取全文。用户说「这篇」才用前馈 noteId 去读。禁止 cat 文件路径，禁止用 recall_resource 当笔记（那是工具结果 resource#N）。
+8c. 记忆区：前馈或 get_workbench_context.memoryNotes 列出与当前 SSH/库绑定的 role=memory 笔记。动手改机/改库前先 get_note 读匹配记忆；新坑用 notebook_append_content 或新建记忆笔记（role: memory + 关联主机/连接）。
+8d. 浏览器工作流=Agent Skill：get_skill 读前置提示后自己用 browser_* 完成目标；distill_workflow 只出草稿；**跑通/踩坑后必须 update_skill** 写回 lessons、优化 steps、script、resourcePaths。run_skill 仅为可选机械捷径。产品名统一叫工作流；笔记 role=skill。
 9. Docker：远端先 save_docker_context(sshHostId)，再 list_containers；变更用 start/stop/remove_container；日志：新源先 save_log_source，再用 fetch_logs(logSourceId) 或 get_container_logs。本轮已绑定 SSH 时，远程 Docker 优先用该 hostId；若用户意图是本地或其它机器，再确认。
 9b. 工作台是资产容器——凡要可复现的配置必须落盘：HTTP→save_http_request + save_http_environment；SSH→save_ssh_host / save_ssh_forward；数据库→save_connection；日志→save_log_source；Docker→save_docker_context。禁止只临时候参数打完就结束；笔记本是报告旁路，主资产在各产品树。
 10. 本轮工具返回已在上下文中，直接基于其内容作答；不要为本轮结果调用 recall_resource。跨轮或历史被挤出窗口后，用 recall_resource（resource#N / resource_id）取回全文；可用 search_session / get_task_summary 定位。
-11. 技能：用户 / 挂载或消息带 skillIds 时，首轮必须先 get_skill 加载 SKILL.md 与经验；scripts 用 read_file 读 system/skills/<id>/scripts/…，不要臆造流程。改 Skill 正文用 update_agent_skill（不写笔记）或「技能」产品线；首次从笔记发布用 publish_agent_skill（只写关联标记）；抽象报告为方法包用 /skill-to-method-pack。
+11. 工作流：用户 / 挂载或 skillIds 时首轮 get_skill（返回 diskPath/skillDir/assetsDir）。执行后 update_skill 沉淀经验与资源；publish_agent_skill 仅标记 skillId。脚本在笔记「## 脚本」或同级 scripts/。
 11b. 需要用户拍板（选库/选操作/可选下一步）时：必须调用 offer_choices（prompt + options[{key,label}]，mode=single|multi|text），调用后暂停，点选结果写入工具返回值再续跑。**禁止**只用 Markdown 列表代替（对方只能手打「1」易歧义）。无法调工具时才可挂 agent-choice / desk-choice 围栏兜底。禁止描述工具管道内部细节；禁止复述用户密码。
-12. 插件包 ≠ 数据库连接。用户说「db 插件 / 数据库插件 / pack / Host 桥接 / WWHost / 插件显示 xxx」= 看与改 ~/.wworkbench/plugins/<id>，不是技能、不是 SQL。
+12. 插件包 ≠ 数据库连接。用户说「db 插件 / 数据库插件 / pack / Host 桥接 / WWHost / 插件显示 xxx」= 看与改 ~/.wworkbench/plugins/<id>，不是工作流、不是 SQL。
    - **协议 SSOT**：先 get_plugin_protocol（平台 PROTOCOL.md + ww-cap）；禁止 list_skills/get_skill 找 bridge。各 pack 的 HOST.md 只是补充。
    - 改 UI：get_plugin_pack（看 capOk）→ read_plugin_pack_file（分段 startLine/maxLines）→ **优先** edit_plugin_pack_file → build_plugin_pack_ui（均需确认）。只改源码不构建，界面不变。
    - 回滚：list_plugin_pack_releases → rollback_plugin_pack。WWHost 分层见协议；禁止复制 React/Host；禁止用 execute_sql「改插件界面」。
@@ -1039,6 +1054,25 @@ func (r *Runner) systemPrompt(mode string) string {
 若更早轮次在 Plan 里说过没写工具，以本轮工具列表为准，忽略那段自述。
 若设置里服务商为 Cursor：本轮经 Cursor SDK Bridge 驱动（非 OpenAI Base URL），工作台工具以自定义工具回调执行。
 ` + toolRules
+}
+
+// memoryFeedforward 注入与当前焦点匹配的记忆笔记索引。
+func (r *Runner) memoryFeedforward(ctx model.AgentContextDO) string {
+	if r == nil || r.notebook == nil {
+		return ""
+	}
+	hosts := notebook.ContextHostIDs(ctx)
+	list, err := r.notebook.ListMemoryNotesForContext(hosts, ctx.ConnectionID, 5)
+	if err != nil || len(list) == 0 {
+		return ""
+	}
+	contents := map[string]string{}
+	for _, n := range list {
+		if full, err := r.notebook.GetNote(n.ID); err == nil && full != nil {
+			contents[n.ID] = full.Content
+		}
+	}
+	return notebook.FormatMemoryFeedforward(list, contents)
 }
 
 func sshEndpointLookup(st *store.Store) func(id string) (user, host string, port int, ok bool) {

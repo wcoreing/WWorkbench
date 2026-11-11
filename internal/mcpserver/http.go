@@ -15,22 +15,24 @@ import (
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
 // ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.54.356"
+const ServerVersion = "0.54.448"
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明。
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本等）。
-- 【强制首步】第三方 Agent 新会话/重启后必须先调用 get_agent_rules 阅读系统约束；未读时 shell_run / execute_sql / 容器与插件写 / save_* 等动手工具会被拒绝。完整约束以 get_agent_rules 返回为准。
+- 【强制首步】第三方 Agent 新会话/重启后必须先调用 get_agent_rules 阅读系统约束；未读时 shell_run / execute_sql / 容器与插件写 / save_* / browser_click|fill|upload|navigate 等动手工具会被拒绝。完整约束以 get_agent_rules 返回为准。
 - 【意图声明卡】动手类工具必须传 intent（人话：要干什么、影响谁）；确认弹窗标题与舞台状态栏优先展示；可用 get_workbench_context.intentCards 回放。
-- 【备份策略】save_backup_policy（files/sqlite/db；cronExpr；retainDays 按天或 retainCount 按份数）→ run_backup 无头执行并清理本策略旧份 / list_backup_runs；服务发现后须探测 *.db/data/.env 并自动建策略。
+- 【备份策略】host_health_scan(sshHostId, workDir) 扫指定目录 → 用户勾选后 ensure_host_backup_policies(findingIds)；或 save_backup_policy → run_backup 无头 / list_backup_runs。禁止全盘扫、禁止默认全选。
 - 参数=schema 顶层字段（勿再包 {"arguments":…}）。
 - 危险写操作在工作台弹窗拍板（工具会阻塞至用户确认/拒绝；确认和看过程同一视线）。含：SQL/容器/插件/run_backup，以及 shell_run 风险命令（重定向写文件、rm、docker rm/stop、| sh、rsync/scp -r/cp -r、*.db/data/.env、mysql< 等）。终端右键「允许 MCP 写入当前目录」后，该目录内软文件写（重定向/tee/rm）免确认；数据硬风险（同步/库文件/导入）不可免。确认后：rsync 自动 exclude *.db/data/.env；写前备份到策略 destRoot 或 /www/backup/wworkbench。勿再解析 ww_confirm 文本。
-- 凡参数能解析到 SSH（hostId / sshHostId / hostOrName / 远端 Docker contextId / SSH 日志源 / SSH 隧道库连接）的操作，都会先打开并聚焦对应终端 + 状态栏，再执行。shell_run 注入后立刻 get_shell_output(waitMs=8000～30000[, afterUpdatedAt]) 等新输出，少空转轮询。
+- 凡参数能解析到 SSH（hostId / sshHostId / hostOrName / 远端 Docker contextId / SSH 日志源 / SSH 隧道库连接）的操作，都会先打开并聚焦对应终端 + 状态栏，再执行。shell_run 返回 updatedAt；注入后立刻 get_shell_output(waitMs, afterUpdatedAt=该值) 等新输出，少空转轮询。
 - 容器启停/删除用 start_container / stop_container / remove_container，勿用 shell_probe 跑 docker rm/start/stop。
 - 问终端输出用 get_shell_output（分页读可见 PTY scrollback；offsetFromEnd=0 最新页，nextOffsetFromEnd 向历史翻）。shell_run=给人看（注入 pip/下载/训练/脚本，不返回 stdout）。shell_probe=无头只读短探针，禁止改机器；看磁盘文件用 cat，不要 sed/awk。
 - 终端断开或出现「会话已结束」时先 terminal_reconnect（sessionId 或 hostId），再 shell_run / get_shell_output。
+- 词典：任务=要办的事；日志=TaskRun；工作流=磁盘 Skill（~/.wworkbench/notebook/工作流/{name}/SKILL.md + assets/）。引擎=Agent。样板 get_skill(wwb-skill-standard)。工具：get_skill → 执行 → **update_skill**；distill 出草稿；run_skill 可选。
+- 浏览器舞台：snapshot/read_page/find/click/fill…；写操作须 intent；录制→distill 草稿→Agent 跑通后 update_skill。
 - HTTP：先 save_http_request / save_http_environment，再 execute_http(requestId / envId)。
-- 笔记本：list_notes / search_notes / get_note(noteId) 读正文；notebook_append_content 写入；首次发布技能 publish_agent_skill；改已有技能 update_agent_skill（不写笔记）；抽象为方法包 /skill-to-method-pack。
-- 插件包（改「数据库插件」UI / Host 桥接，不是连库、不是 skill）：先 get_plugin_protocol（平台 PROTOCOL.md）；再改 src/ui；局部改 edit_plugin_pack_file；构建 build_plugin_pack_ui。禁止 list_skills 找 bridge。
+- 笔记本 IDE：list_notes / get_note；工作流=role=skill 笔记（SSOT）；动手前读主机 memory。
+- 插件包（改「数据库插件」UI / Host 桥接，不是连库、不是 skill）：先 get_plugin_protocol（平台 PROTOCOL.md）；再改 src/ui；局部改 edit_plugin_pack_file；构建 build_plugin_pack_ui。禁止用 list_skills 找 bridge。
 - Agent 对话：agent_chat 同步发消息并等回复（支持 /skill-id、mentions、sshHostId）；待确认用 agent_confirm。
 - SSH / 数据库 / 日志 / Docker：save_ssh_host、save_ssh_forward、save_connection、save_log_source、save_docker_context 落盘后再引用 ID。
 - 工具受「AI 能力权限」开关约束；关闭的能力会拒绝调用。

@@ -3,17 +3,21 @@ import { AgentEChart } from '../agent/AgentEChart'
 import { useI18n } from '../../i18n'
 import { parseAgentBlocks } from '../../utils/agentContent'
 import { markdownToHtml } from '../../utils/markdown'
+import { rewriteNotebookAssetLinks } from './notebookAssetLinks'
 
 interface Props {
   content: string
+  /** noteId 用于把相对 assets/ 链接映射到 AssetServer。 */
+  noteId?: string
 }
 
 /** MarkdownPreview Markdown 预览（含 ```echarts 报表图）。 */
-export function MarkdownPreview({ content }: Props) {
+export function MarkdownPreview({ content, noteId }: Props) {
   const { t } = useI18n()
   const copyLabel = t('common.copy')
   const copiedLabel = t('common.copied')
-  const blocks = useMemo(() => parseAgentBlocks(content), [content])
+  const resolved = useMemo(() => rewriteNotebookAssetLinks(content, noteId || ''), [content, noteId])
+  const blocks = useMemo(() => parseAgentBlocks(resolved), [resolved])
 
   const onClick = (e: MouseEvent) => {
     const btn = (e.target as HTMLElement).closest('.md-code-copy')

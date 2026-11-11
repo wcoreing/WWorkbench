@@ -101,13 +101,14 @@ func (s *HostService) Test(ctx context.Context, h model.SSHHostDO) error {
 	if err := ValidateSSHHost(h); err != nil {
 		return err
 	}
-	client, err := tunnel.DialSSH(ctx, HostToSpec(h))
+	client, _, err := tunnel.AcquireSSH(ctx, HostToSpec(h))
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer tunnel.ReleaseSSH(client)
 	sess, err := client.NewSession()
 	if err != nil {
+		tunnel.DropSSH(client) // 失效连接移出池；defer Release 为空操作
 		return errno.Wrap(errno.CodeConnFailed, "创建 SSH 会话失败", err)
 	}
 	defer sess.Close()

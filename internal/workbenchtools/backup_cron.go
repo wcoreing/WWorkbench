@@ -218,12 +218,107 @@ chmod +x '%s'`,
 	return "已从主机 crontab 卸下定时", nil
 }
 
-// RemoveBackupCron 删除策略时卸 crontab（策略已从库删掉前调用）。
+// RemoveBackupCron 删除策略时卸 crontab 并删除远端脚本。
 func RemoveBackupCron(ctx context.Context, d *Deps, p model.BackupPolicyDO) error {
-	p.Enabled = false
-	p.CronExpr = ""
-	_, err := SyncBackupCron(ctx, d, p)
-	return err
+	return RemoveBackupCrons(ctx, d, []model.BackupPolicyDO{p})
+}
+
+// RemoveBackupCrons 按主机合并：卸 crontab 标记，并删除 destRoot/.ww-cron/<id>.sh(.log)。
+func RemoveBackupCrons(ctx context.Context, d *Deps, policies []model.BackupPolicyDO) error {
+	if len(policies) == 0 {
+		return nil
+	}
+	if d == nil || d.SSHHosts == nil {
+		return fmt.Errorf("SSH 服务未就绪")
+	}
+	byHost := map[string][]model.BackupPolicyDO{}
+	for _, p := range policies {
+		hostID := strings.TrimSpace(p.SSHHostID)
+		id := strings.TrimSpace(p.ID)
+		if hostID == "" || id == "" {
+			continue
+		}
+		byHost[hostID] = append(byHost[hostID], p)
+	}
+	var firstErr error
+	for hostID, list := range byHost {
+		if err := removeBackupCronsOnHost(ctx, d, hostID, list); err != nil && firstErr == nil {
+			firstErr = err
+		}
+	}
+	return firstErr
+}
+
+func removeBackupCronsOnHost(ctx context.Context, d *Deps, hostID string, policies []model.BackupPolicyDO) error {
+	h, err := d.SSHHosts.Get(hostID)
+	if err != nil {
+		return err
+	}
+	markers := make(map[string]struct{}, len(policies))
+	rmArgs := make([]string, 0, len(policies)*2)
+	for _, p := range policies {
+		id := strings.TrimSpace(p.ID)
+		if id == "" {
+			continue
+		}
+		markers[backupCronMarker(id)] = struct{}{}
+		script := backupCronScriptPath(p)
+		rmArgs = append(rmArgs, script, script+".log")
+	}
+	if len(markers) == 0 {
+		return nil
+	}
+
+	listOut, err := execSSHArgv(ctx, d, *h, []string{"bash", "-lc", "crontab -l 2>/dev/null || true"}, 30)
+	if err != nil {
+		return fmt.Errorf("读取 crontab 失败: %w", err)
+	}
+	lines := splitCronLines(listOut)
+	filtered := make([]string, 0, len(lines))
+	skipNext := false
+	for _, line := range lines {
+		if skipNext {
+			skipNext = false
+			continue
+		}
+		trim := strings.TrimSpace(line)
+		if _, ok := markers[trim]; ok {
+			skipNext = true
+			continue
+		}
+		drop := false
+		for marker := range markers {
+			if strings.Contains(line, marker) {
+				drop = true
+				break
+			}
+		}
+		if drop {
+			continue
+		}
+		filtered = append(filtered, line)
+	}
+	newCron := strings.Join(filtered, "\n")
+	if newCron != "" && !strings.HasSuffix(newCron, "\n") {
+		newCron += "\n"
+	}
+	installCmd := fmt.Sprintf("cat <<'WW_CRON_EOF' | crontab -\n%sWW_CRON_EOF", newCron)
+	if _, err := execSSHArgv(ctx, d, *h, []string{"bash", "-lc", installCmd}, 30); err != nil {
+		return fmt.Errorf("更新 crontab 失败: %w", err)
+	}
+
+	if len(rmArgs) > 0 {
+		// 只删本策略脚本与同名 log，不碰备份数据目录。
+		quoted := make([]string, 0, len(rmArgs))
+		for _, p := range rmArgs {
+			quoted = append(quoted, "'"+shellSingleQuote(p)+"'")
+		}
+		rmCmd := "rm -f " + strings.Join(quoted, " ")
+		if _, err := execSSHArgv(ctx, d, *h, []string{"bash", "-lc", rmCmd}, 60); err != nil {
+			return fmt.Errorf("删除备份脚本失败: %w", err)
+		}
+	}
+	return nil
 }
 
 func splitCronLines(raw string) []string {

@@ -1,0 +1,144 @@
+:root {
+  color-scheme: light;
+  --bg: #f7f4ef;
+  --ink: #1c1917;
+  --muted: #78716c;
+  --accent: #0f766e;
+  --warn: #b45309;
+  --line: #e7e5e4;
+  font-family: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(1200px 400px at 0% -20%, rgba(15, 118, 110, 0.12), transparent 55%),
+    linear-gradient(180deg, #faf8f5, var(--bg));
+  color: var(--ink);
+}
+
+#app {
+  padding: 14px 14px 16px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.sub {
+  margin: 4px 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
+.row b {
+  font-weight: 600;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 650;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.pill.on {
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--accent);
+}
+
+.pill.off {
+  background: rgba(180, 83, 9, 0.12);
+  color: var(--warn);
+}
+
+.pill.rec {
+  background: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+}
+
+button.primary {
+  background: #b91c1c;
+}
+
+.hint {
+  margin: 10px 2px 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.warn {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(180, 83, 9, 0.1);
+  color: #92400e;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.caps {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+  word-break: break-word;
+}
