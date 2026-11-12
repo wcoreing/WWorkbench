@@ -373,6 +373,37 @@ func (s *Service) CreateNotebookDir(parentRel, name string) ApiResult[string] {
 	return OkResult(id)
 }
 
+// EnsureHostMemoryBook 幂等创建/复用 记忆区/{主机名}/ 主机记忆册。
+func (s *Service) EnsureHostMemoryBook(sshHostId string) ApiResult[model.HostMemoryBookDO] {
+	sshHostId = strings.TrimSpace(sshHostId)
+	if sshHostId == "" {
+		return ErrResult[model.HostMemoryBookDO](errno.New(errno.CodeInvalidArg, "sshHostId 为空", ""))
+	}
+	if s.notebook == nil {
+		return ErrResult[model.HostMemoryBookDO](errno.New(errno.CodeStoreFailed, "笔记本未就绪", ""))
+	}
+	if s.sshHosts == nil {
+		return ErrResult[model.HostMemoryBookDO](errno.New(errno.CodeStoreFailed, "主机服务未就绪", ""))
+	}
+	h, err := s.sshHosts.Get(sshHostId)
+	if err != nil {
+		return ErrResult[model.HostMemoryBookDO](err)
+	}
+	if h == nil {
+		return ErrResult[model.HostMemoryBookDO](errno.New(errno.CodeNotFound, "主机不存在", sshHostId))
+	}
+	dir, noteID, created, err := s.notebook.EnsureHostMemoryBook(h.ID, h.Name, h.User, h.Host, h.Port)
+	if err != nil {
+		return ErrResult[model.HostMemoryBookDO](err)
+	}
+	return OkResult(model.HostMemoryBookDO{
+		SSHHostID: h.ID,
+		DirRel:    dir,
+		NoteID:    noteID,
+		Created:   created,
+	})
+}
+
 // CreateNotebookFile 在目录下新建空笔记文件。
 func (s *Service) CreateNotebookFile(parentRel, name string) ApiResult[model.NoteDO] {
 	n, err := s.notebook.CreateNoteFile(parentRel, name)

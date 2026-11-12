@@ -9,7 +9,7 @@ import (
 	"WWorkbench/internal/notebook"
 )
 
-// toolListSkills 列出笔记本工作流（role=skill；磁盘 ~/.wworkbench/notebook/工作流/）。
+// toolListSkills 列出笔记本工作流（role=skill；任意业务根下的 SKILL.md，含记忆区项目）。
 func toolListSkills(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	_ = raw
 	type item struct {
@@ -39,7 +39,11 @@ func toolListSkills(_ context.Context, d *Deps, raw json.RawMessage) ToolResult 
 			return
 		}
 		seen[id] = struct{}{}
+		resolvedNote := noteID
 		noteID, skillDir, assetsDir, _ := d.Notebook.ResolveSkillPaths(id)
+		if resolvedNote != "" {
+			noteID = resolvedNote
+		}
 		out = append(out, item{
 			ID: id, Name: firstNonEmpty(strings.TrimSpace(title), id),
 			Description: desc, NoteID: noteID,
@@ -57,14 +61,15 @@ func toolListSkills(_ context.Context, d *Deps, raw json.RawMessage) ToolResult 
 		if err != nil || n == nil {
 			continue
 		}
-		id := notebook.ReadLinkedSkillID(n.Content)
+		// 对外 id：路径技能用完整目录；任务区仍用短名
+		id := notebook.SkillNameFromNoteID(n.ID)
+		if id == "" {
+			id = notebook.ReadLinkedSkillID(n.Content)
+		}
 		if id == "" {
 			if p, ok := notebook.ParseWorkflowNote(*n); ok && p.Name != "" {
 				id = p.Name
 			}
-		}
-		if id == "" {
-			id = notebook.SkillNameFromNoteID(n.ID)
 		}
 		if id == "" {
 			id = notebook.SuggestSkillID(n.Title, n.ID)
@@ -74,7 +79,8 @@ func toolListSkills(_ context.Context, d *Deps, raw json.RawMessage) ToolResult 
 		if p, ok := notebook.ParseWorkflowNote(*n); ok {
 			desc = firstNonEmpty(p.Description, p.Intent)
 			hasSteps = len(p.Steps) > 0
-			if p.Name != "" {
+			// 仅短名 frontmatter 且位于 工作流/ 时覆盖；路径技能保留目录 id
+			if p.Name != "" && !strings.Contains(id, "/") {
 				id = p.Name
 			}
 		}
@@ -114,26 +120,31 @@ func toolGetSkill(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
 
 	n, ok := findSkillNote(d.Notebook, key)
 	if !ok {
-		return Fail("未找到工作流：" + key + "（仅笔记本 ~/.wworkbench/notebook/工作流/）")
+		return Fail("未找到工作流：" + key + "（笔记本任意业务根下的 SKILL.md，含 工作流/ 与 记忆区/…/项目/）")
 	}
 	body := notebook.SkillBodyFromNote(n.Content)
 	if body == "" {
 		body = strings.TrimSpace(n.Content)
 	}
 	hasSteps := false
-	runName := key
+	runName := notebook.SkillNameFromNoteID(n.ID)
+	if runName == "" {
+		runName = key
+	}
 	if p, pok := notebook.ParseWorkflowNote(*n); pok {
 		hasSteps = len(p.Steps) > 0
-		if p.Name != "" {
+		if p.Name != "" && !strings.Contains(runName, "/") {
 			runName = p.Name
 		}
-	}
-	if name := notebook.SkillNameFromNoteID(n.ID); name != "" {
-		runName = name
 	}
 	noteID, skillDir, assetsDir, _ := d.Notebook.ResolveSkillPaths(runName)
 	if noteID == "" {
 		noteID = n.ID
+	}
+	if skillDir == "" {
+		if dir := notebook.SkillDirFromNoteID(n.ID); dir != "" {
+			_, skillDir, assetsDir, _ = d.Notebook.ResolveSkillPaths(dir)
+		}
 	}
 	diskFile := ""
 	if p, err := d.Notebook.NoteDiskPath(noteID); err == nil {
@@ -172,8 +183,8 @@ func findSkillNote(nb noteGetter, key string) (*model.NoteDO, bool) {
 		}
 		return notebook.NormalizeNoteRole(n.Role) == model.NoteRoleSkill
 	}
-	// 先 SKILL.md 路径，再短名/其它 id；禁止把 log.md 当 Skill
-	try := []string{notebook.SkillNoteID(key), key}
+	// 先完整路径 / 规范 SKILL.md，再短名；禁止把 log.md 当 Skill
+	try := []string{key, notebook.SkillNoteID(key)}
 	for _, id := range try {
 		if id == "" {
 			continue
@@ -184,6 +195,7 @@ func findSkillNote(nb noteGetter, key string) (*model.NoteDO, bool) {
 		}
 	}
 	if list, err := nb.ListSkillNotes(100); err == nil {
+		var basenameHits []*model.NoteDO
 		for _, sum := range list {
 			if notebook.IsTaskLogNoteID(sum.ID) {
 				continue
@@ -201,9 +213,23 @@ func findSkillNote(nb noteGetter, key string) (*model.NoteDO, bool) {
 			if notebook.SkillNameFromNoteID(n.ID) == key {
 				return n, true
 			}
+			if notebook.SkillBasename(n.ID) == key {
+				basenameHits = append(basenameHits, n)
+			}
 			if strings.EqualFold(strings.TrimSpace(n.Title), key) && notebook.SkillNameFromNoteID(n.ID) != "" {
 				return n, true
 			}
+		}
+		for _, n := range basenameHits {
+			if strings.HasPrefix(n.ID, notebook.SkillGroupName+"/") {
+				return n, true
+			}
+		}
+		if len(basenameHits) == 1 {
+			return basenameHits[0], true
+		}
+		if len(basenameHits) > 0 {
+			return basenameHits[0], true
 		}
 	}
 	if pbs, err := nb.ListWorkflowNotes(80); err == nil {

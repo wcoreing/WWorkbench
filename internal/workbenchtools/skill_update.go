@@ -184,7 +184,7 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 			strings.Contains(extras.Resources, "无附件") ||
 			strings.Contains(extras.Resources, "update_skill(resourcePaths") ||
 			strings.Contains(extras.Resources, "插入附件") {
-			head := fmt.Sprintf("> 附件真源：本 Skill 目录 assets/（~/.wworkbench/notebook/工作流/…/assets/；noteId=%s）。相对链接 assets/文件名。\n\n", noteID)
+			head := fmt.Sprintf("> 附件真源：本 Skill 目录 assets/（与 SKILL.md 同级；noteId=%s）。相对链接 assets/文件名。\n\n", noteID)
 			extras.Resources = head + line
 		} else {
 			extras.Resources = strings.TrimSpace(extras.Resources) + "\n" + line

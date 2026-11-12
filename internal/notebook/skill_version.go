@@ -2,6 +2,7 @@ package notebook
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"WWorkbench/internal/dirgit"
@@ -22,13 +23,27 @@ type SkillVersionStatus struct {
 	Commits []SkillVersion `json:"commits"`
 }
 
-// SkillDirRel 工作流/{name} 相对笔记本根路径。
+// SkillDirRel 技能目录相对笔记本根路径（任意业务根；短名默认 工作流/{name}）。
 func SkillDirRel(skillName string) (string, error) {
-	name, err := skillDirName(skillName)
-	if err != nil {
-		return "", err
+	return skillDirRel(skillName)
+}
+
+func skillDirRel(skillName string) (string, error) {
+	skillName = strings.TrimSpace(strings.ReplaceAll(skillName, "\\", "/"))
+	skillName = strings.Trim(skillName, "/")
+	if skillName == "" {
+		return "", fmt.Errorf("skill name 不能为空")
 	}
-	return SkillGroupName + "/" + name, nil
+	if dir := SkillDirFromNoteID(skillName); dir != "" {
+		return dir, nil
+	}
+	if strings.Contains(skillName, "/") {
+		if strings.Contains(skillName, "..") {
+			return "", fmt.Errorf("无效 skill name: %s", skillName)
+		}
+		return skillName, nil
+	}
+	return SkillGroupName + "/" + skillName, nil
 }
 
 // PinSkillVersion 创建技能目录版本（自动启用；排除 log.md）。
@@ -50,9 +65,12 @@ func (s *Service) ListSkillVersions(skillName string, limit int) (SkillVersionSt
 	if err != nil {
 		return SkillVersionStatus{}, err
 	}
-	name := strings.TrimPrefix(rel, SkillGroupName+"/")
+	name := SkillNameFromNoteID(rel + "/" + SkillEntryFile)
+	if name == "" {
+		name = filepath.Base(rel)
+	}
 	return SkillVersionStatus{
-		Name: name, NoteID: SkillNoteID(name), Dir: st.Dir, Rel: st.Rel,
+		Name: name, NoteID: SkillNoteID(rel), Dir: st.Dir, Rel: st.Rel,
 		Head: st.Head, Working: st.Working, Enabled: st.Enabled, Commits: st.Commits,
 	}, nil
 }
@@ -77,29 +95,4 @@ func (s *Service) ShowSkillVersion(skillName, hash string) (string, error) {
 		return "", err
 	}
 	return dirgit.ShowFile(abs, hash, SkillEntryFile)
-}
-
-func skillDirName(skillName string) (string, error) {
-	skillName = strings.TrimSpace(strings.ReplaceAll(skillName, "\\", "/"))
-	if skillName == "" {
-		return "", fmt.Errorf("skill name 不能为空")
-	}
-	if n := SkillNameFromNoteID(skillName); n != "" {
-		return n, nil
-	}
-	if strings.HasPrefix(skillName, SkillGroupName+"/") {
-		rest := strings.TrimPrefix(skillName, SkillGroupName+"/")
-		if i := strings.Index(rest, "/"); i >= 0 {
-			rest = rest[:i]
-		}
-		rest = strings.TrimSpace(rest)
-		if rest == "" {
-			return "", fmt.Errorf("无效 skill name: %s", skillName)
-		}
-		return rest, nil
-	}
-	if strings.Contains(skillName, "/") {
-		return "", fmt.Errorf("无效 skill name: %s", skillName)
-	}
-	return skillName, nil
 }

@@ -230,9 +230,14 @@ func (s *Service) NoteAssetsDir(noteID string) string {
 	return dir
 }
 
-// SkillDiskPath 返回 Skill 目录绝对路径（供提示）。
+// SkillDiskPath 返回 Skill 目录绝对路径（供提示；任意业务根）。
 func (s *Service) SkillDiskPath(skillName string) string {
-	dir, _, ok := s.skillDirAbs(SkillNoteID(strings.TrimSpace(skillName)))
+	skillName = strings.TrimSpace(skillName)
+	noteID := SkillNoteID(skillName)
+	if found := s.FindNoteIDBySkillID(skillName); found != "" {
+		noteID = found
+	}
+	dir, _, ok := s.skillDirAbs(noteID)
 	if !ok {
 		return ""
 	}

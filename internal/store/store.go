@@ -32,10 +32,16 @@ func New(dataDir string) (*Store, error) {
 		return nil, errno.Wrap(errno.CodeStoreFailed, "初始化加密模块失败", err)
 	}
 	dbPath := filepath.Join(dataDir, "wworkbench.db")
-	db, err := sql.Open("sqlite", dbPath)
+	// busy_timeout：写锁冲突时等待而非立刻 SQLITE_BUSY；WAL：读写可交错。
+	dsn := dbPath + "?_pragma=busy_timeout(5000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)"
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeStoreFailed, "打开本地数据库失败", err)
 	}
+	// 单连接串行化：避免多 goroutine 各开连接抢写锁（笔记本/终端并行 listShellHosts 常见）。
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(0)
 	s := &Store{db: db, encryptor: enc, dataDir: dataDir}
 	if err := s.migrate(); err != nil {
 		_ = db.Close()

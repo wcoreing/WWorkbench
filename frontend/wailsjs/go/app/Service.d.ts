@@ -143,6 +143,8 @@ export function EnsureEnvVersion(arg1:string,arg2:string,arg3:string):Promise<ap
 
 export function EnsureHostBackupPolicies(arg1:string,arg2:string,arg3:Array<string>,arg4:boolean):Promise<app.ApiResult_WWorkbench_internal_model_EnsureHostBackupResultDO_>;
 
+export function EnsureHostMemoryBook(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_HostMemoryBookDO_>;
+
 export function EnsureSSHHostFromConnection(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_SSHHostDO_>;
 
 export function ExecuteHTTPRequest(arg1:model.HTTPExecuteRequestDO):Promise<app.ApiResult_WWorkbench_internal_model_HTTPResponseDO_>;

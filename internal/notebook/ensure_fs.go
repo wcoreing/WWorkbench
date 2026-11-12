@@ -109,9 +109,10 @@ func (s *Service) ensureMemorySeedFS() error {
 	}
 	content := "---\nrole: memory\n---\n\n# 怎么用记忆区\n\n" +
 		"把**某台机 / 某个库**反复踩过的坑、约定、口令位置写成记忆笔记：\n\n" +
-		"1. 设置 → 角色选「记忆」\n" +
-		"2. 关联 SSH 主机或数据库连接\n" +
-		"3. Agent 开跑时会自动带上匹配的记忆索引；动手前会先读\n\n" +
+		"1. 选中或连接 SSH 后，自动成册于 `记忆区/{主机名}/`（索引「主机记忆.md」）\n" +
+		"2. 同目录可再加笔记；角色选「记忆」并带 sshHostId\n" +
+		"3. **项目部署等方法**：在 `记忆区/{主机}/项目/{名}/` 下放 `SKILL.md`（工作流协议，与顶栏「工作流/」同一套 get_skill / update_skill）\n" +
+		"4. Agent 开跑优先注入该主机册；动手前 get_note；要发布再 get_skill\n\n" +
 		"全局习惯（不绑主机）也会注入。成长感来自「记得你上次踩的坑」，不是又一套脚本。\n"
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
@@ -148,13 +149,16 @@ func (s *Service) seedBuiltinWorkflowsFS() error {
 	return nil
 }
 
-// ResolveSkillPaths 按 skill name 返回笔记 id / 目录 / 附件目录（磁盘相对约定）。
+// ResolveSkillPaths 按 skill 引用返回笔记 id / 目录 / 附件目录（任意业务根；短名默认 工作流/）。
 func (s *Service) ResolveSkillPaths(skillName string) (noteID, absDir, absAssets string, err error) {
 	skillName = strings.TrimSpace(skillName)
 	if skillName == "" {
 		return "", "", "", errnoNotebook("skill name 为空")
 	}
 	noteID = SkillNoteID(skillName)
+	if found := s.FindNoteIDBySkillID(skillName); found != "" {
+		noteID = found
+	}
 	dir, _, ok := s.skillDirAbs(noteID)
 	if !ok {
 		return "", "", "", errnoNotebook("非法 skill name")

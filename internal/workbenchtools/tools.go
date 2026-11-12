@@ -151,7 +151,20 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 		}
 		hosts := notebook.ContextHostIDs(snap)
 		if d.Notebook != nil {
-			if mem, err := d.Notebook.ListMemoryNotesForContext(hosts, snap.ConnectionID, 5); err == nil && len(mem) > 0 {
+			var prefixes []string
+			if d.SSHHosts != nil {
+				for _, id := range hosts {
+					h, err := d.SSHHosts.Get(id)
+					if err != nil || h == nil {
+						continue
+					}
+					dir, _, _, err := d.Notebook.EnsureHostMemoryBook(h.ID, h.Name, h.User, h.Host, h.Port)
+					if err == nil && dir != "" {
+						prefixes = append(prefixes, dir)
+					}
+				}
+			}
+			if mem, err := d.Notebook.ListMemoryNotesForContext(hosts, snap.ConnectionID, 5, prefixes...); err == nil && len(mem) > 0 {
 				items := make([]map[string]interface{}, 0, len(mem))
 				for _, n := range mem {
 					items = append(items, map[string]interface{}{

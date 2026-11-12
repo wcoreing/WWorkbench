@@ -1084,13 +1084,26 @@ func (r *Runner) systemPrompt(mode string) string {
 ` + toolRules
 }
 
-// memoryFeedforward 注入与当前焦点匹配的记忆笔记索引。
+// memoryFeedforward 注入与当前焦点匹配的记忆笔记索引（优先主机册）。
 func (r *Runner) memoryFeedforward(ctx model.AgentContextDO) string {
 	if r == nil || r.notebook == nil {
 		return ""
 	}
 	hosts := notebook.ContextHostIDs(ctx)
-	list, err := r.notebook.ListMemoryNotesForContext(hosts, ctx.ConnectionID, 5)
+	var prefixes []string
+	if r.store != nil {
+		for _, id := range hosts {
+			h, err := r.store.GetSSHHost(id)
+			if err != nil || h == nil {
+				continue
+			}
+			dir, _, _, err := r.notebook.EnsureHostMemoryBook(h.ID, h.Name, h.User, h.Host, h.Port)
+			if err == nil && dir != "" {
+				prefixes = append(prefixes, dir)
+			}
+		}
+	}
+	list, err := r.notebook.ListMemoryNotesForContext(hosts, ctx.ConnectionID, 5, prefixes...)
 	if err != nil || len(list) == 0 {
 		return ""
 	}

@@ -28,10 +28,10 @@ const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据�
 - 容器启停/删除用 start_container / stop_container / remove_container，勿用 shell_probe 跑 docker rm/start/stop。
 - 问终端输出用 get_shell_output（分页读可见 PTY scrollback；offsetFromEnd=0 最新页，nextOffsetFromEnd 向历史翻）。shell_run=给人看（注入 pip/下载/训练/脚本，不返回 stdout）。shell_probe=无头只读短探针，禁止改机器；看磁盘文件用 cat，不要 sed/awk。
 - 终端断开或出现「会话已结束」时先 terminal_reconnect（sessionId 或 hostId），再 shell_run / get_shell_output。
-- 词典与自学习：任务=目标；账本=思考(thought)+操作(op)→log.md；Skill=归纳方法（工作流/{name}/）。闭环：接目标→task_record/browser_*→update_skill。Skill 版本=目录仓（排除 log）：list/pin/restore_skill_version。禁止任务场景直连 10086/18765。样板 get_skill(wwb-skill-standard)。
+- 词典与自学习：任务=目标；账本=思考(thought)+操作(op)→log.md；Skill=工作流协议（任意目录 SKILL.md；任务默认 工作流/，亦可 记忆区/…/项目/）。闭环：接目标→task_record/browser_*→update_skill。禁止任务场景直连 10086/18765。样板 get_skill(wwb-skill-standard)。
 - 浏览器：browser_*（executor=wwb|kimi）；写操作须 intent；自动记 op；思考用 task_record(kind=thought)。
 - HTTP：先 save_http_request / save_http_environment，再 execute_http(requestId / envId)。
-- 笔记本底座：根下业务工作根隔离（工作流/任务、运维/运维类产品、记忆区）；list_notes / get_note；Skill=role=skill；动手前读主机 memory。
+- 笔记本底座：业务工作根隔离；工作流协议是基础能力（不限顶栏「工作流/」）；list_notes / get_note / get_skill；动手前读主机 memory。
 - 插件包（改「数据库插件」UI / Host 桥接，不是连库、不是 skill）：先 get_plugin_protocol（平台 PROTOCOL.md）；再改 src/ui；局部改 edit_plugin_pack_file；构建 build_plugin_pack_ui。禁止用 list_skills 找 bridge。
 - Agent 对话：agent_chat 同步发消息并等回复（支持 /skill-id、mentions、sshHostId）；待确认用 agent_confirm。
 - SSH / 数据库 / 日志 / Docker：save_ssh_host、save_ssh_forward、save_connection、save_log_source、save_docker_context 落盘后再引用 ID。

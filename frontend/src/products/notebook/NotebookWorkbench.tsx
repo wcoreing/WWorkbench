@@ -110,6 +110,8 @@ export function NotebookWorkbench() {
   const activeProduct = useAppStore((s) => s.activeProduct)
   const notebookFocusNoteId = useAppStore((s) => s.notebookFocusNoteId)
   const setNotebookFocusNoteId = useAppStore((s) => s.setNotebookFocusNoteId)
+  const notebookFocusFolderId = useAppStore((s) => s.notebookFocusFolderId)
+  const setNotebookFocusFolderId = useAppStore((s) => s.setNotebookFocusFolderId)
   const setNotebookActiveNoteId = useAppStore((s) => s.setNotebookActiveNoteId)
   const notebookRoleFilter = useAppStore((s) => s.notebookRoleFilter)
   const setNotebookRoleFilter = useAppStore((s) => s.setNotebookRoleFilter)
@@ -507,6 +509,23 @@ export function NotebookWorkbench() {
   }, [bootReady, notebookFocusNoteId, bootLoading.active, openNoteById, setNotebookFocusNoteId, refreshSummaries])
 
   useEffect(() => {
+    if (!bootReady || !notebookFocusFolderId || bootLoading.active) return
+    const folderId = notebookFocusFolderId
+    setSelectedFolderId(folderId)
+    void refreshSummaries().finally(() => {
+      if (useAppStore.getState().notebookFocusFolderId === folderId) {
+        setNotebookFocusFolderId(null)
+      }
+    })
+  }, [
+    bootReady,
+    notebookFocusFolderId,
+    bootLoading.active,
+    refreshSummaries,
+    setNotebookFocusFolderId,
+  ])
+
+  useEffect(() => {
     if (booted.current) return
     booted.current = true
     void withLoading(
@@ -608,6 +627,28 @@ export function NotebookWorkbench() {
         const { hostList, connList } = await refreshAll()
         const host = hostId ? hostList.find((h) => h.id === hostId) : undefined
         const conn = connectionId ? connList.find((c) => c.id === connectionId) : undefined
+
+        // SSH 主机：打开/成册主机记忆册（Docker 等非 SSH 仍走普通笔记）
+        const bookHostId =
+          host?.kind === 'ssh'
+            ? host.id
+            : conn?.sshHostId
+              ? String(conn.sshHostId)
+              : ''
+        if (bookHostId && !initialCommand) {
+          const book = await api.ensureHostMemoryBook(bookHostId)
+          setSelectedFolderId(book.dirRel)
+          setNotebookFocusFolderId(book.dirRel)
+          await refreshAll()
+          await openNoteById(book.noteId)
+          notify.success(
+            book.created
+              ? t('notebook.hostBookCreated', { path: book.dirRel })
+              : t('notebook.hostBookOpened', { path: book.dirRel }),
+          )
+          return
+        }
+
         let title = t('notebook.newNoteTitle')
         let content = initialCommand ?? ''
         let language: NoteLanguage = 'markdown'

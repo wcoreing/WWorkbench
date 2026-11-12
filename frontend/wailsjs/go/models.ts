@@ -1002,6 +1002,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_HostMemoryBookDO_ {
+	    ok: boolean;
+	    data: model.HostMemoryBookDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_HostMemoryBookDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.HostMemoryBookDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_LocalDirResultDO_ {
 	    ok: boolean;
 	    data: model.LocalDirResultDO;
@@ -5465,6 +5499,24 @@ export namespace model {
 	}
 	
 	
+	export class HostMemoryBookDO {
+	    sshHostId: string;
+	    dirRel: string;
+	    noteId: string;
+	    created: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new HostMemoryBookDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sshHostId = source["sshHostId"];
+	        this.dirRel = source["dirRel"];
+	        this.noteId = source["noteId"];
+	        this.created = source["created"];
+	    }
+	}
 	export class IndexMetaDO {
 	    name: string;
 	    column: string;

@@ -586,6 +586,14 @@ export interface EnsureHostBackupResult {
   report: HostHealthReport
 }
 
+/** 主机记忆册：记忆区/{主机名}/ */
+export interface HostMemoryBook {
+  sshHostId: string
+  dirRel: string
+  noteId: string
+  created: boolean
+}
+
 export type LogSourceType = 'local_file' | 'ssh_file' | 'docker' | 'compose'
 
 export interface LogSource {

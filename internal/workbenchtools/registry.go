@@ -853,7 +853,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name: workbench.CapListSkills,
-		Description: "列出笔记本工作流（仅 SKILL.md / role=skill；不含 log.md）。返回 id/name/description/noteId/diskPath/hasSteps。",
+		Description: "列出笔记本工作流（任意业务根下 SKILL.md / role=skill，含 工作流/ 与 记忆区/…/项目/；不含 log.md）。返回 id（路径或短名）/name/noteId/diskPath/hasSteps。",
 		Parameters: map[string]interface{}{
 			"type":       "object",
 			"properties": map[string]interface{}{},
@@ -862,7 +862,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name: workbench.CapGetSkill,
-		Description: "读取笔记本工作流/Skill 正文（仅 工作流/{name}/SKILL.md，永不返回 log.md）。返回 content + diskPath/skillDir/assetsDir；优先读后自己用工具执行。含步骤时也可选 run_skill。参数 skill=id|name。",
+		Description: "读取笔记本工作流/Skill 正文（任意业务根下 **/SKILL.md，含 工作流/ 与 记忆区/{主机}/项目/…；永不返回 log.md）。返回 content + diskPath/skillDir/assetsDir；优先读后自己用工具执行。参数 skill=完整目录路径|短名。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{

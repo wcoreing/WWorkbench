@@ -278,6 +278,10 @@ export function EnsureHostBackupPolicies(arg1, arg2, arg3, arg4) {
   return window['go']['app']['Service']['EnsureHostBackupPolicies'](arg1, arg2, arg3, arg4);
 }
 
+export function EnsureHostMemoryBook(arg1) {
+  return window['go']['app']['Service']['EnsureHostMemoryBook'](arg1);
+}
+
 export function EnsureSSHHostFromConnection(arg1) {
   return window['go']['app']['Service']['EnsureSSHHostFromConnection'](arg1);
 }

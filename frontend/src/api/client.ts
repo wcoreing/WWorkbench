@@ -183,6 +183,7 @@ import {
   RunBackupPolicy,
   ScanHostHealth,
   EnsureHostBackupPolicies,
+  EnsureHostMemoryBook,
   ListLogSources,
   SaveLogSource,
   DeleteLogSource,
@@ -881,6 +882,8 @@ export const api = {
     (await unwrap(() =>
       EnsureHostBackupPolicies(sshHostId, workDir, findingIds, withCron),
     )) as import('./types').EnsureHostBackupResult,
+  ensureHostMemoryBook: (sshHostId: string) =>
+    unwrap(() => EnsureHostMemoryBook(sshHostId)) as Promise<import('./types').HostMemoryBook>,
   listLogSources: async () => asArray(await unwrap(() => ListLogSources())),
   saveLogSource: (src: model.LogSourceDO) => unwrap(() => SaveLogSource(src)),
   deleteLogSource: (id: string) => unwrap(() => DeleteLogSource(id)),

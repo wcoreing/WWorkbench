@@ -23,8 +23,20 @@ func TestSkillNameFromNoteIDOnlySKILL(t *testing.T) {
 	if got := SkillNameFromNoteID("工作流/小红书发布"); got != "" {
 		t.Fatalf("dir only: %q", got)
 	}
+	if got := SkillNameFromNoteID("记忆区/prod/项目/dwq/SKILL.md"); got != "记忆区/prod/项目/dwq" {
+		t.Fatalf("memory project skill: got %q", got)
+	}
+	if got := SkillNoteID("记忆区/prod/项目/dwq"); got != "记忆区/prod/项目/dwq/SKILL.md" {
+		t.Fatalf("path SkillNoteID: got %q", got)
+	}
+	if got := SkillNoteID("demo"); got != "工作流/demo/SKILL.md" {
+		t.Fatalf("short SkillNoteID: got %q", got)
+	}
 	if !IsTaskLogNoteID("工作流/小红书发布/log.md") {
 		t.Fatal("expected task log id")
+	}
+	if !IsTaskLogNoteID("记忆区/prod/项目/dwq/log.md") {
+		t.Fatal("memory project log should count as task log")
 	}
 	if IsTaskLogNoteID("工作流/小红书发布/SKILL.md") {
 		t.Fatal("SKILL is not task log")

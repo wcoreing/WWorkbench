@@ -11,14 +11,14 @@ import (
 // TaskLogFile 任务步骤文本日志文件名（与 SKILL.md 同目录）。
 const TaskLogFile = "log.md"
 
-// TaskLogNoteID 工作流/{name}/log.md。
+// TaskLogNoteID 技能目录旁 log.md（短名默认 工作流/{name}/log.md；路径名保留完整目录）。
 func TaskLogNoteID(skillName string) string {
 	skillName = strings.Trim(strings.TrimSpace(strings.ReplaceAll(skillName, "\\", "/")), "/")
 	if skillName == "" {
 		return ""
 	}
-	if i := strings.IndexByte(skillName, '/'); i >= 0 {
-		skillName = skillName[:i]
+	if dir, err := SkillDirRel(skillName); err == nil && dir != "" {
+		return dir + "/" + TaskLogFile
 	}
 	return SkillGroupName + "/" + skillName + "/" + TaskLogFile
 }

@@ -581,12 +581,26 @@ export function TerminalWorkbench() {
     await connectLocal()
   }
 
+  /** ensureHostBook 静默成册：选中/连接 SSH 时确保记忆区/{主机}/ 存在，供笔记本聚焦与 Agent 注入。 */
+  const ensureHostBook = (host: ShellHost) => {
+    if (host.kind !== 'ssh' || !host.id) return
+    void api
+      .ensureHostMemoryBook(host.id)
+      .then((book) => {
+        useAppStore.getState().setNotebookFocusFolderId(book.dirRel)
+      })
+      .catch(() => {
+        /* 成册失败不挡连接 */
+      })
+  }
+
   /** openRecentHostWindow 单击：回到该主机最近窗口；没有则新建连接。 */
   const openRecentHostWindow = async (host: ShellHost) => {
     if (host.kind === 'docker' && host.running === false) {
       setStatusMessage(t('terminal.containerStoppedHint', { name: host.name }))
       return
     }
+    ensureHostBook(host)
     const related = tabs.filter(
       (t) => (t.kind === 'ssh' || t.kind === 'docker') && t.hostId === host.id,
     )
@@ -604,6 +618,7 @@ export function TerminalWorkbench() {
       setStatusMessage(t('terminal.containerStoppedHint', { name: host.name }))
       return
     }
+    ensureHostBook(host)
     await connectHost(host)
   }
 

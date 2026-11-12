@@ -21,21 +21,27 @@ func (s *Service) groupDirAbs(groupID string) (string, error) {
 	return filepath.Join(root, rel), nil
 }
 
-// skillDirAbs 解析 Skill 目录：工作流/{name} 或 工作流/{name}/SKILL.md。
+// skillDirAbs 解析 Skill 目录：任意 …/SKILL.md 或技能目录相对路径 / 短名（默认 工作流/{name}）。
 func (s *Service) skillDirAbs(noteID string) (dir, name string, ok bool) {
-	noteID = strings.TrimSpace(noteID)
-	if noteID == "" {
+	noteID = strings.TrimSpace(strings.ReplaceAll(noteID, "\\", "/"))
+	if noteID == "" || strings.Contains(noteID, "..") {
 		return "", "", false
 	}
-	rel := strings.TrimSuffix(filepath.ToSlash(noteID), "/"+SkillEntryFile)
-	if !strings.HasPrefix(rel, SkillGroupName+"/") {
+	relDir := SkillDirFromNoteID(noteID)
+	if relDir == "" {
+		// 目录路径或短名 → 规范成 note id 再取目录
+		if nid := SkillNoteID(noteID); nid != "" {
+			relDir = SkillDirFromNoteID(nid)
+		}
+	}
+	if relDir == "" {
 		return "", "", false
 	}
-	rest := strings.TrimPrefix(rel, SkillGroupName+"/")
-	if rest == "" || strings.Contains(rest, "/") {
-		return "", "", false
+	name = SkillNameFromNoteID(relDir + "/" + SkillEntryFile)
+	if name == "" {
+		name = filepath.Base(relDir)
 	}
-	return filepath.Join(s.workspaceRoot(), SkillGroupName, rest), rest, true
+	return filepath.Join(s.workspaceRoot(), filepath.FromSlash(relDir)), name, true
 }
 
 // notePaths 解析笔记内容路径与附件目录（id = 工作区相对路径）。
@@ -44,8 +50,18 @@ func (s *Service) notePaths(noteID string) (contentPath, assetsDir string, err e
 	if noteID == "" {
 		return "", "", errno.New(errno.CodeInvalidArg, "笔记 ID 不能为空", "")
 	}
-	if dir, _, ok := s.skillDirAbs(noteID); ok {
-		return filepath.Join(dir, SkillEntryFile), filepath.Join(dir, SkillAssetsDir), nil
+	// Skill 入口或可规范为 Skill 的引用 → 同级 assets/
+	if isSkillPathID(noteID) {
+		if dir, _, ok := s.skillDirAbs(noteID); ok {
+			return filepath.Join(dir, SkillEntryFile), filepath.Join(dir, SkillAssetsDir), nil
+		}
+	}
+	if !strings.Contains(noteID, "/") && !strings.HasSuffix(strings.ToLower(noteID), ".md") {
+		if nid := SkillNoteID(noteID); isSkillPathID(nid) {
+			if dir, _, ok := s.skillDirAbs(nid); ok {
+				return filepath.Join(dir, SkillEntryFile), filepath.Join(dir, SkillAssetsDir), nil
+			}
+		}
 	}
 	rel := filepath.FromSlash(noteID)
 	if strings.Contains(rel, "..") {
@@ -62,9 +78,7 @@ func (s *Service) notePaths(noteID string) (contentPath, assetsDir string, err e
 }
 
 func isSkillPathID(id string) bool {
-	id = strings.TrimSpace(filepath.ToSlash(id))
-	return strings.HasSuffix(strings.ToLower(id), "/"+strings.ToLower(SkillEntryFile)) &&
-		strings.HasPrefix(id, SkillGroupName+"/")
+	return SkillDirFromNoteID(id) != ""
 }
 
 func groupIDFromRelDir(dir string) string {

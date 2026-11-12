@@ -128,7 +128,8 @@ func (s *Service) ListMemoryNotes(limit int) ([]model.NoteSummaryDO, error) {
 }
 
 // ListMemoryNotesForContext 按焦点资产匹配记忆笔记。
-func (s *Service) ListMemoryNotesForContext(sshHostIDs []string, connectionID string, limit int) ([]model.NoteSummaryDO, error) {
+// bookletPrefixes 为当前主机册目录（如 记忆区/prod），同册笔记排在绑定笔记之前。
+func (s *Service) ListMemoryNotesForContext(sshHostIDs []string, connectionID string, limit int, bookletPrefixes ...string) ([]model.NoteSummaryDO, error) {
 	if limit <= 0 {
 		limit = 5
 	}
@@ -144,15 +145,20 @@ func (s *Service) ListMemoryNotesForContext(sshHostIDs []string, connectionID st
 		}
 	}
 	connID := strings.TrimSpace(connectionID)
-	var bound, global []model.NoteSummaryDO
+	var booklet, bound, global []model.NoteSummaryDO
 	for _, n := range all {
+		inBook := NoteUnderBooklet(n.ID, bookletPrefixes)
 		hostHit := false
 		if n.SSHHostID != "" {
 			_, hostHit = hostSet[n.SSHHostID]
 		}
 		connHit := connID != "" && n.ConnectionID != "" && n.ConnectionID == connID
-		if hostHit || connHit {
-			bound = append(bound, n)
+		if inBook || hostHit || connHit {
+			if inBook {
+				booklet = append(booklet, n)
+			} else {
+				bound = append(bound, n)
+			}
 			continue
 		}
 		if n.SSHHostID == "" && n.ConnectionID == "" {
@@ -160,6 +166,7 @@ func (s *Service) ListMemoryNotesForContext(sshHostIDs []string, connectionID st
 		}
 	}
 	out := make([]model.NoteSummaryDO, 0, limit)
+	out = append(out, booklet...)
 	out = append(out, bound...)
 	if len(out) < limit {
 		out = append(out, global...)

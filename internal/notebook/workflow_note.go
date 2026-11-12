@@ -3,6 +3,7 @@ package notebook
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -34,26 +35,32 @@ type workflowFrontmatter struct {
 	Bind        string `yaml:"bind,omitempty"`
 }
 
-// SkillNoteID 工作流笔记 id = 磁盘相对路径 工作流/{name}/SKILL.md。
+// SkillNoteID 把 skill 引用规范成 …/SKILL.md 相对路径。
+// 短名 → 工作流/{name}/SKILL.md（任务产品默认落点）；含路径 → 该目录下 SKILL.md。
 func SkillNoteID(name string) string {
-	name = strings.TrimSpace(name)
+	name = strings.TrimSpace(strings.ReplaceAll(name, "\\", "/"))
+	name = strings.Trim(name, "/")
 	if name == "" {
 		return ""
 	}
-	name = strings.TrimSuffix(name, "/"+SkillEntryFile)
-	name = strings.TrimPrefix(name, SkillGroupName+"/")
-	if i := strings.LastIndex(name, "/"); i >= 0 {
-		name = name[i+1:]
+	lower := strings.ToLower(name)
+	if strings.HasSuffix(lower, "/"+strings.ToLower(SkillEntryFile)) {
+		return name
 	}
-	if name == "" || strings.ContainsAny(name, `/\`) {
+	if strings.EqualFold(name, SkillEntryFile) {
+		return ""
+	}
+	if strings.Contains(name, "/") {
+		return name + "/" + SkillEntryFile
+	}
+	if strings.ContainsAny(name, `\`) {
 		return ""
 	}
 	return SkillGroupName + "/" + name + "/" + SkillEntryFile
 }
 
-// SkillNameFromNoteID 从 SKILL.md 路径还原 skill name。
-// 仅认 工作流/{name}/SKILL.md；同目录 log.md / 其它文件返回空（避免 get_skill 误读日志）。
-func SkillNameFromNoteID(id string) string {
+// SkillDirFromNoteID 从 SKILL.md 路径取技能目录相对路径；非入口文件返回空。
+func SkillDirFromNoteID(id string) string {
 	id = strings.TrimSpace(strings.ReplaceAll(id, "\\", "/"))
 	if id == "" {
 		return ""
@@ -63,26 +70,58 @@ func SkillNameFromNoteID(id string) string {
 	if !strings.HasSuffix(lower, suffix) {
 		return ""
 	}
-	id = id[:len(id)-len(suffix)]
-	if !strings.HasPrefix(id, SkillGroupName+"/") {
+	dir := strings.Trim(id[:len(id)-len(suffix)], "/")
+	if dir == "" || strings.Contains(dir, "..") {
 		return ""
 	}
-	rest := strings.TrimPrefix(id, SkillGroupName+"/")
-	if rest == "" || strings.Contains(rest, "/") {
-		return ""
-	}
-	return rest
+	return dir
 }
 
-// IsTaskLogNoteID 是否为任务账本投影路径 工作流/{name}/log.md。
+// SkillNameFromNoteID 从 SKILL.md 路径还原对外引用名。
+// 工作流/{short}/SKILL.md → short（兼容任务产品）；其它位置 → 完整目录路径（如 记忆区/主机/项目/dwq）。
+// 同目录 log.md / 其它文件返回空。
+func SkillNameFromNoteID(id string) string {
+	dir := SkillDirFromNoteID(id)
+	if dir == "" {
+		return ""
+	}
+	if strings.HasPrefix(dir, SkillGroupName+"/") {
+		rest := strings.TrimPrefix(dir, SkillGroupName+"/")
+		if rest != "" && !strings.Contains(rest, "/") {
+			return rest
+		}
+	}
+	return dir
+}
+
+// SkillBasename 技能目录末段名（短名消歧用）。
+func SkillBasename(idOrName string) string {
+	idOrName = strings.TrimSpace(strings.ReplaceAll(idOrName, "\\", "/"))
+	if idOrName == "" {
+		return ""
+	}
+	if dir := SkillDirFromNoteID(idOrName); dir != "" {
+		return filepath.Base(dir)
+	}
+	if strings.HasSuffix(strings.ToLower(idOrName), "/"+strings.ToLower(SkillEntryFile)) {
+		return ""
+	}
+	idOrName = strings.TrimSuffix(idOrName, "/"+SkillEntryFile)
+	return filepath.Base(idOrName)
+}
+
+// IsTaskLogNoteID 是否为技能目录旁的账本投影 …/log.md（任意业务根下均可）。
 func IsTaskLogNoteID(id string) bool {
 	id = strings.TrimSpace(strings.ReplaceAll(id, "\\", "/"))
 	if id == "" {
 		return false
 	}
 	lower := strings.ToLower(id)
-	return strings.HasPrefix(id, SkillGroupName+"/") &&
-		strings.HasSuffix(lower, "/"+strings.ToLower(TaskLogFile))
+	if !strings.HasSuffix(lower, "/"+strings.ToLower(TaskLogFile)) {
+		return false
+	}
+	dir := strings.Trim(id[:len(id)-len("/"+TaskLogFile)], "/")
+	return dir != "" && !strings.Contains(dir, "..")
 }
 
 // ExtractWorkflowNoteBodyExtras 从已有笔记抽出经验/脚本/资源段落，避免 save 步骤时冲掉沉淀。
@@ -423,6 +462,7 @@ func (s *Service) SaveWorkflowNote(p model.WorkflowDO) (model.WorkflowDO, error)
 }
 
 // SaveWorkflowNoteWithExtras 保存工作流；extras 非空字段覆盖，空字段则沿用笔记已有沉淀。
+// name 可为短名（默认落 工作流/）或完整目录路径（如 记忆区/主机/项目/dwq）。
 func (s *Service) SaveWorkflowNoteWithExtras(p model.WorkflowDO, extras WorkflowNoteBodyExtras) (model.WorkflowDO, error) {
 	if s == nil || s.dataDir == "" {
 		return p, fmt.Errorf("笔记本未就绪")
@@ -431,14 +471,26 @@ func (s *Service) SaveWorkflowNoteWithExtras(p model.WorkflowDO, extras Workflow
 	if name == "" {
 		return p, fmt.Errorf("工作流 name 不能为空")
 	}
-	if err := s.EnsureSkillGroup(); err != nil {
+	if err := s.EnsureWorkspace(); err != nil {
 		return p, err
 	}
-	id := SkillNoteID(name)
+	_ = s.ensureSystemDirs()
+	id := strings.TrimSpace(p.NoteID)
+	if id == "" || !isSkillPathID(id) {
+		id = SkillNoteID(name)
+	}
 	existing, _ := s.GetNote(id)
+	if existing == nil {
+		// 短名可能已在记忆区等处成册：复用已有路径，避免再造 工作流/ 副本
+		if found := s.FindNoteIDBySkillID(name); found != "" && isSkillPathID(found) {
+			id = found
+			existing, _ = s.GetNote(id)
+		}
+	}
 	merged := WorkflowNoteBodyExtras{}
 	if existing != nil {
 		merged = ExtractWorkflowNoteBodyExtras(existing.Content)
+		id = existing.ID
 	}
 	if strings.TrimSpace(extras.Lessons) != "" {
 		merged.Lessons = strings.TrimSpace(extras.Lessons)
@@ -450,10 +502,11 @@ func (s *Service) SaveWorkflowNoteWithExtras(p model.WorkflowDO, extras Workflow
 		merged.Resources = strings.TrimSpace(extras.Resources)
 	}
 	content := FormatWorkflowNoteContent(p, merged)
-	title := firstNonEmptyStr(strings.TrimSpace(p.Title), name)
+	title := firstNonEmptyStr(strings.TrimSpace(p.Title), SkillBasename(id), name)
+	groupID := SkillDirFromNoteID(id)
 	note := model.NoteDO{
 		ID:       id,
-		GroupID:  SkillGroupName + "/" + name,
+		GroupID:  groupID,
 		Title:    title,
 		Content:  content,
 		Language: "markdown",

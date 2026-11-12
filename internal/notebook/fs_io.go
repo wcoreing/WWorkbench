@@ -226,14 +226,10 @@ func (s *Service) getNoteFS(id string) (*model.NoteDO, error) {
 		rel, _ := filepath.Rel(s.workspaceRoot(), contentPath)
 		rel = filepath.ToSlash(rel)
 		canonicalID := rel
-		if isSkillPathID(id) || isSkillPathID(rel) {
-			name := SkillNameFromNoteID(id)
-			if name == "" {
-				name = SkillNameFromNoteID(rel)
-			}
-			if name != "" {
-				canonicalID = SkillNoteID(name)
-			}
+		if isSkillPathID(rel) {
+			canonicalID = rel
+		} else if isSkillPathID(id) {
+			canonicalID = filepath.ToSlash(id)
 		}
 		groupID := groupIDFromRelDir(filepath.ToSlash(filepath.Dir(rel)))
 		return s.readNoteFile(canonicalID, contentPath, groupID)
@@ -257,10 +253,26 @@ func (s *Service) getNoteFS(id string) (*model.NoteDO, error) {
 	if err != nil {
 		return nil, err
 	}
+	var basenameHits []string
 	for _, sum := range list {
 		if sum.ID == id || SkillNameFromNoteID(sum.ID) == id {
 			return s.getNoteFS(sum.ID)
 		}
+		if SkillBasename(sum.ID) == id {
+			basenameHits = append(basenameHits, sum.ID)
+		}
+	}
+	if len(basenameHits) == 1 {
+		return s.getNoteFS(basenameHits[0])
+	}
+	// 同名时优先任务默认落点 工作流/{id}
+	for _, hit := range basenameHits {
+		if SkillNameFromNoteID(hit) == id && strings.HasPrefix(hit, SkillGroupName+"/") {
+			return s.getNoteFS(hit)
+		}
+	}
+	if len(basenameHits) > 0 {
+		return s.getNoteFS(basenameHits[0])
 	}
 	return nil, errno.New(errno.CodeNotFound, "笔记不存在", id)
 }
@@ -314,24 +326,36 @@ func (s *Service) saveNoteFS(n model.NoteDO) (*model.NoteDO, error) {
 	}
 
 	if n.Role == model.NoteRoleSkill || isSkillPathID(n.ID) {
-		name := SkillNameFromNoteID(n.ID)
-		if name == "" {
-			name = ReadLinkedSkillID(n.Content)
-		}
-		if name == "" {
-			if fm, _, ok := PeekFrontmatter(n.Content); ok {
-				name = FrontmatterString(fm, "name")
-				if name == "" {
-					name = FrontmatterString(fm, "skillId")
+		n.Role = model.NoteRoleSkill
+		// 已在任意业务根下的 SKILL.md：就地保存，不迁回「工作流/」
+		if !isSkillPathID(n.ID) {
+			ref := ""
+			if g := strings.TrimSpace(filepath.ToSlash(n.GroupID)); g != "" && g != SkillGroupName {
+				// 落在指定分组目录下
+				ref = g
+			}
+			if ref == "" {
+				ref = SkillNameFromNoteID(n.ID)
+			}
+			if ref == "" {
+				ref = ReadLinkedSkillID(n.Content)
+			}
+			if ref == "" {
+				if fm, _, ok := PeekFrontmatter(n.Content); ok {
+					ref = FrontmatterString(fm, "name")
+					if ref == "" {
+						ref = FrontmatterString(fm, "skillId")
+					}
 				}
 			}
+			if ref == "" {
+				ref = SuggestSkillID(n.Title, n.ID)
+			}
+			n.ID = SkillNoteID(ref)
 		}
-		if name == "" {
-			name = SuggestSkillID(n.Title, n.ID)
+		if dirRel := SkillDirFromNoteID(n.ID); dirRel != "" {
+			n.GroupID = dirRel
 		}
-		n.ID = SkillNoteID(name)
-		n.Role = model.NoteRoleSkill
-		n.GroupID = SkillGroupName + "/" + name
 		dir, _, ok := s.skillDirAbs(n.ID)
 		if !ok {
 			return nil, errno.New(errno.CodeInvalidArg, "非法 Skill 路径", n.ID)

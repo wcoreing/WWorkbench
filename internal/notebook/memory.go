@@ -59,7 +59,7 @@ func FormatMemoryFeedforward(notes []model.NoteSummaryDO, contents map[string]st
 		return ""
 	}
 	var b strings.Builder
-	b.WriteString("- **记忆区**（与当前焦点绑定的事实/坑；动手前先 get_note 读全文，勿凭印象改生产）:\n")
+	b.WriteString("- **记忆区**（优先当前主机册；与焦点绑定的事实/坑；动手前 get_note 读全文，勿凭印象改生产）:\n")
 	for _, n := range notes {
 		fmt.Fprintf(&b, "  · 「%s」 noteId=`%s`", trimRunes(n.Title, 48), n.ID)
 		if n.SSHHostID != "" {

@@ -124,24 +124,37 @@ func (s *Service) ListSkillNotes(limit int) ([]model.NoteSummaryDO, error) {
 	return out, nil
 }
 
-// FindNoteIDBySkillID 按关联标记或 frontmatter name 找笔记。
+// FindNoteIDBySkillID 按路径 / 短名 / 关联标记 / frontmatter name 找 Skill 入口。
 func (s *Service) FindNoteIDBySkillID(skillID string) string {
-	skillID = strings.TrimSpace(skillID)
+	skillID = strings.TrimSpace(strings.ReplaceAll(skillID, "\\", "/"))
 	if skillID == "" {
 		return ""
 	}
-	if id := SkillNoteID(skillID); id != "" {
-		if n, err := s.GetNote(id); err == nil && n != nil {
-			return n.ID
+	try := []string{skillID, SkillNoteID(skillID)}
+	for _, id := range try {
+		if id == "" {
+			continue
+		}
+		if n, err := s.GetNote(id); err == nil && n != nil && !IsTaskLogNoteID(n.ID) {
+			if isSkillPathID(n.ID) || NormalizeNoteRole(n.Role) == model.NoteRoleSkill {
+				return n.ID
+			}
 		}
 	}
 	list, err := s.ListNotes()
 	if err != nil {
 		return ""
 	}
+	var basenameHits []string
 	for _, sum := range list {
 		if IsTaskLogNoteID(sum.ID) {
 			continue
+		}
+		if SkillNameFromNoteID(sum.ID) == skillID {
+			return sum.ID
+		}
+		if isSkillPathID(sum.ID) && SkillBasename(sum.ID) == skillID {
+			basenameHits = append(basenameHits, sum.ID)
 		}
 		n, err := s.GetNote(sum.ID)
 		if err != nil || n == nil {
@@ -154,6 +167,17 @@ func (s *Service) FindNoteIDBySkillID(skillID string) string {
 		if ok && fmString(fm, "name") == skillID && NormalizeNoteRole(n.Role) == model.NoteRoleSkill {
 			return n.ID
 		}
+	}
+	for _, hit := range basenameHits {
+		if strings.HasPrefix(hit, SkillGroupName+"/") {
+			return hit
+		}
+	}
+	if len(basenameHits) == 1 {
+		return basenameHits[0]
+	}
+	if len(basenameHits) > 0 {
+		return basenameHits[0]
 	}
 	return ""
 }

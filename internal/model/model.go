@@ -804,6 +804,14 @@ type EnsureHostBackupResultDO struct {
 	Report  HostHealthReportDO `json:"report"`
 }
 
+// HostMemoryBookDO 主机记忆册（记忆区/{主机名}/）。
+type HostMemoryBookDO struct {
+	SSHHostID string `json:"sshHostId"`
+	DirRel    string `json:"dirRel"`
+	NoteID    string `json:"noteId"`
+	Created   bool   `json:"created"`
+}
+
 // LogFetchResultDO 拉取日志结果。
 type LogFetchResultDO struct {
 	Content string `json:"content"`

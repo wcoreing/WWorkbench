@@ -59,6 +59,8 @@ interface AppState {
   uiFontSize: UiFontSize
   agentSurface: AgentSurface
   notebookFocusNoteId: string | null
+  /** 侧栏聚焦目录（如主机记忆册 记忆区/{主机}） */
+  notebookFocusFolderId: string | null
   notebookActiveNoteId: string | null
   /** 笔记本角色过滤（工作流入口跳转时置为 skill） */
   notebookRoleFilter: '' | 'memory' | 'skill'
@@ -78,6 +80,7 @@ interface AppState {
   setUiFontSize: (px: number) => void
   setAgentSurface: (surface: AgentSurface) => void
   setNotebookFocusNoteId: (id: string | null) => void
+  setNotebookFocusFolderId: (id: string | null) => void
   setNotebookActiveNoteId: (id: string | null) => void
   setNotebookRoleFilter: (role: '' | 'memory' | 'skill') => void
   addTab: (tab: WorkTab) => void
@@ -109,6 +112,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   uiFontSize: DEFAULT_UI_FONT_SIZE,
   agentSurface: emptyAgentSurface(),
   notebookFocusNoteId: null,
+  notebookFocusFolderId: null,
   notebookActiveNoteId: null,
   notebookRoleFilter: '',
   setVersion: (version) => set({ version }),
@@ -168,6 +172,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   setAgentSurface: (agentSurface) => set({ agentSurface }),
   setNotebookFocusNoteId: (notebookFocusNoteId) => set({ notebookFocusNoteId }),
+  setNotebookFocusFolderId: (notebookFocusFolderId) => set({ notebookFocusFolderId }),
   setNotebookActiveNoteId: (notebookActiveNoteId) => set({ notebookActiveNoteId }),
   setNotebookRoleFilter: (notebookRoleFilter) => set({ notebookRoleFilter }),
   addTab: (tab) => {
