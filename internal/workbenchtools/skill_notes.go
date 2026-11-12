@@ -162,8 +162,7 @@ func toolGetSkill(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
 
 type noteGetter interface {
 	GetNote(id string) (*model.NoteDO, error)
-	ListSkillNotes(limit int) ([]model.NoteSummaryDO, error)
-	ListWorkflowNotes(limit int) ([]model.WorkflowDO, error)
+	FindNoteIDBySkillID(skillID string) string
 }
 
 func findSkillNote(nb noteGetter, key string) (*model.NoteDO, bool) {
@@ -183,64 +182,14 @@ func findSkillNote(nb noteGetter, key string) (*model.NoteDO, bool) {
 		}
 		return notebook.NormalizeNoteRole(n.Role) == model.NoteRoleSkill
 	}
-	// 先完整路径 / 规范 SKILL.md，再短名；禁止把 log.md 当 Skill
-	try := []string{key, notebook.SkillNoteID(key)}
-	for _, id := range try {
-		if id == "" {
-			continue
-		}
-		n, err := nb.GetNote(id)
-		if err == nil && accept(n) {
-			return n, true
-		}
+	// 寻址只走笔记本 SSOT；工具层不再平行扫 ListSkillNotes / ListWorkflowNotes。
+	id := nb.FindNoteIDBySkillID(key)
+	if id == "" {
+		return nil, false
 	}
-	if list, err := nb.ListSkillNotes(100); err == nil {
-		var basenameHits []*model.NoteDO
-		for _, sum := range list {
-			if notebook.IsTaskLogNoteID(sum.ID) {
-				continue
-			}
-			n, err := nb.GetNote(sum.ID)
-			if err != nil || !accept(n) {
-				continue
-			}
-			if notebook.ReadLinkedSkillID(n.Content) == key {
-				return n, true
-			}
-			if p, ok := notebook.ParseWorkflowNote(*n); ok && p.Name == key {
-				return n, true
-			}
-			if notebook.SkillNameFromNoteID(n.ID) == key {
-				return n, true
-			}
-			if notebook.SkillBasename(n.ID) == key {
-				basenameHits = append(basenameHits, n)
-			}
-			if strings.EqualFold(strings.TrimSpace(n.Title), key) && notebook.SkillNameFromNoteID(n.ID) != "" {
-				return n, true
-			}
-		}
-		for _, n := range basenameHits {
-			if strings.HasPrefix(n.ID, notebook.SkillGroupName+"/") {
-				return n, true
-			}
-		}
-		if len(basenameHits) == 1 {
-			return basenameHits[0], true
-		}
-		if len(basenameHits) > 0 {
-			return basenameHits[0], true
-		}
+	n, err := nb.GetNote(id)
+	if err != nil || !accept(n) {
+		return nil, false
 	}
-	if pbs, err := nb.ListWorkflowNotes(80); err == nil {
-		for _, p := range pbs {
-			if p.Name == key || p.NoteID == key || p.ID == key {
-				n, err := nb.GetNote(p.NoteID)
-				if err == nil && accept(n) {
-					return n, true
-				}
-			}
-		}
-	}
-	return nil, false
+	return n, true
 }

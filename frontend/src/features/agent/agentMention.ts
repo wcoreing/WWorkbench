@@ -1,5 +1,5 @@
 /** AgentMentionKind @ 资源类型。 */
-export type AgentMentionKind = 'ssh' | 'database' | 'docker' | 'log' | 'http'
+export type AgentMentionKind = 'ssh' | 'database' | 'docker' | 'log' | 'http' | 'note'
 
 /** AgentMention 用户 @ 选中的资源。 */
 export interface AgentMention {
@@ -73,6 +73,8 @@ export function mentionKindShort(kind: AgentMentionKind): string {
       return 'LOG'
     case 'http':
       return 'API'
+    case 'note':
+      return '记'
     default:
       return 'DB'
   }
@@ -148,7 +150,8 @@ export function parseMentionsFromEvent(raw: unknown): AgentMention[] {
       o.kind === 'database' ||
       o.kind === 'docker' ||
       o.kind === 'log' ||
-      o.kind === 'http'
+      o.kind === 'http' ||
+      o.kind === 'note'
         ? o.kind
         : null
     const id = String(o.id ?? '')

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type DragEvent } from 'react'
 import { api } from '../../api/client'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
@@ -18,6 +18,10 @@ import { mergeMentions } from './agentMention'
 import { buildSkillLabelMap } from './agentSkillIds'
 import { useAgentSession } from './useAgentSession'
 import { pressProps } from '../../components/compat'
+import { bindAssetsToAgent, readAssetDrag, transferHasAssetDrag } from './agentAssetDrag'
+import { mentionNote } from './openAgentDraft'
+import { readNotebookDrag, transferHasNotebookDrag } from '../notebook/notebookTree'
+import { notify } from '../../notify'
 
 interface AgentThreadItem {
   id: string
@@ -272,12 +276,39 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     { id: 'permissions', label: t('agent.tabPermissions') },
   ]
 
+  const onPanelDragOver = (e: DragEvent) => {
+    if (!transferHasAssetDrag(e.dataTransfer) && !transferHasNotebookDrag(e.dataTransfer)) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+  }
+
+  const onPanelDrop = (e: DragEvent) => {
+    let assets = readAssetDrag(e.dataTransfer)
+    if (!assets.length) {
+      const notebook = readNotebookDrag(e.dataTransfer)
+      if (notebook?.kind === 'note' && notebook.id) {
+        assets = [mentionNote({ id: notebook.id, title: notebook.title })]
+      }
+    }
+    if (!assets.length) return
+    e.preventDefault()
+    e.stopPropagation()
+    bindAssetsToAgent(assets)
+    if (assets.length === 1) {
+      notify.info(t('agent.assetDropped', { title: assets[0].label }))
+    } else {
+      notify.info(t('agent.assetsDropped', { count: assets.length }))
+    }
+  }
+
   return (
     <aside
       className={`agent-panel${collapsed ? ' agent-panel-collapsed' : ''}`}
       style={{ width: collapsed ? undefined : width }}
       aria-hidden={collapsed}
       aria-label={t('agent.title')}
+      onDragOver={onPanelDragOver}
+      onDrop={onPanelDrop}
     >
       <ResizeHandle axis="x" onMouseDown={onResizeStart} title={t('agent.resize')} />
       <div className="agent-panel-body">

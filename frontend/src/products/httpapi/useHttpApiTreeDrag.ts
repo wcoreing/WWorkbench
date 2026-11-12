@@ -31,10 +31,20 @@ interface DragMeta {
 interface Options {
   batchMode: boolean
   onDrop: (drag: HttpDragPayload, target: HttpDropTarget) => void | Promise<void>
+  /** 拖到 AI 侧栏时（指针拖，非 HTML5）；仅接口行。 */
+  onBindAgent?: (drag: HttpDragPayload, meta: DragMeta) => void
 }
 
-/** useHttpApiTreeDrag 目录/接口统一指针拖拽（排序槽 + 移入目录）。 */
-export function useHttpApiTreeDrag({ batchMode, onDrop }: Options) {
+/** pointOverAgentPanel 指针是否在 AI 侧栏上。 */
+function pointOverAgentPanel(x: number, y: number): boolean {
+  for (const el of document.elementsFromPoint(x, y)) {
+    if (el instanceof Element && el.closest('.agent-panel')) return true
+  }
+  return false
+}
+
+/** useHttpApiTreeDrag 目录/接口统一指针拖拽（排序槽 + 移入目录 + 拖入 AI）。 */
+export function useHttpApiTreeDrag({ batchMode, onDrop, onBindAgent }: Options) {
   const [dragging, setDragging] = useState<HttpDragPayload | null>(null)
   const [dropTarget, setDropTarget] = useState<HttpDropTarget | null>(null)
   const [dragGhost, setDragGhost] = useState<HttpTreeDragGhost | null>(null)
@@ -139,7 +149,15 @@ export function useHttpApiTreeDrag({ batchMode, onDrop }: Options) {
         if (active) {
           ev.preventDefault()
           const target = resolveDropFromPoint(ev.clientX, ev.clientY)
-          if (target) void onDrop(payload, target)
+          if (target) {
+            void onDrop(payload, target)
+          } else if (
+            payload.kind === 'api' &&
+            onBindAgent &&
+            pointOverAgentPanel(ev.clientX, ev.clientY)
+          ) {
+            onBindAgent(payload, meta)
+          }
           window.setTimeout(() => {
             dragSessionRef.current = false
             document.body.classList.remove(BODY_DRAG_CLASS)
@@ -155,7 +173,7 @@ export function useHttpApiTreeDrag({ batchMode, onDrop }: Options) {
       window.addEventListener('pointerup', finish)
       window.addEventListener('pointercancel', finish)
     },
-    [batchMode, onDrop, resolveDropFromPoint, resetDragUi],
+    [batchMode, onDrop, onBindAgent, resolveDropFromPoint, resetDragUi],
   )
 
   /** onFolderPointerDown 目录行拖拽。 */

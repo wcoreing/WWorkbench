@@ -70,6 +70,14 @@ func FormatMemoryFeedforward(notes []model.NoteSummaryDO, contents map[string]st
 		}
 		b.WriteByte('\n')
 		if c, ok := contents[n.ID]; ok {
+			if fm, _, ok := splitFrontmatterMap(c); ok {
+				if lp := fmString(fm, "localPath"); lp != "" {
+					fmt.Fprintf(&b, "    local=`%s`\n", lp)
+				}
+				if rp := fmString(fm, "remotePath"); rp != "" {
+					fmt.Fprintf(&b, "    remote=`%s`\n", rp)
+				}
+			}
 			if ex := memoryExcerpt(c); ex != "" {
 				fmt.Fprintf(&b, "    摘录：%s\n", ex)
 			}

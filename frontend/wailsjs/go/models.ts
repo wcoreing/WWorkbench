@@ -1036,6 +1036,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_HostProjectDO_ {
+	    ok: boolean;
+	    data: model.HostProjectDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_HostProjectDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.HostProjectDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_LocalDirResultDO_ {
 	    ok: boolean;
 	    data: model.LocalDirResultDO;
@@ -2749,6 +2783,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.HTTPSavedRequestDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WWorkbench_internal_model_HostProjectDO_ {
+	    ok: boolean;
+	    data: model.HostProjectDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_HostProjectDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.HostProjectDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -5515,6 +5583,30 @@ export namespace model {
 	        this.dirRel = source["dirRel"];
 	        this.noteId = source["noteId"];
 	        this.created = source["created"];
+	    }
+	}
+	export class HostProjectDO {
+	    dirRel: string;
+	    name: string;
+	    sshHostId: string;
+	    localPath: string;
+	    remotePath: string;
+	    noteId: string;
+	    skillNoteId?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HostProjectDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dirRel = source["dirRel"];
+	        this.name = source["name"];
+	        this.sshHostId = source["sshHostId"];
+	        this.localPath = source["localPath"];
+	        this.remotePath = source["remotePath"];
+	        this.noteId = source["noteId"];
+	        this.skillNoteId = source["skillNoteId"];
 	    }
 	}
 	export class IndexMetaDO {

@@ -72,6 +72,23 @@ func (b *RadarBus) EmitNotebookGroup(op, id, writeID, label string, reveal bool)
 	b.EmitAsset(workbench.RadarDomainNotebookGroup, "notebook", op, id, writeID, label, reveal)
 }
 
+// EmitNotebookPath 广播工作区路径变更。
+// rename/move：ids=[from,to] + op=update；copy：ids=[from,to] + op=create；delete：ids=[rel]；mkdir/create-file：ids=[newRel]。
+func (b *RadarBus) EmitNotebookPath(op string, ids []string, writeID, label string, reveal bool) {
+	if len(ids) == 0 {
+		return
+	}
+	b.Emit(workbench.RadarEvent{
+		Domain:  workbench.RadarDomainNotebookPath,
+		Op:      op,
+		IDs:     ids,
+		WriteID: writeID,
+		Reveal:  reveal,
+		Product: "notebook",
+		Label:   label,
+	})
+}
+
 // EmitDockerContainer 快捷广播 Docker 容器状态变更。
 func (b *RadarBus) EmitDockerContainer(op, contextID, containerID, writeID, label string, reveal bool) {
 	if containerID == "" {

@@ -95,6 +95,8 @@ func Gather(ctx model.AgentContextDO, userText string) string {
 				fmt.Fprintf(&b, "  · 日志源「%s」 logSourceId=%s\n", m.Label, m.ID)
 			case "http":
 				fmt.Fprintf(&b, "  · HTTP「%s」 requestId=%s\n", m.Label, m.ID)
+			case "note":
+				fmt.Fprintf(&b, "  · 笔记「%s」 noteId=`%s` → 用 get_note(noteId) 读；写回用 notebook_append_content(appendToNoteId)\n", m.Label, m.ID)
 			default:
 				fmt.Fprintf(&b, "  · %s「%s」 id=%s\n", m.Kind, m.Label, m.ID)
 			}

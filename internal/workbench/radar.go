@@ -11,6 +11,8 @@ const (
 	RadarDomainHTTPFolder      = "http.folder"
 	RadarDomainNotebookNote    = "notebook.note"
 	RadarDomainNotebookGroup   = "notebook.group"
+	// RadarDomainNotebookPath 工作区相对路径变更（rename/move/copy/delete/mkdir）；ids 约定见 Emit 调用处。
+	RadarDomainNotebookPath = "notebook.path"
 	RadarDomainDockerContainer = "docker.container"
 	RadarDomainDockerContext   = "docker.context"
 	RadarDomainSSHHost         = "ssh.host"
@@ -29,6 +31,16 @@ const (
 	RadarOpCreate = "create"
 	RadarOpUpdate = "update"
 	RadarOpDelete = "delete"
+)
+
+// 笔记本路径写 writeId 前缀（ui- = 本机 UI 已本地 remap，FE 可跳过再处理）。
+const (
+	RadarWriteNotebookRename     = "ui-notebook-rename"
+	RadarWriteNotebookMove       = "ui-notebook-move"
+	RadarWriteNotebookCopy       = "ui-notebook-copy"
+	RadarWriteNotebookDeletePath = "ui-notebook-delete-path"
+	RadarWriteNotebookMkdir      = "ui-notebook-mkdir"
+	RadarWriteNotebookCreateFile = "ui-notebook-create-file"
 )
 
 // RadarEvent 资产变更广播（FE 唯一入口刷树 / reveal）。

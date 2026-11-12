@@ -1,5 +1,5 @@
 name: database
-version: 0.2.6
+version: 0.2.12
 requires:
   ww-cap: ">=0.54"
 provides:

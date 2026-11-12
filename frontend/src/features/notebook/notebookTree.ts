@@ -5,7 +5,7 @@ export const NOTEBOOK_DRAG_MIME = 'application/x-wworkbench-notebook'
 /** NOTEBOOK_ROOT_ID 根目录（未分组）笔记的 groupId。 */
 export const NOTEBOOK_ROOT_ID = ''
 
-export type NotebookDragPayload = { kind: 'note' | 'group'; id: string }
+export type NotebookDragPayload = { kind: 'note' | 'group'; id: string; title?: string }
 
 export type NotebookTreeNode =
   | { kind: 'folder'; id: string; name: string; parentId: string; children: NotebookTreeNode[] }
@@ -20,6 +20,18 @@ export function parseNotebookDrag(raw: string): NotebookDragPayload | null {
     /* ignore */
   }
   return null
+}
+
+/** transferHasNotebookDrag 拖悬停时是否带有笔记本载荷。 */
+export function transferHasNotebookDrag(dt: DataTransfer | null): boolean {
+  if (!dt) return false
+  return Array.from(dt.types || []).includes(NOTEBOOK_DRAG_MIME)
+}
+
+/** readNotebookDrag 从 drop 事件读取笔记本载荷。 */
+export function readNotebookDrag(dt: DataTransfer | null): NotebookDragPayload | null {
+  if (!dt) return null
+  return parseNotebookDrag(dt.getData(NOTEBOOK_DRAG_MIME) || '')
 }
 
 /** orderedGroups 按 sortOrder 排序分组。 */

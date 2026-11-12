@@ -24,6 +24,7 @@ import { READY_MESSAGES, useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildDockerSurface } from '../../stores/agentSurface'
 import { openAgentDraft, mentionSSH } from '../../features/agent/openAgentDraft'
+import { assetDragRowProps } from '../../features/agent/agentAssetDrag'
 import { openSftp, openDatabase, openNotebook, openLogs, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
@@ -814,7 +815,15 @@ export function DockerWorkbench() {
                   <li
                     key={ctx.id}
                     className={`conn-item docker-context-item ${ctx.id === activeContextId ? 'active' : ''} ${ctx.connected ? 'connected' : ''}`}
-                    {...pressProps(() => setActiveContextId(ctx.id))}
+                    {...assetDragRowProps(
+                      {
+                        kind: 'docker',
+                        id: ctx.id,
+                        label: contextDisplayName(ctx, localContextLabel),
+                        sublabel: contextEndpointLabel(ctx, sshHosts),
+                      },
+                      () => setActiveContextId(ctx.id),
+                    )}
                     onContextMenu={(e) => {
                       if (!canDeleteDockerContext(ctx)) return
                       e.preventDefault()

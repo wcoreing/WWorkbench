@@ -50,3 +50,15 @@ export function isSystemNotebookRoot(rel: string): boolean {
   const id = (rel || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
   return (SYSTEM_NOTEBOOK_ROOTS as readonly string[]).includes(id)
 }
+
+/** isMemoryProjectDir 是否 记忆区/{主机}/项目/{名}（本地/远端目录绑定落点）。 */
+export function isMemoryProjectDir(rel: string): boolean {
+  const id = (rel || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '')
+  const parts = id.split('/').filter(Boolean)
+  return (
+    parts.length === 4 &&
+    parts[0] === NOTEBOOK_ROOT_MEMORY &&
+    parts[2] === '项目' &&
+    Boolean(parts[1] && parts[3])
+  )
+}

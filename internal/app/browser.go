@@ -511,7 +511,7 @@ func (s *Service) PublishWorkflow(noteID, skillID string) ApiResult[map[string]i
 	if body == "" {
 		return ErrResult[map[string]interface{}](errno.New(errno.CodeInvalidArg, "工作流笔记正文为空", ""))
 	}
-	if _, err := s.notebook.LinkSkillToWorkflowNote(noteID, id); err != nil {
+	if _, err := s.notebook.MarkNoteAsSkill(noteID, id); err != nil {
 		return ErrResult[map[string]interface{}](fmt.Errorf("笔记标记工作流失败: %w", err))
 	}
 	noteIDOut, skillDir, assetsDir, _ := s.notebook.ResolveSkillPaths(id)

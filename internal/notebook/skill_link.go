@@ -38,7 +38,7 @@ func StripSkillMark(content string) string {
 	return strings.TrimLeft(out, " \t\r\n")
 }
 
-// LinkSkillNote 把笔记标成工作流（role=skill + 关联标记 + 工作流目录）。
+// LinkSkillNote 就地标成 Skill（role=skill + 关联标记；同目录 SKILL.md）。
 func (s *Service) LinkSkillNote(skillID, noteID string) error {
 	if s == nil {
 		return nil

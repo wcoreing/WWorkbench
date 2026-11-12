@@ -178,6 +178,25 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 				}
 				out["memoryNotes"] = items
 			}
+			hostFilter := ""
+			if len(hosts) == 1 {
+				hostFilter = hosts[0]
+			}
+			if projects, err := d.Notebook.ListHostProjects(hostFilter); err == nil && len(projects) > 0 {
+				items := make([]map[string]interface{}, 0, len(projects))
+				for _, p := range projects {
+					items = append(items, map[string]interface{}{
+						"dirRel":      p.DirRel,
+						"name":        p.Name,
+						"sshHostId":   p.SSHHostID,
+						"localPath":   p.LocalPath,
+						"remotePath":  p.RemotePath,
+						"noteId":      p.NoteID,
+						"skillNoteId": p.SkillNoteID,
+					})
+				}
+				out["hostProjects"] = items
+			}
 			if wp := d.Notebook.WorkspacePath(); wp != "" {
 				out["notebookWorkspace"] = wp
 			}

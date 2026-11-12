@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.12m"
+const AgentRulesVersion = "2026.11.12v"
 
 // agentRulesAckUntilUnix 第三方 MCP 已读规则的截止时间；内置 Agent 开跑时也会标记。
 var agentRulesAckUntilUnix atomic.Int64
@@ -90,18 +90,28 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 容器启停删除用 start_container / stop_container / remove_container，勿用 shell_probe 跑 docker rm/start/stop。
 - HTTP：先 save_http_request / save_http_environment，再 execute_http。
 - SSH / 库 / 日志 / Docker：save_* 落盘后再引用 ID；禁止只临时候参数打完就结束。
+- **@ 绑定 / 拖入 AI**：人从侧栏拖入的资产（ssh/database/docker/note/log/http）会出现在前馈「本轮 @ 绑定」；优先当默认操作对象，勿让用户再复述 ID。
+
+## 6b. 产品挂载拖拽（开发约定）
+- 前端统一 MIME：application/x-wworkbench-asset；列表行用 assetDragRowProps（拖+单击），AI 侧栏只认这一份协议。
+- **禁止**同一节点叠 pressProps：其 pointerdown.preventDefault 会掐死 HTML5 拖拽。
 
 ## 7. 笔记本 = 底座；业务 = 工作根组合
 - 笔记本是基础服务（树/编辑/版本/角色）；业务产品组合舞台 + 自己的工作根，禁止再造第二套文件树。
 - 读：list_notes / search_notes / get_note。写：notebook_append_content；附件进该笔记/Skill 目录的 assets。
 - **任务产品**工作根 = 工作流/；新任务 Skill 默认落 工作流/{name}/SKILL.md + log.md。
 - **运维类产品**工作根 = 运维/ + 记忆区/；主机约定写记忆册，不要塞进任务区「工作流/」。
+- **整理页**（运维/整理页/）：人多选笔记作数据源并写需求；骨架页已落盘。收口时 get_note 读源 → notebook_append_content(appendToNoteId=整理页) 写重组正文；不是图谱、不要机械粘贴全文。
+- **整理页账密**：该目录用于管理账号密码。源笔记中的账号/密码/口令/密钥/连接串必须原样写入整理页；禁止脱敏、打码、省略。聊天勿复述明文密码，写进整理页即可。
 - **主机记忆册**：选中/连接 SSH 后自动成册于 记忆区/{主机名}/。开跑优先注入该册。
 - **记忆区项目 + 工作流协议**：部署等方法可落在 记忆区/{主机}/项目/{名}/SKILL.md（同一套 get_skill / update_skill）；get_skill 传完整目录路径或无歧义短名。
+- **项目本地/远端目录**：约定笔记 frontmatter localPath / remotePath（侧栏右键设置）。发版前读约定或 get_workbench_context.hostProjects；本地改代码用 localPath，远端操作对准 remotePath。
 - **动手改某台机之前**：list_notes(sshHostId, role=memory) → get_note；部署再 get_skill(记忆区/…/项目/…)。
 - **工作流笔记**（role=skill / **/SKILL.md）：真源。list_skills / get_skill；**优先 get_skill 后自己用工具执行**；跑完 **update_skill**（name=目录路径或短名）沉淀。
-- publish_agent_skill(noteId) 仅标记 skillId；日常改正文用 update_skill / 直接改该目录 SKILL.md。
+- publish_agent_skill(noteId) **就地**标为 Skill（同目录 SKILL.md），不迁到「工作流/」；任务区发布须显式落到 工作流/{name}/。
 - 长期主机上下文 role=memory 且必须带 sshHostId；优先落主机册；项目方法用同目录 Skill。
+- Skill 寻址：短名默认 工作流/{name}；目录路径/业务根名 → 该目录 SKILL.md（见 notebook/skillref）。
+- 笔记本路径变更（改名/移动/复制/删除/建目录/建文件）会发 workbench-changed domain=notebook.path；writeId 前缀 ui-notebook-* 表示本机 UI 已处理。
 
 ## 8. 插件包（database 产品 UI，不是连库）
 - 先 get_plugin_protocol；再改 src/ui；局部 edit_plugin_pack_file；构建 build_plugin_pack_ui。

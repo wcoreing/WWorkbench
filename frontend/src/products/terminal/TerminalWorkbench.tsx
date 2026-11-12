@@ -10,6 +10,7 @@ import { ProductLayout } from '../../components/layout'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { IconCopy, IconDocker, IconLaptop, IconPlus, IconRefresh, IconTerminal } from '../../components/Icons'
 import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
+import { assetDragRowProps } from '../../features/agent/agentAssetDrag'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildTerminalSurface } from '../../stores/agentSurface'
@@ -1066,7 +1067,7 @@ export function TerminalWorkbench() {
                           <li
                             key={h.id}
                             className={`conn-item ${hostItemActive(h.id) ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
-                            {...pressProps(() => void openRecentHostWindow({ ...h, kind: 'ssh' }))}
+                            {...assetDragRowProps(mentionSSH(h), () => void openRecentHostWindow({ ...h, kind: 'ssh' }))}
                             onContextMenu={(e) => {
                               e.preventDefault()
                               e.stopPropagation()
@@ -1129,7 +1130,7 @@ export function TerminalWorkbench() {
                           <li
                             key={h.id}
                             className={`conn-item ${hostItemActive(h.id) ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
-                            {...pressProps(() => void openRecentHostWindow(h))}
+                            {...assetDragRowProps(mentionDockerHost(h), () => void openRecentHostWindow(h))}
                             onContextMenu={(e) => {
                               e.preventDefault()
                               e.stopPropagation()

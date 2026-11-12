@@ -11,6 +11,7 @@ import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildSftpSurface, briefList } from '../../stores/agentSurface'
 import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
+import { assetDragRowProps } from '../../features/agent/agentAssetDrag'
 import { openNotebook, openTerminal, openLogs, openBackup, openSSHForward, useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadStr } from '../../workbench/commandPayload'
@@ -910,7 +911,16 @@ export function SftpWorkbench() {
                           <li
                             key={h.id}
                             className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''}`}
-                            {...pressProps(() => connectHost(h))}
+                            {...assetDragRowProps(
+                              mentionSSH({
+                                id: h.id,
+                                name: h.name,
+                                host: h.host || '',
+                                user: h.user,
+                                port: h.port,
+                              }),
+                              () => void connectHost(h),
+                            )}
                             onDoubleClick={() => connectHost(h)}
                             onContextMenu={(e) => {
                               e.preventDefault()
@@ -974,7 +984,7 @@ export function SftpWorkbench() {
                           <li
                             key={h.id}
                             className={`conn-item ${connectingId === h.id ? 'active' : ''} ${connectedHostIds.has(h.id) ? 'connected' : ''} ${h.running === false ? 'stopped' : ''}`}
-                            {...pressProps(() => connectHost(h))}
+                            {...assetDragRowProps(mentionDockerHost(h), () => void connectHost(h))}
                             onDoubleClick={() => connectHost(h)}
                             onContextMenu={(e) => {
                               e.preventDefault()

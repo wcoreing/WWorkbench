@@ -335,6 +335,10 @@ func (s *Service) RenameNotebookPath(rel, newName string) ApiResult[notebook.Pat
 	if err != nil {
 		return ErrResult[notebook.PathMutation](err)
 	}
+	if s.radar != nil {
+		s.radar.EmitNotebookPath(workbench.RadarOpUpdate, []string{out.From, out.To},
+			workbench.RadarWriteNotebookRename, pathBaseLabel(out.To), false)
+	}
 	return OkResult(out)
 }
 
@@ -343,6 +347,10 @@ func (s *Service) MoveNotebookPath(fromRel, destDirRel string) ApiResult[noteboo
 	out, err := s.notebook.MoveRel(fromRel, destDirRel)
 	if err != nil {
 		return ErrResult[notebook.PathMutation](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitNotebookPath(workbench.RadarOpUpdate, []string{out.From, out.To},
+			workbench.RadarWriteNotebookMove, pathBaseLabel(out.To), false)
 	}
 	return OkResult(out)
 }
@@ -353,6 +361,10 @@ func (s *Service) CopyNotebookPath(fromRel, destDirRel string) ApiResult[noteboo
 	if err != nil {
 		return ErrResult[notebook.PathMutation](err)
 	}
+	if s.radar != nil {
+		s.radar.EmitNotebookPath(workbench.RadarOpCreate, []string{out.From, out.To},
+			workbench.RadarWriteNotebookCopy, pathBaseLabel(out.To), false)
+	}
 	return OkResult(out)
 }
 
@@ -360,6 +372,10 @@ func (s *Service) CopyNotebookPath(fromRel, destDirRel string) ApiResult[noteboo
 func (s *Service) DeleteNotebookPath(rel string) ApiResult[bool] {
 	if err := s.notebook.DeleteRel(rel); err != nil {
 		return ErrResult[bool](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitNotebookPath(workbench.RadarOpDelete, []string{rel},
+			workbench.RadarWriteNotebookDeletePath, pathBaseLabel(rel), false)
 	}
 	return OkResult(true)
 }
@@ -370,7 +386,65 @@ func (s *Service) CreateNotebookDir(parentRel, name string) ApiResult[string] {
 	if err != nil {
 		return ErrResult[string](err)
 	}
+	if s.radar != nil {
+		s.radar.EmitNotebookPath(workbench.RadarOpCreate, []string{id},
+			workbench.RadarWriteNotebookMkdir, pathBaseLabel(id), false)
+	}
 	return OkResult(id)
+}
+
+// PickLocalProjectDir 选择本机项目工作目录（取消返回空串）。
+func (s *Service) PickLocalProjectDir(defaultDir string) ApiResult[string] {
+	dir, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
+		Title:            "选择本地项目目录",
+		DefaultDirectory: strings.TrimSpace(defaultDir),
+	})
+	if err != nil {
+		return ErrResult[string](err)
+	}
+	return OkResult(dir)
+}
+
+// GetHostProject 读取记忆区项目绑定（localPath/remotePath）。
+func (s *Service) GetHostProject(dirRel string) ApiResult[model.HostProjectDO] {
+	if s.notebook == nil {
+		return ErrResult[model.HostProjectDO](errno.New(errno.CodeStoreFailed, "笔记本未就绪", ""))
+	}
+	p, err := s.notebook.GetHostProject(dirRel)
+	if err != nil {
+		return ErrResult[model.HostProjectDO](err)
+	}
+	return OkResult(*p)
+}
+
+// ListHostProjects 列出记忆区项目绑定；sshHostId 可空。
+func (s *Service) ListHostProjects(sshHostId string) ApiResult[[]model.HostProjectDO] {
+	if s.notebook == nil {
+		return ErrResult[[]model.HostProjectDO](errno.New(errno.CodeStoreFailed, "笔记本未就绪", ""))
+	}
+	list, err := s.notebook.ListHostProjects(sshHostId)
+	if err != nil {
+		return ErrResult[[]model.HostProjectDO](err)
+	}
+	if list == nil {
+		list = []model.HostProjectDO{}
+	}
+	return OkResult(list)
+}
+
+// SaveHostProject 保存项目本地/远端目录绑定。
+func (s *Service) SaveHostProject(in model.HostProjectDO) ApiResult[model.HostProjectDO] {
+	if s.notebook == nil {
+		return ErrResult[model.HostProjectDO](errno.New(errno.CodeStoreFailed, "笔记本未就绪", ""))
+	}
+	p, err := s.notebook.SaveHostProject(in)
+	if err != nil {
+		return ErrResult[model.HostProjectDO](err)
+	}
+	if s.radar != nil && p.NoteID != "" {
+		s.radar.EmitNotebookNote(workbench.RadarOpUpdate, p.NoteID, "project-"+p.Name, p.Name, true)
+	}
+	return OkResult(*p)
 }
 
 // EnsureHostMemoryBook 幂等创建/复用 记忆区/{主机名}/ 主机记忆册。
@@ -410,7 +484,24 @@ func (s *Service) CreateNotebookFile(parentRel, name string) ApiResult[model.Not
 	if err != nil {
 		return ErrResult[model.NoteDO](err)
 	}
+	if s.radar != nil {
+		s.radar.EmitNotebookPath(workbench.RadarOpCreate, []string{n.ID},
+			workbench.RadarWriteNotebookCreateFile, n.Title, false)
+		s.radar.EmitNotebookNote(workbench.RadarOpCreate, n.ID,
+			workbench.RadarWriteNotebookCreateFile, n.Title, false)
+	}
 	return OkResult(*n)
+}
+
+func pathBaseLabel(rel string) string {
+	rel = strings.Trim(strings.ReplaceAll(rel, "\\", "/"), "/")
+	if rel == "" {
+		return ""
+	}
+	if i := strings.LastIndex(rel, "/"); i >= 0 {
+		return rel[i+1:]
+	}
+	return rel
 }
 
 // RevealNotebookWorkspace 在访达中打开笔记本工作区根目录。

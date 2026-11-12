@@ -329,29 +329,29 @@ func (s *Service) saveNoteFS(n model.NoteDO) (*model.NoteDO, error) {
 		n.Role = model.NoteRoleSkill
 		// 已在任意业务根下的 SKILL.md：就地保存，不迁回「工作流/」
 		if !isSkillPathID(n.ID) {
-			ref := ""
-			if g := strings.TrimSpace(filepath.ToSlash(n.GroupID)); g != "" && g != SkillGroupName {
-				// 落在指定分组目录下
-				ref = g
-			}
-			if ref == "" {
-				ref = SkillNameFromNoteID(n.ID)
-			}
-			if ref == "" {
-				ref = ReadLinkedSkillID(n.Content)
-			}
-			if ref == "" {
-				if fm, _, ok := PeekFrontmatter(n.Content); ok {
-					ref = FrontmatterString(fm, "name")
-					if ref == "" {
-						ref = FrontmatterString(fm, "skillId")
+			g := strings.Trim(filepath.ToSlash(strings.TrimSpace(n.GroupID)), "/")
+			switch {
+			case g != "" && g != SkillGroupName:
+				// 分组目录就地成 Skill（含「运维」「记忆区/…」）；不做短名→工作流/ 映射
+				n.ID = SkillEntryIDInDir(g)
+			default:
+				ref := SkillNameFromNoteID(n.ID)
+				if ref == "" {
+					ref = ReadLinkedSkillID(n.Content)
+				}
+				if ref == "" {
+					if fm, _, ok := PeekFrontmatter(n.Content); ok {
+						ref = FrontmatterString(fm, "name")
+						if ref == "" {
+							ref = FrontmatterString(fm, "skillId")
+						}
 					}
 				}
+				if ref == "" {
+					ref = SuggestSkillID(n.Title, n.ID)
+				}
+				n.ID = SkillNoteID(ref)
 			}
-			if ref == "" {
-				ref = SuggestSkillID(n.Title, n.ID)
-			}
-			n.ID = SkillNoteID(ref)
 		}
 		if dirRel := SkillDirFromNoteID(n.ID); dirRel != "" {
 			n.GroupID = dirRel

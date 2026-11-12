@@ -95,11 +95,14 @@ function validateSSHHostForm(form: SSHHost, locale: AppLocale): string | null {
   return null
 }
 
+type HostModalTab = 'connection' | 'ecs'
+
 /** SSH 主机配置弹窗 */
 export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
   const { t, locale } = useI18n()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [form, setForm] = useState<SSHHost>(emptyHost())
+  const [tab, setTab] = useState<HostModalTab>('connection')
   const [accounts, setAccounts] = useState<CloudAccount[]>([])
   const [cloudMode, setCloudMode] = useState('')
   const [newAk, setNewAk] = useState(emptyAk())
@@ -114,6 +117,7 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
     if (!open) return
     setError('')
     setSuccess('')
+    setTab('connection')
     setNewAk(emptyAk())
     api.listCloudAccounts().then(setAccounts).catch(() => setAccounts([]))
     if (!initial?.id) {
@@ -247,6 +251,7 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
   const handleTest = async () => {
     const invalid = validateSSHHostForm(form, locale)
     if (invalid) {
+      setTab('connection')
       setError(invalid)
       return
     }
@@ -269,21 +274,25 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
   const handleSave = async () => {
     const invalid = validateSSHHostForm(form, locale)
     if (invalid) {
+      setTab('connection')
       setError(invalid)
       return
     }
     const payload = { ...form, touchCloud: true }
     if (cloudMode === 'new') {
       if (!newAk.name.trim() || !newAk.accessKeyId.trim() || !newAk.accessKeySecret.trim()) {
+        setTab('ecs')
         setError(t('sshHost.ecsErrAccount'))
         return
       }
       if (!(form.cloudRegion || '').trim() || !form.cloudInstanceId?.trim()) {
+        setTab('ecs')
         setError(t('sshHost.ecsErrBind'))
         return
       }
     } else if (cloudMode) {
       if (!(form.cloudRegion || '').trim() || !form.cloudInstanceId?.trim()) {
+        setTab('ecs')
         setError(t('sshHost.ecsErrBind'))
         return
       }
@@ -350,223 +359,262 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
         </header>
 
         <div className="wn-modal-body">
+          <nav className="wn-modal-tabs" role="tablist" aria-label={t('sshHost.editTitle')}>
+            <button
+              type="button"
+              role="tab"
+              id="ssh-host-tab-connection"
+              aria-selected={tab === 'connection'}
+              aria-controls="ssh-host-panel-connection"
+              className={`wn-modal-tab${tab === 'connection' ? ' active' : ''}`}
+              {...pressProps(() => setTab('connection'))}
+            >
+              {t('sshHost.tabConnection')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="ssh-host-tab-ecs"
+              aria-selected={tab === 'ecs'}
+              aria-controls="ssh-host-panel-ecs"
+              className={`wn-modal-tab${tab === 'ecs' ? ' active' : ''}`}
+              {...pressProps(() => setTab('ecs'))}
+            >
+              {t('sshHost.tabECS')}
+              {Boolean(cloudMode) && <span className="wn-modal-tab-dot" aria-hidden />}
+            </button>
+          </nav>
+
           <div className="wn-form">
-            <div className="wn-field">
-              <label className="wn-label" htmlFor="ssh-host-name">
-                {t('sshHost.name')}
-              </label>
-              <input
-                id="ssh-host-name"
-                className="wn-input"
-                value={form.name}
-                onChange={(e) => update({ name: e.target.value })}
-                placeholder={t('sshHost.namePlaceholder')}
-                autoFocus
-              />
-            </div>
-
-            <div className="wn-form-row">
-              <div className="wn-field">
-                <label className="wn-label" htmlFor="ssh-host-addr">
-                  {t('sshHost.host')}
-                </label>
-                <input
-                  id="ssh-host-addr"
-                  className="wn-input"
-                  value={form.host}
-                  onChange={(e) => update({ host: e.target.value })}
-                  placeholder={t('sshHost.hostPlaceholder')}
-                />
-              </div>
-              <div className="wn-field wn-field-narrow">
-                <label className="wn-label" htmlFor="ssh-host-port">
-                  {t('sshHost.port')}
-                </label>
-                <input
-                  id="ssh-host-port"
-                  className="wn-input"
-                  type="number"
-                  min={1}
-                  max={65535}
-                  value={form.port}
-                  onChange={(e) => update({ port: Number(e.target.value) || 22 })}
-                />
-              </div>
-            </div>
-
-            <div className="wn-field">
-              <label className="wn-label" htmlFor="ssh-host-user">
-                {t('sshHost.user')}
-              </label>
-              <input
-                id="ssh-host-user"
-                className="wn-input"
-                value={form.user}
-                onChange={(e) => update({ user: e.target.value })}
-              />
-            </div>
-
-            <div className="conn-ssh-block">
-              <div className="conn-ssh-fields">
+            {tab === 'connection' && (
+              <div
+                id="ssh-host-panel-connection"
+                role="tabpanel"
+                aria-labelledby="ssh-host-tab-connection"
+              >
                 <div className="wn-field">
-                  <label className="wn-label" htmlFor="ssh-host-key">
-                    {t('sshHost.keyPath')}
+                  <label className="wn-label" htmlFor="ssh-host-name">
+                    {t('sshHost.name')}
                   </label>
                   <input
-                    id="ssh-host-key"
+                    id="ssh-host-name"
                     className="wn-input"
-                    value={form.keyPath}
-                    onChange={(e) => update({ keyPath: e.target.value })}
-                    placeholder={t('sshHost.keyPathPlaceholder')}
+                    value={form.name}
+                    onChange={(e) => update({ name: e.target.value })}
+                    placeholder={t('sshHost.namePlaceholder')}
+                    autoFocus
                   />
                 </div>
-                <div className="wn-field">
-                  <label className="wn-label" htmlFor="ssh-host-pass">
-                    {t('sshHost.password')}
-                  </label>
-                  <input
-                    id="ssh-host-pass"
-                    className="wn-input"
-                    type="password"
-                    value={form.password}
-                    onChange={(e) =>
-                      update({
-                        password: e.target.value,
-                        clearPassword: false,
-                      })
-                    }
-                    placeholder={passwordPlaceholder}
-                    autoComplete="new-password"
-                  />
-                  {isEdit && form.hasPassword && !form.clearPassword && (
-                    <button
-                      type="button"
-                      className="wn-btn wn-btn-tool"
-                      style={{ marginTop: 6 }}
-                      {...pressProps(() =>
-                        update({ password: '', clearPassword: true, hasPassword: false }),
-                      )}
-                    >
-                      {t('sshHost.clearSavedPassword')}
-                    </button>
-                  )}
-                  {form.clearPassword && (
-                    <p className="conn-ssh-hint">{t('sshHost.passwordWillClear')}</p>
-                  )}
-                </div>
-                <p className="conn-ssh-hint">{t('sshHost.hint')}</p>
-              </div>
-            </div>
 
-            <div className="conn-ssh-block">
-              <p className="wn-label">{t('sshHost.ecsTitle')}</p>
-              <p className="conn-ssh-hint">{t('sshHost.ecsHint')}</p>
-              <div className="wn-field">
-                <label className="wn-label" htmlFor="ssh-host-ecs-account">
-                  {t('sshHost.ecsAccount')}
-                </label>
-                <Select
-                  id="ssh-host-ecs-account"
-                  value={cloudMode}
-                  options={[
-                    { value: '', label: t('sshHost.ecsOff') },
-                    ...accounts.map((a) => ({ value: a.id, label: a.name || a.accessKeyId })),
-                    { value: 'new', label: t('sshHost.ecsNew') },
-                  ]}
-                  onChange={setCloudMode}
-                />
-              </div>
-              {cloudMode === 'new' && (
-                <>
-                  <div className="wn-field">
-                    <label className="wn-label" htmlFor="ssh-host-ecs-name">
-                      {t('sshHost.ecsAccountName')}
-                    </label>
-                    <input
-                      id="ssh-host-ecs-name"
-                      className="wn-input"
-                      value={newAk.name}
-                      onChange={(e) => setNewAk((v) => ({ ...v, name: e.target.value }))}
-                      placeholder={t('sshHost.ecsAccountNamePlaceholder')}
-                    />
-                  </div>
-                  <div className="wn-field">
-                    <label className="wn-label" htmlFor="ssh-host-ecs-ak">
-                      {t('sshHost.ecsAccessKeyId')}
-                    </label>
-                    <input
-                      id="ssh-host-ecs-ak"
-                      className="wn-input"
-                      value={newAk.accessKeyId}
-                      onChange={(e) => setNewAk((v) => ({ ...v, accessKeyId: e.target.value }))}
-                      autoComplete="off"
-                    />
-                  </div>
-                  <div className="wn-field">
-                    <label className="wn-label" htmlFor="ssh-host-ecs-sk">
-                      {t('sshHost.ecsAccessKeySecret')}
-                    </label>
-                    <input
-                      id="ssh-host-ecs-sk"
-                      className="wn-input"
-                      type="password"
-                      value={newAk.accessKeySecret}
-                      onChange={(e) => setNewAk((v) => ({ ...v, accessKeySecret: e.target.value }))}
-                      autoComplete="new-password"
-                    />
-                  </div>
-                </>
-              )}
-              {cloudMode && (
                 <div className="wn-form-row">
                   <div className="wn-field">
-                    <label className="wn-label" htmlFor="ssh-host-ecs-region">
-                      {t('sshHost.ecsRegion')}
+                    <label className="wn-label" htmlFor="ssh-host-addr">
+                      {t('sshHost.host')}
                     </label>
-                    <Select
-                      id="ssh-host-ecs-region"
-                      value={form.cloudRegion || ''}
-                      placeholder={t('sshHost.ecsRegion')}
-                      options={regionOptions}
-                      onChange={(cloudRegion) => {
-                        if (cloudRegion === (form.cloudRegion || '')) return
-                        update({ cloudRegion, cloudInstanceId: '' })
-                      }}
+                    <input
+                      id="ssh-host-addr"
+                      className="wn-input"
+                      value={form.host}
+                      onChange={(e) => update({ host: e.target.value })}
+                      placeholder={t('sshHost.hostPlaceholder')}
                     />
                   </div>
-                  {cloudMode === 'new' ? (
+                  <div className="wn-field wn-field-narrow">
+                    <label className="wn-label" htmlFor="ssh-host-port">
+                      {t('sshHost.port')}
+                    </label>
+                    <input
+                      id="ssh-host-port"
+                      className="wn-input"
+                      type="number"
+                      min={1}
+                      max={65535}
+                      value={form.port}
+                      onChange={(e) => update({ port: Number(e.target.value) || 22 })}
+                    />
+                  </div>
+                </div>
+
+                <div className="wn-field">
+                  <label className="wn-label" htmlFor="ssh-host-user">
+                    {t('sshHost.user')}
+                  </label>
+                  <input
+                    id="ssh-host-user"
+                    className="wn-input"
+                    value={form.user}
+                    onChange={(e) => update({ user: e.target.value })}
+                  />
+                </div>
+
+                <div className="conn-ssh-block">
+                  <div className="conn-ssh-fields">
                     <div className="wn-field">
-                      <label className="wn-label">&nbsp;</label>
-                      <button
-                        type="button"
-                        className="wn-btn wn-btn-tool"
-                        {...pressProps(pullNewAccount, { disabled: instanceLoading })}
-                        disabled={instanceLoading}
-                      >
-                        {instanceLoading ? t('sshHost.ecsPulling') : t('sshHost.ecsPull')}
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="wn-field">
-                      <label className="wn-label" htmlFor="ssh-host-ecs-instance">
-                        {t('sshHost.ecsInstanceId')}
+                      <label className="wn-label" htmlFor="ssh-host-key">
+                        {t('sshHost.keyPath')}
                       </label>
-                      <Select
-                        id="ssh-host-ecs-instance"
-                        value={form.cloudInstanceId || ''}
-                        placeholder={instanceLoading ? t('sshHost.ecsLoading') : t('sshHost.ecsPick')}
-                        options={instanceOptions}
-                        disabled={instanceLoading || instanceOptions.length === 0}
-                        onChange={(cloudInstanceId) => update({ cloudInstanceId })}
+                      <input
+                        id="ssh-host-key"
+                        className="wn-input"
+                        value={form.keyPath}
+                        onChange={(e) => update({ keyPath: e.target.value })}
+                        placeholder={t('sshHost.keyPathPlaceholder')}
                       />
-                      {!instanceLoading && form.cloudRegion && instances.length === 0 && (
-                        <p className="conn-ssh-hint">{t('sshHost.ecsEmpty')}</p>
+                    </div>
+                    <div className="wn-field">
+                      <label className="wn-label" htmlFor="ssh-host-pass">
+                        {t('sshHost.password')}
+                      </label>
+                      <input
+                        id="ssh-host-pass"
+                        className="wn-input"
+                        type="password"
+                        value={form.password}
+                        onChange={(e) =>
+                          update({
+                            password: e.target.value,
+                            clearPassword: false,
+                          })
+                        }
+                        placeholder={passwordPlaceholder}
+                        autoComplete="new-password"
+                      />
+                      {isEdit && form.hasPassword && !form.clearPassword && (
+                        <button
+                          type="button"
+                          className="wn-btn wn-btn-tool"
+                          style={{ marginTop: 6 }}
+                          {...pressProps(() =>
+                            update({ password: '', clearPassword: true, hasPassword: false }),
+                          )}
+                        >
+                          {t('sshHost.clearSavedPassword')}
+                        </button>
+                      )}
+                      {form.clearPassword && (
+                        <p className="conn-ssh-hint">{t('sshHost.passwordWillClear')}</p>
                       )}
                     </div>
-                  )}
+                    <p className="conn-ssh-hint">{t('sshHost.hint')}</p>
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {tab === 'ecs' && (
+              <div id="ssh-host-panel-ecs" role="tabpanel" aria-labelledby="ssh-host-tab-ecs">
+                <p className="conn-ssh-hint" style={{ marginTop: 0 }}>
+                  {t('sshHost.ecsHint')}
+                </p>
+                <div className="wn-field">
+                  <label className="wn-label" htmlFor="ssh-host-ecs-account">
+                    {t('sshHost.ecsAccount')}
+                  </label>
+                  <Select
+                    id="ssh-host-ecs-account"
+                    value={cloudMode}
+                    options={[
+                      { value: '', label: t('sshHost.ecsOff') },
+                      ...accounts.map((a) => ({ value: a.id, label: a.name || a.accessKeyId })),
+                      { value: 'new', label: t('sshHost.ecsNew') },
+                    ]}
+                    onChange={setCloudMode}
+                  />
+                </div>
+                {cloudMode === 'new' && (
+                  <>
+                    <div className="wn-field">
+                      <label className="wn-label" htmlFor="ssh-host-ecs-name">
+                        {t('sshHost.ecsAccountName')}
+                      </label>
+                      <input
+                        id="ssh-host-ecs-name"
+                        className="wn-input"
+                        value={newAk.name}
+                        onChange={(e) => setNewAk((v) => ({ ...v, name: e.target.value }))}
+                        placeholder={t('sshHost.ecsAccountNamePlaceholder')}
+                      />
+                    </div>
+                    <div className="wn-field">
+                      <label className="wn-label" htmlFor="ssh-host-ecs-ak">
+                        {t('sshHost.ecsAccessKeyId')}
+                      </label>
+                      <input
+                        id="ssh-host-ecs-ak"
+                        className="wn-input"
+                        value={newAk.accessKeyId}
+                        onChange={(e) => setNewAk((v) => ({ ...v, accessKeyId: e.target.value }))}
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="wn-field">
+                      <label className="wn-label" htmlFor="ssh-host-ecs-sk">
+                        {t('sshHost.ecsAccessKeySecret')}
+                      </label>
+                      <input
+                        id="ssh-host-ecs-sk"
+                        className="wn-input"
+                        type="password"
+                        value={newAk.accessKeySecret}
+                        onChange={(e) => setNewAk((v) => ({ ...v, accessKeySecret: e.target.value }))}
+                        autoComplete="new-password"
+                      />
+                    </div>
+                  </>
+                )}
+                {cloudMode && (
+                  <div className="wn-form-row">
+                    <div className="wn-field">
+                      <label className="wn-label" htmlFor="ssh-host-ecs-region">
+                        {t('sshHost.ecsRegion')}
+                      </label>
+                      <Select
+                        id="ssh-host-ecs-region"
+                        value={form.cloudRegion || ''}
+                        placeholder={t('sshHost.ecsRegion')}
+                        options={regionOptions}
+                        onChange={(cloudRegion) => {
+                          if (cloudRegion === (form.cloudRegion || '')) return
+                          update({ cloudRegion, cloudInstanceId: '' })
+                        }}
+                      />
+                    </div>
+                    {cloudMode === 'new' ? (
+                      <div className="wn-field">
+                        <label className="wn-label">&nbsp;</label>
+                        <button
+                          type="button"
+                          className="wn-btn wn-btn-tool"
+                          {...pressProps(pullNewAccount, { disabled: instanceLoading })}
+                          disabled={instanceLoading}
+                        >
+                          {instanceLoading ? t('sshHost.ecsPulling') : t('sshHost.ecsPull')}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="wn-field">
+                        <label className="wn-label" htmlFor="ssh-host-ecs-instance">
+                          {t('sshHost.ecsInstanceId')}
+                        </label>
+                        <Select
+                          id="ssh-host-ecs-instance"
+                          value={form.cloudInstanceId || ''}
+                          placeholder={
+                            instanceLoading ? t('sshHost.ecsLoading') : t('sshHost.ecsPick')
+                          }
+                          options={instanceOptions}
+                          disabled={instanceLoading || instanceOptions.length === 0}
+                          onChange={(cloudInstanceId) => update({ cloudInstanceId })}
+                        />
+                        {!instanceLoading && form.cloudRegion && instances.length === 0 && (
+                          <p className="conn-ssh-hint">{t('sshHost.ecsEmpty')}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {error && <div className="wn-form-msg error">{error}</div>}

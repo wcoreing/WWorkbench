@@ -1,22 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react'
 import { api } from '../../api/client'
-import type { NoteRole, NoteSummary, NotebookGroup } from '../../api/types'
+import type { HostProject, NoteRole, NoteSummary, NotebookGroup } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
-import { IconFolder, IconNotebook, IconPlus, IconRefresh } from '../../components/Icons'
-import { ContextMenu } from '../../components/ContextMenu'
+import { IconFolder, IconPlus, IconRefresh } from '../../components/Icons'
 import { useI18n } from '../../i18n'
 import { notify } from '../../notify'
 import { pressProps } from '../../components/compat'
 import { ResourceTags, type ResourceTag } from '../../tags'
 import { DirVersionModal } from './DirVersionModal'
-import { NOTEBOOK_ROOT_OPS, isSystemNotebookRoot } from './businessRoots'
+import { NOTEBOOK_ROOT_OPS, isMemoryProjectDir, isSystemNotebookRoot } from './businessRoots'
 import {
+  NOTEBOOK_DRAG_MIME,
   NOTEBOOK_ROOT_ID,
   buildNotebookTree,
   filterNotebookTree,
   findNotebookSubtree,
   type NotebookTreeNode,
 } from './notebookTree'
+import { beginAssetDrag } from '../agent/agentAssetDrag'
+import { mentionNote } from '../agent/openAgentDraft'
 import {
   TAG_FOCUS_WORKFLOW,
   TAG_OPEN_MEMORY_NOTE,
@@ -33,6 +35,12 @@ import {
   type NotebookClipboard,
   type NotebookInlineEdit,
 } from './notebookPathOps'
+import { useHostProjectBinding } from './useHostProjectBinding'
+import {
+  NotebookSidebarContextMenu,
+  type NotebookSidebarCtxMenu,
+} from './NotebookSidebarContextMenu'
+import { NotebookSidebarTree } from './NotebookSidebarTree'
 
 interface Props {
   groups: NotebookGroup[]
@@ -64,12 +72,12 @@ interface Props {
   scopeRootIds?: readonly string[]
   /** 紧凑：藏搜索/角色筛选，适合嵌在 NotebookIDE。 */
   compact?: boolean
+  /** 记忆区项目绑定（dirRel → 本地/远端路径）。 */
+  projectByDir?: Record<string, HostProject>
+  onProjectBindingChanged?: () => void | Promise<void>
+  /** 多选笔记后「生成整理页」（运维壳挂载）。 */
+  onComposeBrief?: (noteIds: string[]) => void
 }
-
-type CtxMenu =
-  | { kind: 'folder'; x: number; y: number; group: NotebookGroup }
-  | { kind: 'note'; x: number; y: number; note: NoteSummary }
-  | { kind: 'root'; x: number; y: number }
 
 /** NotebookSidebar 笔记本侧栏：目录 + 笔记文件树（真路径操作）。 */
 export function NotebookSidebar({
@@ -99,10 +107,13 @@ export function NotebookSidebar({
   scopeRootId = '',
   scopeRootIds,
   compact = false,
+  projectByDir = {},
+  onProjectBindingChanged,
+  onComposeBrief,
 }: Props) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const [ctx, setCtx] = useState<CtxMenu | null>(null)
+  const [ctx, setCtx] = useState<NotebookSidebarCtxMenu | null>(null)
   const [selectedNotes, setSelectedNotes] = useState<Record<string, boolean>>({})
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -138,13 +149,22 @@ export function NotebookSidebar({
       workflow: t('notebook.tagWorkflow'),
       memory: t('notebook.roleBadgeMemory'),
       versioned: t('notebook.tagVersioned'),
+      localBound: t('notebook.tagLocalBound'),
       titleWorkflow: t('notebook.tagTitleWorkflow'),
       titleMemory: t('notebook.tagTitleMemory'),
       titleVersioned: t('notebook.tagTitleVersioned'),
       titleWorkflowFolder: t('notebook.tagTitleWorkflowFolder'),
+      titleLocalBound: t('notebook.tagTitleLocalBound'),
     }),
     [t],
   )
+
+  const { setProjectLocalDir, setProjectRemoteDir } = useHostProjectBinding({
+    projectByDir,
+    onProjectBindingChanged,
+    t,
+  })
+
   const roleSummaries = useMemo(() => {
     if (!roleFilter) return summaries
     return summaries.filter((n) => {
@@ -238,10 +258,6 @@ export function NotebookSidebar({
     }, 0)
     return () => clearTimeout(timer)
   }, [inlineSessionKey])
-
-  const toggleExpand = (id: string) => {
-    setExpanded((m) => ({ ...m, [id]: !m[id] }))
-  }
 
   const toggleNoteSelected = (noteId: string, e: MouseEvent) => {
     e.stopPropagation()
@@ -454,6 +470,18 @@ export function NotebookSidebar({
     e.dataTransfer.effectAllowed = 'move'
   }
 
+  /** onDragStartNote 树内移动 + 统一资产 MIME 拖入 AI 侧栏。 */
+  const onDragStartNote = (note: NoteSummary, e: DragEvent) => {
+    const opRel = opRelForNote(note.id)
+    const title = basenameRel(note.id) || note.title
+    e.dataTransfer.setData('text/wwb-notebook-rel', opRel)
+    e.dataTransfer.setData(
+      NOTEBOOK_DRAG_MIME,
+      JSON.stringify({ kind: 'note', id: note.id, title }),
+    )
+    beginAssetDrag(e, mentionNote({ id: note.id, title }), { effectAllowed: 'copyMove' })
+  }
+
   const onDragOverFolder = (folderId: string, e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -475,157 +503,6 @@ export function NotebookSidebar({
       notify.error((err as Error).message)
     }
   }
-
-  const renderInline = (key: string) => {
-    if (!inline) return null
-    if (inline.kind === 'rename' && inline.rel !== key) return null
-    if (inline.kind === 'create' && joinRel(inline.parent, '__creating__') !== key) return null
-    return (
-      <input
-        ref={inlineRef}
-        className="notebook-tree-inline"
-        value={inline.value}
-        onChange={(e) => {
-          const value = e.target.value
-          setInline((prev) => (prev ? { ...prev, value } : prev))
-        }}
-        onBlur={() => void commitInline()}
-        onKeyDown={onInlineKey}
-        onClick={(e) => e.stopPropagation()}
-      />
-    )
-  }
-
-  const renderCreateRow = (parent: string, depth: number) => {
-    if (!inline || inline.kind !== 'create' || inline.parent !== parent) return null
-    return (
-      <li key={`create-${parent}`}>
-        <div className="notebook-tree-note is-inline" style={{ paddingLeft: 8 + depth * 14 }}>
-          <span className="notebook-tree-chevron" aria-hidden />
-          <span className="notebook-tree-note-icon" aria-hidden>
-            {inline.isDir ? <IconFolder size={14} /> : <IconNotebook size={14} />}
-          </span>
-          <input
-            ref={inlineRef}
-            className="notebook-tree-inline"
-            value={inline.value}
-            onChange={(e) => {
-              const value = e.target.value
-              setInline((prev) => (prev ? { ...prev, value } : prev))
-            }}
-            onBlur={() => void commitInline()}
-            onKeyDown={onInlineKey}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      </li>
-    )
-  }
-
-  const renderNodes = (nodes: NotebookTreeNode[], depth: number, parentId: string) => (
-    <ul className="notebook-tree">
-      {nodes.map((n) => {
-        if (n.kind === 'folder') {
-          const open = expanded[n.id] ?? depth < 1
-          const group = groupById.get(n.id)
-          const renaming = inline?.kind === 'rename' && inline.rel === n.id
-          return (
-            <li key={`f-${n.id}`}>
-              <div
-                className={`notebook-tree-folder${selectedFolderId === n.id ? ' is-selected' : ''}${
-                  dropOver === n.id ? ' is-drop-over' : ''
-                }`}
-                style={{ paddingLeft: 8 + depth * 14 }}
-                draggable={!isProtectedDir(n.id)}
-                onDragStart={(e) => onDragStart(n.id, e)}
-                onDragOver={(e) => onDragOverFolder(n.id, e)}
-                onDragLeave={() => setDropOver((cur) => (cur === n.id ? '' : cur))}
-                onDrop={(e) => void onDropFolder(n.id, e)}
-                onClick={() => {
-                  const already = selectedFolderId === n.id
-                  onSelectFolder(n.id)
-                  if (already) toggleExpand(n.id)
-                  else setExpanded((m) => ({ ...m, [n.id]: true }))
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  onSelectFolder(n.id)
-                  if (group) setCtx({ kind: 'folder', x: e.clientX, y: e.clientY, group })
-                }}
-              >
-                <span className="notebook-tree-chevron" aria-hidden>
-                  <span className={`tree-chevron${open ? ' is-open' : ''}`} />
-                </span>
-                <span className="notebook-tree-folder-icon" aria-hidden>
-                  <IconFolder size={14} />
-                </span>
-                {renaming ? (
-                  renderInline(n.id)
-                ) : (
-                  <span className="notebook-tree-label">{n.name}</span>
-                )}
-                <ResourceTags
-                  tags={resolveFolderResourceTags(n.id, Boolean(versionFlags[n.id]), tagLabels)}
-                  onActivate={onTagActivate}
-                />
-              </div>
-              {open ? (
-                <>
-                  {renderNodes(n.children, depth + 1, n.id)}
-                  {renderCreateRow(n.id, depth + 1)}
-                </>
-              ) : null}
-            </li>
-          )
-        }
-        const { note } = n
-        const checked = !!selectedNotes[note.id]
-        const opRel = opRelForNote(note.id)
-        const renaming = inline?.kind === 'rename' && inline.rel === opRel
-        return (
-          <li key={`n-${note.id}`}>
-            <div
-              className={`notebook-tree-note${activeTabId === note.id ? ' is-active' : ''}${
-                checked ? ' is-batch-selected' : ''
-              }`}
-              style={{ paddingLeft: 8 + depth * 14 }}
-              draggable
-              onDragStart={(e) => onDragStart(opRel, e)}
-              onClick={() => onOpenNote(note.id)}
-              onContextMenu={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                setCtx({ kind: 'note', x: e.clientX, y: e.clientY, note })
-              }}
-            >
-              <span className="notebook-tree-chevron" aria-hidden />
-              <span className="notebook-tree-note-icon" aria-hidden>
-                <IconNotebook size={14} />
-              </span>
-              {renaming ? (
-                renderInline(opRel)
-              ) : (
-                <span className="notebook-tree-label" title={basenameRel(note.id) || note.title}>
-                  {basenameRel(note.id) || note.title}
-                </span>
-              )}
-              <ResourceTags tags={resolveNoteResourceTags(note, tagLabels)} onActivate={onTagActivate} />
-              <input
-                type="checkbox"
-                className="notebook-note-check"
-                checked={checked}
-                onClick={(e) => toggleNoteSelected(note.id, e)}
-                onChange={() => {}}
-                title={t('notebook.batch')}
-              />
-            </div>
-          </li>
-        )
-      })}
-      {depth === 0 ? renderCreateRow(parentId, depth) : null}
-    </ul>
-  )
 
   return (
     <section className={`sidebar-section notebook-list-section${compact ? ' is-compact' : ''}`}>
@@ -730,6 +607,23 @@ export function NotebookSidebar({
           <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" {...pressProps(clearSelection)}>
             {t('notebook.batchClear')}
           </button>
+          {onComposeBrief ? (
+            <button
+              type="button"
+              className="wn-btn wn-btn-xs wn-btn-primary"
+              {...pressProps(() => {
+                const ids = Object.keys(selectedNotes).filter((id) => selectedNotes[id])
+                if (ids.length === 0) {
+                  notify.warning(t('notebook.briefNeedSources'))
+                  return
+                }
+                onComposeBrief(ids)
+                clearSelection()
+              })}
+            >
+              {t('notebook.briefCompose')}
+            </button>
+          ) : null}
           <button
             type="button"
             className="wn-btn wn-btn-xs wn-btn-danger"
@@ -759,228 +653,65 @@ export function NotebookSidebar({
         }}
         onDrop={(e) => void onDropFolder(treeRootId, e)}
       >
-        {tree.length === 0 && !(inline && inline.kind === 'create' && inline.parent === treeRootId) ? (
-          <div className="empty-hint">{search.trim() ? t('notebook.noMatch') : t('notebook.noNotes')}</div>
-        ) : (
-          renderNodes(tree, 0, treeRootId)
-        )}
+        <NotebookSidebarTree
+          tree={tree}
+          treeRootId={treeRootId}
+          expanded={expanded}
+          setExpanded={setExpanded}
+          selectedFolderId={selectedFolderId}
+          activeTabId={activeTabId}
+          selectedNotes={selectedNotes}
+          dropOver={dropOver}
+          setDropOver={setDropOver}
+          inline={inline}
+          setInline={setInline}
+          inlineRef={inlineRef}
+          groupById={groupById}
+          versionFlags={versionFlags}
+          projectByDir={projectByDir}
+          tagLabels={tagLabels}
+          isProtectedDir={isProtectedDir}
+          onSelectFolder={onSelectFolder}
+          onOpenNote={onOpenNote}
+          setCtx={setCtx}
+          toggleNoteSelected={toggleNoteSelected}
+          onDragStart={onDragStart}
+          onDragStartNote={onDragStartNote}
+          onDragOverFolder={onDragOverFolder}
+          onDropFolder={onDropFolder}
+          commitInline={commitInline}
+          onInlineKey={onInlineKey}
+          onTagActivate={onTagActivate}
+          emptyHint={search.trim() ? t('notebook.noMatch') : t('notebook.noNotes')}
+          t={t}
+        />
       </div>
 
       {ctx && (
-        <ContextMenu x={ctx.x} y={ctx.y} onDismiss={() => setCtx(null)} onClick={(e) => e.stopPropagation()}>
-          {ctx.kind === 'root' && (
-            <>
-              <button
-                type="button"
-                className="wn-context-item"
-                {...pressProps(() => beginInlineCreate(treeRootId, false))}
-              >
-                {scopeRoots.length ? t('notebook.newFile') : t('notebook.newInRoot')}
-              </button>
-              <button
-                type="button"
-                className="wn-context-item"
-                {...pressProps(() => beginInlineCreate(treeRootId, true))}
-              >
-                {t('notebook.newGroup')}
-              </button>
-              <button
-                type="button"
-                className="wn-context-item"
-                disabled={!clipboard}
-                {...pressProps(() => void pasteClipboard(treeRootId), { disabled: !clipboard })}
-              >
-                {t('notebook.ctxPaste')}
-              </button>
-            </>
-          )}
-          {ctx.kind === 'folder' && (
-            <>
-              <button
-                type="button"
-                className="wn-context-item"
-                {...pressProps(() => beginInlineCreate(ctx.group.id, false))}
-              >
-                {t('notebook.newInGroup')}
-              </button>
-              <button
-                type="button"
-                className="wn-context-item"
-                {...pressProps(() => beginInlineCreate(ctx.group.id, true))}
-              >
-                {t('notebook.newSubFolder')}
-              </button>
-              <button
-                type="button"
-                className="wn-context-item"
-                disabled={isProtectedDir(ctx.group.id)}
-                {...pressProps(() => beginRename(ctx.group.id), {
-                  disabled: isProtectedDir(ctx.group.id),
-                })}
-              >
-                {t('notebook.ctxRename')}
-              </button>
-              <div className="wn-context-sep" />
-              <button
-                type="button"
-                className="wn-context-item"
-                disabled={isProtectedDir(ctx.group.id)}
-                {...pressProps(() => cutRels([ctx.group.id]), {
-                  disabled: isProtectedDir(ctx.group.id),
-                })}
-              >
-                {t('notebook.ctxCut')}
-              </button>
-              <button
-                type="button"
-                className="wn-context-item"
-                {...pressProps(() => copyRels([ctx.group.id]))}
-              >
-                {t('notebook.ctxCopy')}
-              </button>
-              <button
-                type="button"
-                className="wn-context-item"
-                disabled={!clipboard}
-                {...pressProps(() => void pasteClipboard(ctx.group.id), { disabled: !clipboard })}
-              >
-                {t('notebook.ctxPaste')}
-              </button>
-              <div className="wn-context-sep" />
-              <button
-                type="button"
-                className="wn-context-item"
-                {...pressProps(() => {
-                  setCtx(null)
-                  void onRevealPath(ctx.group.id)
-                })}
-              >
-                {t('notebook.revealInFinder')}
-              </button>
-              <div className="wn-context-sep" />
-              <button
-                type="button"
-                className="wn-context-item"
-                disabled={versionBusy}
-                {...pressProps(() => void createFolderVersion(ctx.group.id), { disabled: versionBusy })}
-              >
-                {t('notebook.dirVersionCreate')}
-              </button>
-              <button
-                type="button"
-                className="wn-context-item"
-                {...pressProps(() => openVersionHistory(ctx.group.id))}
-              >
-                {t('notebook.ctxVersionHistory')}
-              </button>
-              <div className="wn-context-sep" />
-              <button
-                type="button"
-                className="wn-context-item wn-context-item-danger"
-                disabled={isProtectedDir(ctx.group.id)}
-                {...pressProps(() => {
-                  const { group } = ctx
-                  setCtx(null)
-                  onDeleteGroup(group.id, group.name)
-                }, { disabled: isProtectedDir(ctx.group.id) })}
-              >
-                {t('notebook.deleteGroup')}
-              </button>
-            </>
-          )}
-          {ctx.kind === 'note' && (
-            <>
-              <button
-                type="button"
-                className="wn-context-item"
-                {...pressProps(() => {
-                  const { note } = ctx
-                  setCtx(null)
-                  onOpenNote(note.id)
-                })}
-              >
-                {t('notebook.ctxOpen')}
-              </button>
-              <button
-                type="button"
-                className="wn-context-item"
-                {...pressProps(() => beginRename(opRelForNote(ctx.note.id)))}
-              >
-                {t('notebook.ctxRename')}
-              </button>
-              <div className="wn-context-sep" />
-              <button
-                type="button"
-                className="wn-context-item"
-                {...pressProps(() => cutRels([opRelForNote(ctx.note.id)]))}
-              >
-                {t('notebook.ctxCut')}
-              </button>
-              <button
-                type="button"
-                className="wn-context-item"
-                {...pressProps(() => copyRels([opRelForNote(ctx.note.id)]))}
-              >
-                {t('notebook.ctxCopy')}
-              </button>
-              <button
-                type="button"
-                className="wn-context-item"
-                disabled={!clipboard}
-                {...pressProps(() => void pasteClipboard(ctx.note.groupId || treeRootId), {
-                  disabled: !clipboard,
-                })}
-              >
-                {t('notebook.ctxPaste')}
-              </button>
-              <div className="wn-context-sep" />
-              <div className="wn-context-submenu-label">{t('notebook.ctxMakeAs')}</div>
-              {(
-                [
-                  { role: 'memory' as const, label: t('notebook.ctxMakeMemory') },
-                  { role: 'skill' as const, label: t('notebook.ctxMakeSkill') },
-                  { role: 'note' as const, label: t('notebook.ctxMakeNote') },
-                ] as const
-              ).map((item) => (
-                <button
-                  key={item.role}
-                  type="button"
-                  className="wn-context-item wn-context-item-indent"
-                  disabled={(ctx.note.role || 'note') === item.role}
-                  {...pressProps(() => {
-                    const { note } = ctx
-                    setCtx(null)
-                    onMakeNoteRole(note.id, item.role)
-                  })}
-                >
-                  {item.label}
-                </button>
-              ))}
-              <div className="wn-context-sep" />
-              <button
-                type="button"
-                className="wn-context-item"
-                {...pressProps(() => {
-                  setCtx(null)
-                  void onRevealPath(ctx.note.id)
-                })}
-              >
-                {t('notebook.revealInFinder')}
-              </button>
-              <button
-                type="button"
-                className="wn-context-item wn-context-item-danger"
-                {...pressProps(() => {
-                  const { note } = ctx
-                  setCtx(null)
-                  onDeleteNote(note.id, note.title)
-                })}
-              >
-                {t('notebook.ctxDeleteNote')}
-              </button>
-            </>
-          )}
-        </ContextMenu>
+        <NotebookSidebarContextMenu
+          ctx={ctx}
+          onDismiss={() => setCtx(null)}
+          treeRootId={treeRootId}
+          scopeRootsLength={scopeRoots.length}
+          clipboard={clipboard}
+          versionBusy={versionBusy}
+          isProtectedDir={isProtectedDir}
+          beginInlineCreate={beginInlineCreate}
+          beginRename={beginRename}
+          pasteClipboard={pasteClipboard}
+          cutRels={cutRels}
+          copyRels={copyRels}
+          createFolderVersion={createFolderVersion}
+          openVersionHistory={openVersionHistory}
+          setProjectLocalDir={setProjectLocalDir}
+          setProjectRemoteDir={setProjectRemoteDir}
+          onRevealPath={onRevealPath}
+          onOpenNote={onOpenNote}
+          onDeleteGroup={onDeleteGroup}
+          onDeleteNote={onDeleteNote}
+          onMakeNoteRole={onMakeNoteRole}
+          t={t}
+        />
       )}
 
       <ConfirmDialog

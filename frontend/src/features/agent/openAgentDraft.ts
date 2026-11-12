@@ -88,3 +88,15 @@ export function mentionHttpRequest(req: {
     sublabel: req.method,
   }
 }
+
+/** mentionNote 构造笔记本 @ 资源（拖入 AI 侧栏 / 草稿）。 */
+export function mentionNote(note: { id: string; title?: string }): AgentMention {
+  const id = note.id.trim()
+  const label = (note.title || '').trim() || id.split('/').pop() || id
+  return {
+    kind: 'note',
+    id,
+    label,
+    sublabel: id.includes('/') ? id : undefined,
+  }
+}

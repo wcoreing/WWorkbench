@@ -24,6 +24,9 @@ import {
   HTTP_FOLDER_DROP_ATTR,
   useHttpApiTreeDrag,
 } from './useHttpApiTreeDrag'
+import { bindAssetsToAgent } from '../../features/agent/agentAssetDrag'
+import { mentionHttpRequest } from '../../features/agent/openAgentDraft'
+import { notify } from '../../notify'
 
 interface Props {
   folders: HTTPFolder[]
@@ -93,6 +96,17 @@ export function HttpApiSidebar({
     [onTreeDrop],
   )
 
+  const handleBindAgent = useCallback(
+    (drag: HttpDragPayload) => {
+      if (drag.kind !== 'api') return
+      const item = items.find((x) => x.id === drag.id)
+      if (!item) return
+      const [bound] = bindAssetsToAgent(mentionHttpRequest(item))
+      if (bound) notify.info(t('agent.assetDropped', { title: bound.label }))
+    },
+    [items, t],
+  )
+
   const {
     dragging,
     dragGhost,
@@ -106,6 +120,7 @@ export function HttpApiSidebar({
   } = useHttpApiTreeDrag({
     batchMode: batchMode || filterActive,
     onDrop: handleTreeDrop,
+    onBindAgent: handleBindAgent,
   })
 
   const toggle = (id: string) => setExpanded((m) => ({ ...m, [id]: !m[id] }))

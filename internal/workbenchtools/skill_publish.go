@@ -76,7 +76,7 @@ func toolPublishAgentSkill(ctx context.Context, d *Deps, raw json.RawMessage) To
 		return Fail("content 不能为空")
 	}
 
-	saved, err := d.Notebook.LinkSkillToWorkflowNote(noteID, id)
+	saved, err := d.Notebook.MarkNoteAsSkill(noteID, id)
 	if err != nil {
 		return Fail("笔记标记工作流失败: " + err.Error())
 	}

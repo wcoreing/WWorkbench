@@ -398,6 +398,10 @@ export function GetEnvScanPath() {
   return window['go']['app']['Service']['GetEnvScanPath']();
 }
 
+export function GetHostProject(arg1) {
+  return window['go']['app']['Service']['GetHostProject'](arg1);
+}
+
 export function GetMCPStatus() {
   return window['go']['app']['Service']['GetMCPStatus']();
 }
@@ -578,6 +582,10 @@ export function ListHTTPRequests() {
   return window['go']['app']['Service']['ListHTTPRequests']();
 }
 
+export function ListHostProjects(arg1) {
+  return window['go']['app']['Service']['ListHostProjects'](arg1);
+}
+
 export function ListImages(arg1) {
   return window['go']['app']['Service']['ListImages'](arg1);
 }
@@ -720,6 +728,10 @@ export function PickDockerComposeDirectory(arg1) {
 
 export function PickEnvScanDirectory() {
   return window['go']['app']['Service']['PickEnvScanDirectory']();
+}
+
+export function PickLocalProjectDir(arg1) {
+  return window['go']['app']['Service']['PickLocalProjectDir'](arg1);
 }
 
 export function PickLogFilePath() {
@@ -928,6 +940,10 @@ export function SaveHTTPFolder(arg1) {
 
 export function SaveHTTPRequest(arg1) {
   return window['go']['app']['Service']['SaveHTTPRequest'](arg1);
+}
+
+export function SaveHostProject(arg1) {
+  return window['go']['app']['Service']['SaveHostProject'](arg1);
 }
 
 export function SaveLogSource(arg1) {

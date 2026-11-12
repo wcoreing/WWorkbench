@@ -86,6 +86,10 @@ func (s *Service) ensureSystemDirs() error {
 }
 
 func (s *Service) ensureOpsSeedFS() error {
+	// 整理页落盘目录（选料→按需求生成页）
+	if err := os.MkdirAll(filepath.Join(s.workspaceRoot(), OpsGroupName, "整理页"), 0o700); err != nil {
+		return err
+	}
 	path := filepath.Join(s.workspaceRoot(), OpsGroupName, "怎么用运维区.md")
 	if _, err := os.Stat(path); err == nil {
 		return nil
@@ -95,7 +99,8 @@ func (s *Service) ensureOpsSeedFS() error {
 		"与「工作流」（任务产品）相互隔离。\n\n" +
 		"- 主机约定、巡检说明、发布备忘写在这里\n" +
 		"- 可复用方法也可建成 Skill（同协议），不必挤进「工作流」\n" +
-		"- 笔记本产品可看全盘；各业务产品只挂自己的工作根\n"
+		"- 笔记本产品可看全盘；各业务产品只挂自己的工作根\n" +
+		"- **整理页**：侧栏多选笔记 →「生成整理页」→ 选模板/写需求 → 落在 `运维/整理页/`，Agent 按需求收口成一页\n"
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}

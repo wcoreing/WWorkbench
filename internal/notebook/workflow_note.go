@@ -3,7 +3,6 @@ package notebook
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -33,95 +32,6 @@ type workflowFrontmatter struct {
 	Intent      string `yaml:"intent,omitempty"`
 	Description string `yaml:"description,omitempty"`
 	Bind        string `yaml:"bind,omitempty"`
-}
-
-// SkillNoteID 把 skill 引用规范成 …/SKILL.md 相对路径。
-// 短名 → 工作流/{name}/SKILL.md（任务产品默认落点）；含路径 → 该目录下 SKILL.md。
-func SkillNoteID(name string) string {
-	name = strings.TrimSpace(strings.ReplaceAll(name, "\\", "/"))
-	name = strings.Trim(name, "/")
-	if name == "" {
-		return ""
-	}
-	lower := strings.ToLower(name)
-	if strings.HasSuffix(lower, "/"+strings.ToLower(SkillEntryFile)) {
-		return name
-	}
-	if strings.EqualFold(name, SkillEntryFile) {
-		return ""
-	}
-	if strings.Contains(name, "/") {
-		return name + "/" + SkillEntryFile
-	}
-	if strings.ContainsAny(name, `\`) {
-		return ""
-	}
-	return SkillGroupName + "/" + name + "/" + SkillEntryFile
-}
-
-// SkillDirFromNoteID 从 SKILL.md 路径取技能目录相对路径；非入口文件返回空。
-func SkillDirFromNoteID(id string) string {
-	id = strings.TrimSpace(strings.ReplaceAll(id, "\\", "/"))
-	if id == "" {
-		return ""
-	}
-	lower := strings.ToLower(id)
-	suffix := "/" + strings.ToLower(SkillEntryFile)
-	if !strings.HasSuffix(lower, suffix) {
-		return ""
-	}
-	dir := strings.Trim(id[:len(id)-len(suffix)], "/")
-	if dir == "" || strings.Contains(dir, "..") {
-		return ""
-	}
-	return dir
-}
-
-// SkillNameFromNoteID 从 SKILL.md 路径还原对外引用名。
-// 工作流/{short}/SKILL.md → short（兼容任务产品）；其它位置 → 完整目录路径（如 记忆区/主机/项目/dwq）。
-// 同目录 log.md / 其它文件返回空。
-func SkillNameFromNoteID(id string) string {
-	dir := SkillDirFromNoteID(id)
-	if dir == "" {
-		return ""
-	}
-	if strings.HasPrefix(dir, SkillGroupName+"/") {
-		rest := strings.TrimPrefix(dir, SkillGroupName+"/")
-		if rest != "" && !strings.Contains(rest, "/") {
-			return rest
-		}
-	}
-	return dir
-}
-
-// SkillBasename 技能目录末段名（短名消歧用）。
-func SkillBasename(idOrName string) string {
-	idOrName = strings.TrimSpace(strings.ReplaceAll(idOrName, "\\", "/"))
-	if idOrName == "" {
-		return ""
-	}
-	if dir := SkillDirFromNoteID(idOrName); dir != "" {
-		return filepath.Base(dir)
-	}
-	if strings.HasSuffix(strings.ToLower(idOrName), "/"+strings.ToLower(SkillEntryFile)) {
-		return ""
-	}
-	idOrName = strings.TrimSuffix(idOrName, "/"+SkillEntryFile)
-	return filepath.Base(idOrName)
-}
-
-// IsTaskLogNoteID 是否为技能目录旁的账本投影 …/log.md（任意业务根下均可）。
-func IsTaskLogNoteID(id string) bool {
-	id = strings.TrimSpace(strings.ReplaceAll(id, "\\", "/"))
-	if id == "" {
-		return false
-	}
-	lower := strings.ToLower(id)
-	if !strings.HasSuffix(lower, "/"+strings.ToLower(TaskLogFile)) {
-		return false
-	}
-	dir := strings.Trim(id[:len(id)-len("/"+TaskLogFile)], "/")
-	return dir != "" && !strings.Contains(dir, "..")
 }
 
 // ExtractWorkflowNoteBodyExtras 从已有笔记抽出经验/脚本/资源段落，避免 save 步骤时冲掉沉淀。

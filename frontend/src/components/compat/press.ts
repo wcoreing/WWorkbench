@@ -27,6 +27,7 @@ function takePressSlot(target: object): boolean {
  * 解决 Wails/WebView 下 xterm、Monaco 持焦时第一次 click 被焦移吞掉。
  * 可套在任意 UI 框架的 Button 上：`{...pressProps(onSave)}`。
  * 不适用：input / textarea / 原生 select / 需聚焦的 checkbox、拖拽手柄。
+ * 禁止与 HTML5 draggable / assetDragRowProps 同节点：pointerdown.preventDefault 会掐死拖拽。
  */
 export function pressProps(run: PressHandler | undefined, options: PressOptions = {}) {
   if (!run) return {}

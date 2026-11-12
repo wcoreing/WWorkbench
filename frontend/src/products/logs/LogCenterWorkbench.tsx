@@ -6,6 +6,7 @@ import { ContextMenu } from '../../components/ContextMenu'
 import { EmptyState } from '../../components/EmptyState'
 import { IconPlus, IconRefresh } from '../../components/Icons'
 import { openAgentDraft, mentionLogSource } from '../../features/agent/openAgentDraft'
+import { assetDragRowProps } from '../../features/agent/agentAssetDrag'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import { buildLogsSurface, briefList } from '../../stores/agentSurface'
@@ -708,7 +709,7 @@ export function LogCenterWorkbench() {
                     <li
                       key={item.id}
                       className={`conn-item ${item.id === activeId ? 'active' : ''}`}
-                      {...pressProps(() => selectItem(item))}
+                      {...assetDragRowProps(mentionLogSource(item), () => selectItem(item))}
                       onContextMenu={(e) => {
                         e.preventDefault()
                         setCtxMenu({ x: e.clientX, y: e.clientY, item })

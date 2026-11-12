@@ -594,6 +594,17 @@ export interface HostMemoryBook {
   created: boolean
 }
 
+/** 主机记忆册下的项目绑定：记忆区/{主机}/项目/{名}/ */
+export interface HostProject {
+  dirRel: string
+  name: string
+  sshHostId: string
+  localPath: string
+  remotePath: string
+  noteId: string
+  skillNoteId?: string
+}
+
 export type LogSourceType = 'local_file' | 'ssh_file' | 'docker' | 'compose'
 
 export interface LogSource {

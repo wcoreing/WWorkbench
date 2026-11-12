@@ -1,8 +1,10 @@
 import type { NoteSummary } from '../../api/types'
 import type { ResourceTag } from '../../tags'
+import type { HostProject } from '../../api/types'
 import {
   NOTEBOOK_ROOT_MEMORY,
   NOTEBOOK_ROOT_WORKFLOW,
+  isMemoryProjectDir,
   isSystemNotebookRoot,
 } from './businessRoots'
 import { skillEntryNoteId } from './noteModel'
@@ -18,10 +20,12 @@ export type NotebookTagLabels = {
   workflow: string
   memory: string
   versioned: string
+  localBound: string
   titleWorkflow: string
   titleMemory: string
   titleVersioned: string
   titleWorkflowFolder: string
+  titleLocalBound: string
 }
 
 function normRel(rel: string): string {
@@ -47,6 +51,7 @@ export function resolveFolderResourceTags(
   folderId: string,
   versioned: boolean,
   labels: NotebookTagLabels,
+  project?: HostProject | null,
 ): ResourceTag[] {
   const id = normRel(folderId)
   if (!id || isSystemNotebookRoot(id)) return []
@@ -68,6 +73,14 @@ export function resolveFolderResourceTags(
       label: labels.memory,
       title: labels.titleMemory,
       tone: 'accent',
+    })
+  }
+  if (isMemoryProjectDir(id) && project?.localPath) {
+    tags.push({
+      id: 'local-bound',
+      label: labels.localBound,
+      title: `${labels.titleLocalBound}: ${project.localPath}`,
+      tone: 'success',
     })
   }
   if (versioned) {

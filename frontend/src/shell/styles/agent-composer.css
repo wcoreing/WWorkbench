@@ -207,6 +207,10 @@
   border-color: var(--color-border);
 }
 
+.agent-mention-chip-note {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--color-border));
+}
+
 .agent-mention-chip-http {
   background: var(--color-surface-2);
   border-color: var(--color-border);

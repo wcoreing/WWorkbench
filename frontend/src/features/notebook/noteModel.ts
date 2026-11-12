@@ -1,6 +1,19 @@
 import { model } from '../../../wailsjs/go/models'
 import type { Note, NoteSummary } from '../../api/types'
 
+/** noteContentSnapshot 可持久化字段快照（判断 dirty / 防无意义保存）。 */
+export function noteContentSnapshot(note: Note): string {
+  return JSON.stringify({
+    title: note.title,
+    content: note.content,
+    groupId: note.groupId,
+    language: note.language,
+    role: note.role || 'note',
+    sshHostId: note.sshHostId,
+    connectionId: note.connectionId,
+  })
+}
+
 /** toNoteDO 前端 Note → Wails NoteDO。 */
 export function toNoteDO(note: Note): model.NoteDO {
   return model.NoteDO.createFrom({
@@ -43,7 +56,7 @@ export function adoptNoteLanguage(note: Note): Note {
   return { ...note, role }
 }
 
-/** skillEntryNoteId 目录 → SKILL.md 入口笔记 id。 */
+/** skillEntryNoteId 目录 → SKILL.md 入口笔记 id（就地；对齐后端 SkillEntryIDInDir）。 */
 export function skillEntryNoteId(scopeRootId: string): string {
   const root = (scopeRootId || '').replace(/\\/g, '/').replace(/\/+$/, '')
   if (!root) return ''
@@ -51,11 +64,18 @@ export function skillEntryNoteId(scopeRootId: string): string {
   return `${root}/SKILL.md`
 }
 
-/** skillNameFromNoteId 从 工作流/{name}/SKILL.md 还原技能名；非 SKILL 返回空。 */
+/**
+ * skillNameFromNoteId 从 …/SKILL.md 还原对外引用名。
+ * 工作流/{short}/SKILL.md → short；其它位置 → 完整目录路径（对齐后端 SkillNameFromNoteID）。
+ */
 export function skillNameFromNoteId(noteId: string): string {
   const id = (noteId || '').replace(/\\/g, '/').trim()
-  const m = id.match(/^工作流\/([^/]+)\/SKILL\.md$/i)
-  return m?.[1]?.trim() || ''
+  const m = id.match(/^(.*)\/SKILL\.md$/i)
+  if (!m?.[1]) return ''
+  const dir = m[1]
+  const short = dir.match(/^工作流\/([^/]+)$/)
+  if (short?.[1]) return short[1]
+  return dir
 }
 
 /** dirRelFromScope 作用域目录 → 笔记本相对路径（去掉尾 / 与 SKILL.md）。 */

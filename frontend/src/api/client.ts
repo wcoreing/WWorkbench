@@ -184,6 +184,10 @@ import {
   ScanHostHealth,
   EnsureHostBackupPolicies,
   EnsureHostMemoryBook,
+  GetHostProject,
+  ListHostProjects,
+  PickLocalProjectDir,
+  SaveHostProject,
   ListLogSources,
   SaveLogSource,
   DeleteLogSource,
@@ -884,6 +888,26 @@ export const api = {
     )) as import('./types').EnsureHostBackupResult,
   ensureHostMemoryBook: (sshHostId: string) =>
     unwrap(() => EnsureHostMemoryBook(sshHostId)) as Promise<import('./types').HostMemoryBook>,
+  getHostProject: (dirRel: string) =>
+    unwrap(() => GetHostProject(dirRel)) as Promise<import('./types').HostProject>,
+  listHostProjects: async (sshHostId = '') =>
+    asArray(await unwrap(() => ListHostProjects(sshHostId))) as import('./types').HostProject[],
+  pickLocalProjectDir: (defaultDir = '') =>
+    unwrap(() => PickLocalProjectDir(defaultDir)) as Promise<string>,
+  saveHostProject: (p: import('./types').HostProject) =>
+    unwrap(() =>
+      SaveHostProject(
+        model.HostProjectDO.createFrom({
+          dirRel: p.dirRel,
+          name: p.name || '',
+          sshHostId: p.sshHostId || '',
+          localPath: p.localPath || '',
+          remotePath: p.remotePath || '',
+          noteId: p.noteId || '',
+          skillNoteId: p.skillNoteId || '',
+        }),
+      ),
+    ) as Promise<import('./types').HostProject>,
   listLogSources: async () => asArray(await unwrap(() => ListLogSources())),
   saveLogSource: (src: model.LogSourceDO) => unwrap(() => SaveLogSource(src)),
   deleteLogSource: (id: string) => unwrap(() => DeleteLogSource(id)),

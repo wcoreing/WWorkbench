@@ -59,6 +59,15 @@ import {
 import type { WorkbenchChangedEvent } from '../workbench/workbenchRadar'
 import { APP_SETTING_KEYS, saveAppSetting } from '../stores/appPreferences'
 import { openAgentDraft, mentionDatabase } from '../features/agent/openAgentDraft'
+import {
+  ASSET_DRAG_MIME,
+  assetDragHandlers,
+  assetDragRowProps,
+  beginAssetDrag,
+  bindAssetsToAgent,
+  readAssetDrag,
+  transferHasAssetDrag,
+} from '../features/agent/agentAssetDrag'
 import { useI18n } from '../i18n'
 import { defaultUntitledSql, localizeWorkTabTitle } from '../i18n/databaseTabTitle'
 import { queryPageToExport } from '../utils/queryCsv'
@@ -82,7 +91,7 @@ export type WWHostStore = {
   buildDatabaseSurface: typeof buildDatabaseSurface
 }
 
-/** 跨产品导航 / Agent 草稿 */
+/** 跨产品导航 / Agent 草稿 / 统一资产拖拽 */
 export type WWHostNav = {
   openTerminal: typeof openTerminal
   openSftp: typeof openSftp
@@ -91,6 +100,13 @@ export type WWHostNav = {
   useWorkbenchCommand: typeof useWorkbenchCommand
   openAgentDraft: typeof openAgentDraft
   mentionDatabase: typeof mentionDatabase
+  ASSET_DRAG_MIME: typeof ASSET_DRAG_MIME
+  beginAssetDrag: typeof beginAssetDrag
+  assetDragHandlers: typeof assetDragHandlers
+  assetDragRowProps: typeof assetDragRowProps
+  bindAssetsToAgent: typeof bindAssetsToAgent
+  readAssetDrag: typeof readAssetDrag
+  transferHasAssetDrag: typeof transferHasAssetDrag
 }
 
 /** 工作台能力与雷达 */
@@ -188,6 +204,13 @@ export function installWWHost() {
       useWorkbenchCommand,
       openAgentDraft,
       mentionDatabase,
+      ASSET_DRAG_MIME,
+      beginAssetDrag,
+      assetDragHandlers,
+      assetDragRowProps,
+      bindAssetsToAgent,
+      readAssetDrag,
+      transferHasAssetDrag,
     },
     workbench: {
       Capability,

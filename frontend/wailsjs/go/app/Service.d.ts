@@ -203,6 +203,8 @@ export function GetECSMonitor(arg1:string):Promise<app.ApiResult_WWorkbench_inte
 
 export function GetEnvScanPath():Promise<app.ApiResult_string_>;
 
+export function GetHostProject(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_HostProjectDO_>;
+
 export function GetMCPStatus():Promise<app.ApiResult_WWorkbench_internal_model_MCPStatusDO_>;
 
 export function GetNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_NoteDO_>;
@@ -293,6 +295,8 @@ export function ListHTTPFolders():Promise<app.ApiResult___WWorkbench_internal_mo
 
 export function ListHTTPRequests():Promise<app.ApiResult___WWorkbench_internal_model_HTTPSavedRequestDO_>;
 
+export function ListHostProjects(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_HostProjectDO_>;
+
 export function ListImages(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_DockerImageDO_>;
 
 export function ListIndexes(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult___WWorkbench_internal_model_IndexMetaDO_>;
@@ -364,6 +368,8 @@ export function OpenTerminal(arg1:string,arg2:number,arg3:number):Promise<app.Ap
 export function PickDockerComposeDirectory(arg1:string):Promise<app.ApiResult_string_>;
 
 export function PickEnvScanDirectory():Promise<app.ApiResult_string_>;
+
+export function PickLocalProjectDir(arg1:string):Promise<app.ApiResult_string_>;
 
 export function PickLogFilePath():Promise<app.ApiResult_string_>;
 
@@ -468,6 +474,8 @@ export function SaveHTTPEnvironment(arg1:model.HTTPEnvironmentDO):Promise<app.Ap
 export function SaveHTTPFolder(arg1:model.HTTPFolderDO):Promise<app.ApiResult_WWorkbench_internal_model_HTTPFolderDO_>;
 
 export function SaveHTTPRequest(arg1:model.HTTPSavedRequestDO):Promise<app.ApiResult_WWorkbench_internal_model_HTTPSavedRequestDO_>;
+
+export function SaveHostProject(arg1:model.HostProjectDO):Promise<app.ApiResult_WWorkbench_internal_model_HostProjectDO_>;
 
 export function SaveLogSource(arg1:model.LogSourceDO):Promise<app.ApiResult_WWorkbench_internal_model_LogSourceDO_>;
 

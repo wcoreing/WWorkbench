@@ -22,7 +22,16 @@ const {
   saveAppSetting,
   buildDatabaseSurface,
 } = store
-const { openTerminal, openSftp, openNotebook, openBackup, useWorkbenchCommand, openAgentDraft, mentionDatabase } = nav
+const {
+  openTerminal,
+  openSftp,
+  openNotebook,
+  openBackup,
+  useWorkbenchCommand,
+  openAgentDraft,
+  mentionDatabase,
+  assetDragRowProps,
+} = nav
 const {
   Capability,
   payloadBool,
@@ -1327,7 +1336,9 @@ export function DatabaseWorkbench() {
                           role="button"
                           tabIndex={0}
                           className={`conn-item ${activeConnectionId === c.id ? 'active' : ''} ${session?.connectionId === c.id ? 'connected' : ''}`}
-                          {...pressProps(() => void connect(c.id))}
+                          {...(assetDragRowProps
+                            ? assetDragRowProps(mentionDatabase(c), () => void connect(c.id))
+                            : pressProps(() => void connect(c.id)))}
                           onDoubleClick={() => void reconnect(c.id)}
                           onContextMenu={(e) => {
                             e.preventDefault()

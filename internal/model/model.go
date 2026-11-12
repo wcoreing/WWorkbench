@@ -812,6 +812,17 @@ type HostMemoryBookDO struct {
 	Created   bool   `json:"created"`
 }
 
+// HostProjectDO 主机记忆册下的项目绑定（记忆区/{主机}/项目/{名}/）。
+type HostProjectDO struct {
+	DirRel      string `json:"dirRel"`
+	Name        string `json:"name"`
+	SSHHostID   string `json:"sshHostId"`
+	LocalPath   string `json:"localPath"`
+	RemotePath  string `json:"remotePath"`
+	NoteID      string `json:"noteId"`
+	SkillNoteID string `json:"skillNoteId,omitempty"`
+}
+
 // LogFetchResultDO 拉取日志结果。
 type LogFetchResultDO struct {
 	Content string `json:"content"`

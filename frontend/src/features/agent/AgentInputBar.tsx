@@ -14,6 +14,13 @@ import {
   type AgentMention,
   type AgentMentionMenuItem,
 } from './agentMention'
+import { mentionNote } from './openAgentDraft'
+import { readAssetDrag, transferHasAssetDrag } from './agentAssetDrag'
+import {
+  readNotebookDrag,
+  transferHasNotebookDrag,
+} from '../notebook/notebookTree'
+import { notify } from '../../notify'
 import {
   defaultSkillPrompt,
   filterSkills,
@@ -461,9 +468,33 @@ export function AgentInputBar({
       <div
         className="agent-input-wrap"
         onDragOver={(e) => {
-          if (collectClipboardImages(e.dataTransfer).length) e.preventDefault()
+          const hasAsset =
+            transferHasAssetDrag(e.dataTransfer) || transferHasNotebookDrag(e.dataTransfer)
+          if (hasAsset || collectClipboardImages(e.dataTransfer).length) {
+            e.preventDefault()
+            if (hasAsset) e.dataTransfer.dropEffect = 'copy'
+          }
         }}
         onDrop={(e) => {
+          let assets = readAssetDrag(e.dataTransfer)
+          if (!assets.length) {
+            const notebook = readNotebookDrag(e.dataTransfer)
+            if (notebook?.kind === 'note' && notebook.id) {
+              assets = [mentionNote({ id: notebook.id, title: notebook.title })]
+            }
+          }
+          if (assets.length) {
+            e.preventDefault()
+            e.stopPropagation()
+            // 输入栏已打开：直接并入 chips，避免再走 draft 绕一圈
+            for (const a of assets) addMention(a)
+            if (assets.length === 1) {
+              notify.info(t('agent.assetDropped', { title: assets[0].label }))
+            } else {
+              notify.info(t('agent.assetsDropped', { count: assets.length }))
+            }
+            return
+          }
           const files = collectClipboardImages(e.dataTransfer)
           if (!files.length) return
           e.preventDefault()

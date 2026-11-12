@@ -29,7 +29,10 @@ declare module '@wworkbench/host' {
     openBackup: (...args: any[]) => void
     useWorkbenchCommand: (...args: any[]) => void
     openAgentDraft: (...args: any[]) => void
-    mentionDatabase: (...args: any[]) => void
+    mentionDatabase: (...args: any[]) => any
+    assetDragRowProps?: (...args: any[]) => Record<string, unknown>
+    beginAssetDrag?: (...args: any[]) => void
+    bindAssetsToAgent?: (...args: any[]) => any
   }
 
   export const workbench: {

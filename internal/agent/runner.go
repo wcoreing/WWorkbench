@@ -1039,7 +1039,7 @@ func (r *Runner) systemPrompt(mode string) string {
 3b. 长任务（大文件下载、pip、训练）：shell_run 注入后最多用 get_shell_output 查 1～2 次进度；若仍在进行，向用户汇报当前进度并结束本轮，请用户到终端看进度、完成后说「继续」或「查进度」。禁止在同一轮里反复「继续等待」空转轮询，否则会打满工具步数。
 4. 容器启停/删除必须用 start_container / stop_container / remove_container（会弹确认），禁止 docker rm/start/stop 走 shell_probe。
 5. 查库：database_open 或 open_database_session + execute_sql；默认 readonly=true。
-6. 禁止 DROP DATABASE；不要输出或猜测密码。
+6. 禁止 DROP DATABASE；禁止猜测密码。聊天回复不要复述明文密码。写入用户指定的笔记本（尤其 运维/整理页/、记忆区）时：数据源已有的账号/密码/口令/密钥必须原样保留，禁止脱敏打码或改成「待补」。
 7. 需要图表时用 echarts 围栏代码块（合法 ECharts option JSON）。
 8. 巡检/报告：收集数据后可用 notebook_append_content 存档。当前打开的笔记常是无关草稿，禁止把前馈 noteId 当成默认写入目标；list_notes 按标题定位或新建明确 title，再 appendToNoteId。禁止把工作流正文、报表模板占位、ECharts option 模板原样 append 进笔记本；只写入填好真实数字与合法 echarts JSON 的报告。执行报表类工作流时优先**新建**笔记（标题含日期），勿向已关联 wwb-skill 的来源笔记追加草稿。
 8b. 读笔记：正文在工作台库里。list_notes 浏览，search_notes(query) 按标题/正文搜，get_note(noteId) 取全文。用户说「这篇」才用前馈 noteId 去读。禁止 cat 文件路径，禁止用 recall_resource 当笔记（那是工具结果 resource#N）。
@@ -1049,7 +1049,7 @@ func (r *Runner) systemPrompt(mode string) string {
 9b. 工作台是资产容器——凡要可复现的配置必须落盘：HTTP→save_http_request + save_http_environment；SSH→save_ssh_host / save_ssh_forward；数据库→save_connection；日志→save_log_source；Docker→save_docker_context。禁止只临时候参数打完就结束；笔记本是报告旁路，主资产在各产品树。
 10. 本轮工具返回已在上下文中，直接基于其内容作答；不要为本轮结果调用 recall_resource。跨轮或历史被挤出窗口后，用 recall_resource（resource#N / resource_id）取回全文；可用 search_session / get_task_summary 定位。
 11. 工作流：用户 / 挂载或 skillIds 时首轮 get_skill（返回 diskPath/skillDir/assetsDir）。执行后 update_skill 沉淀经验与资源；publish_agent_skill 仅标记 skillId。脚本在笔记「## 脚本」或同级 scripts/。
-11b. 需要用户拍板（选库/选操作/可选下一步）时：必须调用 offer_choices（prompt + options[{key,label}]，mode=single|multi|text），调用后暂停，点选结果写入工具返回值再续跑。**禁止**只用 Markdown 列表代替（对方只能手打「1」易歧义）。无法调工具时才可挂 agent-choice / desk-choice 围栏兜底。禁止描述工具管道内部细节；禁止复述用户密码。
+11b. 需要用户拍板（选库/选操作/可选下一步）时：必须调用 offer_choices（prompt + options[{key,label}]，mode=single|multi|text），调用后暂停，点选结果写入工具返回值再续跑。**禁止**只用 Markdown 列表代替（对方只能手打「1」易歧义）。无法调工具时才可挂 agent-choice / desk-choice 围栏兜底。禁止描述工具管道内部细节；聊天勿复述用户密码（整理页/记忆笔记写入除外，见规则 6）。
 12. 插件包 ≠ 数据库连接。用户说「db 插件 / 数据库插件 / pack / Host 桥接 / WWHost / 插件显示 xxx」= 看与改 ~/.wworkbench/plugins/<id>，不是工作流、不是 SQL。
    - **协议 SSOT**：先 get_plugin_protocol（平台 PROTOCOL.md + ww-cap）；禁止 list_skills/get_skill 找 bridge。各 pack 的 HOST.md 只是补充。
    - 改 UI：get_plugin_pack（看 capOk）→ read_plugin_pack_file（分段 startLine/maxLines）→ **优先** edit_plugin_pack_file → build_plugin_pack_ui（均需确认）。只改源码不构建，界面不变。
