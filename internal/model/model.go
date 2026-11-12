@@ -706,22 +706,37 @@ type TaskRunDO struct {
 	EndedAt   int64  `json:"endedAt,omitempty"`
 }
 
+// 任务步骤 kind / provider（账本 SSOT；与浏览器插件解耦）。
+const (
+	TaskStepKindOp      = "op"
+	TaskStepKindThought = "thought"
+
+	TaskProviderWWB    = "wwb"
+	TaskProviderKimi   = "kimi"
+	TaskProviderAgent  = "agent"
+	TaskProviderUI     = "ui"
+	TaskProviderRecord = "record"
+	TaskProviderMCP    = "mcp"
+)
+
 // TaskStepDO 任务中的一步（存定位策略摘要，少依赖脆弱 @eN）。
 type TaskStepDO struct {
-	ID       string `json:"id"`
-	RunID    string `json:"runId"`
-	Seq      int    `json:"seq"`
-	Tool     string `json:"tool"`
-	Action   string `json:"action"`
-	Intent   string `json:"intent"`
-	Summary  string `json:"summary"`
-	ArgsJSON string `json:"argsJson,omitempty"`
-	Locator  string `json:"locator,omitempty"` // JSON：ref/selector/name/frame/url
-	Result   string `json:"result,omitempty"`  // JSON 摘要
-	OK       bool   `json:"ok"`
-	Error    string `json:"error,omitempty"`
-	Approved bool   `json:"approved"`
-	CreatedAt int64 `json:"createdAt"`
+	ID        string `json:"id"`
+	RunID     string `json:"runId"`
+	Seq       int    `json:"seq"`
+	Kind      string `json:"kind,omitempty"`     // thought | op（默认 op）
+	Provider  string `json:"provider,omitempty"` // wwb | kimi | agent | ui | record | mcp
+	Tool      string `json:"tool"`
+	Action    string `json:"action"`
+	Intent    string `json:"intent"`
+	Summary   string `json:"summary"`
+	ArgsJSON  string `json:"argsJson,omitempty"`
+	Locator   string `json:"locator,omitempty"` // JSON：ref/selector/name/frame/url
+	Result    string `json:"result,omitempty"`  // JSON 摘要
+	OK        bool   `json:"ok"`
+	Error     string `json:"error,omitempty"`
+	Approved  bool   `json:"approved"`
+	CreatedAt int64  `json:"createdAt"`
 }
 
 // TaskRunDetailDO 任务详情（含步骤，供 get_task_run / 舞台时间线）。

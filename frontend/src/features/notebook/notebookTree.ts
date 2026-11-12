@@ -71,6 +71,35 @@ export function buildNotebookTree(groups: NotebookGroup[], summaries: NoteSummar
   return roots
 }
 
+/** findNotebookSubtree 取某目录节点（含其自身与子孙）。 */
+export function findNotebookSubtree(nodes: NotebookTreeNode[], rootId: string): NotebookTreeNode | null {
+  const id = (rootId || '').replace(/\\/g, '/').replace(/\/+$/, '')
+  if (!id) return null
+  const walk = (list: NotebookTreeNode[]): NotebookTreeNode | null => {
+    for (const n of list) {
+      if (n.kind === 'folder') {
+        if (n.id === id) return n
+        const hit = walk(n.children)
+        if (hit) return hit
+      }
+    }
+    return null
+  }
+  return walk(nodes)
+}
+
+/** skillDirFromNoteId 工作流/{name}/SKILL.md → 工作流/{name}。 */
+export function skillDirFromNoteId(noteId: string): string {
+  const id = (noteId || '').replace(/\\/g, '/').replace(/\/+$/, '')
+  if (!id) return ''
+  if (/\/SKILL\.md$/i.test(id)) return id.replace(/\/SKILL\.md$/i, '')
+  if (id.startsWith('工作流/')) {
+    const parts = id.split('/').filter(Boolean)
+    if (parts.length >= 2) return `${parts[0]}/${parts[1]}`
+  }
+  return id
+}
+
 /** filterNotebookTree 按关键词过滤树（保留匹配路径）。 */
 export function filterNotebookTree(nodes: NotebookTreeNode[], q: string): NotebookTreeNode[] {
   const query = q.trim().toLowerCase()

@@ -1,0 +1,109 @@
+/* 系统通知 Toast（右下角栈） */
+.wwb-notify-host {
+  position: fixed;
+  right: 16px;
+  bottom: 44px;
+  z-index: 12000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.wwb-notify {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-panel, #fff);
+  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.12);
+  animation: wwb-notify-in 180ms ease-out;
+}
+
+.wwb-notify.is-success {
+  border-color: color-mix(in srgb, var(--color-success, #22c55e) 45%, var(--color-border, #e5e7eb));
+  background: color-mix(in srgb, var(--color-success, #22c55e) 10%, var(--color-panel, #fff));
+}
+
+.wwb-notify.is-error {
+  border-color: color-mix(in srgb, var(--color-danger, #ef4444) 45%, var(--color-border, #e5e7eb));
+  background: color-mix(in srgb, var(--color-danger, #ef4444) 10%, var(--color-panel, #fff));
+}
+
+.wwb-notify.is-warning {
+  border-color: color-mix(in srgb, var(--color-warning, #f59e0b) 45%, var(--color-border, #e5e7eb));
+  background: color-mix(in srgb, var(--color-warning, #f59e0b) 12%, var(--color-panel, #fff));
+}
+
+.wwb-notify.is-info {
+  border-color: color-mix(in srgb, var(--color-accent, #2563eb) 35%, var(--color-border, #e5e7eb));
+  background: color-mix(in srgb, var(--color-accent, #2563eb) 8%, var(--color-panel, #fff));
+}
+
+.wwb-notify-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.wwb-notify-title {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--color-text-secondary, #4b5563);
+  margin-bottom: 2px;
+}
+
+.wwb-notify-message {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--color-text, #111);
+  word-break: break-word;
+}
+
+.wwb-notify-detail {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--color-accent, #2563eb);
+  cursor: pointer;
+}
+
+.wwb-notify-detail:hover {
+  text-decoration: underline;
+}
+
+.wwb-notify-close {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted, #6b7280);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.wwb-notify-close:hover {
+  background: color-mix(in srgb, var(--color-text, #111) 8%, transparent);
+  color: var(--color-text, #111);
+}
+
+@keyframes wwb-notify-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

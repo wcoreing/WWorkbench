@@ -80,6 +80,7 @@ const (
 	CapBrowserOpen          = "browser_open"
 	CapListTaskRuns         = "list_task_runs"
 	CapGetTaskRun           = "get_task_run"
+	CapTaskRecord           = "task_record"
 	CapReplayTaskStep       = "replay_task_step"
 	CapDistillWorkflow      = "distill_workflow"
 	CapListWorkflows        = "list_workflows"
@@ -89,6 +90,13 @@ const (
 	CapRunSkill             = "run_skill"
 	CapListSkills           = "list_skills"
 	CapGetSkill             = "get_skill"
+	CapListDirVersions      = "list_dir_versions"
+	CapEnableDirVersion     = "enable_dir_version"
+	CapPinDirVersion        = "pin_dir_version"
+	CapRestoreDirVersion    = "restore_dir_version"
+	CapListSkillVersions    = "list_skill_versions"
+	CapPinSkillVersion      = "pin_skill_version"
+	CapRestoreSkillVersion  = "restore_skill_version"
 )
 
 // UICapabilities 需前端执行的 UI 联动能力（切产品线 + CommandBus handler）。

@@ -1,5 +1,5 @@
 import type { ProductId } from './products'
-import { IconDatabase, IconDocker, IconFolder, IconGlobe, IconHttp, IconLayers, IconLogs, IconNotebook, IconSave, IconSettings, IconTerminal } from '../components/Icons'
+import { IconDatabase, IconDocker, IconFolder, IconHttp, IconLayers, IconLogs, IconNotebook, IconPlay, IconSave, IconSettings, IconTerminal } from '../components/Icons'
 import { chromeProps, pressProps } from '../components/compat'
 import { useI18n, useLocalizedProducts } from '../i18n'
 import { useAppStore } from '../stores/appStore'
@@ -15,7 +15,7 @@ const PRODUCT_ICONS: Record<ProductId, typeof IconDatabase> = {
   httpapi: IconHttp,
   logs: IconLogs,
   backup: IconSave,
-  browser: IconGlobe,
+  browser: IconPlay,
   plugins: IconSettings,
 }
 

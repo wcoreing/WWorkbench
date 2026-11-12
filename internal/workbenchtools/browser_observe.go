@@ -7,30 +7,32 @@ import (
 )
 
 func toolBrowserStatus(ctx context.Context, d *Deps, _ json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
-	if err != nil {
-		return Fail(err.Error())
-	}
-	st := b.Status()
 	out := map[string]interface{}{
-		"listening":          st.Listening,
-		"addr":               st.Addr,
-		"extensionConnected": st.ExtensionConnected,
-		"extDir":             st.ExtDir,
-		"installHint":        "Chrome/Edge → 扩展程序 → 加载已解压的扩展程序 → 选择 extDir 目录",
+		"executors": executorsSnapshot(ctx, d),
+		"note":      "任务浏览器操作请走 browser_*（可传 executor=wwb|kimi）；禁止任务场景直连 10086/18765",
 	}
-	if st.AttachedTabID != nil {
-		out["attachedTabId"] = *st.AttachedTabID
+	if d != nil && d.Browser != nil {
+		st := d.Browser.Status()
+		out["listening"] = st.Listening
+		out["addr"] = st.Addr
+		out["extensionConnected"] = st.ExtensionConnected
+		out["extDir"] = st.ExtDir
+		out["installHint"] = "Chrome/Edge → 扩展程序 → 加载已解压的扩展程序 → 选择 extDir 目录"
+		if st.AttachedTabID != nil {
+			out["attachedTabId"] = *st.AttachedTabID
+		}
+		if st.LastError != "" {
+			out["lastError"] = st.LastError
+		}
 	}
-	if st.LastError != "" {
-		out["lastError"] = st.LastError
-	}
-	if st.ExtensionConnected {
+	if b, err := requireBrowser(d); err == nil {
 		if data, err := b.Call(ctx, "status", map[string]interface{}{}); err == nil {
 			var extra map[string]interface{}
 			if json.Unmarshal(data, &extra) == nil {
 				for k, v := range extra {
-					out[k] = v
+					if _, exists := out[k]; !exists {
+						out[k] = v
+					}
 				}
 			}
 		}
@@ -62,7 +64,7 @@ type browserAttachArgs struct {
 }
 
 func toolBrowserAttach(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, raw)
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -91,7 +93,7 @@ type browserSnapshotArgs struct {
 }
 
 func toolBrowserSnapshot(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, raw)
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -132,7 +134,7 @@ type browserFindTabArgs struct {
 }
 
 func toolBrowserFindTab(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, raw)
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -168,7 +170,7 @@ type browserRunArgs struct {
 }
 
 func toolBrowserRun(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, raw)
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -195,7 +197,7 @@ type browserEvaluateArgs struct {
 }
 
 func toolBrowserEvaluate(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, raw)
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -227,7 +229,7 @@ type browserReadPageArgs struct {
 }
 
 func toolBrowserReadPage(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, raw)
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -265,7 +267,7 @@ type browserNetworkArgs struct {
 
 
 func toolBrowserNetwork(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, raw)
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -305,7 +307,7 @@ type browserFindArgs struct {
 }
 
 func toolBrowserFind(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, raw)
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -345,7 +347,7 @@ type browserWaitArgs struct {
 }
 
 func toolBrowserWait(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, raw)
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -399,7 +401,7 @@ type browserScreenshotArgs struct {
 }
 
 func toolBrowserScreenshot(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, raw)
 	if err != nil {
 		return Fail(err.Error())
 	}

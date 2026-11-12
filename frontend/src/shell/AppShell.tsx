@@ -12,6 +12,7 @@ import { subscribeAgentUiActions, subscribeMcpConfirm } from '../features/agent/
 import { startWorkbenchRadar } from '../workbench/workbenchRadar'
 import { useAgentStore } from '../stores/agentStore'
 import { ConfirmHost } from '../components/ConfirmHost'
+import { NotifyHost } from '../notify'
 import { installFocusGate } from '../components/compat'
 import { useI18n } from '../i18n'
 import type { ProductId } from './products'
@@ -90,6 +91,7 @@ export function AppShell() {
       </div>
       <StatusBar />
       <ConfirmHost />
+      <NotifyHost />
     </div>
   )
 }

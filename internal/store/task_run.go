@@ -12,7 +12,7 @@ import (
 )
 
 const taskRunSelectSQL = `SELECT id, session, title, intent, status, source, started_at, ended_at FROM task_runs`
-const taskStepSelectSQL = `SELECT id, run_id, seq, tool, action, intent, summary, args_json, locator_json, result_json, ok, error, approved, created_at FROM task_steps`
+const taskStepSelectSQL = `SELECT id, run_id, seq, kind, provider, tool, action, intent, summary, args_json, locator_json, result_json, ok, error, approved, created_at FROM task_steps`
 
 // CreateTaskRun 新建任务运行。
 func (s *Store) CreateTaskRun(r model.TaskRunDO) (model.TaskRunDO, error) {
@@ -211,10 +211,13 @@ func (s *Store) AppendTaskStep(st model.TaskStepDO) (model.TaskStepDO, error) {
 	if st.ArgsJSON == "" {
 		st.ArgsJSON = "{}"
 	}
+	if strings.TrimSpace(st.Kind) == "" {
+		st.Kind = model.TaskStepKindOp
+	}
 	_, err := s.db.Exec(
-		`INSERT INTO task_steps (id, run_id, seq, tool, action, intent, summary, args_json, locator_json, result_json, ok, error, approved, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		st.ID, st.RunID, st.Seq, st.Tool, st.Action, st.Intent, st.Summary, st.ArgsJSON, st.Locator, st.Result, ok, st.Error, approved, st.CreatedAt,
+		`INSERT INTO task_steps (id, run_id, seq, kind, provider, tool, action, intent, summary, args_json, locator_json, result_json, ok, error, approved, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		st.ID, st.RunID, st.Seq, st.Kind, st.Provider, st.Tool, st.Action, st.Intent, st.Summary, st.ArgsJSON, st.Locator, st.Result, ok, st.Error, approved, st.CreatedAt,
 	)
 	if err != nil {
 		return st, errno.Wrap(errno.CodeStoreFailed, "写入任务步骤失败", err)
@@ -271,7 +274,7 @@ func scanTaskStep(row scannable) (model.TaskStepDO, error) {
 	var st model.TaskStepDO
 	var ok, approved int
 	err := row.Scan(
-		&st.ID, &st.RunID, &st.Seq, &st.Tool, &st.Action, &st.Intent, &st.Summary,
+		&st.ID, &st.RunID, &st.Seq, &st.Kind, &st.Provider, &st.Tool, &st.Action, &st.Intent, &st.Summary,
 		&st.ArgsJSON, &st.Locator, &st.Result, &ok, &st.Error, &approved, &st.CreatedAt,
 	)
 	if err != nil {
@@ -279,5 +282,8 @@ func scanTaskStep(row scannable) (model.TaskStepDO, error) {
 	}
 	st.OK = ok == 1
 	st.Approved = approved == 1
+	if strings.TrimSpace(st.Kind) == "" {
+		st.Kind = model.TaskStepKindOp
+	}
 	return st, nil
 }

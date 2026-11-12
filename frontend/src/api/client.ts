@@ -22,7 +22,7 @@ import type {
 } from './types'
 import { ApiCallError } from './errors'
 import { normalizeHTTPFolder, normalizeHTTPSavedRequest } from './httpNormalize'
-import { model } from '../../wailsjs/go/models'
+import { model, workbenchtools } from '../../wailsjs/go/models'
 
 // Wails 绑定在 generate 后可用
 import {
@@ -159,12 +159,22 @@ import {
   ListBackupRuns,
   ListTaskRuns,
   GetTaskRun,
+  SyncTaskRunLog,
   RenameTaskRun,
   DeleteTaskRuns,
   CloseTaskRun,
   FinishBrowserReplay,
   ReplayTaskStep,
   DistillWorkflow,
+  UpdateSkill,
+  ListDirVersions,
+  MapDirVersionFlags,
+  EnableDirVersion,
+  PinDirVersion,
+  RestoreDirVersion,
+  ListSkillVersions,
+  PinSkillVersion,
+  RestoreSkillVersion,
   PublishWorkflow,
   ListWorkflows,
   GetWorkflow,
@@ -768,6 +778,13 @@ export const api = {
     asArray(await unwrap(() => ListTaskRuns(session, limit))) as import('./types').TaskRun[],
   getTaskRun: async (runId: string) =>
     (await unwrap(() => GetTaskRun(runId))) as import('./types').TaskRunDetail,
+  syncTaskRunLog: async (runId: string) =>
+    (await unwrap(() => SyncTaskRunLog(runId))) as {
+      ok?: boolean
+      noteId?: string
+      scopeRoot?: string
+      skillName?: string
+    },
   renameTaskRun: (runId: string, title: string) => unwrap(() => RenameTaskRun(runId, title)),
   deleteTaskRuns: async (ids: string[]) =>
     (await unwrap(() => DeleteTaskRuns(ids))) as number,
@@ -801,6 +818,31 @@ export const api = {
       noteId?: string
       note?: string
     },
+  /** 更新已有 Skill（经验/脚本/资源；新建交给 Agent） */
+  updateSkill: async (in_: {
+    name: string
+    intent?: string
+    title?: string
+    description?: string
+    lessons?: string
+    sourceRunId?: string
+  }) =>
+    (await unwrap(() =>
+      UpdateSkill(
+        workbenchtools.UpdateSkillArgs.createFrom({
+          name: in_.name,
+          intent: in_.intent || '舞台更新技能',
+          title: in_.title || '',
+          description: in_.description || '',
+          lessons: in_.lessons || '',
+          script: '',
+          scriptLang: '',
+          resourcePaths: [],
+          steps: [],
+          sourceRunId: in_.sourceRunId || '',
+        }),
+      ),
+    )) as { ok?: boolean; note?: string; workflow?: import('./types').Workflow },
   /** 工作流笔记 → 关联 skillId（笔记 SSOT） */
   publishWorkflow: async (noteId: string, skillId = '') =>
     (await unwrap(() => PublishWorkflow(noteId, skillId))) as {
@@ -887,6 +929,75 @@ export const api = {
   applyNotebookLayout: (layout: model.NotebookLayoutDO) => unwrap(() => ApplyNotebookLayout(layout)),
   deleteNotebookGroup: (id: string) => unwrap(() => DeleteNotebookGroup(id)),
   listNotes: async () => asArray(await unwrap(() => ListNotes())),
+  listDirVersions: async (dirRel: string, limit = 24) =>
+    (await unwrap(() => ListDirVersions(dirRel, limit))) as {
+      ok?: boolean
+      rel?: string
+      enabled?: boolean
+      head?: string
+      working?: boolean
+      versions?: { hash: string; short: string; subject: string; when: string }[]
+      total?: number
+    },
+  mapDirVersionFlags: async (dirRels: string[]) => {
+    const raw = (await unwrap(() => MapDirVersionFlags(dirRels))) as {
+      ok?: boolean
+      flags?: Record<string, boolean>
+    }
+    const flags = raw?.flags || {}
+    const out: Record<string, boolean> = {}
+    for (const [k, v] of Object.entries(flags)) {
+      out[k] = Boolean(v)
+    }
+    return out
+  },
+  enableDirVersion: async (dirRel: string) =>
+    (await unwrap(() => EnableDirVersion(dirRel))) as {
+      ok?: boolean
+      rel?: string
+      enabled?: boolean
+      head?: string
+      versions?: { hash: string; short: string; subject: string; when: string }[]
+    },
+  pinDirVersion: async (dirRel: string, message = 'create_version') =>
+    (await unwrap(() => PinDirVersion(dirRel, message))) as {
+      ok?: boolean
+      rel?: string
+      version?: { hash?: string; short?: string; subject?: string; when?: string }
+    },
+  restoreDirVersion: async (dirRel: string, hash: string, intent = '舞台回退目录版本') =>
+    (await unwrap(() => RestoreDirVersion(dirRel, hash, intent))) as {
+      ok?: boolean
+      rel?: string
+      restored?: string
+      pinned?: { hash?: string; short?: string; subject?: string; when?: string }
+    },
+  listSkillVersions: async (skillName: string, limit = 24) =>
+    (await unwrap(() => ListSkillVersions(skillName, limit))) as {
+      ok?: boolean
+      name?: string
+      noteId?: string
+      rel?: string
+      enabled?: boolean
+      head?: string
+      working?: boolean
+      versions?: { hash: string; short: string; subject: string; when: string }[]
+      total?: number
+    },
+  pinSkillVersion: async (skillName: string, message = 'create_version') =>
+    (await unwrap(() => PinSkillVersion(skillName, message))) as {
+      ok?: boolean
+      skill?: string
+      version?: { hash?: string; short?: string; subject?: string; when?: string }
+    },
+  restoreSkillVersion: async (skillName: string, hash: string, intent = '舞台回退 Skill 版本') =>
+    (await unwrap(() => RestoreSkillVersion(skillName, hash, intent))) as {
+      ok?: boolean
+      skill?: string
+      noteId?: string
+      restored?: string
+      pinned?: { hash?: string; short?: string; subject?: string; when?: string }
+    },
   searchNotes: async (keyword: string) => asArray(await unwrap(() => SearchNotes(keyword))),
   getNote: async (id: string) => unwrap(() => GetNote(id)),
   saveNote: (n: model.NoteDO) => unwrap(() => SaveNote(n)),

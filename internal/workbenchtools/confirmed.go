@@ -61,6 +61,10 @@ func ExecuteConfirmed(ctx context.Context, d *Deps, toolName, argsJSON string) T
 		return SaveWorkflowConfirmed(ctx, d, argsJSON)
 	case workbench.CapUpdateSkill:
 		return UpdateSkillConfirmed(ctx, d, argsJSON)
+	case workbench.CapRestoreDirVersion:
+		return RestoreDirVersionConfirmed(ctx, d, argsJSON)
+	case workbench.CapRestoreSkillVersion:
+		return RestoreSkillVersionConfirmed(ctx, d, argsJSON)
 	case workbench.CapRunSkill:
 		return RunWorkflowConfirmed(ctx, d, argsJSON)
 	default:

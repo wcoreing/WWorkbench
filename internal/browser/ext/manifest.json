@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "WWorkbench Browser Stage",
   "description": "把已登录的 Chromium 标签接到 WWorkbench 舞台（Vue/TS 模块化构建）",
-  "version": "0.3.8",
+  "version": "0.3.14",
   "permissions": [
     "tabs",
     "tabGroups",

@@ -427,3 +427,144 @@ func revealInFileManager(path string, selectFile bool) ApiResult[bool] {
 	}
 	return OkResult(true)
 }
+
+func dirVersionPayload(st notebook.DirVersionStatus) map[string]interface{} {
+	commits := make([]map[string]interface{}, 0, len(st.Commits))
+	for _, c := range st.Commits {
+		commits = append(commits, map[string]interface{}{
+			"hash": c.Hash, "short": c.Short, "subject": c.Subject, "when": c.When,
+		})
+	}
+	return map[string]interface{}{
+		"ok": true, "rel": st.Rel, "dir": st.Dir, "enabled": st.Enabled,
+		"head": st.Head, "working": st.Working, "versions": commits, "total": len(commits),
+	}
+}
+
+// ListDirVersions 列出笔记本目录版本。
+func (s *Service) ListDirVersions(dirRel string, limit int) ApiResult[map[string]interface{}] {
+	if s.notebook == nil {
+		return ErrResult[map[string]interface{}](errno.New(errno.CodeInvalidArg, "笔记本未就绪", ""))
+	}
+	st, err := s.notebook.ListDirVersions(dirRel, limit)
+	if err != nil {
+		return ErrResult[map[string]interface{}](err)
+	}
+	return OkResult(dirVersionPayload(st))
+}
+
+// MapDirVersionFlags 批量查询目录是否已启用版本（供侧栏 Ver 标签）。
+func (s *Service) MapDirVersionFlags(dirRels []string) ApiResult[map[string]interface{}] {
+	if s.notebook == nil {
+		return ErrResult[map[string]interface{}](errno.New(errno.CodeInvalidArg, "笔记本未就绪", ""))
+	}
+	flags := s.notebook.MapDirVersionFlags(dirRels)
+	out := make(map[string]interface{}, len(flags)+1)
+	out["ok"] = true
+	mapped := make(map[string]interface{}, len(flags))
+	for k, v := range flags {
+		mapped[k] = v
+	}
+	out["flags"] = mapped
+	return OkResult(out)
+}
+
+// EnableDirVersion 启用目录版本管理。
+func (s *Service) EnableDirVersion(dirRel string) ApiResult[map[string]interface{}] {
+	if s.notebook == nil {
+		return ErrResult[map[string]interface{}](errno.New(errno.CodeInvalidArg, "笔记本未就绪", ""))
+	}
+	st, err := s.notebook.EnableDirVersion(dirRel)
+	if err != nil {
+		return ErrResult[map[string]interface{}](err)
+	}
+	return OkResult(dirVersionPayload(st))
+}
+
+// PinDirVersion 创建目录版本。
+func (s *Service) PinDirVersion(dirRel, message string) ApiResult[map[string]interface{}] {
+	if s.notebook == nil {
+		return ErrResult[map[string]interface{}](errno.New(errno.CodeInvalidArg, "笔记本未就绪", ""))
+	}
+	msg := strings.TrimSpace(message)
+	if msg == "" {
+		msg = "create_version"
+	}
+	ci, err := s.notebook.PinDirVersion(dirRel, msg)
+	if err != nil {
+		return ErrResult[map[string]interface{}](err)
+	}
+	return OkResult(map[string]interface{}{
+		"ok": true, "rel": strings.TrimSpace(dirRel),
+		"version": map[string]interface{}{
+			"hash": ci.Hash, "short": ci.Short, "subject": ci.Subject, "when": ci.When,
+		},
+	})
+}
+
+// RestoreDirVersion 回退目录版本。
+func (s *Service) RestoreDirVersion(dirRel, hash, intent string) ApiResult[map[string]interface{}] {
+	if s.notebook == nil {
+		return ErrResult[map[string]interface{}](errno.New(errno.CodeInvalidArg, "笔记本未就绪", ""))
+	}
+	ci, err := s.notebook.RestoreDirVersion(dirRel, hash, intent)
+	if err != nil {
+		return ErrResult[map[string]interface{}](err)
+	}
+	return OkResult(map[string]interface{}{
+		"ok": true, "rel": strings.TrimSpace(dirRel),
+		"restored": strings.TrimSpace(hash),
+		"pinned": map[string]interface{}{
+			"hash": ci.Hash, "short": ci.Short, "subject": ci.Subject, "when": ci.When,
+		},
+	})
+}
+
+// ListSkillVersions 兼容：技能目录版本。
+func (s *Service) ListSkillVersions(skillName string, limit int) ApiResult[map[string]interface{}] {
+	rel, err := notebook.SkillDirRel(skillName)
+	if err != nil {
+		return ErrResult[map[string]interface{}](err)
+	}
+	out := s.ListDirVersions(rel, limit)
+	if !out.Ok {
+		return out
+	}
+	if out.Data == nil {
+		out.Data = map[string]interface{}{}
+	}
+	out.Data["name"] = strings.TrimSpace(skillName)
+	out.Data["noteId"] = notebook.SkillNoteID(strings.TrimSpace(skillName))
+	out.Data["skill"] = strings.TrimSpace(skillName)
+	return out
+}
+
+// PinSkillVersion 兼容：创建技能目录版本。
+func (s *Service) PinSkillVersion(skillName, message string) ApiResult[map[string]interface{}] {
+	rel, err := notebook.SkillDirRel(skillName)
+	if err != nil {
+		return ErrResult[map[string]interface{}](err)
+	}
+	out := s.PinDirVersion(rel, message)
+	if out.Ok && out.Data != nil {
+		out.Data["skill"] = strings.TrimSpace(skillName)
+	}
+	return out
+}
+
+// RestoreSkillVersion 兼容：回退技能目录。
+func (s *Service) RestoreSkillVersion(skillName, hash, intent string) ApiResult[map[string]interface{}] {
+	rel, err := notebook.SkillDirRel(skillName)
+	if err != nil {
+		return ErrResult[map[string]interface{}](err)
+	}
+	out := s.RestoreDirVersion(rel, hash, intent)
+	if out.Ok && out.Data != nil {
+		out.Data["skill"] = strings.TrimSpace(skillName)
+		out.Data["noteId"] = notebook.SkillNoteID(strings.TrimSpace(skillName))
+		if s.radar != nil {
+			s.radar.EmitNotebookNote(workbench.RadarOpUpdate, notebook.SkillNoteID(strings.TrimSpace(skillName)), "workflow-"+strings.TrimSpace(skillName), skillName, true)
+		}
+	}
+	return out
+}

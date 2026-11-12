@@ -7,7 +7,7 @@ import (
 func registerBrowserTools(r *Registry) {
 	r.add(ToolDef{
 		Name:        workbench.CapBrowserStatus,
-		Description: "浏览器舞台状态：桥是否监听、扩展是否已连接、扩展目录路径。动手前先调本工具；未连接时按 installHint 加载扩展。",
+		Description: "浏览器/执行器状态：executors.wwb / executors.kimi、扩展目录。动手前先调；任务操作走 browser_*，勿直连端口。",
 		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
 		Handler:     toolBrowserStatus,
 	})
@@ -211,6 +211,7 @@ func registerBrowserTools(r *Registry) {
 				"name":     map[string]interface{}{"type": "string", "description": "无障碍名称，CDP AX 兜底"},
 				"mode":     map[string]interface{}{"type": "string", "description": "auto|pointer|dom，默认 auto"},
 				"frame":    map[string]interface{}{"type": "string"},
+				"executor": executorProp(),
 				"intent":   intentProp(),
 			},
 			"required": []string{"intent"},
@@ -257,6 +258,7 @@ func registerBrowserTools(r *Registry) {
 				"selector": map[string]interface{}{"type": "string"},
 				"value":    map[string]interface{}{"type": "string"},
 				"frame":    map[string]interface{}{"type": "string"},
+				"executor": executorProp(),
 				"intent":   intentProp(),
 			},
 			"required": []string{"value", "intent"},
@@ -273,6 +275,7 @@ func registerBrowserTools(r *Registry) {
 				"newTab":      map[string]interface{}{"type": "boolean"},
 				"session":     map[string]interface{}{"type": "string", "description": "任务名，全程固定，如 xhs-publish"},
 				"group_title": map[string]interface{}{"type": "string", "description": "标签组显示名（用户语言），建议首次 navigate 设置"},
+				"executor":    executorProp(),
 				"intent":      intentProp(),
 			},
 			"required": []string{"url", "intent"},
@@ -327,7 +330,7 @@ func registerBrowserTools(r *Registry) {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapListTaskRuns,
-		Description: "列出近期日志（浏览器 session）。可按 session 过滤。复盘用；试跑/生成工作流见后续工具。",
+		Description: "列出近期任务账本（session）。可按 session 过滤。含思考+操作；复盘/更新技能用。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -339,7 +342,7 @@ func registerBrowserTools(r *Registry) {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapGetTaskRun,
-		Description: "获取一次任务详情（含步骤时间线）。runId 来自 list_task_runs 或写操作返回的 taskRunId。",
+		Description: "获取一次任务详情（含步骤时间线 kind/provider）。runId 来自 list_task_runs 或写操作返回的 taskRunId。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -348,6 +351,27 @@ func registerBrowserTools(r *Registry) {
 			"required": []string{"runId"},
 		},
 		Handler: toolGetTaskRun,
+	})
+	r.add(ToolDef{
+		Name: workbench.CapTaskRecord,
+		Description: "写入任务账本（与浏览器插件解耦）。kind=thought 记 Agent 思考/决策；kind=op 记操作。" +
+			"关键换策略/收口前须记 thought。自动同步 log.md。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"session":  map[string]interface{}{"type": "string", "description": "任务 session；空=当前活跃"},
+				"kind":     map[string]interface{}{"type": "string", "description": "thought|op，默认 thought"},
+				"summary":  map[string]interface{}{"type": "string", "description": "人话摘要（必填其一）"},
+				"intent":   map[string]interface{}{"type": "string"},
+				"action":   map[string]interface{}{"type": "string"},
+				"tool":     map[string]interface{}{"type": "string"},
+				"provider": map[string]interface{}{"type": "string", "description": "agent|mcp|wwb|kimi|ui|record"},
+				"title":    map[string]interface{}{"type": "string", "description": "开新 run 时标题"},
+				"ok":       map[string]interface{}{"type": "boolean"},
+				"error":    map[string]interface{}{"type": "string"},
+			},
+		},
+		Handler: toolTaskRecord,
 	})
 	r.add(ToolDef{
 		Name: workbench.CapReplayTaskStep,
@@ -426,12 +450,12 @@ func registerBrowserTools(r *Registry) {
 	})
 	r.add(ToolDef{
 		Name: workbench.CapUpdateSkill,
-		Description: "自我更新 Skill：把跑通/踩坑经验、优化步骤、脚本、资源写回工作流笔记（SSOT）。" +
-			"日志只是参考；主路径 get_skill→用工具执行→update_skill 沉淀。需确认+intent。",
+		Description: "自我更新 Skill：依据当前任务 log.md 归纳后，把经验/步骤/脚本/资源写回同目录 SKILL.md（SSOT）。" +
+			"name=当前任务名（与 log 同目录）；禁止沉淀到别的工作流；禁止机械贴 log。主路径 get_skill→执行→update_skill。需确认+intent。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"name":          map[string]interface{}{"type": "string", "description": "工作流短名，如 xhs-publish-image"},
+				"name":          map[string]interface{}{"type": "string", "description": "当前任务名=工作流目录名（与 log.md 同目录），如 小红书爆款·少即是多"},
 				"lessons":       map[string]interface{}{"type": "string", "description": "追加到 ## 经验（人话：这次学到什么）"},
 				"script":        map[string]interface{}{"type": "string", "description": "追加到 ## 脚本（可纯文本，自动包 fence）"},
 				"scriptLang":    map[string]interface{}{"type": "string", "description": "脚本语言，默认 bash"},

@@ -87,11 +87,16 @@ export function AgentInputBar({
   const [pendingSkills, setPendingSkills] = useState<SkillRef[]>([])
   const skillLabelMap = useMemo(() => buildSkillLabelMap(skills), [skills])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const onSendRef = useRef(onSend)
+  onSendRef.current = onSend
+  const threadMentionsRef = useRef(threadMentions)
+  threadMentionsRef.current = threadMentions
   const draftTick = useAgentStore((s) => s.draftTick)
 
   useEffect(() => {
     if (draftTick === 0) return
-    const { draftInput, draftHasMessage, draftMentions, draftSkillIds } = useAgentStore.getState()
+    const { draftInput, draftHasMessage, draftMentions, draftSkillIds, takePendingAutoSend } =
+      useAgentStore.getState()
     if (draftHasMessage) setInput(draftInput)
     setMentions((prev) => mergeMentions(prev, draftMentions))
     if (draftSkillIds.length > 0) {
@@ -111,7 +116,35 @@ export function AgentInputBar({
     }
     setMenuOpen(false)
     setSkillMenuOpen(false)
-    requestAnimationFrame(() => textareaRef.current?.focus())
+    const shouldAutoSend = takePendingAutoSend()
+    const autoText = draftHasMessage ? draftInput.trim() : ''
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus()
+      if (!shouldAutoSend || !autoText) return
+      const phase = useAgentStore.getState().sessionPhase
+      if (phase === 'streaming' || phase === 'tools' || phase === 'needs_choice') {
+        return
+      }
+      void Promise.resolve(
+        onSendRef.current(
+          autoText,
+          mergeMentions(draftMentions, threadMentionsRef.current),
+          [],
+          draftSkillIds,
+        ),
+      )
+        .then(() => {
+          setInput('')
+          setMentions([])
+          setImages([])
+          setPendingSkills([])
+          setMenuOpen(false)
+          setSkillMenuOpen(false)
+        })
+        .catch(() => {
+          /* 发送失败保留输入 */
+        })
+    })
   }, [draftTick])
 
   const loadResources = useCallback(async () => {

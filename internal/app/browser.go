@@ -683,6 +683,23 @@ func (s *Service) GetTaskRun(runID string) ApiResult[model.TaskRunDetailDO] {
 	return OkResult(detail)
 }
 
+// SyncTaskRunLog 将任务步骤同步为工作流目录下 log.md 文本笔记（舞台日志 IDE）。
+func (s *Service) SyncTaskRunLog(runID string) ApiResult[map[string]interface{}] {
+	if s.toolsRegistry == nil {
+		return ErrResult[map[string]interface{}](errno.New(errno.CodeInvalidArg, "工具注册表未就绪", ""))
+	}
+	noteID, scopeRoot, skillName, err := workbenchtools.SyncTaskRunLogNote(s.toolsRegistry.Deps(), strings.TrimSpace(runID))
+	if err != nil {
+		return ErrResult[map[string]interface{}](err)
+	}
+	return OkResult(map[string]interface{}{
+		"ok":        true,
+		"noteId":    noteID,
+		"scopeRoot": scopeRoot,
+		"skillName": skillName,
+	})
+}
+
 // RenameTaskRun 重命名任务标题（舞台会话列表）。
 func (s *Service) RenameTaskRun(runID, title string) ApiResult[bool] {
 	if err := s.store.UpdateTaskRunTitle(runID, title); err != nil {

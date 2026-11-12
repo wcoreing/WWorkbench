@@ -13,7 +13,7 @@ import (
 var extFS embed.FS
 
 const seedMarker = ".ww-browser-ext-version"
-const seedVersion = "0.3.8"
+const seedVersion = "0.3.14"
 
 // SeedVersion 当前内置/释放到磁盘的扩展版本（与 Chrome 里正在跑的 SW 可能不一致）。
 func SeedVersion() string { return seedVersion }

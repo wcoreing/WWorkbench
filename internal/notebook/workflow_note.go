@@ -51,21 +51,38 @@ func SkillNoteID(name string) string {
 	return SkillGroupName + "/" + name + "/" + SkillEntryFile
 }
 
-// SkillNameFromNoteID 从笔记路径还原 skill name。
+// SkillNameFromNoteID 从 SKILL.md 路径还原 skill name。
+// 仅认 工作流/{name}/SKILL.md；同目录 log.md / 其它文件返回空（避免 get_skill 误读日志）。
 func SkillNameFromNoteID(id string) string {
-	id = strings.TrimSpace(id)
+	id = strings.TrimSpace(strings.ReplaceAll(id, "\\", "/"))
 	if id == "" {
 		return ""
 	}
-	id = strings.TrimSuffix(id, "/"+SkillEntryFile)
-	if strings.HasPrefix(id, SkillGroupName+"/") {
-		rest := strings.TrimPrefix(id, SkillGroupName+"/")
-		if i := strings.Index(rest, "/"); i >= 0 {
-			return rest[:i]
-		}
-		return rest
+	lower := strings.ToLower(id)
+	suffix := "/" + strings.ToLower(SkillEntryFile)
+	if !strings.HasSuffix(lower, suffix) {
+		return ""
 	}
-	return ""
+	id = id[:len(id)-len(suffix)]
+	if !strings.HasPrefix(id, SkillGroupName+"/") {
+		return ""
+	}
+	rest := strings.TrimPrefix(id, SkillGroupName+"/")
+	if rest == "" || strings.Contains(rest, "/") {
+		return ""
+	}
+	return rest
+}
+
+// IsTaskLogNoteID 是否为任务账本投影路径 工作流/{name}/log.md。
+func IsTaskLogNoteID(id string) bool {
+	id = strings.TrimSpace(strings.ReplaceAll(id, "\\", "/"))
+	if id == "" {
+		return false
+	}
+	lower := strings.ToLower(id)
+	return strings.HasPrefix(id, SkillGroupName+"/") &&
+		strings.HasSuffix(lower, "/"+strings.ToLower(TaskLogFile))
 }
 
 // ExtractWorkflowNoteBodyExtras 从已有笔记抽出经验/脚本/资源段落，避免 save 步骤时冲掉沉淀。
@@ -455,6 +472,18 @@ func (s *Service) SaveWorkflowNoteWithExtras(p model.WorkflowDO, extras Workflow
 	if err != nil {
 		return p, err
 	}
+	// 技能目录创建版本（gitignore 排除 log.md；内容未变则复用 HEAD）
+	pinMsg := strings.TrimSpace(p.Source)
+	if pinMsg == "" {
+		pinMsg = "save_workflow"
+	}
+	if intent := strings.TrimSpace(p.Intent); intent != "" {
+		pinMsg = pinMsg + ": " + intent
+	}
+	if _, pinErr := s.PinSkillVersion(name, pinMsg); pinErr != nil {
+		// 创建版本失败不阻断写盘；可后续再创建
+		_ = pinErr
+	}
 	out, ok := ParseWorkflowNote(*saved)
 	if !ok {
 		out = p
@@ -506,6 +535,9 @@ func (s *Service) ListWorkflowNotes(limit int) ([]model.WorkflowDO, error) {
 	}
 	out := make([]model.WorkflowDO, 0)
 	for _, sum := range summaries {
+		if IsTaskLogNoteID(sum.ID) {
+			continue
+		}
 		role := NormalizeNoteRole(sum.Role)
 		if role != model.NoteRoleSkill && !isSkillPathID(sum.ID) {
 			continue

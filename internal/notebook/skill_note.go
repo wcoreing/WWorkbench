@@ -99,7 +99,7 @@ func (s *Service) MarkNoteAsSkill(noteID, skillID string) (*model.NoteDO, error)
 	return s.LinkSkillToWorkflowNote(noteID, skillID)
 }
 
-// ListSkillNotes 列出 role=skill 的笔记摘要。
+// ListSkillNotes 列出工作流入口笔记（role=skill 且非 log.md；优先 SKILL.md 路径）。
 func (s *Service) ListSkillNotes(limit int) ([]model.NoteSummaryDO, error) {
 	if limit <= 0 {
 		limit = 80
@@ -110,7 +110,10 @@ func (s *Service) ListSkillNotes(limit int) ([]model.NoteSummaryDO, error) {
 	}
 	out := make([]model.NoteSummaryDO, 0)
 	for _, n := range all {
-		if NormalizeNoteRole(n.Role) != model.NoteRoleSkill {
+		if IsTaskLogNoteID(n.ID) {
+			continue
+		}
+		if NormalizeNoteRole(n.Role) != model.NoteRoleSkill && !isSkillPathID(n.ID) {
 			continue
 		}
 		out = append(out, n)
@@ -137,6 +140,9 @@ func (s *Service) FindNoteIDBySkillID(skillID string) string {
 		return ""
 	}
 	for _, sum := range list {
+		if IsTaskLogNoteID(sum.ID) {
+			continue
+		}
 		n, err := s.GetNote(sum.ID)
 		if err != nil || n == nil {
 			continue

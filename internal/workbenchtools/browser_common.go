@@ -1,7 +1,9 @@
 package workbenchtools
 
 import (
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,6 +11,7 @@ import (
 	"time"
 
 	"WWorkbench/internal/browser"
+	"WWorkbench/internal/model"
 	"WWorkbench/internal/store"
 )
 
@@ -48,14 +51,59 @@ func saveBrowserShot(dataURL, preferFormat string) (path string, size int, forma
 	return path, len(raw), format, nil
 }
 
-func requireBrowser(d *Deps) (*browser.Bridge, error) {
-	if d == nil || d.Browser == nil {
-		return nil, errBrowserMissing
-	}
-	return d.Browser, nil
+// browserClient 经任务网关调用执行器（wwb/kimi）；替代直连 Bridge。
+type browserClient struct {
+	d            *Deps
+	executorHint string
+	session      string
+	lastProvider string
 }
 
-var errBrowserMissing = errStr("浏览器桥未就绪（请重启 WWorkbench）")
+func (c *browserClient) Call(ctx context.Context, action string, args interface{}) (json.RawMessage, error) {
+	if c == nil {
+		return nil, errBrowserMissing
+	}
+	data, prov, err := browserCall(ctx, c.d, c.session, c.executorHint, action, args)
+	c.lastProvider = prov
+	return data, err
+}
+
+func (c *browserClient) CallSession(ctx context.Context, action string, args interface{}, session string) (json.RawMessage, error) {
+	if c == nil {
+		return nil, errBrowserMissing
+	}
+	data, prov, err := browserCall(ctx, c.d, session, c.executorHint, action, args)
+	c.lastProvider = prov
+	return data, err
+}
+
+func (c *browserClient) Provider() string {
+	if c == nil {
+		return model.TaskProviderWWB
+	}
+	return providerOrWWB(c.lastProvider)
+}
+
+func requireBrowser(d *Deps) (*browserClient, error) {
+	return requireBrowserExec(d, "", "")
+}
+
+func requireBrowserExec(d *Deps, executorHint, session string) (*browserClient, error) {
+	if d == nil {
+		return nil, errBrowserMissing
+	}
+	ctx := context.Background()
+	if _, _, err := browser.ResolveExecutor(ctx, executorHint, &browser.WWBExecutor{Bridge: d.Browser}, browser.NewKimiExecutor("")); err != nil {
+		return nil, err
+	}
+	return &browserClient{d: d, executorHint: executorHint, session: session}, nil
+}
+
+func requireBrowserRaw(d *Deps, raw json.RawMessage) (*browserClient, error) {
+	return requireBrowserExec(d, peekExecutor(raw), peekSession(raw))
+}
+
+var errBrowserMissing = errStr("浏览器执行器未就绪（连接 WWorkbench 扩展或启动 Kimi WebBridge）")
 
 type errStr string
 

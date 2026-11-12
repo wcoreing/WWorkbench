@@ -47,7 +47,7 @@ func toolBrowserUpload(_ context.Context, d *Deps, raw json.RawMessage) ToolResu
 }
 
 func BrowserUploadConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, json.RawMessage(argsJSON))
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -68,6 +68,7 @@ func BrowserUploadConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolR
 		Args: args, Locator: locatorFrom(in.Ref, in.Selector, "", in.Frame), Approved: true,
 	}
 	data, err := b.Call(ctx, "upload", args)
+	step.Provider = b.Provider()
 	if err != nil {
 		return recordBrowserFail(d, step, err)
 	}
@@ -116,7 +117,7 @@ func toolBrowserSelectOption(_ context.Context, d *Deps, raw json.RawMessage) To
 }
 
 func BrowserSelectOptionConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, json.RawMessage(argsJSON))
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -142,6 +143,7 @@ func BrowserSelectOptionConfirmed(ctx context.Context, d *Deps, argsJSON string)
 		Locator: locatorFrom(in.Ref, in.Selector, "", in.Frame), Approved: true,
 	}
 	data, err := b.Call(ctx, "select_option", args)
+	step.Provider = b.Provider()
 	if err != nil {
 		return recordBrowserFail(d, step, err)
 	}
@@ -192,7 +194,7 @@ func toolBrowserDrag(_ context.Context, d *Deps, raw json.RawMessage) ToolResult
 }
 
 func BrowserDragConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, json.RawMessage(argsJSON))
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -230,6 +232,7 @@ func BrowserDragConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolRes
 		Args: args, Approved: true,
 	}
 	data, err := b.Call(ctx, "drag", args)
+	step.Provider = b.Provider()
 	if err != nil {
 		return recordBrowserFail(d, step, err)
 	}
@@ -277,7 +280,7 @@ func toolBrowserClick(_ context.Context, d *Deps, raw json.RawMessage) ToolResul
 }
 
 func BrowserClickConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, json.RawMessage(argsJSON))
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -306,6 +309,7 @@ func BrowserClickConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolRe
 		step.Summary = "点击 " + in.Ref
 	}
 	data, err := b.Call(ctx, "click", args)
+	step.Provider = b.Provider()
 	if err != nil {
 		return recordBrowserFail(d, step, err)
 	}
@@ -352,7 +356,7 @@ func toolBrowserKeys(_ context.Context, d *Deps, raw json.RawMessage) ToolResult
 }
 
 func BrowserKeysConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, json.RawMessage(argsJSON))
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -376,6 +380,7 @@ func BrowserKeysConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolRes
 		Summary: "按键 " + in.Keys, Args: args, Locator: locatorFrom(in.Ref, in.Selector, "", in.Frame), Approved: true,
 	}
 	data, err := b.Call(ctx, "keys", args)
+	step.Provider = b.Provider()
 	if err != nil {
 		return recordBrowserFail(d, step, err)
 	}
@@ -420,7 +425,7 @@ func toolBrowserFill(_ context.Context, d *Deps, raw json.RawMessage) ToolResult
 }
 
 func BrowserFillConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, json.RawMessage(argsJSON))
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -442,6 +447,7 @@ func BrowserFillConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolRes
 		Locator: locatorFrom(in.Ref, in.Selector, "", in.Frame), Approved: true,
 	}
 	data, err := b.Call(ctx, "fill", args)
+	step.Provider = b.Provider()
 	if err != nil {
 		return recordBrowserFail(d, step, err)
 	}

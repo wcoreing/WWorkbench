@@ -18,7 +18,7 @@ var (
 	currentTaskSess = adhocTaskSession
 )
 
-// BrowserStepInput 记一步任务日志的输入。
+// BrowserStepInput / TaskStepInput 记一步任务账本（思考或操作）。
 type BrowserStepInput struct {
 	Session  string
 	Tool     string
@@ -32,8 +32,13 @@ type BrowserStepInput struct {
 	Error    string
 	Approved bool
 	Title    string // 开新 run 时可选标题
-	Source   string // mcp | ui | browser
+	Source   string // mcp | ui | browser | agent
+	Kind     string // thought | op（默认 op）
+	Provider string // wwb | kimi | agent | ui | record | mcp
 }
+
+// TaskStepInput 与 BrowserStepInput 同构（账本通用入口名）。
+type TaskStepInput = BrowserStepInput
 
 // EnsureTaskRun 确保 session 有进行中的任务；返回 runId。
 func EnsureTaskRun(d *Deps, session, title, intent, source string) string {
@@ -118,8 +123,8 @@ func CloseTaskRunByID(d *Deps, runID, status string) error {
 	return d.Store.UpdateTaskRunStatus(runID, status)
 }
 
-// RecordBrowserStep 记一步；无 Store 时静默跳过。返回 runId。
-func RecordBrowserStep(d *Deps, in BrowserStepInput) string {
+// RecordTaskStep 记一步任务账本（思考/操作）；无 Store 时静默跳过。返回 runId。
+func RecordTaskStep(d *Deps, in TaskStepInput) string {
 	if d == nil || d.Store == nil {
 		return ""
 	}
@@ -132,6 +137,14 @@ func RecordBrowserStep(d *Deps, in BrowserStepInput) string {
 	source := in.Source
 	if source == "" {
 		source = "mcp"
+	}
+	kind := strings.TrimSpace(in.Kind)
+	if kind == "" {
+		kind = model.TaskStepKindOp
+	}
+	provider := strings.TrimSpace(in.Provider)
+	if provider == "" {
+		provider = model.TaskProviderMCP
 	}
 	runID := EnsureTaskRun(d, session, in.Title, in.Intent, source)
 	if runID == "" {
@@ -157,10 +170,20 @@ func RecordBrowserStep(d *Deps, in BrowserStepInput) string {
 	if summary == "" {
 		summary = in.Action
 	}
+	action := strings.TrimSpace(in.Action)
+	if action == "" && kind == model.TaskStepKindThought {
+		action = "thought"
+	}
+	tool := strings.TrimSpace(in.Tool)
+	if tool == "" && kind == model.TaskStepKindThought {
+		tool = "agent"
+	}
 	_, _ = d.Store.AppendTaskStep(model.TaskStepDO{
 		RunID:    runID,
-		Tool:     in.Tool,
-		Action:   in.Action,
+		Kind:     kind,
+		Provider: provider,
+		Tool:     tool,
+		Action:   action,
 		Intent:   strings.TrimSpace(in.Intent),
 		Summary:  summary,
 		ArgsJSON: argsJSON,
@@ -170,8 +193,57 @@ func RecordBrowserStep(d *Deps, in BrowserStepInput) string {
 		Error:    in.Error,
 		Approved: in.Approved,
 	})
+	// 同步文本 log.md（笔记 IDE）；失败不影响记步。
+	if d.Notebook != nil {
+		_, _, _, _ = SyncTaskRunLogNote(d, runID)
+	}
 	// 单步失败不结束整次任务；close_session / 人工结束才收口。
 	return runID
+}
+
+// RecordBrowserStep 记操作步（兼容旧调用）；等价 RecordTaskStep(kind=op)。
+func RecordBrowserStep(d *Deps, in BrowserStepInput) string {
+	if strings.TrimSpace(in.Kind) == "" {
+		in.Kind = model.TaskStepKindOp
+	}
+	return RecordTaskStep(d, in)
+}
+
+// RecordAgentThought 侧栏/引擎把阶段性推理写入当前任务账本。
+func RecordAgentThought(d *Deps, summary string) string {
+	summary = strings.TrimSpace(summary)
+	if summary == "" {
+		return ""
+	}
+	if len([]rune(summary)) > 1200 {
+		summary = string([]rune(summary)[:1200]) + "…"
+	}
+	return RecordTaskStep(d, TaskStepInput{
+		Kind:     model.TaskStepKindThought,
+		Provider: model.TaskProviderAgent,
+		Tool:     "agent",
+		Action:   "thought",
+		Summary:  summary,
+		OK:       true,
+		Source:   "agent",
+	})
+}
+
+// CurrentTaskSession 当前活跃任务 session（供 Runner 记思考）。
+func CurrentTaskSession() string {
+	taskLogMu.Lock()
+	defer taskLogMu.Unlock()
+	return currentTaskSess
+}
+
+// HasActiveTask 是否有进行中的任务账本（非纯闲聊）。
+func HasActiveTask() bool {
+	taskLogMu.Lock()
+	defer taskLogMu.Unlock()
+	if currentTaskSess != adhocTaskSession {
+		return true
+	}
+	return len(activeRunBySess) > 0
 }
 
 func normalizeTaskSession(session string) string {
@@ -280,4 +352,70 @@ func toolGetTaskRun(_ context.Context, d *Deps, raw json.RawMessage) ToolResult 
 		return Fail(err.Error())
 	}
 	return OKData(detail)
+}
+
+func toolTaskRecord(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
+	if d == nil || d.Store == nil {
+		return Fail("存储未就绪")
+	}
+	var in struct {
+		Session  string                 `json:"session"`
+		Kind     string                 `json:"kind"`
+		Summary  string                 `json:"summary"`
+		Intent   string                 `json:"intent"`
+		Action   string                 `json:"action"`
+		Tool     string                 `json:"tool"`
+		Provider string                 `json:"provider"`
+		Title    string                 `json:"title"`
+		OK       *bool                  `json:"ok"`
+		Error    string                 `json:"error"`
+		Args     map[string]interface{} `json:"args"`
+	}
+	if err := json.Unmarshal(raw, &in); err != nil {
+		return Fail("参数无效")
+	}
+	kind := strings.TrimSpace(in.Kind)
+	if kind == "" {
+		kind = model.TaskStepKindThought
+	}
+	if kind != model.TaskStepKindThought && kind != model.TaskStepKindOp {
+		return Fail("kind 须为 thought 或 op")
+	}
+	summary := strings.TrimSpace(in.Summary)
+	if summary == "" {
+		summary = strings.TrimSpace(in.Intent)
+	}
+	if summary == "" {
+		return Fail("请提供 summary 或 intent")
+	}
+	ok := true
+	if in.OK != nil {
+		ok = *in.OK
+	}
+	provider := strings.TrimSpace(in.Provider)
+	if provider == "" {
+		if kind == model.TaskStepKindThought {
+			provider = model.TaskProviderAgent
+		} else {
+			provider = model.TaskProviderMCP
+		}
+	}
+	runID := RecordTaskStep(d, TaskStepInput{
+		Session:  in.Session,
+		Kind:     kind,
+		Provider: provider,
+		Tool:     in.Tool,
+		Action:   in.Action,
+		Intent:   in.Intent,
+		Summary:  summary,
+		Title:    in.Title,
+		Args:     in.Args,
+		OK:       ok,
+		Error:    in.Error,
+		Source:   "mcp",
+	})
+	return OKData(map[string]interface{}{
+		"ok": true, "taskRunId": runID, "kind": kind, "provider": provider,
+		"note": "已写入任务账本并同步 log.md",
+	})
 }

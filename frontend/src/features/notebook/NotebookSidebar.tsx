@@ -1,18 +1,27 @@
-import { useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type MouseEvent } from 'react'
+import { api } from '../../api/client'
 import type { NoteRole, NoteSummary, NotebookGroup } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { IconFolder, IconNotebook, IconPlus, IconRefresh } from '../../components/Icons'
 import { ContextMenu } from '../../components/ContextMenu'
 import { useI18n } from '../../i18n'
-import { useAppStore } from '../../stores/appStore'
+import { notify } from '../../notify'
 import { pressProps } from '../../components/compat'
-import { extForLanguage } from './noteFileTypes'
+import { ResourceTags, type ResourceTag } from '../../tags'
+import { DirVersionModal } from './DirVersionModal'
 import {
   NOTEBOOK_ROOT_ID,
   buildNotebookTree,
   filterNotebookTree,
   type NotebookTreeNode,
 } from './notebookTree'
+import {
+  TAG_FOCUS_WORKFLOW,
+  TAG_OPEN_MEMORY_NOTE,
+  TAG_OPEN_VERSION_HISTORY,
+  resolveFolderResourceTags,
+  resolveNoteResourceTags,
+} from './notebookResourceTags'
 import {
   basenameRel,
   canMoveInto,
@@ -83,7 +92,6 @@ export function NotebookSidebar({
   refreshing = false,
 }: Props) {
   const { t } = useI18n()
-  const { setStatusMessage } = useAppStore()
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [ctx, setCtx] = useState<CtxMenu | null>(null)
   const [selectedNotes, setSelectedNotes] = useState<Record<string, boolean>>({})
@@ -92,9 +100,24 @@ export function NotebookSidebar({
   const [inline, setInline] = useState<NotebookInlineEdit | null>(null)
   const [clipboard, setClipboard] = useState<NotebookClipboard | null>(null)
   const [dropOver, setDropOver] = useState('')
+  const [versionBusy, setVersionBusy] = useState(false)
+  const [versionModalDir, setVersionModalDir] = useState('')
+  const [versionFlags, setVersionFlags] = useState<Record<string, boolean>>({})
   const inlineRef = useRef<HTMLInputElement>(null)
 
   const groupById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups])
+  const tagLabels = useMemo(
+    () => ({
+      workflow: t('notebook.tagWorkflow'),
+      memory: t('notebook.roleBadgeMemory'),
+      versioned: t('notebook.tagVersioned'),
+      titleWorkflow: t('notebook.tagTitleWorkflow'),
+      titleMemory: t('notebook.tagTitleMemory'),
+      titleVersioned: t('notebook.tagTitleVersioned'),
+      titleWorkflowFolder: t('notebook.tagTitleWorkflowFolder'),
+    }),
+    [t],
+  )
   const roleSummaries = useMemo(() => {
     if (!roleFilter) return summaries
     return summaries.filter((n) => {
@@ -105,6 +128,24 @@ export function NotebookSidebar({
   const fullTree = useMemo(() => buildNotebookTree(groups, roleSummaries), [groups, roleSummaries])
   const tree = useMemo(() => filterNotebookTree(fullTree, search), [fullTree, search])
   const filterActive = search.trim().length > 0 || Boolean(roleFilter)
+
+  const refreshVersionFlags = useCallback(async () => {
+    const ids = groups.map((g) => g.id).filter(Boolean)
+    if (!ids.length) {
+      setVersionFlags({})
+      return
+    }
+    try {
+      const flags = await api.mapDirVersionFlags(ids)
+      setVersionFlags(flags)
+    } catch {
+      /* 标签为增强信息，失败不打断侧栏 */
+    }
+  }, [groups])
+
+  useEffect(() => {
+    void refreshVersionFlags()
+  }, [refreshVersionFlags])
 
   const selectionCount = useMemo(
     () => Object.keys(selectedNotes).filter((id) => selectedNotes[id]).length,
@@ -135,12 +176,6 @@ export function NotebookSidebar({
     })
   }, [filterActive, tree])
 
-  useEffect(() => {
-    if (!ctx) return
-    const close = () => setCtx(null)
-    window.addEventListener('pointerdown', close)
-    return () => window.removeEventListener('pointerdown', close)
-  }, [ctx])
 
   useEffect(() => {
     if (selectedFolderId && !groupById.has(selectedFolderId)) onSelectFolder('')
@@ -151,11 +186,22 @@ export function NotebookSidebar({
     setExpanded((m) => (m[selectedFolderId] ? m : { ...m, [selectedFolderId]: true }))
   }, [selectedFolderId])
 
+  // 仅在进入重命名/新建会话时全选；勿依赖整份 inline（value 每键会变，否则下一字符会盖掉全选）。
+  const inlineSessionKey =
+    inline == null
+      ? ''
+      : inline.kind === 'rename'
+        ? `rename:${inline.rel}`
+        : `create:${inline.parent}:${inline.isDir ? 'd' : 'f'}`
+
   useEffect(() => {
-    if (!inline) return
-    const t = window.setTimeout(() => inlineRef.current?.select(), 0)
-    return () => clearTimeout(t)
-  }, [inline])
+    if (!inlineSessionKey) return
+    const timer = window.setTimeout(() => {
+      inlineRef.current?.focus()
+      inlineRef.current?.select()
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [inlineSessionKey])
 
   const toggleExpand = (id: string) => {
     setExpanded((m) => ({ ...m, [id]: !m[id] }))
@@ -176,16 +222,16 @@ export function NotebookSidebar({
   const runBatchDelete = async () => {
     const ids = Object.keys(selectedNotes).filter((id) => selectedNotes[id])
     if (ids.length === 0) {
-      setStatusMessage(t('notebook.batchNone'))
+      notify.warning(t('notebook.batchNone'))
       return
     }
     setDeleting(true)
     try {
       await onBatchDelete(ids)
-      setStatusMessage(t('notebook.batchDeleted', { count: ids.length }))
+      notify.success(t('notebook.batchDeleted', { count: ids.length }))
       setSelectedNotes({})
     } catch (e) {
-      setStatusMessage((e as Error).message)
+      notify.error((e as Error).message)
     } finally {
       setDeleting(false)
       setDeleteConfirmOpen(false)
@@ -208,7 +254,7 @@ export function NotebookSidebar({
     const kids = groups.filter((g) => (g.parentId || '') === (parent || '')).map((g) => g.name)
     const notes = summaries
       .filter((n) => (n.groupId || '') === (parent || ''))
-      .map((n) => `${n.title}${extForLanguage(n.language) || '.md'}`)
+      .map((n) => basenameRel(n.id) || n.title)
     return [...kids, ...notes]
   }
 
@@ -217,13 +263,64 @@ export function NotebookSidebar({
     setInline({ kind: 'rename', rel, value: basenameRel(rel) })
   }
 
+  const createFolderVersion = async (dir: string) => {
+    setCtx(null)
+    setVersionBusy(true)
+    try {
+      const res = await api.pinDirVersion(dir, t('notebook.dirVersionCreateMessage'))
+      const short = (res.version?.short || res.version?.hash?.slice(0, 7) || '').trim()
+      const name = basenameRel(dir) || dir
+      notify.success(
+        short
+          ? t('notebook.dirVersionCreatedShort', { short, name })
+          : t('notebook.dirVersionCreated', { dir: name }),
+        { detail: short || undefined },
+      )
+      setVersionFlags((m) => ({ ...m, [dir]: true }))
+      void refreshVersionFlags()
+    } catch (e) {
+      notify.error((e as Error).message)
+    } finally {
+      setVersionBusy(false)
+    }
+  }
+
+  const openVersionHistory = (dir: string) => {
+    setCtx(null)
+    setVersionModalDir(dir)
+  }
+
+  const onTagActivate = (tag: ResourceTag) => {
+    const kind = tag.action?.kind || ''
+    const payload = tag.action?.payload || {}
+    if (kind === TAG_OPEN_VERSION_HISTORY) {
+      const dirRel = String(payload.dirRel || '').trim()
+      if (dirRel) openVersionHistory(dirRel)
+      return
+    }
+    if (kind === TAG_FOCUS_WORKFLOW) {
+      const noteId = String(payload.noteId || '').trim()
+      const dirRel = String(payload.dirRel || '').trim()
+      if (dirRel) {
+        onSelectFolder(dirRel)
+        setExpanded((m) => ({ ...m, [dirRel]: true }))
+      }
+      if (noteId) onOpenNote(noteId)
+      return
+    }
+    if (kind === TAG_OPEN_MEMORY_NOTE) {
+      const noteId = String(payload.noteId || '').trim()
+      if (noteId) onOpenNote(noteId)
+    }
+  }
+
   const cancelInline = () => setInline(null)
 
   const commitInline = async () => {
     if (!inline) return
     const name = inline.value.trim()
     if (!name || name.includes('/') || name.includes('\\')) {
-      setStatusMessage(t('notebook.invalidName'))
+      notify.warning(t('notebook.invalidName'))
       return
     }
     try {
@@ -233,18 +330,18 @@ export function NotebookSidebar({
           return
         }
         await onRenamePath(inline.rel, name)
-        setStatusMessage(t('notebook.renamedPath', { name }))
+        notify.success(t('notebook.renamedPath', { name }))
       } else if (inline.isDir) {
         await onCreateDirInline(inline.parent, name)
         setExpanded((m) => ({ ...m, [inline.parent]: true, [joinRel(inline.parent, name)]: true }))
-        setStatusMessage(t('notebook.createdGroup', { name }))
+        notify.success(t('notebook.createdGroup', { name }))
       } else {
         await onCreateFileInline(inline.parent, name)
-        setStatusMessage(t('notebook.created'))
+        notify.success(t('notebook.created'))
       }
       setInline(null)
     } catch (e) {
-      setStatusMessage((e as Error).message)
+      notify.error((e as Error).message)
     }
   }
 
@@ -267,20 +364,20 @@ export function NotebookSidebar({
     setCtx(null)
     if (!rels.length) return
     setClipboard({ mode: 'cut', rels })
-    setStatusMessage(t('notebook.cutItems', { count: rels.length }))
+    notify.info(t('notebook.cutItems', { count: rels.length }))
   }
 
   const copyRels = (rels: string[]) => {
     setCtx(null)
     if (!rels.length) return
     setClipboard({ mode: 'copy', rels })
-    setStatusMessage(t('notebook.copiedItems', { count: rels.length }))
+    notify.info(t('notebook.copiedItems', { count: rels.length }))
   }
 
   const pasteClipboard = async (dest?: string) => {
     setCtx(null)
     if (!clipboard?.rels.length) {
-      setStatusMessage(t('notebook.clipboardEmpty'))
+      notify.warning(t('notebook.clipboardEmpty'))
       return
     }
     const destDir = dest ?? pasteParent()
@@ -295,9 +392,9 @@ export function NotebookSidebar({
       }
       if (clipboard.mode === 'cut') setClipboard(null)
       if (destDir) setExpanded((m) => ({ ...m, [destDir]: true }))
-      setStatusMessage(t('notebook.pastedItems'))
+      notify.success(t('notebook.pastedItems'))
     } catch (e) {
-      setStatusMessage((e as Error).message)
+      notify.error((e as Error).message)
     }
   }
 
@@ -322,9 +419,9 @@ export function NotebookSidebar({
     try {
       await onMovePath(from, folderId)
       setExpanded((m) => ({ ...m, [folderId]: true }))
-      setStatusMessage(t('notebook.movedPath'))
+      notify.success(t('notebook.movedPath'))
     } catch (err) {
-      setStatusMessage((err as Error).message)
+      notify.error((err as Error).message)
     }
   }
 
@@ -337,7 +434,10 @@ export function NotebookSidebar({
         ref={inlineRef}
         className="notebook-tree-inline"
         value={inline.value}
-        onChange={(e) => setInline({ ...inline, value: e.target.value })}
+        onChange={(e) => {
+          const value = e.target.value
+          setInline((prev) => (prev ? { ...prev, value } : prev))
+        }}
         onBlur={() => void commitInline()}
         onKeyDown={onInlineKey}
         onClick={(e) => e.stopPropagation()}
@@ -358,7 +458,10 @@ export function NotebookSidebar({
             ref={inlineRef}
             className="notebook-tree-inline"
             value={inline.value}
-            onChange={(e) => setInline({ ...inline, value: e.target.value })}
+            onChange={(e) => {
+              const value = e.target.value
+              setInline((prev) => (prev ? { ...prev, value } : prev))
+            }}
             onBlur={() => void commitInline()}
             onKeyDown={onInlineKey}
             onClick={(e) => e.stopPropagation()}
@@ -411,6 +514,10 @@ export function NotebookSidebar({
                 ) : (
                   <span className="notebook-tree-label">{n.name}</span>
                 )}
+                <ResourceTags
+                  tags={resolveFolderResourceTags(n.id, Boolean(versionFlags[n.id]), tagLabels)}
+                  onActivate={onTagActivate}
+                />
               </div>
               {open ? (
                 <>
@@ -445,26 +552,14 @@ export function NotebookSidebar({
               <span className="notebook-tree-note-icon" aria-hidden>
                 <IconNotebook size={14} />
               </span>
-              {note.role && note.role !== 'note' && (
-                <span
-                  className={`notebook-role-badge is-${note.role}`}
-                  title={
-                    note.role === 'memory' ? t('notebook.roleMemory') : t('notebook.roleSkill')
-                  }
-                >
-                  {note.role === 'memory'
-                    ? t('notebook.roleBadgeMemory')
-                    : t('notebook.roleBadgeSkill')}
-                </span>
-              )}
               {renaming ? (
                 renderInline(opRel)
               ) : (
-                <span className="notebook-tree-label" title={`${note.title}${extForLanguage(note.language)}`}>
-                  {note.title}
-                  <span className="notebook-tree-ext">{extForLanguage(note.language)}</span>
+                <span className="notebook-tree-label" title={basenameRel(note.id) || note.title}>
+                  {basenameRel(note.id) || note.title}
                 </span>
               )}
+              <ResourceTags tags={resolveNoteResourceTags(note, tagLabels)} onActivate={onTagActivate} />
               <input
                 type="checkbox"
                 className="notebook-note-check"
@@ -596,7 +691,7 @@ export function NotebookSidebar({
       </div>
 
       {ctx && (
-        <ContextMenu x={ctx.x} y={ctx.y} onClick={(e) => e.stopPropagation()}>
+        <ContextMenu x={ctx.x} y={ctx.y} onDismiss={() => setCtx(null)} onClick={(e) => e.stopPropagation()}>
           {ctx.kind === 'root' && (
             <>
               <button
@@ -686,6 +781,23 @@ export function NotebookSidebar({
               >
                 {t('notebook.revealInFinder')}
               </button>
+              <div className="wn-context-sep" />
+              <button
+                type="button"
+                className="wn-context-item"
+                disabled={versionBusy}
+                {...pressProps(() => void createFolderVersion(ctx.group.id), { disabled: versionBusy })}
+              >
+                {t('notebook.dirVersionCreate')}
+              </button>
+              <button
+                type="button"
+                className="wn-context-item"
+                {...pressProps(() => openVersionHistory(ctx.group.id))}
+              >
+                {t('notebook.ctxVersionHistory')}
+              </button>
+              <div className="wn-context-sep" />
               <button
                 type="button"
                 className="wn-context-item wn-context-item-danger"
@@ -803,6 +915,16 @@ export function NotebookSidebar({
         danger
         onConfirm={() => void runBatchDelete()}
         onCancel={() => setDeleteConfirmOpen(false)}
+      />
+
+      <DirVersionModal
+        open={Boolean(versionModalDir)}
+        dirRel={versionModalDir}
+        onClose={() => setVersionModalDir('')}
+        onRestored={() => {
+          void onRefresh()
+          void refreshVersionFlags()
+        }}
       />
     </section>
   )

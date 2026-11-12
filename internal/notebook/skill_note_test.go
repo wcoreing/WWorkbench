@@ -7,6 +7,30 @@ import (
 	"WWorkbench/internal/model"
 )
 
+func TestSkillNameFromNoteIDOnlySKILL(t *testing.T) {
+	if got := SkillNameFromNoteID("工作流/小红书发布/SKILL.md"); got != "小红书发布" {
+		t.Fatalf("SKILL: got %q", got)
+	}
+	if got := SkillNameFromNoteID("工作流/小红书发布/skill.md"); got != "小红书发布" {
+		t.Fatalf("case: got %q", got)
+	}
+	if got := SkillNameFromNoteID("工作流/小红书发布/log.md"); got != "" {
+		t.Fatalf("log must not map to skill name: %q", got)
+	}
+	if got := SkillNameFromNoteID("工作流/小红书发布/notes.md"); got != "" {
+		t.Fatalf("other md: %q", got)
+	}
+	if got := SkillNameFromNoteID("工作流/小红书发布"); got != "" {
+		t.Fatalf("dir only: %q", got)
+	}
+	if !IsTaskLogNoteID("工作流/小红书发布/log.md") {
+		t.Fatal("expected task log id")
+	}
+	if IsTaskLogNoteID("工作流/小红书发布/SKILL.md") {
+		t.Fatal("SKILL is not task log")
+	}
+}
+
 func TestSkillBodyFromNoteStripsMarkAndFrontmatter(t *testing.T) {
 	content := "---\nrole: skill\nname: demo\n---\n\n<!-- wwb-skill: demo -->\n\n# Hello\n\nDo the thing.\n"
 	body := SkillBodyFromNote(content)

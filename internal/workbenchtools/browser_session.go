@@ -46,7 +46,7 @@ func toolBrowserNavigate(_ context.Context, d *Deps, raw json.RawMessage) ToolRe
 }
 
 func BrowserNavigateConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, json.RawMessage(argsJSON))
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -73,6 +73,7 @@ func BrowserNavigateConfirmed(ctx context.Context, d *Deps, argsJSON string) Too
 		Args: args, Locator: map[string]interface{}{"url": in.URL}, Approved: true,
 	}
 	data, err := b.CallSession(ctx, "navigate", args, session)
+	step.Provider = b.Provider()
 	if err != nil {
 		return recordBrowserFail(d, step, err)
 	}
@@ -85,7 +86,7 @@ type browserCloseSessionArgs struct {
 }
 
 func toolBrowserCloseSession(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, raw)
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -100,7 +101,7 @@ func toolBrowserCloseSession(ctx context.Context, d *Deps, raw json.RawMessage) 
 	}
 	RecordBrowserStep(d, BrowserStepInput{
 		Session: in.Session, Tool: workbench.CapBrowserCloseSession, Action: "close_session",
-		Summary: "关闭任务组 " + truncateRunes(in.Session, 24), OK: true, Result: data,
+		Summary: "关闭任务组 " + truncateRunes(in.Session, 24), OK: true, Result: data, Provider: b.Provider(),
 	})
 	CloseTaskRunForSession(d, in.Session, "done")
 	stageBrowser(d, "关闭任务组 "+truncateRunes(in.Session, 24))
@@ -119,7 +120,7 @@ type browserGroupSessionArgs struct {
 }
 
 func toolBrowserGroupSession(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, raw)
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -153,7 +154,7 @@ func toolBrowserGroupSession(ctx context.Context, d *Deps, raw json.RawMessage) 
 	}
 	RecordBrowserStep(d, BrowserStepInput{
 		Session: session, Tool: workbench.CapBrowserGroupSession, Action: "group_session",
-		Summary: "标签组 " + truncateRunes(title, 24), Title: title, Args: args, OK: true, Result: data,
+		Summary: "标签组 " + truncateRunes(title, 24), Title: title, Args: args, OK: true, Result: data, Provider: b.Provider(),
 	})
 	stageBrowser(d, "标签组 "+truncateRunes(title, 24))
 	var out map[string]interface{}
@@ -206,7 +207,7 @@ func toolBrowserOpenFrame(_ context.Context, d *Deps, raw json.RawMessage) ToolR
 }
 
 func BrowserOpenFrameConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
-	b, err := requireBrowser(d)
+	b, err := requireBrowserRaw(d, json.RawMessage(argsJSON))
 	if err != nil {
 		return Fail(err.Error())
 	}
@@ -218,6 +219,7 @@ func BrowserOpenFrameConfirmed(ctx context.Context, d *Deps, argsJSON string) To
 		Summary: "打开 iframe " + in.Frame, Args: args, Locator: locatorFrom("", "", "", in.Frame), Approved: true,
 	}
 	data, err := b.Call(ctx, "open_frame", args)
+	step.Provider = b.Provider()
 	if err != nil {
 		return recordBrowserFail(d, step, err)
 	}
@@ -342,7 +344,7 @@ func RunBuiltinWorkflowConfirmed(ctx context.Context, d *Deps, argsJSON string) 
 		Tool: workbench.CapRunSkill, Action: "workflow", Intent: in.Intent,
 		Summary: "工作流 cms_new_article", Title: "cms_new_article",
 		Args: map[string]interface{}{"name": "cms_new_article", "title": in.Title, "frame": frame},
-		Result: result, OK: true, Approved: true,
+		Result: result, OK: true, Approved: true, Provider: b.Provider(),
 	})
 	return OKData(map[string]interface{}{
 		"ok":       true,

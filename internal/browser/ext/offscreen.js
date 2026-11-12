@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // src/shared/version.ts
-  var EXT_VERSION = "0.3.8";
+  var EXT_VERSION = "0.3.14";
 
   // src/offscreen/main.ts
   var BRIDGE_URL = "ws://127.0.0.1:18765/ext";

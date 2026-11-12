@@ -146,6 +146,7 @@ func (r *Runner) runCursorTurn(ctx context.Context, threadID, prompt, feedforwar
 		r.emitTurnDone(threadID, ctx, sendErr)
 		return
 	}
+	r.recordTurnThought(threadID)
 	r.emitTurnDone(threadID, ctx, nil)
 }
 

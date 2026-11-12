@@ -28,7 +28,6 @@ import { NotebookSidebar } from '../../features/notebook/NotebookSidebar'
 import { readLinkedSkillId, suggestSkillId } from '../../features/notebook/noteSkillLink'
 import {
   NOTE_FILE_TYPE_PRESETS,
-  extForLanguage,
   isMarkdownLikeLanguage,
 } from '../../features/notebook/noteFileTypes'
 import { applyNoteRoleFields } from '../../features/notebook/noteFrontmatter'
@@ -37,7 +36,7 @@ import {
   nextGroupSortOrder,
   nextNoteSortOrder,
 } from '../../features/notebook/notebookTree'
-import { remapRel } from '../../features/notebook/notebookPathOps'
+import { basenameRel, remapRel } from '../../features/notebook/notebookPathOps'
 import { pressProps, useDismissOverlays } from '../../components/compat'
 import { LoadingPane } from '../../components/LoadingHost'
 import { useLoading, withLoading } from '../../stores/loadingStore'
@@ -49,6 +48,7 @@ import {
   extractSqlText,
 } from '../../features/notebook/noteTemplates'
 import { useI18n } from '../../i18n'
+import { notify } from '../../notify'
 import { useAppStore } from '../../stores/appStore'
 import { buildNotebookSurface, briefList } from '../../stores/agentSurface'
 import { openTerminal, openDatabase as openDatabaseWorkbench, useWorkbenchCommand } from '../../stores/productLink'
@@ -331,7 +331,7 @@ export function NotebookWorkbench() {
               /* 笔记已删除 */
             }
           }
-          setStatusMessage(t('notebook.listRefreshed'))
+          notify.success(t('notebook.listRefreshed'))
         },
         {
           label: t('common.loading'),
@@ -339,7 +339,7 @@ export function NotebookWorkbench() {
         },
       )
     } catch (e) {
-      setStatusMessage((e as Error).message)
+      notify.error((e as Error).message)
     }
   }, [
     refreshAll,
@@ -348,7 +348,6 @@ export function NotebookWorkbench() {
     openTabIds,
     saveByNote,
     markNoteSaved,
-    setStatusMessage,
     t,
   ])
 
@@ -395,16 +394,16 @@ export function NotebookWorkbench() {
           setOpenNotes((prev) => ({ ...prev, [note.id]: saved }))
           setSummaries((prev) => [toSummary(saved), ...prev.filter((s) => s.id !== saved.id)])
           markNoteSaved(saved)
-          if (!opts?.silent) setStatusMessage(t('notebook.saved'))
+          if (!opts?.silent) notify.success(t('notebook.saved'))
         }
         return saved
       } catch (e) {
         setSaveByNote((prev) => ({ ...prev, [note.id]: 'dirty' }))
-        setStatusMessage((e as Error).message)
+        notify.error((e as Error).message)
         throw e
       }
     },
-    [markNoteSaved, setStatusMessage, t],
+    [markNoteSaved, t],
   )
 
   const openNoteById = useCallback(
@@ -437,9 +436,7 @@ export function NotebookWorkbench() {
       if (evt.domain === 'notebook.group') {
         await refreshAll()
         if (evt.label) {
-          useAppStore.getState().setStatusMessage(
-            evt.op === 'delete' ? `分组已删除：${evt.label}` : `分组已更新：${evt.label}`,
-          )
+          notify.info(evt.op === 'delete' ? `分组已删除：${evt.label}` : `分组已更新：${evt.label}`)
         }
         return
       }
@@ -447,9 +444,7 @@ export function NotebookWorkbench() {
       const noteId = evt.ids[0]
       if (evt.reveal && noteId && evt.op !== 'delete') {
         await openNoteById(noteId)
-        useAppStore.getState().setStatusMessage(
-          evt.label ? `已落笔记本资产：${evt.label}` : `已打开笔记 ${noteId}`,
-        )
+        notify.info(evt.label ? `已落笔记本资产：${evt.label}` : `已打开笔记 ${noteId}`)
       } else if (evt.op === 'delete') {
         const deletedIds = evt.ids.filter(Boolean)
         if (deletedIds.length === 0) return
@@ -565,17 +560,17 @@ export function NotebookWorkbench() {
         },
       },
     )
-      .catch((e) => setStatusMessage((e as Error).message))
+      .catch((e) => notify.error((e as Error).message))
       .finally(() => setBootReady(true))
-  }, [refreshAll, setStatusMessage, markNoteSaved, setNotebookFocusNoteId, t])
+  }, [refreshAll, markNoteSaved, setNotebookFocusNoteId, t])
 
   useEffect(() => {
     if (bootLoading.active) return
     const t = setTimeout(() => {
-      void refreshSummaries().catch((e) => setStatusMessage((e as Error).message))
+      void refreshSummaries().catch((e) => notify.error((e as Error).message))
     }, 300)
     return () => clearTimeout(t)
-  }, [search, bootLoading.active, refreshSummaries, setStatusMessage])
+  }, [search, bootLoading.active, refreshSummaries])
 
   useEffect(() => {
     if (bootLoading.active) return
@@ -594,7 +589,7 @@ export function NotebookWorkbench() {
             setNotebookFocusNoteId(null)
           }
         })
-        .catch((e) => setStatusMessage((e as Error).message))
+        .catch((e) => notify.error((e as Error).message))
       return
     }
     const hostId = payloadStr(cmd.payload, 'hostId')
@@ -639,9 +634,9 @@ export function NotebookWorkbench() {
         )) as Note
         await refreshAll()
         await openNoteById(saved.id)
-        setStatusMessage(t('notebook.createdNote', { title: saved.title }))
+        notify.success(t('notebook.createdNote', { title: saved.title }))
       } catch (e) {
-        setStatusMessage((e as Error).message)
+        notify.error((e as Error).message)
       }
     })()
   })
@@ -666,11 +661,11 @@ export function NotebookWorkbench() {
     }
     const snap = noteSnapshots.current[activeNote.id]
     if (snap === noteSnapshot(activeNote) && activeSaveStatus !== 'dirty') {
-      setStatusMessage(t('notebook.saved'))
+      notify.success(t('notebook.saved'))
       return
     }
     await persistNote(activeNote)
-  }, [activeNote, activeSaveStatus, persistNote, setStatusMessage, t])
+  }, [activeNote, activeSaveStatus, persistNote, t])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -729,7 +724,7 @@ export function NotebookWorkbench() {
     setSummaries((prev) => [...prev, toSummary(saved)])
     markNoteSaved(saved)
     await openNoteById(saved.id)
-    setStatusMessage(t('notebook.created'))
+    notify.success(t('notebook.created'))
   }
 
   const openCreateFolder = (parentId = '') => {
@@ -743,7 +738,7 @@ export function NotebookWorkbench() {
         model.NotebookGroupDO.createFrom({ ...groupModal, name })
       )) as NotebookGroup
       setGroups((prev) => prev.map((g) => (g.id === saved.id ? saved : g)))
-      setStatusMessage(t('notebook.renamedGroup', { name: saved.name }))
+      notify.success(t('notebook.renamedGroup', { name: saved.name }))
       return
     }
     const parentId = createGroupParentId || ''
@@ -758,7 +753,7 @@ export function NotebookWorkbench() {
       })
     )) as NotebookGroup
     setGroups((prev) => [...prev, saved])
-    setStatusMessage(t('notebook.createdGroup', { name: saved.name }))
+    notify.success(t('notebook.createdGroup', { name: saved.name }))
   }
 
   const duplicateNote = async () => {
@@ -767,9 +762,9 @@ export function NotebookWorkbench() {
       const saved = (await api.duplicateNote(activeNote.id)) as Note
       setSummaries((prev) => [toSummary(saved), ...prev])
       await openNoteById(saved.id)
-      setStatusMessage(t('notebook.duplicated'))
+      notify.success(t('notebook.duplicated'))
     } catch (e) {
-      setStatusMessage((e as Error).message)
+      notify.error((e as Error).message)
     }
   }
 
@@ -777,18 +772,18 @@ export function NotebookWorkbench() {
     if (!activeNote) return
     try {
       const path = await api.exportNote(activeNote.id)
-      if (path) setStatusMessage(t('notebook.exported', { path }))
+      if (path) notify.success(t('notebook.exported', { path }), { detail: path })
     } catch (e) {
-      setStatusMessage((e as Error).message)
+      notify.error((e as Error).message)
     }
   }
 
   const revealNoteInFinder = async (noteId?: string) => {
     try {
       await api.revealNotebookNote(noteId || '')
-      setStatusMessage(t('notebook.revealedInFinder'))
+      notify.info(t('notebook.revealedInFinder'))
     } catch (e) {
-      setStatusMessage((e as Error).message)
+      notify.error((e as Error).message)
     }
   }
 
@@ -807,7 +802,7 @@ export function NotebookWorkbench() {
           noteId: target.id,
         }),
       )
-      setStatusMessage(t('notebook.publishSkillOk', { id: sk.id }))
+      notify.success(t('notebook.publishSkillOk', { id: sk.id }), { detail: sk.id })
       await refreshAll()
       const refreshed = await api.getNote(target.id)
       if (refreshed) {
@@ -817,7 +812,7 @@ export function NotebookWorkbench() {
         }))
       }
     } catch (e) {
-      setStatusMessage((e as Error).message)
+      notify.error((e as Error).message)
     }
   }
 
@@ -844,9 +839,9 @@ export function NotebookWorkbench() {
       setOpenNotes((prev) => (prev[noteId] ? { ...prev, [noteId]: adopted } : prev))
       setSummaries((prev) => prev.map((s) => (s.id === noteId ? toSummary(adopted) : s)))
       setSaveByNote((prev) => ({ ...prev, [noteId]: 'saved' }))
-      setStatusMessage(role === 'memory' ? t('notebook.madeMemory') : t('notebook.madeNote'))
+      notify.success(role === 'memory' ? t('notebook.madeMemory') : t('notebook.madeNote'))
     } catch (e) {
-      setStatusMessage((e as Error).message)
+      notify.error((e as Error).message)
     }
   }
 
@@ -877,7 +872,7 @@ export function NotebookWorkbench() {
     else block = buildServerChecklistTemplate(activeNote.title)
     const content = activeNote.content.trim() ? `${activeNote.content}\n\n${block}` : block
     updateActiveNote({ content, language: 'markdown' })
-    setStatusMessage(t('notebook.templateInserted'))
+    notify.success(t('notebook.templateInserted'))
   }
 
   /** appendAssetMarkdown 在光标插入附件 Markdown；非 markdown 笔记自动升为 markdown。 */
@@ -925,16 +920,16 @@ export function NotebookWorkbench() {
           snippets.push(asset.markdown)
         }
         appendAssetMarkdown(snippets)
-        setStatusMessage(
+        notify.success(
           snippets.length === 1
             ? t('notebook.assetInserted')
             : t('notebook.assetsInserted', { count: snippets.length }),
         )
       } catch (e) {
-        setStatusMessage((e as Error).message)
+        notify.error((e as Error).message)
       }
     },
-    [activeNote, appendAssetMarkdown, setStatusMessage, t],
+    [activeNote, appendAssetMarkdown, t],
   )
 
   const pickAssets = useCallback(
@@ -944,16 +939,16 @@ export function NotebookWorkbench() {
         const assets = await api.pickNotebookAssets(activeNote.id, imagesOnly)
         if (!assets.length) return
         appendAssetMarkdown(assets.map((a) => a.markdown))
-        setStatusMessage(
+        notify.success(
           assets.length === 1
             ? t('notebook.assetInserted')
             : t('notebook.assetsInserted', { count: assets.length }),
         )
       } catch (e) {
-        setStatusMessage((e as Error).message)
+        notify.error((e as Error).message)
       }
     },
-    [activeNote, appendAssetMarkdown, setStatusMessage, t],
+    [activeNote, appendAssetMarkdown, t],
   )
 
   const closeTab = (id: string) => {
@@ -981,7 +976,7 @@ export function NotebookWorkbench() {
     const text = editorRef.current?.getSelectedText() ?? activeNote.content
     const command = extractRunCommands(text)
     if (!command) {
-      setStatusMessage(t('notebook.noCommands'))
+      notify.warning(t('notebook.noCommands'))
       return
     }
     if (activeNote.sshHostId) {
@@ -1132,9 +1127,9 @@ export function NotebookWorkbench() {
         }
         await refreshAll()
       }
-      setStatusMessage(t('notebook.deleted'))
+      notify.success(t('notebook.deleted'))
     } catch (e) {
-      setStatusMessage((e as Error).message)
+      notify.error((e as Error).message)
     } finally {
       setDeleteTarget(null)
     }
@@ -1181,14 +1176,14 @@ export function NotebookWorkbench() {
           }
           return out
         })
-        setStatusMessage(t('notebook.layoutSaved'))
+        notify.success(t('notebook.layoutSaved'))
       } catch (e) {
         await refreshAll()
-        setStatusMessage((e as Error).message)
+        notify.error((e as Error).message)
         throw e
       }
     },
-    [refreshAll, setStatusMessage, t],
+    [refreshAll, t],
   )
 
   const handleBatchDeleteNotes = async (ids: string[]) => {
@@ -1270,7 +1265,7 @@ export function NotebookWorkbench() {
             onBatchDelete={handleBatchDeleteNotes}
             onRefresh={handleRefreshList}
             onRevealWorkspace={() => void revealNoteInFinder('')}
-            onRevealPath={(rel) => void api.revealNotebookPath(rel).then(() => setStatusMessage(t('notebook.revealedInFinder')))}
+            onRevealPath={(rel) => void api.revealNotebookPath(rel).then(() => notify.info(t('notebook.revealedInFinder')))}
             onRenamePath={renameNotebookPath}
             onMovePath={moveNotebookPath}
             onCopyPath={copyNotebookPath}
@@ -1298,8 +1293,7 @@ export function NotebookWorkbench() {
                   >
                     {dirty && <span className="notebook-tab-dirty" aria-hidden />}
                     <span className="tab-title">
-                      {note.title || t('common.unnamed')}
-                      <span className="notebook-tab-ext">{extForLanguage(note.language)}</span>
+                      {basenameRel(note.id) || note.title || t('common.unnamed')}
                     </span>
                     <span
                       className="wn-tab-close"
@@ -1324,13 +1318,9 @@ export function NotebookWorkbench() {
                     </span>
                   ))}
                   <span className="notebook-breadcrumb-sep">/</span>
-                  <input
-                    className="notebook-title-input notebook-breadcrumb-title"
-                    value={activeNote.title}
-                    onChange={(e) => updateActiveNote({ title: e.target.value })}
-                    placeholder={t('notebook.titlePlaceholder')}
-                  />
-                  <span className="notebook-breadcrumb-ext">{extForLanguage(activeNote.language)}</span>
+                  <span className="notebook-breadcrumb-file" title={activeNote.id}>
+                    {basenameRel(activeNote.id) || activeNote.title || t('common.unnamed')}
+                  </span>
                 </nav>
                 <div className="notebook-meta-bar-right">
                   {noteMdLike && (

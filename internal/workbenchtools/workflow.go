@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/notebook"
 	"WWorkbench/internal/workbench"
 
 	"github.com/google/uuid"
@@ -274,10 +275,11 @@ func toolDistillWorkflow(_ context.Context, d *Deps, raw json.RawMessage) ToolRe
 	}
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		name = slugifyWorkflowName(detail.Run.Title, detail.Run.Session, "from-run")
+		name = ResolveTaskSkillName(d, detail.Run)
 	}
-	if !workflowNameRe.MatchString(name) {
-		return Fail("name 须匹配 ^[a-z][a-z0-9_-]{1,47}$（小写字母开头）")
+	name = notebook.SanitizeSkillDirName(name)
+	if name == "" {
+		return Fail("工作流名称无效")
 	}
 	if name == "cms_new_article" {
 		return Fail("cms_new_article 为内置 Skill 名，请换一个 name")
@@ -317,7 +319,14 @@ func DistillWorkflowConfirmed(ctx context.Context, d *Deps, argsJSON string) Too
 	steps := DistillWorkflowFromRun(detail.Run, detail.Steps, drop)
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		name = slugifyWorkflowName(detail.Run.Title, detail.Run.Session, "from-run")
+		name = ResolveTaskSkillName(d, detail.Run)
+	}
+	name = notebook.SanitizeSkillDirName(name)
+	if name == "" {
+		return Fail("工作流名称无效")
+	}
+	if name == "cms_new_article" {
+		return Fail("cms_new_article 为内置 Skill 名，请换一个 name")
 	}
 	title := firstNonEmpty(strings.TrimSpace(in.Title), detail.Run.Title, name)
 	intent := firstNonEmpty(strings.TrimSpace(in.Intent), detail.Run.Intent)

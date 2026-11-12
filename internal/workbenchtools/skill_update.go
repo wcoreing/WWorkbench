@@ -85,7 +85,23 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	}
 	cur, err := resolveWorkflowSSOT(d, name)
 	if err != nil {
-		return Fail(err.Error())
+		// 当前任务目录往往只有 log.md：允许带 steps 直接首创 SKILL.md（沉淀到当前任务）
+		if len(in.Steps) == 0 {
+			return Fail(err.Error() + "；若要新建当前任务 Skill，请传入 steps")
+		}
+		title := strings.TrimSpace(in.Title)
+		if title == "" {
+			title = name
+		}
+		cur = model.WorkflowDO{
+			Name:        name,
+			Title:       title,
+			Description: strings.TrimSpace(in.Description),
+			Intent:      strings.TrimSpace(in.Intent),
+			Steps:       in.Steps,
+			SourceRunID: strings.TrimSpace(in.SourceRunID),
+			Source:      "note",
+		}
 	}
 	noteID := firstNonEmpty(cur.NoteID, notebook.SkillNoteID(name))
 	existing, _ := d.Notebook.GetNote(noteID)
@@ -178,6 +194,7 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	if intent := strings.TrimSpace(in.Intent); intent != "" {
 		cur.Intent = intent
 	}
+	cur.Source = "update_skill"
 	saved, err := d.Notebook.SaveWorkflowNoteWithExtras(cur, extras)
 	if err != nil {
 		return Fail(err.Error())
@@ -187,11 +204,15 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	}
 	revealNotebook(d, saved.NoteID, true)
 	stageBrowser(d, "已沉淀 Skill "+saved.Name)
-	return OKData(map[string]interface{}{
+	out := map[string]interface{}{
 		"ok": true, "workflow": saved, "noteId": saved.NoteID,
 		"attached": attached,
-		"note":     "Skill 已自我更新：经验/脚本/资源写回笔记；下次 get_skill 即生效。",
-	})
+		"note":     "Skill 已自我更新并创建目录版本（不含 log.md）；list_skill_versions 可回看；下次 get_skill 即生效。",
+	}
+	if st, e := d.Notebook.ListSkillVersions(saved.Name, 1); e == nil && len(st.Commits) > 0 {
+		out["version"] = st.Commits[0]
+	}
+	return OKData(out)
 }
 
 func attachLocalFileToSkillNote(d *Deps, noteID, absPath string) (*model.NotebookAssetDO, error) {

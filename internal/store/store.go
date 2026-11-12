@@ -345,13 +345,21 @@ CREATE TABLE IF NOT EXISTS task_steps (
   ok INTEGER NOT NULL DEFAULT 1,
   error TEXT NOT NULL DEFAULT '',
   approved INTEGER NOT NULL DEFAULT 0,
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  kind TEXT NOT NULL DEFAULT 'op',
+  provider TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_task_runs_started ON task_runs(started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_task_steps_run ON task_steps(run_id, seq);
 `)
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移任务日志表失败", err)
+	}
+	if err := s.ensureColumn("task_steps", "kind", "TEXT NOT NULL DEFAULT 'op'"); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "升级任务步骤 kind 失败", err)
+	}
+	if err := s.ensureColumn("task_steps", "provider", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "升级任务步骤 provider 失败", err)
 	}
 	if err := s.EnsureMemoryZone(); err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "写入记忆区失败", err)

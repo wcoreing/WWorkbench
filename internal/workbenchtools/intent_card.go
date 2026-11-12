@@ -99,6 +99,8 @@ func requiresIntent(name string, args json.RawMessage) bool {
 		workbench.CapBrowserStatus, workbench.CapBrowserListTabs, workbench.CapBrowserSnapshot,
 		workbench.CapBrowserScreenshot, workbench.CapBrowserOpen:
 		return false // 只读/定位，可不填 intent
+	case workbench.CapPinDirVersion, workbench.CapPinSkillVersion, workbench.CapEnableDirVersion:
+		return false // 启用/创建版本不改正稿内容；message 可选
 	case workbench.CapBrowserClick, workbench.CapBrowserFill, workbench.CapBrowserNavigate,
 		workbench.CapBrowserKeys, workbench.CapBrowserOpenFrame, workbench.CapRunSkill:
 		return true
@@ -112,6 +114,14 @@ func intentProp() map[string]interface{} {
 	return map[string]interface{}{
 		"type":        "string",
 		"description": "意图声明（动手必填）：人话说明要干什么、影响谁/哪台机/哪个库。确认弹窗标题与舞台回放会展示。",
+	}
+}
+
+// executorProp Schema 片段：浏览器执行器（wwb 扩展 / kimi）。
+func executorProp() map[string]interface{} {
+	return map[string]interface{}{
+		"type":        "string",
+		"description": "执行器 wwb|kimi；默认优先已连接的 wwb，否则 kimi。禁止直连插件端口。",
 	}
 }
 

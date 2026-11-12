@@ -838,6 +838,34 @@ func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool, sk
 			return
 		}
 		r.emitTurnDone(threadID, ctx, err)
+		return
+	}
+	r.recordTurnThought(threadID)
+}
+
+// recordTurnThought 有进行中任务时，把本轮助手推理摘要写入任务账本（kind=thought）。
+func (r *Runner) recordTurnThought(threadID string) {
+	if r == nil || r.tools == nil || r.harness == nil || !workbenchtools.HasActiveTask() {
+		return
+	}
+	d := r.tools.Deps()
+	if d == nil {
+		return
+	}
+	msgs, err := history.Load(r.harness.Root, threadID)
+	if err != nil || len(msgs) == 0 {
+		return
+	}
+	for i := len(msgs) - 1; i >= 0; i-- {
+		if strings.TrimSpace(msgs[i].Role) != "assistant" {
+			continue
+		}
+		content := strings.TrimSpace(history.ContentForUI(msgs[i].Content))
+		if content == "" {
+			return
+		}
+		workbenchtools.RecordAgentThought(d, content)
+		return
 	}
 }
 
@@ -1016,7 +1044,7 @@ func (r *Runner) systemPrompt(mode string) string {
 8. 巡检/报告：收集数据后可用 notebook_append_content 存档。当前打开的笔记常是无关草稿，禁止把前馈 noteId 当成默认写入目标；list_notes 按标题定位或新建明确 title，再 appendToNoteId。禁止把工作流正文、报表模板占位、ECharts option 模板原样 append 进笔记本；只写入填好真实数字与合法 echarts JSON 的报告。执行报表类工作流时优先**新建**笔记（标题含日期），勿向已关联 wwb-skill 的来源笔记追加草稿。
 8b. 读笔记：正文在工作台库里。list_notes 浏览，search_notes(query) 按标题/正文搜，get_note(noteId) 取全文。用户说「这篇」才用前馈 noteId 去读。禁止 cat 文件路径，禁止用 recall_resource 当笔记（那是工具结果 resource#N）。
 8c. 记忆区：前馈或 get_workbench_context.memoryNotes 列出与当前 SSH/库绑定的 role=memory 笔记。动手改机/改库前先 get_note 读匹配记忆；新坑用 notebook_append_content 或新建记忆笔记（role: memory + 关联主机/连接）。
-8d. 浏览器工作流=Agent Skill：get_skill 读前置提示后自己用 browser_* 完成目标；distill_workflow 只出草稿；**跑通/踩坑后必须 update_skill** 写回 lessons、优化 steps、script、resourcePaths。run_skill 仅为可选机械捷径。产品名统一叫工作流；笔记 role=skill。
+8d. 浏览器工作流=Agent Skill：get_skill 读前置提示后自己用 browser_* 完成目标；distill_workflow 只出草稿；**跑通/踩坑后必须 update_skill** 写回 lessons、优化 steps、script、resourcePaths（写盘自动创建版本；list_skill_versions / restore_skill_version）。run_skill 仅为可选机械捷径。产品名统一叫工作流；笔记 role=skill。
 9. Docker：远端先 save_docker_context(sshHostId)，再 list_containers；变更用 start/stop/remove_container；日志：新源先 save_log_source，再用 fetch_logs(logSourceId) 或 get_container_logs。本轮已绑定 SSH 时，远程 Docker 优先用该 hostId；若用户意图是本地或其它机器，再确认。
 9b. 工作台是资产容器——凡要可复现的配置必须落盘：HTTP→save_http_request + save_http_environment；SSH→save_ssh_host / save_ssh_forward；数据库→save_connection；日志→save_log_source；Docker→save_docker_context。禁止只临时候参数打完就结束；笔记本是报告旁路，主资产在各产品树。
 10. 本轮工具返回已在上下文中，直接基于其内容作答；不要为本轮结果调用 recall_resource。跨轮或历史被挤出窗口后，用 recall_resource（resource#N / resource_id）取回全文；可用 search_session / get_task_summary 定位。

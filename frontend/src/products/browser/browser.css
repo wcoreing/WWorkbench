@@ -641,6 +641,19 @@
   flex-shrink: 0;
 }
 
+.browser-ledger-ide {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.browser-ledger-ide .notebook-ide {
+  flex: 1;
+  min-height: 0;
+}
+
 .browser-table-wrap {
   flex: 1;
   min-height: 0;

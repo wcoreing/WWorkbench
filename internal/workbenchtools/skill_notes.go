@@ -160,20 +160,36 @@ func findSkillNote(nb noteGetter, key string) (*model.NoteDO, bool) {
 	if key == "" || nb == nil {
 		return nil, false
 	}
-	try := []string{key, notebook.SkillNoteID(key)}
+	accept := func(n *model.NoteDO) bool {
+		if n == nil || notebook.IsTaskLogNoteID(n.ID) {
+			return false
+		}
+		if notebook.SkillNameFromNoteID(n.ID) != "" {
+			return true
+		}
+		if _, ok := notebook.ParseWorkflowNote(*n); ok {
+			return true
+		}
+		return notebook.NormalizeNoteRole(n.Role) == model.NoteRoleSkill
+	}
+	// 先 SKILL.md 路径，再短名/其它 id；禁止把 log.md 当 Skill
+	try := []string{notebook.SkillNoteID(key), key}
 	for _, id := range try {
 		if id == "" {
 			continue
 		}
 		n, err := nb.GetNote(id)
-		if err == nil && n != nil {
+		if err == nil && accept(n) {
 			return n, true
 		}
 	}
 	if list, err := nb.ListSkillNotes(100); err == nil {
 		for _, sum := range list {
+			if notebook.IsTaskLogNoteID(sum.ID) {
+				continue
+			}
 			n, err := nb.GetNote(sum.ID)
-			if err != nil || n == nil {
+			if err != nil || !accept(n) {
 				continue
 			}
 			if notebook.ReadLinkedSkillID(n.Content) == key {
@@ -185,7 +201,7 @@ func findSkillNote(nb noteGetter, key string) (*model.NoteDO, bool) {
 			if notebook.SkillNameFromNoteID(n.ID) == key {
 				return n, true
 			}
-			if strings.EqualFold(strings.TrimSpace(n.Title), key) {
+			if strings.EqualFold(strings.TrimSpace(n.Title), key) && notebook.SkillNameFromNoteID(n.ID) != "" {
 				return n, true
 			}
 		}
@@ -194,7 +210,7 @@ func findSkillNote(nb noteGetter, key string) (*model.NoteDO, bool) {
 		for _, p := range pbs {
 			if p.Name == key || p.NoteID == key || p.ID == key {
 				n, err := nb.GetNote(p.NoteID)
-				if err == nil && n != nil {
+				if err == nil && accept(n) {
 					return n, true
 				}
 			}

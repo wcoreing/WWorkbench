@@ -18,16 +18,30 @@ export async function handleClick(tid: number, args: Record<string, unknown> = {
 
   let box = await sendWithRefRetry(tid, 'resolve_box', args)
   let via = 'content'
+  const nameHint = String(args?.name || args?.query || args?.text || args?.ref || '')
+  const selectorHint = String(args?.selector || '')
 
   // Closed shadow / 深层：CDP performSearch 或 AX 名称兜底
-  if (!box?.ok) {
+  // 内容脚本常命中巨大自定义宿主（如 xhs-publish-btn 864px），需再比一轮 CDP 内部 button
+  const contentTooCoarse =
+    !!box?.ok &&
+    (Number(box.data?.width) > 280 ||
+      Number(box.data?.height) > 80 ||
+      /-/i.test(String(box.data?.tag || '')))
+  if (!box?.ok || contentTooCoarse) {
     const cdpBox = await cdpResolveBox(tid, {
-      selector: String(args?.selector || ''),
-      name: String(args?.name || args?.query || args?.text || args?.ref || ''),
+      selector: selectorHint,
+      name: nameHint,
     }).catch(() => null)
     if (cdpBox) {
-      box = { ok: true, data: cdpBox }
-      via = cdpBox.via
+      const preferCdp =
+        !box?.ok ||
+        (cdpBox.width > 0 &&
+          cdpBox.width * cdpBox.height < Number(box.data?.width || 1e9) * Number(box.data?.height || 1e9) * 0.6)
+      if (preferCdp) {
+        box = { ok: true, data: cdpBox }
+        via = cdpBox.via
+      }
     }
   }
 

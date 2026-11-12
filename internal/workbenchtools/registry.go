@@ -853,7 +853,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name: workbench.CapListSkills,
-		Description: "列出笔记本工作流（~/.wworkbench/notebook/工作流/）。返回 id/name/description/noteId/diskPath/hasSteps。",
+		Description: "列出笔记本工作流（仅 SKILL.md / role=skill；不含 log.md）。返回 id/name/description/noteId/diskPath/hasSteps。",
 		Parameters: map[string]interface{}{
 			"type":       "object",
 			"properties": map[string]interface{}{},
@@ -862,7 +862,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name: workbench.CapGetSkill,
-		Description: "读取笔记本工作流/Skill 正文（~/.wworkbench/notebook/工作流/{name}/SKILL.md）。返回 content + diskPath/skillDir/assetsDir；优先读后自己用工具执行。含步骤时也可选 run_skill。参数 skill=id|name。",
+		Description: "读取笔记本工作流/Skill 正文（仅 工作流/{name}/SKILL.md，永不返回 log.md）。返回 content + diskPath/skillDir/assetsDir；优先读后自己用工具执行。含步骤时也可选 run_skill。参数 skill=id|name。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -873,6 +873,107 @@ func (r *Registry) registerBuiltins() {
 			"required": []interface{}{"skill"},
 		},
 		Handler: toolGetSkill,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapEnableDirVersion,
+		Description: "启用笔记本某目录的版本管理（目录内建 git；工作流目录默认 ignore log.md）。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"dir":  map[string]interface{}{"type": "string", "description": "相对 ~/.wworkbench/notebook/ 的目录，如 工作流/demo"},
+				"path": map[string]interface{}{"type": "string"},
+			},
+			"required": []interface{}{"dir"},
+		},
+		Handler: toolEnableDirVersion,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapListDirVersions,
+		Description: "列出笔记本目录版本。任意文件夹可纳管；工作流排除 log.md。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"dir":   map[string]interface{}{"type": "string"},
+				"path":  map[string]interface{}{"type": "string"},
+				"limit": map[string]interface{}{"type": "integer"},
+			},
+			"required": []interface{}{"dir"},
+		},
+		Handler: toolListDirVersions,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapPinDirVersion,
+		Description: "为笔记本目录创建版本（未启用则自动启用；无变更返回 HEAD）。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"dir":     map[string]interface{}{"type": "string"},
+				"path":    map[string]interface{}{"type": "string"},
+				"message": map[string]interface{}{"type": "string"},
+				"intent":  intentProp(),
+			},
+			"required": []interface{}{"dir"},
+		},
+		Handler: toolPinDirVersion,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapRestoreDirVersion,
+		Description: "回退笔记本目录到某 hash（新 commit；ignore 文件如 log.md 不动）。需确认+intent。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"dir":    map[string]interface{}{"type": "string"},
+				"path":   map[string]interface{}{"type": "string"},
+				"hash":   map[string]interface{}{"type": "string"},
+				"intent": intentProp(),
+			},
+			"required": []interface{}{"dir", "hash", "intent"},
+		},
+		Handler: toolRestoreDirVersion,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapListSkillVersions,
+		Description: "兼容：等同 list_dir_versions(dir=工作流/{skill})。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"skill": map[string]interface{}{"type": "string"},
+				"name":  map[string]interface{}{"type": "string"},
+				"limit": map[string]interface{}{"type": "integer"},
+			},
+			"required": []interface{}{"skill"},
+		},
+		Handler: toolListSkillVersions,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapPinSkillVersion,
+		Description: "兼容：等同 pin_dir_version(dir=工作流/{skill})。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"skill":   map[string]interface{}{"type": "string"},
+				"name":    map[string]interface{}{"type": "string"},
+				"message": map[string]interface{}{"type": "string"},
+				"intent":  intentProp(),
+			},
+			"required": []interface{}{"skill"},
+		},
+		Handler: toolPinSkillVersion,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapRestoreSkillVersion,
+		Description: "兼容：等同 restore_dir_version(dir=工作流/{skill})。需确认+intent。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"skill":  map[string]interface{}{"type": "string"},
+				"name":   map[string]interface{}{"type": "string"},
+				"hash":   map[string]interface{}{"type": "string"},
+				"intent": intentProp(),
+			},
+			"required": []interface{}{"skill", "hash", "intent"},
+		},
+		Handler: toolRestoreSkillVersion,
 	})
 	r.add(ToolDef{
 		Name: workbench.CapPublishAgentSkill,

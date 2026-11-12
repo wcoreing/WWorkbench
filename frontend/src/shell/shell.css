@@ -14,4 +14,6 @@
 @import './styles/httpapi-theme.css';
 @import './styles/logs.css';
 @import './styles/notebook.css';
+@import './styles/tags.css';
+@import './styles/notify.css';
 @import './styles/plugins.css';

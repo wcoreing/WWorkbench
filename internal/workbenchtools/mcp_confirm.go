@@ -158,7 +158,9 @@ func ProductForTool(toolName string) string {
 		workbench.CapBrowserNetwork, workbench.CapListTaskRuns, workbench.CapGetTaskRun,
 		workbench.CapReplayTaskStep, workbench.CapDistillWorkflow, workbench.CapListWorkflows,
 		workbench.CapGetWorkflow, workbench.CapSaveWorkflow, workbench.CapUpdateSkill, workbench.CapRunSkill,
-		workbench.CapListSkills, workbench.CapGetSkill:
+		workbench.CapListSkills, workbench.CapGetSkill,
+		workbench.CapListDirVersions, workbench.CapEnableDirVersion, workbench.CapPinDirVersion, workbench.CapRestoreDirVersion,
+		workbench.CapListSkillVersions, workbench.CapPinSkillVersion, workbench.CapRestoreSkillVersion:
 		return "browser"
 	default:
 		return "terminal"

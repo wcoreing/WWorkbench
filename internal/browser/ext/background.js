@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // src/shared/version.ts
-  var EXT_VERSION = "0.3.8";
+  var EXT_VERSION = "0.3.14";
   var CAPABILITIES = [
     "snapshot",
     "click",
@@ -136,71 +136,190 @@
       });
     });
   }
+  function boxFromContent(content, via, label) {
+    if (!content || content.length < 8) return null;
+    const xs = [content[0], content[2], content[4], content[6]];
+    const ys = [content[1], content[3], content[5], content[7]];
+    const width = Math.max(...xs) - Math.min(...xs);
+    const height = Math.max(...ys) - Math.min(...ys);
+    if (width <= 0 || height <= 0) return null;
+    return {
+      x: (xs[0] + xs[1] + xs[2] + xs[3]) / 4,
+      y: (ys[0] + ys[1] + ys[2] + ys[3]) / 4,
+      width,
+      height,
+      via,
+      label
+    };
+  }
+  function attrMap(attrs) {
+    const m = {};
+    if (!attrs) return m;
+    for (let i = 0; i + 1 < attrs.length; i += 2) m[attrs[i]] = attrs[i + 1];
+    return m;
+  }
+  function isClickableNode(node) {
+    const tag = String(node.localName || node.nodeName || "").toLowerCase();
+    if (tag === "button" || tag === "a" || tag === "summary") return true;
+    const attrs = attrMap(node.attributes);
+    const role = (attrs.role || "").toLowerCase();
+    if (role === "button" || role === "link" || role === "menuitem" || role === "tab") return true;
+    const cls = ` ${attrs.class || attrs.className || ""} `;
+    if (/\bbtn\b|\bbutton\b|\bce-btn\b/i.test(cls)) return true;
+    return false;
+  }
+  function clickScore(box, node) {
+    let s = Math.min(box.width, 400) * Math.min(box.height, 120);
+    const tag = String(node.localName || node.nodeName || "").toLowerCase();
+    if (tag === "button") s += 5e4;
+    else if (isClickableNode(node)) s += 2e4;
+    if (tag === "#text" || tag === "span" || tag === "label") s *= 0.25;
+    if (box.width >= 60 && box.height >= 28) s += 8e3;
+    return s;
+  }
+  async function describeNode(target, opts) {
+    try {
+      const res = await chrome.debugger.sendCommand(target, "DOM.describeNode", {
+        ...opts,
+        depth: 0
+      });
+      return res?.node || null;
+    } catch {
+      return null;
+    }
+  }
+  async function boxForNode(target, opts, via, label) {
+    try {
+      const model = await chrome.debugger.sendCommand(target, "DOM.getBoxModel", opts);
+      const box = boxFromContent(model?.model?.content || [], via, label);
+      if (!box) return null;
+      const node = await describeNode(target, opts) || {};
+      return { box, node };
+    } catch {
+      return null;
+    }
+  }
+  function isInlineOrText(node) {
+    const tag = String(node.localName || node.nodeName || "").toLowerCase();
+    return tag === "#text" || tag === "span" || tag === "label" || tag === "i" || tag === "svg" || tag === "path";
+  }
+  async function promoteToClickable(target, start, via, label) {
+    let cur = await boxForNode(target, start, via, label);
+    if (!cur) return null;
+    let best = cur;
+    const startArea = Math.max(1, cur.box.width * cur.box.height);
+    for (let i = 0; i < 10; i++) {
+      if (isClickableNode(cur.node) && cur.box.width >= 40 && cur.box.height >= 20) {
+        return { ...cur.box, via: via + "_host", label };
+      }
+      if (isInlineOrText(best.node) && cur.box.width * cur.box.height >= startArea * 1.8 && cur.box.height >= 24 && cur.box.height <= 72 && cur.box.width >= 48 && cur.box.width <= 480) {
+        best = cur;
+        return { ...cur.box, via: via + "_host", label };
+      }
+      if (clickScore(cur.box, cur.node) > clickScore(best.box, best.node)) best = cur;
+      const parentId = cur.node.parentId;
+      if (!parentId) break;
+      const next = await boxForNode(target, { nodeId: parentId }, via, label);
+      if (!next) break;
+      cur = next;
+    }
+    if (isClickableNode(best.node) || best.box.width * best.box.height >= 40 * 24) {
+      return { ...best.box, via: via + (isClickableNode(best.node) || best.box.width > startArea ** 0.5 * 1.5 ? "_host" : ""), label };
+    }
+    return { ...best.box, via, label };
+  }
+  async function searchSelectorBoxes(target, selector) {
+    const queries = [selector];
+    if (selector.startsWith(".") && !selector.includes(" ")) {
+      queries.unshift(`button${selector}`);
+    }
+    let best = null;
+    for (const query of queries) {
+      try {
+        const search = await chrome.debugger.sendCommand(target, "DOM.performSearch", {
+          query,
+          includeUserAgentShadowDOM: true
+        });
+        if (!search?.resultCount) continue;
+        const results = await chrome.debugger.sendCommand(target, "DOM.getSearchResults", {
+          searchId: search.searchId,
+          fromIndex: 0,
+          toIndex: Math.min(search.resultCount, 12)
+        });
+        await chrome.debugger.sendCommand(target, "DOM.discardSearchResults", { searchId: search.searchId }).catch(() => {
+        });
+        for (const nodeId of results?.nodeIds || []) {
+          const promoted = await promoteToClickable(target, { nodeId }, "cdp_search");
+          if (!promoted) continue;
+          const hostBonus = promoted.via.includes("_host") ? 5e4 : 0;
+          const score = Math.min(promoted.width, 400) * Math.min(promoted.height, 120) + hostBonus;
+          if (!best || score > best.score) best = { box: promoted, score };
+        }
+        if (best && best.score >= 2e4) return best.box;
+      } catch {
+      }
+    }
+    return best?.box || null;
+  }
   async function cdpResolveBox(tabId, args) {
     return withDebugger(tabId, async (target) => {
       const selector = String(args.selector || "").trim();
       if (selector) {
-        try {
-          const search = await chrome.debugger.sendCommand(target, "DOM.performSearch", {
-            query: selector,
-            includeUserAgentShadowDOM: true
-          });
-          if (search?.resultCount > 0) {
-            const results = await chrome.debugger.sendCommand(target, "DOM.getSearchResults", {
-              searchId: search.searchId,
-              fromIndex: 0,
-              toIndex: Math.min(search.resultCount, 5)
-            });
-            await chrome.debugger.sendCommand(target, "DOM.discardSearchResults", { searchId: search.searchId }).catch(() => {
-            });
-            for (const nodeId of results?.nodeIds || []) {
-              try {
-                const box2 = await chrome.debugger.sendCommand(target, "DOM.getBoxModel", { nodeId });
-                const c2 = box2?.model?.content;
-                if (!c2 || c2.length < 8) continue;
-                const xs2 = [c2[0], c2[2], c2[4], c2[6]];
-                const ys2 = [c2[1], c2[3], c2[5], c2[7]];
-                const x = (xs2[0] + xs2[1] + xs2[2] + xs2[3]) / 4;
-                const y = (ys2[0] + ys2[1] + ys2[2] + ys2[3]) / 4;
-                return {
-                  x,
-                  y,
-                  width: Math.max(xs2) - Math.min(xs2),
-                  height: Math.max(ys2) - Math.min(ys2),
-                  via: "cdp_search"
-                };
-              } catch {
-              }
-            }
-          }
-        } catch {
-        }
+        const hit = await searchSelectorBoxes(target, selector);
+        if (hit) return hit;
       }
       const name = String(args.name || args.query || args.text || "").trim();
       if (!name) return null;
+      try {
+        const byText = await searchSelectorBoxes(target, name);
+        if (byText && (byText.via.includes("_host") || byText.width >= 60)) return { ...byText, label: name };
+      } catch {
+      }
       const ax = await chrome.debugger.sendCommand(target, "Accessibility.getFullAXTree", {});
       const want = name.toLowerCase();
       const nodes = ax.nodes || [];
-      const hit = nodes.find((n) => (n.name?.value || "").trim() === name) || nodes.find((n) => (n.name?.value || "").trim().toLowerCase() === want) || nodes.find((n) => {
+      const nameEq = (n) => (n.name?.value || "").trim() === name;
+      const nameEqCi = (n) => (n.name?.value || "").trim().toLowerCase() === want;
+      const nameInc = (n) => {
         const nname = (n.name?.value || "").trim().toLowerCase();
-        return !!nname && nname.includes(want);
-      });
-      if (!hit?.backendDOMNodeId) return null;
-      const box = await chrome.debugger.sendCommand(target, "DOM.getBoxModel", {
-        backendNodeId: hit.backendDOMNodeId
-      });
-      const c = box?.model?.content;
-      if (!c || c.length < 8) return null;
-      const xs = [c[0], c[2], c[4], c[6]];
-      const ys = [c[1], c[3], c[5], c[7]];
-      return {
-        x: (xs[0] + xs[1] + xs[2] + xs[3]) / 4,
-        y: (ys[0] + ys[1] + ys[2] + ys[3]) / 4,
-        width: Math.max(...xs) - Math.min(...xs),
-        height: Math.max(...ys) - Math.min(...ys),
-        via: "cdp_ax",
-        label: hit.name?.value
+        return !!nname && nname === want;
       };
+      const roleOf = (n) => (n.role?.value || "").toLowerCase();
+      const candidates = [
+        ...nodes.filter((n) => roleOf(n) === "button" && nameEq(n)),
+        ...nodes.filter((n) => roleOf(n) === "button" && nameEqCi(n)),
+        ...nodes.filter((n) => nameEq(n)),
+        ...nodes.filter((n) => nameEqCi(n)),
+        ...nodes.filter((n) => nameInc(n))
+      ];
+      let best = null;
+      let bestScore = -1;
+      const seen = /* @__PURE__ */ new Set();
+      for (const hit of candidates) {
+        const bid = hit.backendDOMNodeId;
+        if (!bid || seen.has(bid)) continue;
+        seen.add(bid);
+        const promoted = await promoteToClickable(
+          target,
+          { backendNodeId: bid },
+          "cdp_ax",
+          hit.name?.value
+        );
+        if (!promoted) continue;
+        if (promoted.width < 8 || promoted.height < 8) continue;
+        if (promoted.y < 16 && promoted.height < 20) continue;
+        if (promoted.y > 900) continue;
+        const node = await describeNode(target, { backendNodeId: bid }) || {};
+        let score = clickScore(promoted, node) + (roleOf(hit) === "button" ? 3e4 : 0);
+        if (promoted.y >= 120 && promoted.y <= 720) score += 25e3;
+        if (promoted.x >= 1400) score += 2e4;
+        score += Math.min(promoted.x, 2e3) * 0.3 + Math.min(promoted.y, 800) * 2;
+        if (score > bestScore) {
+          bestScore = score;
+          best = promoted;
+        }
+      }
+      return best;
     });
   }
 
@@ -354,14 +473,20 @@
     }
     let box = await sendWithRefRetry(tid, "resolve_box", args);
     let via = "content";
-    if (!box?.ok) {
+    const nameHint = String(args?.name || args?.query || args?.text || args?.ref || "");
+    const selectorHint = String(args?.selector || "");
+    const contentTooCoarse = !!box?.ok && (Number(box.data?.width) > 280 || Number(box.data?.height) > 80 || /-/i.test(String(box.data?.tag || "")));
+    if (!box?.ok || contentTooCoarse) {
       const cdpBox = await cdpResolveBox(tid, {
-        selector: String(args?.selector || ""),
-        name: String(args?.name || args?.query || args?.text || args?.ref || "")
+        selector: selectorHint,
+        name: nameHint
       }).catch(() => null);
       if (cdpBox) {
-        box = { ok: true, data: cdpBox };
-        via = cdpBox.via;
+        const preferCdp = !box?.ok || cdpBox.width > 0 && cdpBox.width * cdpBox.height < Number(box.data?.width || 1e9) * Number(box.data?.height || 1e9) * 0.6;
+        if (preferCdp) {
+          box = { ok: true, data: cdpBox };
+          via = cdpBox.via;
+        }
       }
     }
     if (!box?.ok) {
@@ -1545,6 +1670,15 @@
         recording: rec.recording,
         recordingSession: rec.recordingSession
       });
+    }
+    if (action === "reload_extension") {
+      setTimeout(() => {
+        try {
+          chrome.runtime.reload();
+        } catch {
+        }
+      }, 50);
+      return ok({ reloading: true, version: EXT_VERSION });
     }
     return fail("\u672A\u77E5\u52A8\u4F5C: " + action, "unknown_action");
   }

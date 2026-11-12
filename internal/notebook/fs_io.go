@@ -193,7 +193,7 @@ func (s *Service) listNotesFS() ([]model.NoteSummaryDO, error) {
 			}
 			return nil
 		}
-		if !strings.HasSuffix(strings.ToLower(name), ".md") {
+		if !isNotebookContentFile(name) {
 			return nil
 		}
 		rel, _ := filepath.Rel(root, path)
@@ -245,6 +245,14 @@ func (s *Service) getNoteFS(id string) (*model.NoteDO, error) {
 			return s.readNoteFile(filepath.ToSlash(id), abs, groupIDFromRelDir(relDir))
 		}
 	}
+	// 短名优先直达 SKILL.md，避免扫描时误命中同目录 log.md
+	if !strings.Contains(id, "/") {
+		if skillID := SkillNoteID(id); skillID != "" && skillID != id {
+			if n, e := s.getNoteFS(skillID); e == nil && n != nil {
+				return n, nil
+			}
+		}
+	}
 	list, err := s.listNotesFS()
 	if err != nil {
 		return nil, err
@@ -269,26 +277,23 @@ func (s *Service) readNoteFile(id, path, groupID string) (*model.NoteDO, error) 
 		mt = info.ModTime().Unix()
 		ct = mt
 	}
+	base := filepath.Base(path)
 	n := &model.NoteDO{
 		ID:        id,
 		GroupID:   groupID,
 		Content:   string(raw),
-		Language:  "markdown",
+		Language:  languageFromFilename(base),
 		CreatedAt: ct,
 		UpdatedAt: mt,
 	}
 	SyncNoteMeta(n)
-	// 侧栏如实显示文件名（与访达一致），不用 H1 映射
-	n.Title = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
-	if isSkillPathID(id) || strings.EqualFold(filepath.Base(path), SkillEntryFile) {
+	// 标题=去扩展名；侧栏展示用磁盘 basename（id），此处不改写
+	n.Title = titleFromFilename(base)
+	if isSkillPathID(id) || strings.EqualFold(base, SkillEntryFile) {
 		n.Role = model.NoteRoleSkill
 		n.Language = "markdown"
 		if n.GroupID == "" {
 			n.GroupID = filepath.ToSlash(filepath.Dir(id))
-		}
-		// Skill 文件名都是 SKILL.md；侧栏用目录名区分，避免两行都叫 SKILL
-		if name := SkillNameFromNoteID(id); name != "" {
-			n.Title = name
 		}
 	}
 	return n, nil
@@ -388,8 +393,10 @@ func (s *Service) plainNoteSavePath(n *model.NoteDO) (string, error) {
 		n.ID = SeedMemoryNoteID
 		return filepath.Join(s.workspaceRoot(), MemoryGroupName, "怎么用记忆区.md"), nil
 	}
-	if strings.HasSuffix(strings.ToLower(n.ID), ".md") && !strings.Contains(n.ID, "..") {
-		return filepath.Join(s.workspaceRoot(), filepath.FromSlash(n.ID)), nil
+	id := strings.TrimSpace(n.ID)
+	// 已有带扩展名的磁盘路径：尊重真源（.md / .js / …）
+	if id != "" && !strings.Contains(id, "..") && filepath.Ext(id) != "" {
+		return filepath.Join(s.workspaceRoot(), filepath.FromSlash(id)), nil
 	}
 	dir, err := s.groupDirAbs(n.GroupID)
 	if err != nil {
@@ -399,12 +406,21 @@ func (s *Service) plainNoteSavePath(n *model.NoteDO) (string, error) {
 	if stem == "" {
 		stem = "未命名"
 	}
-	path := filepath.Join(dir, stem+".md")
+	// 标题误带扩展名时剥掉，并以该扩展为准
+	if e := filepath.Ext(stem); e != "" {
+		n.Language = languageFromFilename(stem)
+		stem = sanitizeFileStem(titleFromFilename(stem))
+		if stem == "" {
+			stem = "未命名"
+		}
+	}
+	ext := extForLanguage(n.Language)
+	path := filepath.Join(dir, stem+ext)
 	if _, err := os.Stat(path); err == nil {
 		if cur := filepath.Join(s.workspaceRoot(), filepath.FromSlash(n.ID)); n.ID != "" && sameFile(cur, path) {
 			return path, nil
 		}
-		path = filepath.Join(dir, stem+"-"+shortID()+".md")
+		path = filepath.Join(dir, stem+"-"+shortID()+ext)
 	}
 	return path, nil
 }

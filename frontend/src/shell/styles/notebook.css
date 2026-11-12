@@ -30,12 +30,6 @@
   background: var(--color-warning, #c9a227);
 }
 
-.notebook-tab-ext {
-  margin-left: 2px;
-  opacity: 0.55;
-  font-size: 11px;
-}
-
 .notebook-ide-bar {
   gap: 8px;
 }
@@ -66,20 +60,15 @@
   flex-shrink: 0;
 }
 
-.notebook-breadcrumb-title.notebook-title-input {
+.notebook-breadcrumb-file {
   flex: 1;
   min-width: 80px;
-  margin: 0;
-  height: 26px;
   font-size: 13px;
   font-weight: 600;
-}
-
-.notebook-breadcrumb-ext {
-  flex-shrink: 0;
-  opacity: 0.55;
-  font-size: 12px;
-  padding-right: 4px;
+  color: var(--color-text, #111);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .notebook-status-bar {
@@ -283,6 +272,231 @@
   font-size: var(--font-size-ui-sm);
 }
 
+/* 通用 NotebookIDE：文件树 + 编辑（可嵌入日志等宿主） */
+.notebook-ide {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-surface, #fff);
+}
+
+.notebook-ide-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  background: var(--color-toolbar, #f3f4f6);
+}
+
+.notebook-ide-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 650;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notebook-ide-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.notebook-ide-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.notebook-ide-tree {
+  flex-shrink: 0;
+  min-width: 140px;
+  max-width: 40%;
+  border-right: 1px solid var(--color-border, #e5e7eb);
+  overflow: auto;
+  background: var(--color-sidebar, #fafafa);
+}
+
+.notebook-ide-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.notebook-ide-main .notebook-editor-split {
+  flex: 1;
+  min-height: 0;
+}
+
+.notebook-ide-empty {
+  padding: 16px 14px;
+  font-size: 12px;
+  color: var(--color-text-muted, #6b7280);
+  line-height: 1.5;
+}
+
+/* 笔记本目录版本（右键 → 弹窗） */
+.notebook-version-modal {
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(72vh, 640px);
+  display: flex;
+  flex-direction: column;
+}
+
+.notebook-version-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.notebook-version-modal-heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.notebook-version-modal-path {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--color-text-muted, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notebook-version-modal-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.notebook-version-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.notebook-version-hint,
+.notebook-version-error,
+.notebook-version-empty {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.notebook-version-error {
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--color-danger, #b91c1c);
+  background: color-mix(in srgb, var(--color-danger, #ef4444) 10%, transparent);
+}
+
+.notebook-version-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  min-height: 0;
+  max-height: 420px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+}
+
+.notebook-version-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 88px auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border-subtle, #f0f0f0);
+}
+
+.notebook-version-row:last-child {
+  border-bottom: none;
+}
+
+.notebook-version-row.is-head {
+  background: color-mix(in srgb, var(--color-accent, #2563eb) 8%, transparent);
+}
+
+.notebook-version-row.is-new {
+  animation: notebook-version-flash 1.2s ease;
+}
+
+@keyframes notebook-version-flash {
+  from {
+    background: color-mix(in srgb, var(--color-success, #22c55e) 22%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.notebook-version-row.is-head.is-new {
+  animation: notebook-version-flash-head 1.2s ease;
+}
+
+@keyframes notebook-version-flash-head {
+  from {
+    background: color-mix(in srgb, var(--color-success, #22c55e) 22%, transparent);
+  }
+  to {
+    background: color-mix(in srgb, var(--color-accent, #2563eb) 8%, transparent);
+  }
+}
+
+.notebook-version-short {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--color-text-secondary, #4b5563);
+}
+
+.notebook-version-subject {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--color-text, #111);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notebook-version-when {
+  font-size: 11px;
+  color: var(--color-text-muted, #6b7280);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.notebook-version-actions {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 52px;
+}
+
+.notebook-version-badge {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--color-accent, #2563eb);
+}
+
 /* 目录 + 笔记文件树 */
 .notebook-tree-body {
   flex: 1;
@@ -373,13 +587,6 @@
   white-space: nowrap;
 }
 
-.notebook-tree-ext {
-  margin-left: 4px;
-  font-size: 10px;
-  color: var(--color-text-muted);
-  opacity: 0.75;
-}
-
 .notebook-role-filters {
   display: flex;
   flex-wrap: wrap;
@@ -403,29 +610,18 @@
   color: var(--color-text);
 }
 
-.notebook-role-badge {
-  flex-shrink: 0;
-  font-size: 10px;
-  line-height: 1;
-  padding: 2px 4px;
-  border-radius: 3px;
-  color: var(--color-text-muted);
-  background: var(--color-hover);
-  letter-spacing: 0.02em;
-}
-
-.notebook-role-badge.is-memory {
-  color: var(--color-accent, #2a6f6a);
-  background: color-mix(in srgb, var(--color-accent, #2a6f6a) 14%, transparent);
-}
-
-.notebook-role-badge.is-skill {
-  color: var(--color-text-secondary, #5a6570);
+.notebook-tree-folder .resource-tags,
+.notebook-tree-note .resource-tags {
+  margin-left: auto;
 }
 
 .notebook-tree-note .notebook-note-check {
-  margin-left: auto;
+  margin-left: 2px;
   opacity: 0;
+}
+
+.notebook-tree-note:not(:has(.resource-tags)) .notebook-note-check {
+  margin-left: auto;
 }
 
 .notebook-tree-note:hover .notebook-note-check,

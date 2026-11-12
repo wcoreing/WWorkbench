@@ -6549,6 +6549,8 @@ export namespace model {
 	    id: string;
 	    runId: string;
 	    seq: number;
+	    kind?: string;
+	    provider?: string;
 	    tool: string;
 	    action: string;
 	    intent: string;
@@ -6570,6 +6572,8 @@ export namespace model {
 	        this.id = source["id"];
 	        this.runId = source["runId"];
 	        this.seq = source["seq"];
+	        this.kind = source["kind"];
+	        this.provider = source["provider"];
 	        this.tool = source["tool"];
 	        this.action = source["action"];
 	        this.intent = source["intent"];

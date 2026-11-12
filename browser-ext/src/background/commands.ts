@@ -475,5 +475,16 @@ export async function handleCommand(msg: BridgeCommand): Promise<CmdResult> {
       recordingSession: rec.recordingSession,
     })
   }
+  // 热重载：seed/构建更新后由 Host 或 Agent 触发，无需打开 chrome://extensions
+  if (action === 'reload_extension') {
+    setTimeout(() => {
+      try {
+        chrome.runtime.reload()
+      } catch {
+        /* ignore */
+      }
+    }, 50)
+    return ok({ reloading: true, version: EXT_VERSION })
+  }
   return fail('未知动作: ' + action, 'unknown_action')
 }

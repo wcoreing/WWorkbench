@@ -506,6 +506,10 @@ export interface TaskStep {
   id: string
   runId: string
   seq: number
+  /** thought | op */
+  kind?: string
+  /** wwb | kimi | agent | ui | record | mcp */
+  provider?: string
   tool: string
   action: string
   intent: string

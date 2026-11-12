@@ -82,24 +82,24 @@ func (s *Service) CreateDir(parentRel, name string) (string, error) {
 	return parentClean + "/" + name, nil
 }
 
-// CreateNoteFile 在 parentRel 下新建空 markdown 笔记。
+// CreateNoteFile 在 parentRel 下新建空笔记；name 可带扩展名，无扩展才默认 .md。
 func (s *Service) CreateNoteFile(parentRel, name string) (*model.NoteDO, error) {
-	name = strings.TrimSpace(name)
-	if err := validEntryName(strings.TrimSuffix(name, ".md")); err != nil && !strings.HasSuffix(strings.ToLower(name), ".md") {
-		return nil, err
-	}
-	if !strings.HasSuffix(strings.ToLower(name), ".md") {
-		name += ".md"
-	}
-	stem := strings.TrimSuffix(name, filepath.Ext(name))
+	name = ensureNoteDiskName(strings.TrimSpace(name))
+	stem := titleFromFilename(name)
 	if err := validEntryName(stem); err != nil {
 		return nil, err
 	}
+	parent := strings.TrimSpace(filepath.ToSlash(parentRel))
+	id := name
+	if parent != "" {
+		id = parent + "/" + name
+	}
 	n := model.NoteDO{
-		GroupID:  strings.TrimSpace(parentRel),
+		ID:       id,
+		GroupID:  parent,
 		Title:    stem,
 		Content:  "",
-		Language: "markdown",
+		Language: languageFromFilename(name),
 		Role:     model.NoteRoleNote,
 	}
 	return s.SaveNote(n)
@@ -129,10 +129,9 @@ func (s *Service) RenameRel(rel, newName string) (PathMutation, error) {
 	if err != nil {
 		return PathMutation{}, errno.Wrap(errno.CodeNotFound, "路径不存在", err)
 	}
-	// 普通笔记文件：保留 .md 后缀习惯
-	if !info.IsDir() && strings.HasSuffix(strings.ToLower(clean), ".md") &&
-		!strings.HasSuffix(strings.ToLower(newName), ".md") {
-		newName += ".md"
+	// 普通文件：无扩展名才默认 .md；已有 .js/.ts/… 不再强行加 .md
+	if !info.IsDir() {
+		newName = ensureNoteDiskName(newName)
 	}
 	parent := filepath.Dir(abs)
 	dst := filepath.Join(parent, newName)

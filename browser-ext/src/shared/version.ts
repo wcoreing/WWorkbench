@@ -1,5 +1,5 @@
 /** 扩展版本：改这里会进 status / hello / manifest，并应同步 Go seedVersion。 */
-export const EXT_VERSION = '0.3.8'
+export const EXT_VERSION = '0.3.14'
 
 export const CAPABILITIES = [
   'snapshot',

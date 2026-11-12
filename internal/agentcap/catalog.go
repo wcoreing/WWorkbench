@@ -54,6 +54,41 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "enable_dir_version", Label: "启用目录版本", Risk: RiskWrite,
+			Description:    "给笔记本任意文件夹建版本仓",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "list_dir_versions", Label: "目录版本历史", Risk: RiskRead,
+			Description:    "列出目录版本（工作流默认排除 log.md）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "pin_dir_version", Label: "创建目录版本", Risk: RiskWrite,
+			Description:    "为笔记本文件夹创建版本（未启用则自动启用）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "restore_dir_version", Label: "回退目录版本", Risk: RiskWrite,
+			Description:    "恢复目录到某 hash",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "list_skill_versions", Label: "Skill 版本历史", Risk: RiskRead,
+			Description:    "兼容：list_dir_versions(工作流/{skill})",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "pin_skill_version", Label: "创建 Skill 版本", Risk: RiskWrite,
+			Description:    "兼容：pin_dir_version(工作流/{skill})",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "restore_skill_version", Label: "回退 Skill 版本", Risk: RiskWrite,
+			Description:    "兼容：restore_dir_version(工作流/{skill})",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "run_skill", Label: "运行工作流", Risk: RiskWrite,
 			Description:    "可选：机械逐步跑工作流步骤；主路径 get_skill 后 Agent 自己干，再 update_skill 沉淀",
 			DefaultEnabled: true,
@@ -295,7 +330,12 @@ func Catalog() []Item {
 		},
 		{
 			Name: "browser_status", Label: "浏览器舞台状态", Risk: RiskRead,
-			Description:    "桥监听/扩展是否已连接/扩展目录；动手前先查",
+			Description:    "执行器状态（wwb/kimi）、桥监听/扩展目录；动手前先查",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "task_record", Label: "写入任务账本", Risk: RiskWrite,
+			Description:    "记思考(thought)或操作(op)到 TaskRun/log.md；插件无关；关键决策须记 thought",
 			DefaultEnabled: true,
 		},
 		{
@@ -410,12 +450,12 @@ func Catalog() []Item {
 		},
 		{
 			Name: "list_task_runs", Label: "列出日志", Risk: RiskRead,
-			Description:    "浏览器日志列表（可按 session 过滤），用于复盘",
+			Description:    "任务账本列表（可按 session 过滤）；含思考+操作",
 			DefaultEnabled: true,
 		},
 		{
 			Name: "get_task_run", Label: "日志详情", Risk: RiskRead,
-			Description:    "一条日志的步骤时间线（含 locator / intent）",
+			Description:    "一条任务的步骤时间线（kind/provider/locator/intent）",
 			DefaultEnabled: true,
 		},
 		{

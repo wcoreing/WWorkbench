@@ -102,6 +102,8 @@ interface AgentStore {
   /** 本轮 draft 是否带了 message（无则输入栏保留原文）。 */
   draftHasMessage: boolean
   draftTick: number
+  /** 草稿就绪后由输入栏自动发送（舞台按钮接管侧栏 Agent）。 */
+  pendingAutoSend: boolean
   threadMentions: AgentMention[]
   threadSkillIds: string[]
   pendingTurnSkillIds: string[]
@@ -120,7 +122,14 @@ interface AgentStore {
   finishStreaming: (fullContent: string, seq?: number) => void
   cancelStreaming: () => void
   clearRevealing: (lineId?: string) => void
-  applyDraft: (payload: { message?: string; mentions: AgentMention[]; skillIds?: string[] }) => void
+  applyDraft: (payload: {
+    message?: string
+    mentions: AgentMention[]
+    skillIds?: string[]
+    autoSend?: boolean
+  }) => void
+  /** 消费一次自动发送标记；已消费返回 true。 */
+  takePendingAutoSend: () => boolean
   pushToolStep: (tool: string, argsPreview?: string, callId?: string) => string
   finishToolStep: (
     match: { callId?: string; tool: string },
@@ -173,6 +182,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   draftSkillIds: [],
   draftHasMessage: false,
   draftTick: 0,
+  pendingAutoSend: false,
   threadMentions: [],
   threadSkillIds: [],
   pendingTurnSkillIds: [],
@@ -257,8 +267,15 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       // 本批新增 @；由输入栏与已有 chips 合并，避免覆盖 / 复活已移除项。
       draftMentions: payload.mentions,
       draftSkillIds: payload.skillIds ?? [],
+      pendingAutoSend: Boolean(payload.autoSend && (payload.message ?? '').trim()),
       draftTick: s.draftTick + 1,
     })),
+  takePendingAutoSend: () => {
+    const s = get()
+    if (!s.pendingAutoSend) return false
+    set({ pendingAutoSend: false })
+    return true
+  },
   pushToolStep: (tool, argsPreview, callId) => {
     const id = `tool-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     set((s) => {

@@ -6,10 +6,13 @@ import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
 import type { Workflow, TaskRun, TaskStep } from '../../api/types'
 import { Capability } from '../../workbench/capabilities'
-import { openNotebook, useWorkbenchCommand } from '../../stores/productLink'
+import { useWorkbenchCommand } from '../../stores/productLink'
 import { askConfirm } from '../../utils/askConfirm'
 import { APP_SETTING_KEYS, saveAppSetting } from '../../stores/appPreferences'
 import { EventsOn } from '../../../wailsjs/runtime/runtime'
+import { NotebookIDE, type NotebookIDEHandle } from '../../features/notebook/NotebookIDE'
+import { skillDirFromNoteId } from '../../features/notebook/notebookTree'
+import { openAgentDraft } from '../../features/agent/openAgentDraft'
 import './browser.css'
 
 type BrowserStatus = {
@@ -38,24 +41,6 @@ type BrowserTab = {
 
 type SnapNode = { ref: string; role: string; name: string; tag?: string; type?: string; frame?: string }
 type FrameInfo = { id: string; url: string; title?: string; sameOrigin?: boolean; root?: boolean }
-
-/** 步骤 locator 人话摘要（优先 name/selector，弱化脆弱 ref）。 */
-function stepLocatorHint(st: TaskStep): string {
-  const raw = st.locator
-  if (!raw) return ''
-  try {
-    const loc = typeof raw === 'string' ? JSON.parse(raw) : raw
-    if (!loc || typeof loc !== 'object') return ''
-    const o = loc as Record<string, unknown>
-    for (const k of ['name', 'selector', 'url', 'ref']) {
-      const v = o[k]
-      if (typeof v === 'string' && v.trim()) return v.trim()
-    }
-  } catch {
-    /* ignore */
-  }
-  return ''
-}
 
 function parseNodes(raw: unknown): {
   title: string
@@ -92,9 +77,8 @@ export function BrowserWorkbench() {
   const [taskRuns, setTaskRuns] = useState<TaskRun[]>([])
   const [activeRunId, setActiveRunId] = useState<string | null>(null)
   const [taskSteps, setTaskSteps] = useState<TaskStep[]>([])
-  const [replaySourceId, setReplaySourceId] = useState<string | null>(null)
-  const [replaySeq, setReplaySeq] = useState<number | null>(null)
   const [workflows, setWorkflows] = useState<Workflow[]>([])
+  const notebookIdeRef = useRef<NotebookIDEHandle>(null)
   const [fillRef, setFillRef] = useState<string | null>(null)
   const [fillValue, setFillValue] = useState('')
   const [filter, setFilter] = useState('')
@@ -102,7 +86,8 @@ export function BrowserWorkbench() {
   const [shotFocusId, setShotFocusId] = useState<string | null>(null)
   const [clickMarkers, setClickMarkers] = useState<Array<{ x: number; y: number; label: string }>>([])
   const [mainPane, setMainPane] = useState<'page' | 'ledger'>('page')
-  const [keepSeqs, setKeepSeqs] = useState<Set<number>>(() => new Set())
+  const [logScopeRoot, setLogScopeRoot] = useState('')
+  const [logNoteId, setLogNoteId] = useState('')
   const [batchMode, setBatchMode] = useState(false)
   const [selectedRunIds, setSelectedRunIds] = useState<Set<string>>(() => new Set())
   const [editingRunId, setEditingRunId] = useState<string | null>(null)
@@ -111,7 +96,6 @@ export function BrowserWorkbench() {
   /** 执行过程逐步询问；默认关，MCP click/fill 等不弹窗。 */
   const [askConfirmSteps, setAskConfirmSteps] = useState(false)
   const wasConnected = useRef(false)
-  const keepSeededRunId = useRef<string | null>(null)
   const renameSkipBlur = useRef(false)
   const activeRunIdRef = useRef<string | null>(null)
   activeRunIdRef.current = activeRunId
@@ -240,75 +224,64 @@ export function BrowserWorkbench() {
     }
   }, [])
 
-  /** 会话步骤 → Skill 笔记（笔记 SSOT；可选关联 skillId） */
-  const distillRunToSkill = async (runId: string, steps: TaskStep[], keep: Set<number>) => {
+  /**
+   * 更新技能：同步 log、打开 SKILL.md，打开侧栏 Agent 并自动发送收口提示。
+   * 不机械写 Skill；由侧栏 Agent 推理后 update_skill。
+   */
+  const updateActiveSkill = async () => {
+    if (!activeRunId) {
+      setStatusMessage(t('browser.ledgerPickRun'))
+      return
+    }
     setMainPane('ledger')
     setBusy(true)
     try {
-      const dropSeqs = steps.filter((s) => !keep.has(s.seq)).map((s) => s.seq)
-      const r = await api.distillWorkflow(runId, '', '', '舞台生成工作流', dropSeqs)
-      const pb = r.workflow
-      let skillId = pb?.name || ''
-      if (pb?.noteId) {
-        try {
-          const pub = await api.publishWorkflow(pb.noteId, pb.name || '')
-          skillId = pub.skillId || pub.skill?.id || pb.name || ''
-        } catch {
-          /* 笔记已是 Skill；关联失败不阻断 */
-        }
+      const synced = await syncRunLog(activeRunId, { open: false })
+      const run = taskRuns.find((r) => r.id === activeRunId)
+      const skillName =
+        (activeSkill?.name || '').trim() ||
+        (synced.skillName || '').trim() ||
+        (synced.scopeRoot || '').split('/').filter(Boolean).pop() ||
+        (run?.title || '').trim()
+      const scope =
+        (synced.scopeRoot || '').trim() ||
+        (skillName ? `工作流/${skillName}` : '')
+      const logPath = (synced.noteId || '').trim() || (scope ? `${scope}/log.md` : '')
+      const title = (run?.title || skillName || activeRunId).trim()
+      const skillNoteId = skillName ? `工作流/${skillName}/SKILL.md` : ''
+      if (skillNoteId) {
+        await notebookIdeRef.current?.openNote(skillNoteId)
       }
-      setStatusMessage(
-        pb
-          ? t('browser.skillOk', {
-              name: pb.name,
-              count: pb.steps?.length ?? 0,
-              skill: skillId || pb.name,
-            })
-          : r.note || 'ok',
-      )
-      pushLog(
-        `log→workflow ${pb?.name || ''} · run=${runId} · note=${pb?.noteId || ''} · skill=${skillId}`,
-      )
-      void refreshWorkflows()
-      void refreshTaskRuns(runId)
-      if (pb?.noteId) {
-        openNotebook({ noteId: pb.noteId }, 'browser')
-      }
+      useAppStore.getState().setAgentSurface({
+        focusKind: 'task.skill',
+        focusLabel: skillName || title,
+        noteId: skillNoteId || logPath,
+        tabTitle: title,
+        selectionBrief: [
+          skillName ? `skill=${skillName}` : '',
+          skillNoteId ? `skillNote=${skillNoteId}` : '',
+          logPath ? `log=${logPath}` : '',
+          `runId=${activeRunId}`,
+          'action=update_skill',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      })
+      const prompt = t('browser.updateSkillAgentPrompt', {
+        name: skillName || title,
+        log: logPath || '工作流/{任务}/log.md',
+        runId: activeRunId,
+        title,
+      })
+      openAgentDraft({ mentions: [], message: prompt, autoSend: true, mode: 'agent' })
+      setStatusMessage(t('browser.updateSkillAgentReady', { name: skillName || title }))
+      pushLog(`update_skill → agent · ${skillName || title} · focus=${skillNoteId || logPath}`)
     } catch (e) {
       setStatusMessage((e as Error).message)
       pushLog((e as Error).message)
     } finally {
       setBusy(false)
     }
-  }
-
-  /** 生成工作流：优先用勾选步骤；未勾选则自动纳入全部可重放成功步骤。 */
-  const distillActiveRun = async () => {
-    if (!activeRunId) {
-      setStatusMessage(t('browser.replayNeedRun'))
-      return
-    }
-    let keep = keepSeqs
-    if (keep.size === 0) {
-      const replayable = new Set([
-        'navigate',
-        'click',
-        'fill',
-        'keys',
-        'select_option',
-        'upload',
-        'drag',
-        'open_frame',
-      ])
-      keep = new Set(taskSteps.filter((s) => s.ok && replayable.has(s.action)).map((s) => s.seq))
-      keepSeededRunId.current = activeRunId
-      setKeepSeqs(keep)
-    }
-    if (keep.size === 0) {
-      setStatusMessage(t('browser.distillPickHint'))
-      return
-    }
-    await distillRunToSkill(activeRunId, taskSteps, keep)
   }
 
   const runSavedWorkflow = async (name: string) => {
@@ -335,41 +308,28 @@ export function BrowserWorkbench() {
     }
   }
 
-  const openWorkflowNote = async (pb: Workflow) => {
-    const noteId = pb.noteId || (pb.source === 'note' ? pb.id : '')
-    if (noteId) {
-      openNotebook({ noteId }, 'browser')
-      setStatusMessage(t('browser.workflowOpenNote'))
-      return
-    }
-    setBusy(true)
-    try {
-      const full = await api.getWorkflow(pb.name)
-      const id = full.noteId || (full.source === 'note' ? full.id : '')
-      if (!id) {
-        setStatusMessage(t('browser.workflowNoNote'))
-        return
-      }
-      openNotebook({ noteId: id }, 'browser')
-      setStatusMessage(t('browser.workflowOpenNote'))
-    } catch (e) {
-      setStatusMessage((e as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
+  const syncRunLog = useCallback(async (runId: string, opts?: { open?: boolean }) => {
+    const synced = await api.syncTaskRunLog(runId)
+    const scope = (synced.scopeRoot || '').trim()
+    const noteId = (synced.noteId || '').trim()
+    if (scope) setLogScopeRoot(scope)
+    if (noteId) setLogNoteId(noteId)
+    await notebookIdeRef.current?.refresh()
+    // 默认打开 log（选日志时看探索轨迹）；更新技能时传 open:false，改开 SKILL.md
+    if (opts?.open !== false && noteId) await notebookIdeRef.current?.openNote(noteId)
+    return synced
+  }, [])
 
   const selectTaskRun = useCallback(async (runId: string) => {
     setActiveRunId(runId)
-    setReplaySourceId(null)
-    setReplaySeq(null)
     try {
       const detail = await api.getTaskRun(runId)
       setTaskSteps(detail.steps || [])
+      await syncRunLog(runId)
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
-  }, [setStatusMessage])
+  }, [setStatusMessage, syncRunLog])
 
   const exitBatchMode = useCallback(() => {
     setBatchMode(false)
@@ -448,10 +408,8 @@ export function BrowserWorkbench() {
       if (activeRunId && gone.has(activeRunId)) {
         setActiveRunId(null)
         setTaskSteps([])
-        setKeepSeqs(new Set())
-        setReplaySourceId(null)
-        setReplaySeq(null)
-        keepSeededRunId.current = null
+        setLogScopeRoot('')
+        setLogNoteId('')
       }
       if (editingRunId && gone.has(editingRunId)) cancelRenameRun()
       setStatusMessage(t('browser.runBatchDeleted', { count: n }))
@@ -814,21 +772,6 @@ export function BrowserWorkbench() {
     }
   }
 
-  const REPLAYABLE = useMemo(
-    () => new Set(['navigate', 'click', 'fill', 'keys', 'select_option', 'upload', 'drag', 'open_frame']),
-    [],
-  )
-
-  const firstReplayableSeq = useCallback(
-    (steps: TaskStep[]) => steps.find((s) => REPLAYABLE.has(s.action))?.seq ?? null,
-    [REPLAYABLE],
-  )
-
-  const currentReplayStep = useMemo(
-    () => (replaySeq == null ? null : taskSteps.find((s) => s.seq === replaySeq) || null),
-    [replaySeq, taskSteps],
-  )
-
   const activeRun = useMemo(
     () => (activeRunId ? taskRuns.find((r) => r.id === activeRunId) || null : taskRuns[0] || null),
     [activeRunId, taskRuns],
@@ -849,122 +792,36 @@ export function BrowserWorkbench() {
     [activeRunId, skillByRunId],
   )
 
+  /** 当前任务目录：同步 log 后的 scope 优先，否则按关联 Skill / 标题兜底。 */
+  const activeSkillRootId = useMemo(() => {
+    if (logScopeRoot) return logScopeRoot
+    if (activeSkill) {
+      const fromNote = skillDirFromNoteId(activeSkill.noteId || '')
+      if (fromNote) return fromNote
+      if (activeSkill.name) return `工作流/${activeSkill.name}`
+    }
+    const title = (activeRun?.title || '').trim()
+    return title ? `工作流/${title}` : ''
+  }, [logScopeRoot, activeSkill, activeRun])
+
+  const preferredLogNoteId = useMemo(() => {
+    if (logNoteId) return logNoteId
+    return activeSkillRootId ? `${activeSkillRootId}/log.md` : ''
+  }, [logNoteId, activeSkillRootId])
+
   useEffect(() => {
     if (!activeRunId) {
-      keepSeededRunId.current = null
-      setKeepSeqs(new Set())
-      return
+      setLogScopeRoot('')
+      setLogNoteId('')
     }
-    if (taskSteps.length === 0) return
-    const keepable = taskSteps.filter((s) => s.ok && REPLAYABLE.has(s.action)).map((s) => s.seq)
-    // 换会话：全选可重放步；同会话步骤变多：只补勾新步（保留用户去掉的勾）
-    if (keepSeededRunId.current !== activeRunId) {
-      keepSeededRunId.current = activeRunId
-      setKeepSeqs(new Set(keepable))
-      return
-    }
-    setKeepSeqs((prev) => {
-      if (prev.size === 0 && keepable.length > 0) return new Set(keepable)
-      const maxPrev = prev.size ? Math.max(...Array.from(prev)) : 0
-      let changed = false
-      const next = new Set(prev)
-      for (const seq of keepable) {
-        if (seq > maxPrev) {
-          next.add(seq)
-          changed = true
-        }
-      }
-      return changed ? next : prev
-    })
-  }, [activeRunId, taskSteps, REPLAYABLE])
+  }, [activeRunId])
 
   const selectTaskRunAndReseed = useCallback(
     async (runId: string) => {
-      keepSeededRunId.current = null
       await selectTaskRun(runId)
     },
     [selectTaskRun],
   )
-
-  const toggleKeepSeq = (seq: number) => {
-    setKeepSeqs((prev) => {
-      const next = new Set(prev)
-      if (next.has(seq)) next.delete(seq)
-      else next.add(seq)
-      return next
-    })
-  }
-
-  const startReplay = async () => {
-    if (!activeRunId) {
-      setStatusMessage(t('browser.replayNeedRun'))
-      return
-    }
-    setMainPane('ledger')
-    let steps = taskSteps
-    if (!steps.length) {
-      try {
-        const detail = await api.getTaskRun(activeRunId)
-        steps = detail.steps || []
-        setTaskSteps(steps)
-      } catch (e) {
-        setStatusMessage((e as Error).message)
-        return
-      }
-    }
-    const seq = firstReplayableSeq(steps)
-    if (seq == null) {
-      setStatusMessage(t('browser.replayNoStep'))
-      return
-    }
-    setReplaySourceId(activeRunId)
-    setReplaySeq(seq)
-    setStatusMessage(t('browser.replayCoach'))
-  }
-
-  const stopReplay = () => {
-    setReplaySourceId(null)
-    setReplaySeq(null)
-    pushLog(t('browser.replayStop'))
-  }
-
-  const runReplayStep = async (skip: boolean) => {
-    if (!replaySourceId || replaySeq == null) return
-    setBusy(true)
-    try {
-      const r = await api.replayTaskStep(
-        replaySourceId,
-        replaySeq,
-        skip,
-        skip ? '舞台跳过重放步骤' : '舞台逐步重放',
-      )
-      pushLog(
-        String(
-          (r as { log?: string }).log ||
-            `${skip ? 'skip' : 'replay'} #${r.seq ?? replaySeq} ${r.action || ''} ${r.resolveNote || r.coach || ''}`,
-        ),
-      )
-      if (r.coach) setStatusMessage(r.coach)
-      if (r.nextSeq != null && r.nextSeq !== undefined) {
-        setReplaySeq(Number(r.nextSeq))
-      } else {
-        setStatusMessage(t('browser.replayDone'))
-        stopReplay()
-      }
-      if (attached) {
-        try {
-          await takeSnapshot(activeFrame)
-        } catch {
-          /* ignore */
-        }
-      }
-    } catch (e) {
-      setStatusMessage((e as Error).message)
-      pushLog((e as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }
 
   const connected = !!status?.extensionConnected
   const attached = status?.attachedTabId != null
@@ -1476,154 +1333,42 @@ export function BrowserWorkbench() {
                   {activeRun
                     ? ` · ${activeRun.title || activeRun.session || activeRun.id.slice(0, 8)}`
                     : ''}
-                  {activeSkill ? ` · /${activeSkill.name}` : ''}
+                  {activeSkillRootId ? ` · /${activeSkillRootId.split('/').pop()}` : ''}
                 </h2>
                 <div className="browser-review-actions">
-                  {replaySourceId ? (
-                    <>
-                      <span className="browser-ledger-toolbar-meta">
-                        #{currentReplayStep?.seq}{' '}
-                        {currentReplayStep?.intent ||
-                          currentReplayStep?.summary ||
-                          currentReplayStep?.action ||
-                          ''}
-                      </span>
-                      <button
-                        type="button"
-                        className="wn-btn wn-btn-sm wn-btn-primary"
-                        disabled={busy}
-                        onClick={() => void runReplayStep(false)}
-                      >
-                        {t('browser.replayExec')}
-                      </button>
-                      <button
-                        type="button"
-                        className="wn-btn wn-btn-sm wn-btn-ghost"
-                        disabled={busy}
-                        onClick={() => void runReplayStep(true)}
-                      >
-                        {t('browser.replaySkip')}
-                      </button>
-                      <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" disabled={busy} onClick={stopReplay}>
-                        {t('browser.replayStop')}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      {activeSkill ? (
-                        <>
-                          <button
-                            type="button"
-                            className="wn-btn wn-btn-sm wn-btn-ghost"
-                            disabled={busy}
-                            onClick={() => void openWorkflowNote(activeSkill)}
-                          >
-                            /{activeSkill.name}
-                          </button>
-                          <button
-                            type="button"
-                            className="wn-btn wn-btn-sm wn-btn-ghost"
-                            disabled={busy || !connected}
-                            onClick={() => void runSavedWorkflow(activeSkill.name)}
-                          >
-                            {t('browser.coachRun')}
-                          </button>
-                        </>
-                      ) : null}
-                      <button
-                        type="button"
-                        className="wn-btn wn-btn-sm wn-btn-ghost"
-                        disabled={busy || !activeRunId || taskSteps.length === 0}
-                        onClick={() => void startReplay()}
-                      >
-                        {t('browser.replayStart')}
-                      </button>
-                      <button
-                        type="button"
-                        className="wn-btn wn-btn-sm wn-btn-primary"
-                        disabled={busy || !activeRunId || taskSteps.length === 0}
-                        onClick={() => void distillActiveRun()}
-                      >
-                        {t('browser.distillWorkflow')}
-                        {keepSeqs.size > 0 ? ` (${keepSeqs.size})` : ''}
-                      </button>
-                    </>
-                  )}
+                  {activeSkill ? (
+                    <button
+                      type="button"
+                      className="wn-btn wn-btn-sm wn-btn-ghost"
+                      disabled={busy || !connected}
+                      onClick={() => void runSavedWorkflow(activeSkill.name)}
+                    >
+                      {t('browser.coachRun')}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="wn-btn wn-btn-sm wn-btn-primary"
+                    disabled={busy || !activeRunId}
+                    onClick={() => void updateActiveSkill()}
+                    title={t('browser.updateSkillHint')}
+                  >
+                    {t('browser.updateSkill')}
+                  </button>
                 </div>
               </header>
 
-              <div className="browser-table-wrap is-grow">
-                <table className="browser-table">
-                  <thead>
-                    <tr>
-                      {!replaySourceId ? (
-                        <th className="is-narrow" title={t('browser.keepStep')}>
-                          {t('browser.colKeep')}
-                        </th>
-                      ) : null}
-                      <th className="is-num">#</th>
-                      <th>{t('browser.colAction')}</th>
-                      <th>{t('browser.colSummary')}</th>
-                      <th>{t('browser.colTarget')}</th>
-                      <th className="is-status">{t('browser.colStatus')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {taskSteps.length === 0 ? (
-                      <tr>
-                        <td colSpan={replaySourceId ? 5 : 6} className="is-empty">
-                          {taskRuns.length === 0
-                            ? t('browser.taskLogEmptyShort')
-                            : t('browser.ledgerPickRun')}
-                        </td>
-                      </tr>
-                    ) : (
-                      taskSteps.map((st) => {
-                        const loc = stepLocatorHint(st)
-                        const keepable = st.ok && REPLAYABLE.has(st.action)
-                        const title = st.intent || st.summary || '—'
-                        return (
-                          <tr
-                            key={st.id}
-                            className={[
-                              st.ok ? '' : 'is-fail',
-                              replaySourceId && replaySeq === st.seq ? 'is-replay' : '',
-                            ]
-                              .filter(Boolean)
-                              .join(' ')}
-                          >
-                            {!replaySourceId ? (
-                              <td className="is-narrow">
-                                {keepable ? (
-                                  <input
-                                    type="checkbox"
-                                    checked={keepSeqs.has(st.seq)}
-                                    onChange={() => toggleKeepSeq(st.seq)}
-                                    aria-label={t('browser.keepStep')}
-                                    title={t('browser.keepStep')}
-                                  />
-                                ) : null}
-                              </td>
-                            ) : null}
-                            <td className="is-num">{st.seq}</td>
-                            <td>
-                              <code>{st.action}</code>
-                            </td>
-                            <td className="is-main" title={title}>
-                              {title}
-                            </td>
-                            <td className="is-mono" title={loc || undefined}>
-                              {loc || '—'}
-                            </td>
-                            <td className={`is-status${st.ok ? '' : ' is-fail'}`}>
-                              {st.ok ? t('browser.stepOk') : t('browser.stepFail')}
-                            </td>
-                          </tr>
-                        )
-                      })
-                    )}
-                  </tbody>
-                </table>
+              <div className="browser-ledger-ide">
+                <NotebookIDE
+                  ref={notebookIdeRef}
+                  scopeRootId={activeSkillRootId}
+                  preferredNoteId={preferredLogNoteId}
+                  title={activeSkill?.name || activeSkillRootId.split('/').pop()}
+                  emptyHint={
+                    activeRunId ? t('browser.skillPaneEmpty') : t('browser.ledgerPickRun')
+                  }
+                  treeWidth={220}
+                />
               </div>
             </section>
           )}

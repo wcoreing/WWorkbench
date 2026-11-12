@@ -15,7 +15,7 @@ import (
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
 // ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.54.448"
+const ServerVersion = "0.54.484"
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明。
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本等）。
@@ -28,8 +28,8 @@ const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据�
 - 容器启停/删除用 start_container / stop_container / remove_container，勿用 shell_probe 跑 docker rm/start/stop。
 - 问终端输出用 get_shell_output（分页读可见 PTY scrollback；offsetFromEnd=0 最新页，nextOffsetFromEnd 向历史翻）。shell_run=给人看（注入 pip/下载/训练/脚本，不返回 stdout）。shell_probe=无头只读短探针，禁止改机器；看磁盘文件用 cat，不要 sed/awk。
 - 终端断开或出现「会话已结束」时先 terminal_reconnect（sessionId 或 hostId），再 shell_run / get_shell_output。
-- 词典：任务=要办的事；日志=TaskRun；工作流=磁盘 Skill（~/.wworkbench/notebook/工作流/{name}/SKILL.md + assets/）。引擎=Agent。样板 get_skill(wwb-skill-standard)。工具：get_skill → 执行 → **update_skill**；distill 出草稿；run_skill 可选。
-- 浏览器舞台：snapshot/read_page/find/click/fill…；写操作须 intent；录制→distill 草稿→Agent 跑通后 update_skill。
+- 词典与自学习：任务=目标；账本=思考(thought)+操作(op)→log.md；Skill=归纳方法（工作流/{name}/）。闭环：接目标→task_record/browser_*→update_skill。Skill 版本=目录仓（排除 log）：list/pin/restore_skill_version。禁止任务场景直连 10086/18765。样板 get_skill(wwb-skill-standard)。
+- 浏览器：browser_*（executor=wwb|kimi）；写操作须 intent；自动记 op；思考用 task_record(kind=thought)。
 - HTTP：先 save_http_request / save_http_environment，再 execute_http(requestId / envId)。
 - 笔记本 IDE：list_notes / get_note；工作流=role=skill 笔记（SSOT）；动手前读主机 memory。
 - 插件包（改「数据库插件」UI / Host 桥接，不是连库、不是 skill）：先 get_plugin_protocol（平台 PROTOCOL.md）；再改 src/ui；局部改 edit_plugin_pack_file；构建 build_plugin_pack_ui。禁止用 list_skills 找 bridge。

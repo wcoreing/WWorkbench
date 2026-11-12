@@ -135,6 +135,8 @@ export function DropDatabase(arg1:string,arg2:string):Promise<app.ApiResult_bool
 
 export function DuplicateNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_NoteDO_>;
 
+export function EnableDirVersion(arg1:string):Promise<app.ApiResult_map_string_interface____>;
+
 export function EnsureDockerHost(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_ShellHostDO_>;
 
 export function EnsureEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
@@ -269,6 +271,8 @@ export function ListContainers(arg1:string):Promise<app.ApiResult___WWorkbench_i
 
 export function ListDatabaseObjects(arg1:string,arg2:string):Promise<app.ApiResult___WWorkbench_internal_model_ObjectTreeNodeDO_>;
 
+export function ListDirVersions(arg1:string,arg2:number):Promise<app.ApiResult_map_string_interface____>;
+
 export function ListDockerContexts():Promise<app.ApiResult___WWorkbench_internal_model_DockerContextDO_>;
 
 export function ListECSInstances(arg1:string,arg2:string):Promise<app.ApiResult___WWorkbench_internal_model_ECSInstanceDO_>;
@@ -321,6 +325,8 @@ export function ListSSHHosts():Promise<app.ApiResult___WWorkbench_internal_model
 
 export function ListShellHosts():Promise<app.ApiResult___WWorkbench_internal_model_ShellHostDO_>;
 
+export function ListSkillVersions(arg1:string,arg2:number):Promise<app.ApiResult_map_string_interface____>;
+
 export function ListSkillsDir(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_FileEntryDO_>;
 
 export function ListTaskRuns(arg1:string,arg2:number):Promise<app.ApiResult___WWorkbench_internal_model_TaskRunDO_>;
@@ -328,6 +334,8 @@ export function ListTaskRuns(arg1:string,arg2:number):Promise<app.ApiResult___WW
 export function ListWorkflows(arg1:number):Promise<app.ApiResult___WWorkbench_internal_model_WorkflowDO_>;
 
 export function LoadWorkspace(arg1:string):Promise<app.ApiResult_string_>;
+
+export function MapDirVersionFlags(arg1:Array<string>):Promise<app.ApiResult_map_string_interface____>;
 
 export function MkdirLocalPath(arg1:string):Promise<app.ApiResult_bool_>;
 
@@ -364,6 +372,10 @@ export function PickSFTPDownloadDir(arg1:string):Promise<app.ApiResult_string_>;
 export function PickSFTPUploadDir():Promise<app.ApiResult_string_>;
 
 export function PickSFTPUploadPaths():Promise<app.ApiResult___string_>;
+
+export function PinDirVersion(arg1:string,arg2:string):Promise<app.ApiResult_map_string_interface____>;
+
+export function PinSkillVersion(arg1:string,arg2:string):Promise<app.ApiResult_map_string_interface____>;
 
 export function ProbeTerminalCwd(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_TerminalCwdDO_>;
 
@@ -404,6 +416,10 @@ export function ResolveContainerDatabaseLink(arg1:string,arg2:string):Promise<ap
 export function ResolveMCPConfirm(arg1:string,arg2:boolean):Promise<app.ApiResult_bool_>;
 
 export function RestartContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
+export function RestoreDirVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_map_string_interface____>;
+
+export function RestoreSkillVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_map_string_interface____>;
 
 export function RevealBrowserExtDir():Promise<app.ApiResult_WWorkbench_internal_model_BrowserExtPathDO_>;
 
@@ -510,6 +526,8 @@ export function StopContainer(arg1:string,arg2:string):Promise<app.ApiResult_boo
 export function StopLogFollow(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function StopSSHForward(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function SyncTaskRunLog(arg1:string):Promise<app.ApiResult_map_string_interface____>;
 
 export function TestAgentConnection():Promise<app.ApiResult_string_>;
 

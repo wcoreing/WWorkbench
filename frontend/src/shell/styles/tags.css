@@ -1,0 +1,51 @@
+/* 系统资源标签：行右上角，可跨产品复用 */
+
+.resource-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.resource-tag {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 0;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+  background: var(--color-hover);
+  font: inherit;
+  font-size: 10px;
+}
+
+.resource-tag.is-accent {
+  color: var(--color-accent, #2a6f6a);
+  background: color-mix(in srgb, var(--color-accent, #2a6f6a) 14%, transparent);
+}
+
+.resource-tag.is-success {
+  color: var(--color-success, #2f6b3a);
+  background: color-mix(in srgb, var(--color-success, #2f6b3a) 14%, transparent);
+}
+
+.resource-tag.is-warning {
+  color: var(--color-warning, #8a5a18);
+  background: color-mix(in srgb, var(--color-warning, #8a5a18) 14%, transparent);
+}
+
+.resource-tag.is-action {
+  cursor: pointer;
+}
+
+.resource-tag.is-action:hover {
+  filter: brightness(0.96);
+}
+
+.resource-tag.is-action:focus-visible {
+  outline: 1px solid var(--color-accent, #3b82f6);
+  outline-offset: 1px;
+}

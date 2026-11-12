@@ -5,6 +5,7 @@ import { Capability } from '../../workbench/capabilities'
 import type { ProductId } from '../../shell/products'
 import { askConfirm } from '../../utils/askConfirm'
 import { api } from '../../api/client'
+import { notify } from '../../notify'
 
 let stageClearTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -72,27 +73,27 @@ export function dispatchAgentUiAction(raw: Record<string, unknown>) {
       if (kind === Capability.ShellRun) {
         /* 状态已由 setShellStage 写入 */
       } else if (kind === Capability.TerminalReconnect) {
-        useAppStore.getState().setStatusMessage('AI：正在重连终端')
+        notify.info('AI：正在重连终端')
       } else if (kind === Capability.DatabaseOpen) {
-        useAppStore.getState().setStatusMessage('AI：已打开数据库工作台')
+        notify.success('AI：已打开数据库工作台')
       } else if (kind === Capability.LogsOpen) {
-        useAppStore.getState().setStatusMessage('AI：已打开日志中心')
+        notify.success('AI：已打开日志中心')
       } else if (kind === Capability.HttpApiOpen) {
-        useAppStore.getState().setStatusMessage('AI：已打开 API 工作台')
+        notify.success('AI：已打开 API 工作台')
       } else if (kind === Capability.EnvironmentOpen) {
-        useAppStore.getState().setStatusMessage('AI：已打开环境工作台')
+        notify.success('AI：已打开环境工作台')
       } else if (kind === Capability.SSHForwardOpen) {
-        useAppStore.getState().setStatusMessage('AI：已打开 SSH 隧道')
+        notify.success('AI：已打开 SSH 隧道')
       } else if (kind === Capability.BrowserOpen) {
         const label = String(payload.stageLabel ?? '')
-        useAppStore.getState().setStatusMessage(label || 'AI：已打开浏览器舞台')
+        notify.success(label || 'AI：已打开浏览器舞台')
       } else if (kind === Capability.DockerContextOpen) {
         const label = String(payload.stageLabel ?? '')
         if (label) setShellStage(label)
-        else useAppStore.getState().setStatusMessage('AI：已打开 Docker 上下文')
+        else notify.success('AI：已打开 Docker 上下文')
       }
     } else if (res.error) {
-      useAppStore.getState().setStatusMessage(res.error)
+      notify.error(res.error)
     }
   })
 }
@@ -299,7 +300,7 @@ async function handleMcpConfirm(raw: Record<string, unknown>) {
     detail: toolName || undefined,
     at,
   })
-  useAppStore.getState().setStatusMessage(`待确认 · ${summary}`)
+  notify.warning(`待确认 · ${summary}`)
 
   const body = formatMcpConfirmBody(raw.preview, toolName)
   const ok = await askConfirm({
@@ -314,7 +315,7 @@ async function handleMcpConfirm(raw: Record<string, unknown>) {
       await api.resolveMCPConfirm(pendingId, ok)
     }
   } catch (err) {
-    useAppStore.getState().setStatusMessage(err instanceof Error ? err.message : String(err))
+    notify.error(err instanceof Error ? err.message : String(err))
   } finally {
     const cur = useAppStore.getState().mcpStage
     if (cur && cur.at === at) {
@@ -326,10 +327,10 @@ async function handleMcpConfirm(raw: Record<string, unknown>) {
           at: nextAt,
         })
         scheduleClearStage(nextAt, 30_000)
-        useAppStore.getState().setStatusMessage(`已确认 · ${summary}`)
+        notify.success(`已确认 · ${summary}`)
       } else {
         useAppStore.getState().setMcpStage(null)
-        useAppStore.getState().setStatusMessage('已拒绝外置 MCP 操作')
+        notify.info('已拒绝外置 MCP 操作')
       }
     }
   }

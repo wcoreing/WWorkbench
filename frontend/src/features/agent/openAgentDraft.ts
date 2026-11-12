@@ -1,16 +1,24 @@
 import type { AgentMention } from './agentMention'
 import { useAgentStore } from '../../stores/agentStore'
+import type { AgentChatMode } from './agentChatMode'
 
 /** AgentDraftPayload 打开 AI 侧栏时预填的内容。 */
 export interface AgentDraftPayload {
   mentions: AgentMention[]
   message?: string
   skillIds?: string[]
+  /** true：打开侧栏后自动发送，由侧栏 Agent 接管。 */
+  autoSend?: boolean
+  /** 发送前切换模式；autoSend 默认 agent。 */
+  mode?: AgentChatMode
 }
 
-/** openAgentDraft 打开 AI 侧栏并填入 @ 资源与提示语。 */
+/** openAgentDraft 打开 AI 侧栏并填入 @ 资源与提示语；可自动发送。 */
 export function openAgentDraft(payload: AgentDraftPayload) {
-  useAgentStore.getState().applyDraft(payload)
+  const store = useAgentStore.getState()
+  const mode = payload.mode ?? (payload.autoSend ? 'agent' : undefined)
+  if (mode) store.setChatMode(mode)
+  store.applyDraft(payload)
 }
 
 /** mentionSSH 构造 SSH @ 资源。 */

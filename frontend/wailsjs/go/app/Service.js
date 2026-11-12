@@ -262,6 +262,10 @@ export function DuplicateNote(arg1) {
   return window['go']['app']['Service']['DuplicateNote'](arg1);
 }
 
+export function EnableDirVersion(arg1) {
+  return window['go']['app']['Service']['EnableDirVersion'](arg1);
+}
+
 export function EnsureDockerHost(arg1, arg2) {
   return window['go']['app']['Service']['EnsureDockerHost'](arg1, arg2);
 }
@@ -530,6 +534,10 @@ export function ListDatabaseObjects(arg1, arg2) {
   return window['go']['app']['Service']['ListDatabaseObjects'](arg1, arg2);
 }
 
+export function ListDirVersions(arg1, arg2) {
+  return window['go']['app']['Service']['ListDirVersions'](arg1, arg2);
+}
+
 export function ListDockerContexts() {
   return window['go']['app']['Service']['ListDockerContexts']();
 }
@@ -634,6 +642,10 @@ export function ListShellHosts() {
   return window['go']['app']['Service']['ListShellHosts']();
 }
 
+export function ListSkillVersions(arg1, arg2) {
+  return window['go']['app']['Service']['ListSkillVersions'](arg1, arg2);
+}
+
 export function ListSkillsDir(arg1) {
   return window['go']['app']['Service']['ListSkillsDir'](arg1);
 }
@@ -648,6 +660,10 @@ export function ListWorkflows(arg1) {
 
 export function LoadWorkspace(arg1) {
   return window['go']['app']['Service']['LoadWorkspace'](arg1);
+}
+
+export function MapDirVersionFlags(arg1) {
+  return window['go']['app']['Service']['MapDirVersionFlags'](arg1);
 }
 
 export function MkdirLocalPath(arg1) {
@@ -720,6 +736,14 @@ export function PickSFTPUploadDir() {
 
 export function PickSFTPUploadPaths() {
   return window['go']['app']['Service']['PickSFTPUploadPaths']();
+}
+
+export function PinDirVersion(arg1, arg2) {
+  return window['go']['app']['Service']['PinDirVersion'](arg1, arg2);
+}
+
+export function PinSkillVersion(arg1, arg2) {
+  return window['go']['app']['Service']['PinSkillVersion'](arg1, arg2);
 }
 
 export function ProbeTerminalCwd(arg1) {
@@ -800,6 +824,14 @@ export function ResolveMCPConfirm(arg1, arg2) {
 
 export function RestartContainer(arg1, arg2) {
   return window['go']['app']['Service']['RestartContainer'](arg1, arg2);
+}
+
+export function RestoreDirVersion(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['RestoreDirVersion'](arg1, arg2, arg3);
+}
+
+export function RestoreSkillVersion(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['RestoreSkillVersion'](arg1, arg2, arg3);
 }
 
 export function RevealBrowserExtDir() {
@@ -1012,6 +1044,10 @@ export function StopLogFollow(arg1) {
 
 export function StopSSHForward(arg1) {
   return window['go']['app']['Service']['StopSSHForward'](arg1);
+}
+
+export function SyncTaskRunLog(arg1) {
+  return window['go']['app']['Service']['SyncTaskRunLog'](arg1);
 }
 
 export function TestAgentConnection() {
