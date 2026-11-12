@@ -41,8 +41,7 @@ func (s *Service) resolveRel(rel string) (abs, clean string, err error) {
 }
 
 func (s *Service) isProtectedTopDir(rel string) bool {
-	rel = strings.Trim(filepath.ToSlash(rel), "/")
-	return rel == SkillGroupName || rel == MemoryGroupName
+	return IsSystemTopDir(rel)
 }
 
 func validEntryName(name string) error {

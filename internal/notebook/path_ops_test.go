@@ -102,4 +102,7 @@ func TestPathOpsProtectSystemDirs(t *testing.T) {
 	if err := s.DeleteRel(MemoryGroupName); err == nil {
 		t.Fatal("expected protect delete")
 	}
+	if err := s.DeleteRel(OpsGroupName); err == nil {
+		t.Fatal("expected protect ops root")
+	}
 }

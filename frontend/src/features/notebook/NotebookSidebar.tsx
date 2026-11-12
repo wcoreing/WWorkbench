@@ -9,10 +9,12 @@ import { notify } from '../../notify'
 import { pressProps } from '../../components/compat'
 import { ResourceTags, type ResourceTag } from '../../tags'
 import { DirVersionModal } from './DirVersionModal'
+import { NOTEBOOK_ROOT_OPS, isSystemNotebookRoot } from './businessRoots'
 import {
   NOTEBOOK_ROOT_ID,
   buildNotebookTree,
   filterNotebookTree,
+  findNotebookSubtree,
   type NotebookTreeNode,
 } from './notebookTree'
 import {
@@ -56,14 +58,18 @@ interface Props {
   onCreateDirInline: (parentRel: string, name: string) => Promise<void>
   onCreateFileInline: (parentRel: string, name: string) => Promise<void>
   refreshing?: boolean
+  /** 只展示该目录子树（单根；与 scopeRootIds 二选一，多根优先）。 */
+  scopeRootId?: string
+  /** 并列展示多个业务工作根（如运维壳：记忆区 + 运维）。 */
+  scopeRootIds?: readonly string[]
+  /** 紧凑：藏搜索/角色筛选，适合嵌在 NotebookIDE。 */
+  compact?: boolean
 }
 
 type CtxMenu =
   | { kind: 'folder'; x: number; y: number; group: NotebookGroup }
   | { kind: 'note'; x: number; y: number; note: NoteSummary }
   | { kind: 'root'; x: number; y: number }
-
-const PROTECTED = new Set(['工作流', '记忆区'])
 
 /** NotebookSidebar 笔记本侧栏：目录 + 笔记文件树（真路径操作）。 */
 export function NotebookSidebar({
@@ -90,6 +96,9 @@ export function NotebookSidebar({
   onCreateDirInline,
   onCreateFileInline,
   refreshing = false,
+  scopeRootId = '',
+  scopeRootIds,
+  compact = false,
 }: Props) {
   const { t } = useI18n()
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
@@ -104,6 +113,24 @@ export function NotebookSidebar({
   const [versionModalDir, setVersionModalDir] = useState('')
   const [versionFlags, setVersionFlags] = useState<Record<string, boolean>>({})
   const inlineRef = useRef<HTMLInputElement>(null)
+
+  const scopeRoots = useMemo(() => {
+    if (scopeRootIds?.length) return scopeRootIds.filter(Boolean)
+    if (scopeRootId) return [scopeRootId]
+    return [] as string[]
+  }, [scopeRootId, scopeRootIds])
+
+  /** 空白处新建/粘贴落点：多根时优先运维，否则第一个根。 */
+  const treeRootId = useMemo(() => {
+    if (!scopeRoots.length) return NOTEBOOK_ROOT_ID
+    if (scopeRoots.includes(NOTEBOOK_ROOT_OPS)) return NOTEBOOK_ROOT_OPS
+    return scopeRoots[0]
+  }, [scopeRoots])
+
+  const isProtectedDir = useCallback(
+    (id: string) => isSystemNotebookRoot(id) || scopeRoots.includes(id),
+    [scopeRoots],
+  )
 
   const groupById = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups])
   const tagLabels = useMemo(
@@ -126,7 +153,16 @@ export function NotebookSidebar({
     })
   }, [summaries, roleFilter])
   const fullTree = useMemo(() => buildNotebookTree(groups, roleSummaries), [groups, roleSummaries])
-  const tree = useMemo(() => filterNotebookTree(fullTree, search), [fullTree, search])
+  const scopedTree = useMemo(() => {
+    if (!scopeRoots.length) return fullTree
+    const out: NotebookTreeNode[] = []
+    for (const id of scopeRoots) {
+      const sub = findNotebookSubtree(fullTree, id)
+      if (sub) out.push(sub)
+    }
+    return out
+  }, [fullTree, scopeRoots])
+  const tree = useMemo(() => filterNotebookTree(scopedTree, search), [scopedTree, search])
   const filterActive = search.trim().length > 0 || Boolean(roleFilter)
 
   const refreshVersionFlags = useCallback(async () => {
@@ -357,8 +393,23 @@ export function NotebookSidebar({
 
   const pasteParent = () => {
     if (selectedFolderId) return selectedFolderId
-    return NOTEBOOK_ROOT_ID
+    return treeRootId
   }
+
+  useEffect(() => {
+    if (!scopeRoots.length) return
+    setExpanded((m) => {
+      const next = { ...m }
+      let changed = false
+      for (const id of scopeRoots) {
+        if (!next[id]) {
+          next[id] = true
+          changed = true
+        }
+      }
+      return changed ? next : m
+    })
+  }, [scopeRoots])
 
   const cutRels = (rels: string[]) => {
     setCtx(null)
@@ -485,7 +536,7 @@ export function NotebookSidebar({
                   dropOver === n.id ? ' is-drop-over' : ''
                 }`}
                 style={{ paddingLeft: 8 + depth * 14 }}
-                draggable={!PROTECTED.has(n.id)}
+                draggable={!isProtectedDir(n.id)}
                 onDragStart={(e) => onDragStart(n.id, e)}
                 onDragOver={(e) => onDragOverFolder(n.id, e)}
                 onDragLeave={() => setDropOver((cur) => (cur === n.id ? '' : cur))}
@@ -577,76 +628,101 @@ export function NotebookSidebar({
   )
 
   return (
-    <section className="sidebar-section notebook-list-section">
-      <div className="sidebar-header notebook-explorer-header">
-        <button
-          type="button"
-          className="sidebar-header-title is-button"
-          title={t('notebook.revealWorkspace')}
-          {...pressProps(() => {
-            if (onRevealWorkspace) void onRevealWorkspace()
-          })}
-        >
-          {t('notebook.explorerTitle')}
-        </button>
-        <div className="sidebar-header-actions">
+    <section className={`sidebar-section notebook-list-section${compact ? ' is-compact' : ''}`}>
+      {!compact ? (
+        <div className="sidebar-header notebook-explorer-header">
           <button
             type="button"
-            className="wn-btn wn-btn-icon wn-btn-sm"
-            title={t('notebook.newFile')}
-            {...pressProps(() => beginInlineCreate(selectedFolderId || NOTEBOOK_ROOT_ID, false))}
+            className="sidebar-header-title is-button"
+            title={t('notebook.revealWorkspace')}
+            {...pressProps(() => {
+              if (onRevealWorkspace) void onRevealWorkspace()
+            })}
           >
-            <IconPlus size={14} />
+            {t('notebook.explorerTitle')}
           </button>
-          <button
-            type="button"
-            className="wn-btn wn-btn-icon wn-btn-sm"
-            title={t('notebook.newGroup')}
-            {...pressProps(() => beginInlineCreate(selectedFolderId || NOTEBOOK_ROOT_ID, true))}
-          >
-            <IconFolder size={14} />
-          </button>
-          <button
-            type="button"
-            className="wn-btn wn-btn-icon wn-btn-sm"
-            title={t('notebook.refresh')}
-            disabled={refreshing}
-            {...pressProps(() => void onRefresh(), { disabled: refreshing })}
-          >
-            <IconRefresh size={14} />
-          </button>
-        </div>
-      </div>
-
-      <div className="notebook-filter-bar">
-        <input
-          type="search"
-          className="notebook-filter-search"
-          placeholder={t('notebook.searchPlaceholder')}
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-        />
-        <div className="notebook-role-filters" role="tablist" aria-label={t('notebook.roleFilter')}>
-          {(
-            [
-              ['', t('notebook.roleFilterAll')],
-              ['memory', t('notebook.roleBadgeMemory')],
-              ['skill', t('notebook.roleBadgeSkill')],
-            ] as const
-          ).map(([id, label]) => (
+          <div className="sidebar-header-actions">
             <button
-              key={id || 'all'}
               type="button"
-              role="tab"
-              aria-selected={roleFilter === id}
-              className={`notebook-role-filter${roleFilter === id ? ' is-on' : ''}`}
-              {...pressProps(() => onRoleFilterChange(id))}
+              className="wn-btn wn-btn-icon wn-btn-sm"
+              title={t('notebook.newFile')}
+              {...pressProps(() => beginInlineCreate(selectedFolderId || treeRootId, false))}
             >
-              {label}
+              <IconPlus size={14} />
             </button>
-          ))}
+            <button
+              type="button"
+              className="wn-btn wn-btn-icon wn-btn-sm"
+              title={t('notebook.newGroup')}
+              {...pressProps(() => beginInlineCreate(selectedFolderId || treeRootId, true))}
+            >
+              <IconFolder size={14} />
+            </button>
+            <button
+              type="button"
+              className="wn-btn wn-btn-icon wn-btn-sm"
+              title={t('notebook.refresh')}
+              disabled={refreshing}
+              {...pressProps(() => void onRefresh(), { disabled: refreshing })}
+            >
+              <IconRefresh size={14} />
+            </button>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="sidebar-header notebook-explorer-header is-compact">
+          <div className="sidebar-header-actions">
+            <button
+              type="button"
+              className="wn-btn wn-btn-icon wn-btn-sm"
+              title={t('notebook.newFile')}
+              {...pressProps(() => beginInlineCreate(selectedFolderId || treeRootId, false))}
+            >
+              <IconPlus size={14} />
+            </button>
+            <button
+              type="button"
+              className="wn-btn wn-btn-icon wn-btn-sm"
+              title={t('notebook.newGroup')}
+              {...pressProps(() => beginInlineCreate(selectedFolderId || treeRootId, true))}
+            >
+              <IconFolder size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!compact ? (
+        <div className="notebook-filter-bar">
+          <input
+            type="search"
+            className="notebook-filter-search"
+            placeholder={t('notebook.searchPlaceholder')}
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+          />
+          <div className="notebook-role-filters" role="tablist" aria-label={t('notebook.roleFilter')}>
+            {(
+              [
+                ['', t('notebook.roleFilterAll')],
+                ['memory', t('notebook.roleBadgeMemory')],
+                ['skill', t('notebook.roleBadgeSkill')],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id || 'all'}
+                type="button"
+                role="tab"
+                aria-selected={roleFilter === id}
+                className={`notebook-role-filter${roleFilter === id ? ' is-on' : ''}`}
+                {...pressProps(() => onRoleFilterChange(id))}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {selectionCount > 0 && (
         <div className="notebook-selection-bar">
@@ -669,24 +745,24 @@ export function NotebookSidebar({
         className={`sidebar-body notebook-tree-body${selectionCount > 0 ? ' is-batching' : ''}`}
         onClick={(e) => {
           if ((e.target as HTMLElement).closest('.notebook-tree-folder, .notebook-tree-note')) return
-          onSelectFolder(NOTEBOOK_ROOT_ID)
+          onSelectFolder(treeRootId)
         }}
         onContextMenu={(e) => {
           if ((e.target as HTMLElement).closest('.notebook-tree-folder, .notebook-tree-note')) return
           e.preventDefault()
-          onSelectFolder(NOTEBOOK_ROOT_ID)
+          onSelectFolder(treeRootId)
           setCtx({ kind: 'root', x: e.clientX, y: e.clientY })
         }}
         onDragOver={(e) => {
           e.preventDefault()
-          setDropOver(NOTEBOOK_ROOT_ID)
+          setDropOver(treeRootId)
         }}
-        onDrop={(e) => void onDropFolder(NOTEBOOK_ROOT_ID, e)}
+        onDrop={(e) => void onDropFolder(treeRootId, e)}
       >
-        {tree.length === 0 && !(inline && inline.kind === 'create' && !inline.parent) ? (
+        {tree.length === 0 && !(inline && inline.kind === 'create' && inline.parent === treeRootId) ? (
           <div className="empty-hint">{search.trim() ? t('notebook.noMatch') : t('notebook.noNotes')}</div>
         ) : (
-          renderNodes(tree, 0, NOTEBOOK_ROOT_ID)
+          renderNodes(tree, 0, treeRootId)
         )}
       </div>
 
@@ -697,14 +773,14 @@ export function NotebookSidebar({
               <button
                 type="button"
                 className="wn-context-item"
-                {...pressProps(() => beginInlineCreate(NOTEBOOK_ROOT_ID, false))}
+                {...pressProps(() => beginInlineCreate(treeRootId, false))}
               >
-                {t('notebook.newInRoot')}
+                {scopeRoots.length ? t('notebook.newFile') : t('notebook.newInRoot')}
               </button>
               <button
                 type="button"
                 className="wn-context-item"
-                {...pressProps(() => beginInlineCreate(NOTEBOOK_ROOT_ID, true))}
+                {...pressProps(() => beginInlineCreate(treeRootId, true))}
               >
                 {t('notebook.newGroup')}
               </button>
@@ -712,7 +788,7 @@ export function NotebookSidebar({
                 type="button"
                 className="wn-context-item"
                 disabled={!clipboard}
-                {...pressProps(() => void pasteClipboard(NOTEBOOK_ROOT_ID), { disabled: !clipboard })}
+                {...pressProps(() => void pasteClipboard(treeRootId), { disabled: !clipboard })}
               >
                 {t('notebook.ctxPaste')}
               </button>
@@ -737,9 +813,9 @@ export function NotebookSidebar({
               <button
                 type="button"
                 className="wn-context-item"
-                disabled={PROTECTED.has(ctx.group.id)}
+                disabled={isProtectedDir(ctx.group.id)}
                 {...pressProps(() => beginRename(ctx.group.id), {
-                  disabled: PROTECTED.has(ctx.group.id),
+                  disabled: isProtectedDir(ctx.group.id),
                 })}
               >
                 {t('notebook.ctxRename')}
@@ -748,9 +824,9 @@ export function NotebookSidebar({
               <button
                 type="button"
                 className="wn-context-item"
-                disabled={PROTECTED.has(ctx.group.id)}
+                disabled={isProtectedDir(ctx.group.id)}
                 {...pressProps(() => cutRels([ctx.group.id]), {
-                  disabled: PROTECTED.has(ctx.group.id),
+                  disabled: isProtectedDir(ctx.group.id),
                 })}
               >
                 {t('notebook.ctxCut')}
@@ -801,12 +877,12 @@ export function NotebookSidebar({
               <button
                 type="button"
                 className="wn-context-item wn-context-item-danger"
-                disabled={PROTECTED.has(ctx.group.id)}
+                disabled={isProtectedDir(ctx.group.id)}
                 {...pressProps(() => {
                   const { group } = ctx
                   setCtx(null)
                   onDeleteGroup(group.id, group.name)
-                }, { disabled: PROTECTED.has(ctx.group.id) })}
+                }, { disabled: isProtectedDir(ctx.group.id) })}
               >
                 {t('notebook.deleteGroup')}
               </button>
@@ -851,7 +927,7 @@ export function NotebookSidebar({
                 type="button"
                 className="wn-context-item"
                 disabled={!clipboard}
-                {...pressProps(() => void pasteClipboard(ctx.note.groupId || NOTEBOOK_ROOT_ID), {
+                {...pressProps(() => void pasteClipboard(ctx.note.groupId || treeRootId), {
                   disabled: !clipboard,
                 })}
               >

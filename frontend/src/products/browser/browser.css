@@ -50,6 +50,9 @@
 
 .browser-top-tab {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   border: 0;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
@@ -68,6 +71,51 @@
 .browser-top-tab.is-active {
   color: var(--color-text, #111827);
   border-bottom-color: var(--accent, #5b8def);
+}
+
+/* 日志列表：标题左、时间右；Skill 单独一行 tag，不堆数字 */
+.browser-run-item .browser-run-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.browser-run-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.browser-run-row .conn-name,
+.browser-run-row .browser-run-rename {
+  flex: 1;
+  min-width: 0;
+}
+
+.browser-run-when {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted, #9ca3af);
+  line-height: 1.2;
+}
+
+.browser-run-skill {
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 6px;
+  height: 18px;
+  line-height: 18px;
+  border-radius: 4px;
+  background: var(--color-hover, #eef0f3);
+  color: var(--color-text-secondary, #4b5563);
+  font-size: 11px;
 }
 
 .browser-sidebar .sidebar-header {
@@ -94,6 +142,36 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.browser-sidebar .browser-workflow-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.browser-sidebar .browser-workflow-panel .notebook-list-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border: 0;
+  background: transparent;
+}
+
+.browser-sidebar .browser-workflow-panel .notebook-tree-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.notebook-ide-body.is-editor-only {
+  display: flex;
+}
+
+.notebook-ide-body.is-editor-only .notebook-ide-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .browser-sidebar .sidebar-body {
@@ -123,6 +201,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.browser-sidebar .conn-dot.is-running {
+  background: var(--color-success, #3a9a5a);
+}
+
+.browser-sidebar .conn-item.is-ended .conn-dot:not(.is-running) {
+  background: var(--color-text-muted, #9ca3af);
+  opacity: 0.55;
 }
 
 .browser-run-check {

@@ -3,17 +3,39 @@ import { api } from '../../api/client'
 import { ModalPortal, backdropDismissProps, pressProps } from '../../components/compat'
 import { ProductLayout } from '../../components/layout'
 import { useI18n } from '../../i18n'
+import { notify } from '../../notify'
 import { useAppStore } from '../../stores/appStore'
-import type { Workflow, TaskRun, TaskStep } from '../../api/types'
+import type { Note, NoteRole, NoteSummary, NotebookGroup, Workflow, TaskRun, TaskStep } from '../../api/types'
 import { Capability } from '../../workbench/capabilities'
 import { useWorkbenchCommand } from '../../stores/productLink'
-import { askConfirm } from '../../utils/askConfirm'
 import { APP_SETTING_KEYS, saveAppSetting } from '../../stores/appPreferences'
 import { EventsOn } from '../../../wailsjs/runtime/runtime'
 import { NotebookIDE, type NotebookIDEHandle } from '../../features/notebook/NotebookIDE'
+import { NotebookSidebar } from '../../features/notebook/NotebookSidebar'
+import { applyNoteRoleFields } from '../../features/notebook/noteFrontmatter'
+import {
+  adoptNoteLanguage,
+  dirRelFromNoteId,
+  skillEntryNoteId,
+  toNoteDO,
+  toSummary,
+} from '../../features/notebook/noteModel'
+import { NOTEBOOK_ROOT_WORKFLOW, primaryNotebookRoot } from '../../features/notebook/businessRoots'
 import { skillDirFromNoteId } from '../../features/notebook/notebookTree'
+import { askConfirm } from '../../utils/askConfirm'
 import { openAgentDraft } from '../../features/agent/openAgentDraft'
 import './browser.css'
+
+const WORKFLOW_ROOT = primaryNotebookRoot('browser') || NOTEBOOK_ROOT_WORKFLOW
+
+/** workflowSkillDir 任意工作流路径 → 工作流/{name}。 */
+function workflowSkillDir(rel: string): string {
+  const id = (rel || '').replace(/\\/g, '/').replace(/\/+$/, '')
+  if (!id.startsWith(`${WORKFLOW_ROOT}/`)) return ''
+  const parts = id.split('/').filter(Boolean)
+  if (parts.length < 2) return ''
+  return `${parts[0]}/${parts[1]}`
+}
 
 type BrowserStatus = {
   listening: boolean
@@ -74,10 +96,15 @@ export function BrowserWorkbench() {
   const [truncated, setTruncated] = useState(false)
   const [busy, setBusy] = useState(false)
   const [log, setLog] = useState<string[]>([])
-  const [taskRuns, setTaskRuns] = useState<TaskRun[]>([])
   const [activeRunId, setActiveRunId] = useState<string | null>(null)
   const [taskSteps, setTaskSteps] = useState<TaskStep[]>([])
   const [workflows, setWorkflows] = useState<Workflow[]>([])
+  const [nbGroups, setNbGroups] = useState<NotebookGroup[]>([])
+  const [nbSummaries, setNbSummaries] = useState<NoteSummary[]>([])
+  const [nbSearch, setNbSearch] = useState('')
+  const [nbRoleFilter, setNbRoleFilter] = useState<'' | NoteRole>('')
+  const [selectedFolderId, setSelectedFolderId] = useState(WORKFLOW_ROOT)
+  const [nbRefreshing, setNbRefreshing] = useState(false)
   const notebookIdeRef = useRef<NotebookIDEHandle>(null)
   const [fillRef, setFillRef] = useState<string | null>(null)
   const [fillValue, setFillValue] = useState('')
@@ -88,15 +115,10 @@ export function BrowserWorkbench() {
   const [mainPane, setMainPane] = useState<'page' | 'ledger'>('page')
   const [logScopeRoot, setLogScopeRoot] = useState('')
   const [logNoteId, setLogNoteId] = useState('')
-  const [batchMode, setBatchMode] = useState(false)
-  const [selectedRunIds, setSelectedRunIds] = useState<Set<string>>(() => new Set())
-  const [editingRunId, setEditingRunId] = useState<string | null>(null)
-  const [editTitle, setEditTitle] = useState('')
   const [recording, setRecording] = useState(false)
   /** 执行过程逐步询问；默认关，MCP click/fill 等不弹窗。 */
   const [askConfirmSteps, setAskConfirmSteps] = useState(false)
   const wasConnected = useRef(false)
-  const renameSkipBlur = useRef(false)
   const activeRunIdRef = useRef<string | null>(null)
   activeRunIdRef.current = activeRunId
 
@@ -148,25 +170,18 @@ export function BrowserWorkbench() {
     setLog((prev) => [`${new Date().toLocaleTimeString()} · ${line}`, ...prev].slice(0, 40))
   }, [])
 
-  /** 左栏只展示产品会话；试跑产生的 source=replay 不进列表。 */
-  const visibleTaskRuns = (runs: TaskRun[]) => runs.filter((r) => r.source !== 'replay')
-
-  /** 刷新会话列表；默认保留当前选中，绝不强行跳到第一条。 */
+  /** 后台刷新当前任务账本（不占左栏；左栏改工作流目录）。 */
   const refreshTaskRuns = useCallback(async (preferRunId?: string | null) => {
     try {
-      const runs = visibleTaskRuns(await api.listTaskRuns('', 40))
-      setTaskRuns(runs)
+      const runs = (await api.listTaskRuns('', 40)).filter((r: TaskRun) => r.source !== 'replay')
       const want =
         preferRunId && runs.some((r) => r.id === preferRunId)
           ? preferRunId
           : activeRunIdRef.current && runs.some((r) => r.id === activeRunIdRef.current)
             ? activeRunIdRef.current
             : null
-      // 仅首次（尚无选中）才默认第一条
       const pick = want || (!activeRunIdRef.current ? runs[0]?.id || null : null)
-      if (pick !== activeRunIdRef.current) {
-        setActiveRunId(pick)
-      }
+      if (pick !== activeRunIdRef.current) setActiveRunId(pick)
       if (pick) {
         const detail = await api.getTaskRun(pick)
         setTaskSteps(detail.steps || [])
@@ -177,6 +192,45 @@ export function BrowserWorkbench() {
       /* 舞台可离线浏览 */
     }
   }, [])
+
+  const refreshNotebookTree = useCallback(async () => {
+    setNbRefreshing(true)
+    try {
+      const [g, n] = await Promise.all([api.listNotebookGroups(), api.listNotes()])
+      setNbGroups(g as NotebookGroup[])
+      setNbSummaries(n as NoteSummary[])
+    } catch {
+      /* ignore */
+    } finally {
+      setNbRefreshing(false)
+    }
+  }, [])
+
+  const focusWorkflowDir = useCallback(
+    async (dirRel: string, preferredNote?: string) => {
+      const skillDir = workflowSkillDir(dirRel) || dirRel
+      if (!skillDir || skillDir === WORKFLOW_ROOT) {
+        setLogScopeRoot('')
+        setLogNoteId('')
+        setSelectedFolderId(WORKFLOW_ROOT)
+        return
+      }
+      setSelectedFolderId(skillDir)
+      setLogScopeRoot(skillDir)
+      const noteId = (preferredNote || '').trim() || `${skillDir}/log.md`
+      setLogNoteId(noteId)
+      try {
+        await notebookIdeRef.current?.openNote(noteId)
+      } catch {
+        try {
+          await notebookIdeRef.current?.openNote(skillEntryNoteId(skillDir))
+        } catch {
+          /* 尚无入口 */
+        }
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     void api
@@ -229,29 +283,32 @@ export function BrowserWorkbench() {
    * 不机械写 Skill；由侧栏 Agent 推理后 update_skill。
    */
   const updateActiveSkill = async () => {
-    if (!activeRunId) {
-      setStatusMessage(t('browser.ledgerPickRun'))
+    const scope =
+      logScopeRoot ||
+      (activeSkill?.name ? `${WORKFLOW_ROOT}/${activeSkill.name}` : '')
+    if (!scope) {
+      setStatusMessage(t('browser.ledgerPickWorkflow'))
       return
     }
     setMainPane('ledger')
     setBusy(true)
     try {
-      const synced = await syncRunLog(activeRunId, { open: false })
-      const run = taskRuns.find((r) => r.id === activeRunId)
+      let syncedScope = scope
+      let logPath = `${scope}/log.md`
+      if (activeRunId) {
+        const synced = await syncRunLog(activeRunId, { open: false })
+        syncedScope = (synced.scopeRoot || '').trim() || scope
+        logPath = (synced.noteId || '').trim() || logPath
+      }
       const skillName =
         (activeSkill?.name || '').trim() ||
-        (synced.skillName || '').trim() ||
-        (synced.scopeRoot || '').split('/').filter(Boolean).pop() ||
-        (run?.title || '').trim()
-      const scope =
-        (synced.scopeRoot || '').trim() ||
-        (skillName ? `工作流/${skillName}` : '')
-      const logPath = (synced.noteId || '').trim() || (scope ? `${scope}/log.md` : '')
-      const title = (run?.title || skillName || activeRunId).trim()
-      const skillNoteId = skillName ? `工作流/${skillName}/SKILL.md` : ''
-      if (skillNoteId) {
-        await notebookIdeRef.current?.openNote(skillNoteId)
-      }
+        syncedScope.split('/').filter(Boolean).pop() ||
+        ''
+      const title = skillName || syncedScope
+      const skillNoteId = skillName ? `${WORKFLOW_ROOT}/${skillName}/SKILL.md` : skillEntryNoteId(syncedScope)
+      setLogScopeRoot(syncedScope)
+      setSelectedFolderId(syncedScope)
+      if (skillNoteId) await notebookIdeRef.current?.openNote(skillNoteId)
       useAppStore.getState().setAgentSurface({
         focusKind: 'task.skill',
         focusLabel: skillName || title,
@@ -261,7 +318,7 @@ export function BrowserWorkbench() {
           skillName ? `skill=${skillName}` : '',
           skillNoteId ? `skillNote=${skillNoteId}` : '',
           logPath ? `log=${logPath}` : '',
-          `runId=${activeRunId}`,
+          activeRunId ? `runId=${activeRunId}` : '',
           'action=update_skill',
         ]
           .filter(Boolean)
@@ -270,12 +327,13 @@ export function BrowserWorkbench() {
       const prompt = t('browser.updateSkillAgentPrompt', {
         name: skillName || title,
         log: logPath || '工作流/{任务}/log.md',
-        runId: activeRunId,
+        runId: activeRunId || '',
         title,
       })
       openAgentDraft({ mentions: [], message: prompt, autoSend: true, mode: 'agent' })
       setStatusMessage(t('browser.updateSkillAgentReady', { name: skillName || title }))
       pushLog(`update_skill → agent · ${skillName || title} · focus=${skillNoteId || logPath}`)
+      await refreshNotebookTree()
     } catch (e) {
       setStatusMessage((e as Error).message)
       pushLog((e as Error).message)
@@ -312,134 +370,21 @@ export function BrowserWorkbench() {
     const synced = await api.syncTaskRunLog(runId)
     const scope = (synced.scopeRoot || '').trim()
     const noteId = (synced.noteId || '').trim()
-    if (scope) setLogScopeRoot(scope)
+    if (scope) {
+      setLogScopeRoot(scope)
+      setSelectedFolderId(scope)
+    }
     if (noteId) setLogNoteId(noteId)
+    await refreshNotebookTree()
     await notebookIdeRef.current?.refresh()
-    // 默认打开 log（选日志时看探索轨迹）；更新技能时传 open:false，改开 SKILL.md
     if (opts?.open !== false && noteId) await notebookIdeRef.current?.openNote(noteId)
     return synced
-  }, [])
+  }, [refreshNotebookTree])
 
-  const selectTaskRun = useCallback(async (runId: string) => {
-    setActiveRunId(runId)
-    try {
-      const detail = await api.getTaskRun(runId)
-      setTaskSteps(detail.steps || [])
-      await syncRunLog(runId)
-    } catch (e) {
-      setStatusMessage((e as Error).message)
-    }
-  }, [setStatusMessage, syncRunLog])
-
-  const exitBatchMode = useCallback(() => {
-    setBatchMode(false)
-    setSelectedRunIds(new Set())
-  }, [])
-
-  const toggleRunSelected = useCallback((runId: string) => {
-    setSelectedRunIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(runId)) next.delete(runId)
-      else next.add(runId)
-      return next
-    })
-  }, [])
-
-  const selectAllRuns = useCallback(() => {
-    setSelectedRunIds(new Set(taskRuns.map((r) => r.id)))
-  }, [taskRuns])
-
-  const beginRenameRun = useCallback((run: TaskRun) => {
-    setEditingRunId(run.id)
-    setEditTitle((run.title || run.session || '').trim())
-  }, [])
-
-  const cancelRenameRun = useCallback(() => {
-    renameSkipBlur.current = true
-    setEditingRunId(null)
-    setEditTitle('')
-  }, [])
-
-  const commitRenameRun = useCallback(async () => {
-    if (!editingRunId) return
-    if (renameSkipBlur.current) {
-      renameSkipBlur.current = false
-      return
-    }
-    const title = editTitle.trim()
-    if (!title) {
-      setStatusMessage(t('browser.runRenameEmpty'))
-      return
-    }
-    const runId = editingRunId
-    setBusy(true)
-    try {
-      await api.renameTaskRun(runId, title)
-      setTaskRuns((prev) => prev.map((r) => (r.id === runId ? { ...r, title } : r)))
-      setStatusMessage(t('browser.runRenamed', { title }))
-      setEditingRunId(null)
-      setEditTitle('')
-    } catch (e) {
-      setStatusMessage((e as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }, [editTitle, editingRunId, setStatusMessage, t])
-
-  const deleteSelectedRuns = useCallback(async () => {
-    const ids = [...selectedRunIds]
-    if (ids.length === 0) {
-      setStatusMessage(t('browser.runBatchNone'))
-      return
-    }
-    const ok = await askConfirm({
-      title: t('browser.runBatchDeleteTitle'),
-      message: t('browser.runBatchDeleteMsg', { count: ids.length }),
-      confirmLabel: t('common.delete'),
-      danger: true,
-    })
-    if (!ok) return
-    setBusy(true)
-    try {
-      const n = await api.deleteTaskRuns(ids)
-      const gone = new Set(ids)
-      setTaskRuns((prev) => prev.filter((r) => !gone.has(r.id)))
-      setSelectedRunIds(new Set())
-      if (activeRunId && gone.has(activeRunId)) {
-        setActiveRunId(null)
-        setTaskSteps([])
-        setLogScopeRoot('')
-        setLogNoteId('')
-      }
-      if (editingRunId && gone.has(editingRunId)) cancelRenameRun()
-      setStatusMessage(t('browser.runBatchDeleted', { count: n }))
-      if (ids.length === taskRuns.length) exitBatchMode()
-    } catch (e) {
-      setStatusMessage((e as Error).message)
-    } finally {
-      setBusy(false)
-    }
-  }, [
-    activeRunId,
-    cancelRenameRun,
-    editingRunId,
-    exitBatchMode,
-    selectedRunIds,
-    setStatusMessage,
-    t,
-    taskRuns.length,
-  ])
-
-  const switchMainPane = useCallback(
-    (pane: 'page' | 'ledger') => {
-      setMainPane(pane)
-      if (pane !== 'ledger') {
-        exitBatchMode()
-        cancelRenameRun()
-      }
-    },
-    [cancelRenameRun, exitBatchMode],
-  )
+  const switchMainPane = useCallback((pane: 'page' | 'ledger') => {
+    setMainPane(pane)
+    if (pane === 'ledger') void refreshNotebookTree()
+  }, [refreshNotebookTree])
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -462,6 +407,7 @@ export function BrowserWorkbench() {
         setStatusMessage(t('browser.recordStopped'))
         switchMainPane('ledger')
         await refreshTaskRuns(activeRunId)
+        if (activeRunId) await syncRunLog(activeRunId)
       } else {
         const r = await api.startBrowserRecording(pageMeta.title || '')
         setRecording(true)
@@ -470,6 +416,7 @@ export function BrowserWorkbench() {
         if (r.taskRunId) {
           setActiveRunId(r.taskRunId)
           await refreshTaskRuns(r.taskRunId)
+          await syncRunLog(r.taskRunId)
         } else {
           await refreshTaskRuns()
         }
@@ -488,6 +435,7 @@ export function BrowserWorkbench() {
     refreshTaskRuns,
     setStatusMessage,
     switchMainPane,
+    syncRunLog,
     t,
   ])
 
@@ -753,30 +701,6 @@ export function BrowserWorkbench() {
     void refreshTaskRuns(activeRunId)
   })
 
-  const taskStatusLabel = (run: TaskRun) => {
-    if (run.status === 'running') {
-      if (run.source === 'replay') return t('browser.taskStatusReplaying')
-      if (run.source === 'workflow') return t('browser.taskStatusRunningSkill')
-      if (run.source === 'record') return t('browser.taskStatusRecording')
-      return t('browser.taskStatusRunning')
-    }
-    switch (run.status) {
-      case 'done':
-        return t('browser.taskStatusDone')
-      case 'failed':
-        return t('browser.taskStatusFailed')
-      case 'cancelled':
-        return t('browser.taskStatusCancelled')
-      default:
-        return run.status
-    }
-  }
-
-  const activeRun = useMemo(
-    () => (activeRunId ? taskRuns.find((r) => r.id === activeRunId) || null : taskRuns[0] || null),
-    [activeRunId, taskRuns],
-  )
-
   /** 会话 id → 已生成的工作流/Skill（sourceRunId 关联） */
   const skillByRunId = useMemo(() => {
     const m = new Map<string, Workflow>()
@@ -787,41 +711,177 @@ export function BrowserWorkbench() {
     return m
   }, [workflows])
 
-  const activeSkill = useMemo(
-    () => (activeRunId ? skillByRunId.get(activeRunId) || null : null),
-    [activeRunId, skillByRunId],
-  )
+  const activeSkill = useMemo(() => {
+    if (logScopeRoot) {
+      const name = logScopeRoot.split('/').filter(Boolean).pop() || ''
+      const hit = workflows.find((w) => w.name === name)
+      if (hit) return hit
+    }
+    return activeRunId ? skillByRunId.get(activeRunId) || null : null
+  }, [logScopeRoot, workflows, activeRunId, skillByRunId])
 
-  /** 当前任务目录：同步 log 后的 scope 优先，否则按关联 Skill / 标题兜底。 */
+  /** 当前工作流目录：左栏选中优先。 */
   const activeSkillRootId = useMemo(() => {
     if (logScopeRoot) return logScopeRoot
     if (activeSkill) {
       const fromNote = skillDirFromNoteId(activeSkill.noteId || '')
       if (fromNote) return fromNote
-      if (activeSkill.name) return `工作流/${activeSkill.name}`
+      if (activeSkill.name) return `${WORKFLOW_ROOT}/${activeSkill.name}`
     }
-    const title = (activeRun?.title || '').trim()
-    return title ? `工作流/${title}` : ''
-  }, [logScopeRoot, activeSkill, activeRun])
+    return ''
+  }, [logScopeRoot, activeSkill])
 
   const preferredLogNoteId = useMemo(() => {
     if (logNoteId) return logNoteId
     return activeSkillRootId ? `${activeSkillRootId}/log.md` : ''
   }, [logNoteId, activeSkillRootId])
 
-  useEffect(() => {
-    if (!activeRunId) {
-      setLogScopeRoot('')
-      setLogNoteId('')
-    }
-  }, [activeRunId])
+  const selectedSkillName = useMemo(() => {
+    if (!activeSkillRootId) return ''
+    return activeSkillRootId.split('/').filter(Boolean).pop() || ''
+  }, [activeSkillRootId])
 
-  const selectTaskRunAndReseed = useCallback(
-    async (runId: string) => {
-      await selectTaskRun(runId)
+  const onSelectWorkflowFolder = useCallback(
+    (folderId: string) => {
+      setSelectedFolderId(folderId)
+      const skillDir = workflowSkillDir(folderId)
+      if (skillDir) {
+        setLogScopeRoot(skillDir)
+        setLogNoteId(`${skillDir}/log.md`)
+      } else if (folderId === WORKFLOW_ROOT || !folderId) {
+        setLogScopeRoot('')
+        setLogNoteId('')
+      }
     },
-    [selectTaskRun],
+    [],
   )
+
+  const onOpenWorkflowNote = useCallback(
+    (noteId: string) => {
+      const skillDir = workflowSkillDir(dirRelFromNoteId(noteId) || noteId)
+      if (skillDir) {
+        setLogScopeRoot(skillDir)
+        setSelectedFolderId(skillDir)
+      }
+      setLogNoteId(noteId)
+      void notebookIdeRef.current?.openNote(noteId)
+    },
+    [],
+  )
+
+  const nbRenamePath = useCallback(
+    async (rel: string, newName: string) => {
+      const m = await api.renameNotebookPath(rel, newName)
+      await refreshNotebookTree()
+      if (logScopeRoot === m.from) await focusWorkflowDir(m.to, logNoteId.replace(m.from, m.to))
+      else await notebookIdeRef.current?.refresh()
+    },
+    [focusWorkflowDir, logNoteId, logScopeRoot, refreshNotebookTree],
+  )
+
+  const nbMovePath = useCallback(
+    async (fromRel: string, destDirRel: string) => {
+      await api.moveNotebookPath(fromRel, destDirRel)
+      await refreshNotebookTree()
+      await notebookIdeRef.current?.refresh()
+    },
+    [refreshNotebookTree],
+  )
+
+  const nbCopyPath = useCallback(
+    async (fromRel: string, destDirRel: string) => {
+      await api.copyNotebookPath(fromRel, destDirRel)
+      await refreshNotebookTree()
+    },
+    [refreshNotebookTree],
+  )
+
+  const nbCreateDir = useCallback(
+    async (parentRel: string, name: string) => {
+      const id = await api.createNotebookDir(parentRel, name)
+      await refreshNotebookTree()
+      setSelectedFolderId(id)
+      if (workflowSkillDir(id)) void focusWorkflowDir(id)
+    },
+    [focusWorkflowDir, refreshNotebookTree],
+  )
+
+  const nbCreateFile = useCallback(
+    async (parentRel: string, name: string) => {
+      const saved = (await api.createNotebookFile(parentRel, name)) as Note
+      await refreshNotebookTree()
+      onOpenWorkflowNote(saved.id)
+    },
+    [onOpenWorkflowNote, refreshNotebookTree],
+  )
+
+  const nbDeletePath = useCallback(
+    async (rel: string, title: string, kind: 'note' | 'group') => {
+      const ok = await askConfirm({
+        title: kind === 'group' ? t('notebook.deleteGroupTitle') : t('notebook.deleteNoteTitle'),
+        message:
+          kind === 'group'
+            ? t('notebook.deleteGroupMsg', { title })
+            : t('notebook.deleteNoteMsg', { title }),
+        confirmLabel: t('common.delete'),
+        danger: true,
+      })
+      if (!ok) return
+      try {
+        await api.deleteNotebookPath(rel)
+        if (logScopeRoot === rel || logScopeRoot.startsWith(rel + '/') || logNoteId === rel || logNoteId.startsWith(rel + '/')) {
+          setLogScopeRoot('')
+          setLogNoteId('')
+          setSelectedFolderId(WORKFLOW_ROOT)
+        }
+        await refreshNotebookTree()
+        notify.success(t('notebook.deleted'))
+      } catch (e) {
+        notify.error((e as Error).message)
+      }
+    },
+    [logNoteId, logScopeRoot, refreshNotebookTree, t],
+  )
+
+  const nbMakeNoteRole = useCallback(
+    async (noteId: string, role: NoteRole) => {
+      try {
+        const raw = await api.getNote(noteId)
+        if (!raw) throw new Error('note not found')
+        const cur = adoptNoteLanguage(raw as Note)
+        const fields = applyNoteRoleFields(cur, role)
+        const saved = adoptNoteLanguage((await api.saveNote(toNoteDO({ ...cur, ...fields }))) as Note)
+        setNbSummaries((prev) => prev.map((s) => (s.id === noteId ? toSummary(saved) : s)))
+        notify.success(
+          role === 'memory'
+            ? t('notebook.madeMemory')
+            : role === 'skill'
+              ? t('notebook.publishSkillOk', { id: saved.id })
+              : t('notebook.madeNote'),
+        )
+      } catch (e) {
+        notify.error((e as Error).message)
+      }
+    },
+    [t],
+  )
+
+  const nbBatchDelete = useCallback(
+    async (ids: string[]) => {
+      for (const id of ids) await api.deleteNotebookPath(id)
+      await refreshNotebookTree()
+    },
+    [refreshNotebookTree],
+  )
+
+  const nbRevealPath = useCallback(async (rel: string) => {
+    try {
+      await api.revealNotebookPath(rel)
+      notify.info(t('notebook.revealedInFinder'))
+    } catch (e) {
+      notify.error((e as Error).message)
+    }
+  }, [t])
 
   const connected = !!status?.extensionConnected
   const attached = status?.attachedTabId != null
@@ -850,7 +910,6 @@ export function BrowserWorkbench() {
     n.type === 'password' ||
     n.type === 'number'
 
-  const ledgerStepCount = activeRun?.stepCount ?? taskSteps.length
 
   return (
     <div className="browser-workbench is-stage">
@@ -894,7 +953,6 @@ export function BrowserWorkbench() {
           {...pressProps(() => switchMainPane('ledger'))}
         >
           {t('browser.navLedger')}
-          {ledgerStepCount > 0 ? ` · ${ledgerStepCount}` : ''}
         </button>
         <div className="browser-top-tabs-spacer" />
         <button
@@ -919,19 +977,17 @@ export function BrowserWorkbench() {
 
       <ProductLayout
         storageKey="browser_sidebar_width"
-        defaultWidth={220}
+        defaultWidth={mainPane === 'ledger' ? 260 : 220}
         minWidth={160}
-        maxWidth={360}
+        maxWidth={420}
         resizeTitle={t('common.resizeWidth')}
         sidebarClassName="browser-sidebar"
         sidebar={
-          <section className="sidebar-section browser-side-panel">
-            <div className="sidebar-header">
-              <span className="sidebar-header-title">
-                {mainPane === 'page' ? t('browser.tabs') : t('browser.colSession')}
-              </span>
-              <div className="browser-sidebar-header-actions">
-                {mainPane === 'page' ? (
+          mainPane === 'page' ? (
+            <section className="sidebar-section browser-side-panel">
+              <div className="sidebar-header">
+                <span className="sidebar-header-title">{t('browser.tabs')}</span>
+                <div className="browser-sidebar-header-actions">
                   <button
                     type="button"
                     className="wn-btn wn-btn-xs wn-btn-ghost"
@@ -940,36 +996,9 @@ export function BrowserWorkbench() {
                   >
                     {t('browser.refreshTabs')}
                   </button>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className={`wn-btn wn-btn-xs${batchMode ? ' wn-btn-primary' : ' wn-btn-ghost'}`}
-                      disabled={busy || taskRuns.length === 0}
-                      {...pressProps(() => {
-                        if (batchMode) exitBatchMode()
-                        else {
-                          cancelRenameRun()
-                          setBatchMode(true)
-                        }
-                      })}
-                    >
-                      {batchMode ? t('browser.runManageDone') : t('browser.runManage')}
-                    </button>
-                    <button
-                      type="button"
-                      className="wn-btn wn-btn-xs wn-btn-ghost"
-                      disabled={busy}
-                      {...pressProps(() => void refreshTaskRuns())}
-                    >
-                      {t('browser.taskRefresh')}
-                    </button>
-                  </>
-                )}
+                </div>
               </div>
-            </div>
-            <div className={`sidebar-body${batchMode && mainPane === 'ledger' ? ' is-batching' : ''}`}>
-              {mainPane === 'page' ? (
+              <div className="sidebar-body">
                 <ul className="conn-list is-homogeneous">
                   {tabs.length === 0 ? (
                     <li className="conn-item is-empty">
@@ -999,149 +1028,38 @@ export function BrowserWorkbench() {
                     ))
                   )}
                 </ul>
-              ) : (
-                <>
-                  <ul className="conn-list is-homogeneous">
-                    {taskRuns.length === 0 ? (
-                      <li className="conn-item is-empty">
-                        <div className="conn-meta">
-                          <span className="conn-host">{t('browser.taskLogEmptyShort')}</span>
-                          <button
-                            type="button"
-                            className="wn-btn wn-btn-xs wn-btn-ghost"
-                            onClick={() => switchMainPane('page')}
-                          >
-                            {t('browser.ledgerGoPage')}
-                          </button>
-                        </div>
-                      </li>
-                    ) : (
-                      taskRuns.slice(0, 40).map((run) => {
-                        const skill = skillByRunId.get(run.id)
-                        const checked = selectedRunIds.has(run.id)
-                        const renaming = editingRunId === run.id
-                        return (
-                          <li
-                            key={run.id}
-                            className={`conn-item${
-                              !batchMode && activeRunId === run.id ? ' active' : ''
-                            }${skill ? ' connected' : ''}${batchMode && checked ? ' is-batch-selected' : ''}`}
-                            onClick={() => {
-                              if (renaming) return
-                              if (batchMode) toggleRunSelected(run.id)
-                              else void selectTaskRunAndReseed(run.id)
-                            }}
-                          >
-                            {batchMode ? (
-                              <input
-                                type="checkbox"
-                                className="browser-run-check"
-                                checked={checked}
-                                onChange={() => toggleRunSelected(run.id)}
-                                onClick={(e) => e.stopPropagation()}
-                                aria-label={t('browser.runSelect')}
-                              />
-                            ) : (
-                              <span className="conn-dot" />
-                            )}
-                            <div className="conn-meta">
-                              {renaming ? (
-                                <input
-                                  className="browser-run-rename"
-                                  value={editTitle}
-                                  autoFocus
-                                  disabled={busy}
-                                  onClick={(e) => e.stopPropagation()}
-                                  onChange={(e) => setEditTitle(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.preventDefault()
-                                      void commitRenameRun()
-                                    } else if (e.key === 'Escape') {
-                                      e.preventDefault()
-                                      cancelRenameRun()
-                                    }
-                                  }}
-                                  onBlur={() => {
-                                    if (renameSkipBlur.current) {
-                                      renameSkipBlur.current = false
-                                      return
-                                    }
-                                    void commitRenameRun()
-                                  }}
-                                />
-                              ) : (
-                                <span
-                                  className="conn-name"
-                                  title={run.title || run.session || run.id}
-                                  onDoubleClick={(e) => {
-                                    e.stopPropagation()
-                                    if (!batchMode) beginRenameRun(run)
-                                  }}
-                                >
-                                  {run.title || run.session || run.id.slice(0, 8)}
-                                </span>
-                              )}
-                              <span className="conn-host">
-                                {taskStatusLabel(run)} · {run.stepCount ?? 0}
-                                {skill ? ` · /${skill.name}` : ''}
-                              </span>
-                            </div>
-                            {!batchMode && !renaming ? (
-                              <button
-                                type="button"
-                                className="browser-run-edit"
-                                title={t('browser.runRename')}
-                                disabled={busy}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  beginRenameRun(run)
-                                }}
-                              >
-                                ✎
-                              </button>
-                            ) : null}
-                          </li>
-                        )
-                      })
-                    )}
-                  </ul>
-                  {batchMode && taskRuns.length > 0 ? (
-                    <div className="browser-run-batch-bar">
-                      <button
-                        type="button"
-                        className="wn-btn wn-btn-xs wn-btn-ghost"
-                        disabled={busy}
-                        {...pressProps(selectAllRuns)}
-                      >
-                        {t('browser.runSelectAll')}
-                      </button>
-                      <button
-                        type="button"
-                        className="wn-btn wn-btn-xs wn-btn-ghost"
-                        disabled={busy || selectedRunIds.size !== 1}
-                        {...pressProps(() => {
-                          const id = [...selectedRunIds][0]
-                          const run = taskRuns.find((r) => r.id === id)
-                          if (run) beginRenameRun(run)
-                        })}
-                      >
-                        {t('browser.runRename')}
-                      </button>
-                      <button
-                        type="button"
-                        className="wn-btn wn-btn-xs wn-btn-danger"
-                        disabled={busy || selectedRunIds.size === 0}
-                        {...pressProps(() => void deleteSelectedRuns())}
-                      >
-                        {t('browser.runBatchDelete', { count: selectedRunIds.size || 0 })}
-                      </button>
-                    </div>
-                  ) : null}
-                </>
-              )}
-            </div>
-          </section>
+              </div>
+            </section>
+          ) : (
+            <section className="sidebar-section browser-side-panel browser-workflow-panel">
+              <NotebookSidebar
+                compact
+                scopeRootId={WORKFLOW_ROOT}
+                groups={nbGroups}
+                summaries={nbSummaries}
+                search={nbSearch}
+                activeTabId={logNoteId || null}
+                selectedFolderId={selectedFolderId || WORKFLOW_ROOT}
+                roleFilter={nbRoleFilter}
+                onRoleFilterChange={setNbRoleFilter}
+                onSelectFolder={onSelectWorkflowFolder}
+                onSearchChange={setNbSearch}
+                onOpenNote={onOpenWorkflowNote}
+                onDeleteGroup={(id, title) => void nbDeletePath(id, title, 'group')}
+                onDeleteNote={(id, title) => void nbDeletePath(id, title, 'note')}
+                onMakeNoteRole={(id, role) => void nbMakeNoteRole(id, role)}
+                onBatchDelete={nbBatchDelete}
+                onRefresh={() => void refreshNotebookTree()}
+                onRevealPath={(rel) => void nbRevealPath(rel)}
+                onRenamePath={nbRenamePath}
+                onMovePath={nbMovePath}
+                onCopyPath={nbCopyPath}
+                onCreateDirInline={nbCreateDir}
+                onCreateFileInline={nbCreateFile}
+                refreshing={nbRefreshing}
+              />
+            </section>
+          )
         }
       >
         <div className="browser-main">
@@ -1330,18 +1248,15 @@ export function BrowserWorkbench() {
               <header className="browser-ledger-toolbar">
                 <h2>
                   {t('browser.colSteps')}
-                  {activeRun
-                    ? ` · ${activeRun.title || activeRun.session || activeRun.id.slice(0, 8)}`
-                    : ''}
-                  {activeSkillRootId ? ` · /${activeSkillRootId.split('/').pop()}` : ''}
+                  {selectedSkillName ? ` · ${selectedSkillName}` : ''}
                 </h2>
                 <div className="browser-review-actions">
-                  {activeSkill ? (
+                  {selectedSkillName ? (
                     <button
                       type="button"
                       className="wn-btn wn-btn-sm wn-btn-ghost"
                       disabled={busy || !connected}
-                      onClick={() => void runSavedWorkflow(activeSkill.name)}
+                      onClick={() => void runSavedWorkflow(selectedSkillName)}
                     >
                       {t('browser.coachRun')}
                     </button>
@@ -1349,7 +1264,7 @@ export function BrowserWorkbench() {
                   <button
                     type="button"
                     className="wn-btn wn-btn-sm wn-btn-primary"
-                    disabled={busy || !activeRunId}
+                    disabled={busy || !activeSkillRootId}
                     onClick={() => void updateActiveSkill()}
                     title={t('browser.updateSkillHint')}
                   >
@@ -1361,13 +1276,12 @@ export function BrowserWorkbench() {
               <div className="browser-ledger-ide">
                 <NotebookIDE
                   ref={notebookIdeRef}
+                  hideTree
                   scopeRootId={activeSkillRootId}
                   preferredNoteId={preferredLogNoteId}
-                  title={activeSkill?.name || activeSkillRootId.split('/').pop()}
-                  emptyHint={
-                    activeRunId ? t('browser.skillPaneEmpty') : t('browser.ledgerPickRun')
-                  }
-                  treeWidth={220}
+                  autoOpenEntry={Boolean(activeSkillRootId)}
+                  title={selectedSkillName || activeSkill?.name}
+                  emptyHint={t('browser.ledgerPickWorkflow')}
                 />
               </div>
             </section>

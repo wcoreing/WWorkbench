@@ -24,6 +24,11 @@ import { NoteEditor, type NoteEditorHandle } from '../../features/notebook/NoteE
 import { fileToBase64DataURL } from '../../features/notebook/notebookAssets'
 import { NotebookGroupModal } from '../../features/notebook/NotebookGroupModal'
 import { NotebookNewFileModal, type NewFileDraft } from '../../features/notebook/NotebookNewFileModal'
+import {
+  NOTEBOOK_ROOT_OPS,
+  notebookRootsFor,
+  primaryNotebookRoot,
+} from '../../features/notebook/businessRoots'
 import { NotebookSidebar } from '../../features/notebook/NotebookSidebar'
 import { readLinkedSkillId, suggestSkillId } from '../../features/notebook/noteSkillLink'
 import {
@@ -144,9 +149,12 @@ export function NotebookWorkbench() {
   const [groupModal, setGroupModal] = useState<NotebookGroup | null | undefined>(undefined)
   /** createGroupParentId 新建目录时的父目录 id（空=根）。 */
   const [createGroupParentId, setCreateGroupParentId] = useState('')
-  /** selectedFolderId 侧栏当前选中目录（空=根）；工具栏新建落点。 */
-  const [selectedFolderId, setSelectedFolderId] = useState('')
-  const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('split')
+  /** 运维壳：记忆区 + 运维（不露工作流）。 */
+  const opsRoots = notebookRootsFor('notebook')
+  const opsRoot = primaryNotebookRoot('notebook') || NOTEBOOK_ROOT_OPS
+  /** selectedFolderId 侧栏当前选中目录；默认落在运维工作根。 */
+  const [selectedFolderId, setSelectedFolderId] = useState(opsRoot)
+  const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('source')
   const [editorFontSize, setEditorFontSize] = useState<NotebookEditorFontSize>(DEFAULT_NOTEBOOK_EDITOR_FONT)
   const [saveByNote, setSaveByNote] = useState<Record<string, 'saved' | 'dirty' | 'saving'>>({})
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
@@ -698,8 +706,8 @@ export function NotebookWorkbench() {
     scheduleSave(next)
   }
 
-  /** openCreateFile IDE 新建文件对话框。 */
-  const openCreateFile = (groupId = '') => {
+  /** openCreateFile IDE 新建文件对话框；默认落到运维工作根。 */
+  const openCreateFile = (groupId = opsRoot) => {
     setNewFileGroupId(groupId)
   }
 
@@ -1245,18 +1253,19 @@ export function NotebookWorkbench() {
         sidebarExpandTitle={t('notebook.expandSidebar')}
         sidebar={
           <NotebookSidebar
+            scopeRootIds={opsRoots}
             groups={groups}
             summaries={summaries}
             search={search}
             activeTabId={activeTabId}
-            selectedFolderId={selectedFolderId}
+            selectedFolderId={selectedFolderId || opsRoot}
             roleFilter={notebookRoleFilter}
             onRoleFilterChange={(role) => setNotebookRoleFilter(role as '' | 'memory' | 'skill')}
             onSelectFolder={setSelectedFolderId}
             onSearchChange={setSearch}
             onOpenNote={(id) => {
               const note = summaries.find((n) => n.id === id)
-              if (note) setSelectedFolderId(note.groupId || '')
+              if (note) setSelectedFolderId(note.groupId || opsRoot)
               void openNoteById(id)
             }}
             onDeleteGroup={(id, title) => setDeleteTarget({ kind: 'group', id, title })}
@@ -1395,7 +1404,7 @@ export function NotebookWorkbench() {
                   <div
                     className="notebook-preview-pane"
                     title={mdViewMode === 'preview' ? t('notebook.previewEditHint') : undefined}
-                    onDoubleClick={mdViewMode === 'preview' ? () => setMdViewMode('split') : undefined}
+                    onDoubleClick={mdViewMode === 'preview' ? () => setMdViewMode('source') : undefined}
                   >
                     {mdViewMode === 'preview' && (
                       <div className="notebook-preview-edit-bar">
@@ -1403,7 +1412,7 @@ export function NotebookWorkbench() {
                         <button
                           type="button"
                           className="wn-btn wn-btn-sm wn-btn-primary"
-                          {...pressProps(() => setMdViewMode('split'))}
+                          {...pressProps(() => setMdViewMode('source'))}
                         >
                           {t('notebook.enterEdit')}
                         </button>
@@ -1429,7 +1438,7 @@ export function NotebookWorkbench() {
               actions={[
                 {
                   label: t('notebook.newFile'),
-                  onPress: () => openCreateFile(selectedFolderId),
+                  onPress: () => openCreateFile(selectedFolderId || opsRoot),
                   primary: true,
                 },
               ]}

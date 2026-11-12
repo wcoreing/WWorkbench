@@ -1,13 +1,18 @@
 import type { NoteSummary } from '../../api/types'
 import type { ResourceTag } from '../../tags'
+import {
+  NOTEBOOK_ROOT_MEMORY,
+  NOTEBOOK_ROOT_WORKFLOW,
+  isSystemNotebookRoot,
+} from './businessRoots'
 import { skillEntryNoteId } from './noteModel'
 
 export const TAG_OPEN_VERSION_HISTORY = 'open-version-history'
 export const TAG_FOCUS_WORKFLOW = 'focus-workflow'
 export const TAG_OPEN_MEMORY_NOTE = 'open-memory-note'
 
-const WORKFLOW_ROOT = '工作流'
-const MEMORY_ROOT = '记忆区'
+const WORKFLOW_ROOT = NOTEBOOK_ROOT_WORKFLOW
+const MEMORY_ROOT = NOTEBOOK_ROOT_MEMORY
 
 export type NotebookTagLabels = {
   workflow: string
@@ -44,7 +49,7 @@ export function resolveFolderResourceTags(
   labels: NotebookTagLabels,
 ): ResourceTag[] {
   const id = normRel(folderId)
-  if (!id || id === WORKFLOW_ROOT || id === MEMORY_ROOT) return []
+  if (!id || isSystemNotebookRoot(id)) return []
   const tags: ResourceTag[] = []
   if (isWorkflowSkillDir(id)) {
     tags.push({

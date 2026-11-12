@@ -145,7 +145,7 @@ func (s *Service) saveGroupFS(g model.NotebookGroupDO) (*model.NotebookGroupDO, 
 
 func (s *Service) deleteGroupFS(id string) error {
 	id = strings.TrimSpace(id)
-	if id == SkillGroupName || id == MemoryGroupName {
+	if IsSystemTopDir(id) {
 		return errno.New(errno.CodeInvalidArg, "不能删除系统分组", id)
 	}
 	dir, err := s.groupDirAbs(id)

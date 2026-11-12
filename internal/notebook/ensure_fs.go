@@ -74,12 +74,32 @@ func (s *Service) resetWorkspaceIfNeeded() (reset bool, err error) {
 }
 
 func (s *Service) ensureSystemDirs() error {
-	for _, name := range []string{SkillGroupName, MemoryGroupName} {
+	for _, name := range SystemTopDirs() {
 		if err := os.MkdirAll(filepath.Join(s.workspaceRoot(), name), 0o700); err != nil {
 			return err
 		}
 	}
+	if err := s.ensureOpsSeedFS(); err != nil {
+		return err
+	}
 	return nil
+}
+
+func (s *Service) ensureOpsSeedFS() error {
+	path := filepath.Join(s.workspaceRoot(), OpsGroupName, "怎么用运维区.md")
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	}
+	content := "# 运维工作区\n\n" +
+		"本目录是**运维类产品**（终端 / Docker / 备份 / SFTP 等）的笔记本工作根，" +
+		"与「工作流」（任务产品）相互隔离。\n\n" +
+		"- 主机约定、巡检说明、发布备忘写在这里\n" +
+		"- 可复用方法也可建成 Skill（同协议），不必挤进「工作流」\n" +
+		"- 笔记本产品可看全盘；各业务产品只挂自己的工作根\n"
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(content), 0o600)
 }
 
 func (s *Service) ensureMemorySeedFS() error {
