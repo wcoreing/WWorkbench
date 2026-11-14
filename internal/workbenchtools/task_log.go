@@ -12,10 +12,11 @@ import (
 
 const adhocTaskSession = "adhoc"
 
+// activeRunBySess：任务名 → runId 的进程级缓存（Store 为真源；多调用方可共享同名任务）。
+// 「当前任务指针」currentTaskSess 在 caller_state，按 MCP/Agent thread 隔离。
 var (
 	taskLogMu       sync.Mutex
 	activeRunBySess = map[string]string{}
-	currentTaskSess = adhocTaskSession
 )
 
 // BrowserStepInput / TaskStepInput 记一步任务账本（思考或操作）。
@@ -40,15 +41,15 @@ type BrowserStepInput struct {
 // TaskStepInput 与 BrowserStepInput 同构（账本通用入口名）。
 type TaskStepInput = BrowserStepInput
 
-// EnsureTaskRun 确保 session 有进行中的任务；返回 runId。
-func EnsureTaskRun(d *Deps, session, title, intent, source string) string {
+// EnsureTaskRun 确保 session 有进行中的任务；返回 runId。ctx 决定哪个调用方的「当前任务」。
+func EnsureTaskRun(ctx context.Context, d *Deps, session, title, intent, source string) string {
 	if d == nil || d.Store == nil {
 		return ""
 	}
 	session = normalizeTaskSession(session)
+	stateOf(ctx).setCurrentTask(session)
 	taskLogMu.Lock()
 	defer taskLogMu.Unlock()
-	currentTaskSess = session
 	if id := activeRunBySess[session]; id != "" {
 		return id
 	}
@@ -89,6 +90,7 @@ func CloseTaskRunForSession(d *Deps, session, status string) {
 	id := activeRunBySess[session]
 	delete(activeRunBySess, session)
 	taskLogMu.Unlock()
+	clearCurrentTaskEverywhere(session)
 	if id == "" {
 		if open, err := d.Store.FindOpenTaskRunBySession(session); err == nil {
 			id = open.ID
@@ -115,24 +117,26 @@ func CloseTaskRunByID(d *Deps, runID, status string) error {
 	if err != nil {
 		return err
 	}
+	sid := normalizeTaskSession(run.Session)
 	taskLogMu.Lock()
-	if sid := normalizeTaskSession(run.Session); sid != "" && activeRunBySess[sid] == runID {
+	if sid != "" && activeRunBySess[sid] == runID {
 		delete(activeRunBySess, sid)
 	}
 	taskLogMu.Unlock()
+	if sid != "" {
+		clearCurrentTaskEverywhere(sid)
+	}
 	return d.Store.UpdateTaskRunStatus(runID, status)
 }
 
 // RecordTaskStep 记一步任务账本（思考/操作）；无 Store 时静默跳过。返回 runId。
-func RecordTaskStep(d *Deps, in TaskStepInput) string {
+func RecordTaskStep(ctx context.Context, d *Deps, in TaskStepInput) string {
 	if d == nil || d.Store == nil {
 		return ""
 	}
 	session := in.Session
 	if strings.TrimSpace(session) == "" {
-		taskLogMu.Lock()
-		session = currentTaskSess
-		taskLogMu.Unlock()
+		session = CurrentTaskSession(ctx)
 	}
 	source := in.Source
 	if source == "" {
@@ -146,7 +150,7 @@ func RecordTaskStep(d *Deps, in TaskStepInput) string {
 	if provider == "" {
 		provider = model.TaskProviderMCP
 	}
-	runID := EnsureTaskRun(d, session, in.Title, in.Intent, source)
+	runID := EnsureTaskRun(ctx, d, session, in.Title, in.Intent, source)
 	if runID == "" {
 		return ""
 	}
@@ -202,15 +206,15 @@ func RecordTaskStep(d *Deps, in TaskStepInput) string {
 }
 
 // RecordBrowserStep 记操作步（兼容旧调用）；等价 RecordTaskStep(kind=op)。
-func RecordBrowserStep(d *Deps, in BrowserStepInput) string {
+func RecordBrowserStep(ctx context.Context, d *Deps, in BrowserStepInput) string {
 	if strings.TrimSpace(in.Kind) == "" {
 		in.Kind = model.TaskStepKindOp
 	}
-	return RecordTaskStep(d, in)
+	return RecordTaskStep(ctx, d, in)
 }
 
 // RecordAgentThought 侧栏/引擎把阶段性推理写入当前任务账本。
-func RecordAgentThought(d *Deps, summary string) string {
+func RecordAgentThought(ctx context.Context, d *Deps, summary string) string {
 	summary = strings.TrimSpace(summary)
 	if summary == "" {
 		return ""
@@ -218,7 +222,7 @@ func RecordAgentThought(d *Deps, summary string) string {
 	if len([]rune(summary)) > 1200 {
 		summary = string([]rune(summary)[:1200]) + "…"
 	}
-	return RecordTaskStep(d, TaskStepInput{
+	return RecordTaskStep(ctx, d, TaskStepInput{
 		Kind:     model.TaskStepKindThought,
 		Provider: model.TaskProviderAgent,
 		Tool:     "agent",
@@ -229,21 +233,14 @@ func RecordAgentThought(d *Deps, summary string) string {
 	})
 }
 
-// CurrentTaskSession 当前活跃任务 session（供 Runner 记思考）。
-func CurrentTaskSession() string {
-	taskLogMu.Lock()
-	defer taskLogMu.Unlock()
-	return currentTaskSess
+// CurrentTaskSession 当前调用方的活跃任务 session（供 Runner 记思考 / 浏览器缺省 session）。
+func CurrentTaskSession(ctx context.Context) string {
+	return stateOf(ctx).currentTask()
 }
 
-// HasActiveTask 是否有进行中的任务账本（非纯闲聊）。
-func HasActiveTask() bool {
-	taskLogMu.Lock()
-	defer taskLogMu.Unlock()
-	if currentTaskSess != adhocTaskSession {
-		return true
-	}
-	return len(activeRunBySess) > 0
+// HasActiveTask 当前调用方是否有进行中的任务账本（非纯闲聊）。
+func HasActiveTask(ctx context.Context) bool {
+	return stateOf(ctx).hasActiveTask()
 }
 
 func normalizeTaskSession(session string) string {
@@ -281,22 +278,22 @@ func locatorFrom(ref, selector, name, frame string) map[string]interface{} {
 	return m
 }
 
-func recordBrowserFail(d *Deps, in BrowserStepInput, err error) ToolResult {
+func recordBrowserFail(ctx context.Context, d *Deps, in BrowserStepInput, err error) ToolResult {
 	in.OK = false
 	if err != nil {
 		in.Error = err.Error()
 	}
-	RecordBrowserStep(d, in)
+	RecordBrowserStep(ctx, d, in)
 	if err != nil {
 		return Fail(err.Error())
 	}
 	return Fail(in.Error)
 }
 
-func recordBrowserOK(d *Deps, in BrowserStepInput, data json.RawMessage) ToolResult {
+func recordBrowserOK(ctx context.Context, d *Deps, in BrowserStepInput, data json.RawMessage) ToolResult {
 	in.OK = true
 	in.Result = data
-	runID := RecordBrowserStep(d, in)
+	runID := RecordBrowserStep(ctx, d, in)
 	var out map[string]interface{}
 	if json.Unmarshal(data, &out) != nil {
 		m := map[string]interface{}{"ok": true, "raw": json.RawMessage(data)}
@@ -354,7 +351,7 @@ func toolGetTaskRun(_ context.Context, d *Deps, raw json.RawMessage) ToolResult 
 	return OKData(detail)
 }
 
-func toolTaskRecord(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
+func toolTaskRecord(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	if d == nil || d.Store == nil {
 		return Fail("存储未就绪")
 	}
@@ -400,7 +397,7 @@ func toolTaskRecord(_ context.Context, d *Deps, raw json.RawMessage) ToolResult 
 			provider = model.TaskProviderMCP
 		}
 	}
-	runID := RecordTaskStep(d, TaskStepInput{
+	runID := RecordTaskStep(ctx, d, TaskStepInput{
 		Session:  in.Session,
 		Kind:     kind,
 		Provider: provider,
@@ -416,6 +413,6 @@ func toolTaskRecord(_ context.Context, d *Deps, raw json.RawMessage) ToolResult 
 	})
 	return OKData(map[string]interface{}{
 		"ok": true, "taskRunId": runID, "kind": kind, "provider": provider,
-		"note": "已写入任务账本并同步 log.md",
+		"note": "已写入任务账本并同步 log.md", "caller": CallerID(ctx),
 	})
 }

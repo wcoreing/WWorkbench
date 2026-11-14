@@ -50,9 +50,8 @@ const (
 	CapBuildPluginPackUI       = "build_plugin_pack_ui"
 	CapListPluginPackReleases  = "list_plugin_pack_releases"
 	CapRollbackPluginPack      = "rollback_plugin_pack"
-	CapPublishAgentSkill    = "publish_agent_skill"
-	CapUpdateAgentSkill     = "update_agent_skill"
-	CapAgentChat            = "agent_chat"
+	CapPublishAgentSkill = "publish_agent_skill"
+	CapAgentChat         = "agent_chat"
 	CapAgentConfirm         = "agent_confirm"
 	CapOfferChoices         = "offer_choices"
 	CapBrowserStatus        = "browser_status"
@@ -81,15 +80,20 @@ const (
 	CapListTaskRuns         = "list_task_runs"
 	CapGetTaskRun           = "get_task_run"
 	CapTaskRecord           = "task_record"
-	CapReplayTaskStep       = "replay_task_step"
-	CapDistillWorkflow      = "distill_workflow"
-	CapListWorkflows        = "list_workflows"
-	CapGetWorkflow          = "get_workflow"
-	CapSaveWorkflow         = "save_workflow"
-	CapUpdateSkill          = "update_skill"
-	CapRunSkill             = "run_skill"
-	CapListSkills           = "list_skills"
-	CapGetSkill             = "get_skill"
+	CapReplayTaskStep = "replay_task_step"
+	// Skill 对外语言（唯一）：list/get/update/run/distill_skill；旧 *workflow / update_agent_skill 仅别名。
+	CapDistillSkill = "distill_skill"
+	CapUpdateSkill  = "update_skill"
+	CapRunSkill     = "run_skill"
+	CapListSkills   = "list_skills"
+	CapGetSkill     = "get_skill"
+
+	// 已收敛别名（勿再注册为独立工具；Invoke 经 toolAliases 转发）。
+	CapDistillWorkflow  = CapDistillSkill
+	CapListWorkflows    = CapListSkills
+	CapGetWorkflow      = CapGetSkill
+	CapSaveWorkflow     = CapUpdateSkill
+	CapUpdateAgentSkill = CapUpdateSkill
 	CapListDirVersions      = "list_dir_versions"
 	CapEnableDirVersion     = "enable_dir_version"
 	CapPinDirVersion        = "pin_dir_version"

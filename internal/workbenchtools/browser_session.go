@@ -65,7 +65,7 @@ func BrowserNavigateConfirmed(ctx context.Context, d *Deps, argsJSON string) Too
 		title = session
 	}
 	if session != "" {
-		_ = EnsureTaskRun(d, session, title, in.Intent, "mcp")
+		_ = EnsureTaskRun(ctx, d, session, title, in.Intent, "mcp")
 	}
 	step := BrowserStepInput{
 		Session: session, Tool: workbench.CapBrowserNavigate, Action: "navigate", Intent: in.Intent,
@@ -75,10 +75,10 @@ func BrowserNavigateConfirmed(ctx context.Context, d *Deps, argsJSON string) Too
 	data, err := b.CallSession(ctx, "navigate", args, session)
 	step.Provider = b.Provider()
 	if err != nil {
-		return recordBrowserFail(d, step, err)
+		return recordBrowserFail(ctx, d, step, err)
 	}
 	stageBrowser(d, "已导航")
-	return recordBrowserOK(d, step, data)
+	return recordBrowserOK(ctx, d, step, data)
 }
 
 type browserCloseSessionArgs struct {
@@ -99,7 +99,7 @@ func toolBrowserCloseSession(ctx context.Context, d *Deps, raw json.RawMessage) 
 	if err != nil {
 		return Fail(err.Error())
 	}
-	RecordBrowserStep(d, BrowserStepInput{
+	RecordBrowserStep(ctx, d, BrowserStepInput{
 		Session: in.Session, Tool: workbench.CapBrowserCloseSession, Action: "close_session",
 		Summary: "关闭任务组 " + truncateRunes(in.Session, 24), OK: true, Result: data, Provider: b.Provider(),
 	})
@@ -147,12 +147,12 @@ func toolBrowserGroupSession(ctx context.Context, d *Deps, raw json.RawMessage) 
 	if args["urlIncludes"] == "" && len(in.TabIDs) == 0 {
 		return Fail("请提供 urlIncludes（如 xiaohongshu.com）或 tabIds")
 	}
-	_ = EnsureTaskRun(d, session, title, "", "mcp")
+	_ = EnsureTaskRun(ctx, d, session, title, "", "mcp")
 	data, err := b.CallSession(ctx, "group_session", args, session)
 	if err != nil {
 		return Fail(err.Error())
 	}
-	RecordBrowserStep(d, BrowserStepInput{
+	RecordBrowserStep(ctx, d, BrowserStepInput{
 		Session: session, Tool: workbench.CapBrowserGroupSession, Action: "group_session",
 		Summary: "标签组 " + truncateRunes(title, 24), Title: title, Args: args, OK: true, Result: data, Provider: b.Provider(),
 	})
@@ -221,10 +221,10 @@ func BrowserOpenFrameConfirmed(ctx context.Context, d *Deps, argsJSON string) To
 	data, err := b.Call(ctx, "open_frame", args)
 	step.Provider = b.Provider()
 	if err != nil {
-		return recordBrowserFail(d, step, err)
+		return recordBrowserFail(ctx, d, step, err)
 	}
 	stageBrowser(d, "已处理 iframe")
-	return recordBrowserOK(d, step, data)
+	return recordBrowserOK(ctx, d, step, data)
 }
 
 type builtinWorkflowArgs struct {
@@ -340,7 +340,7 @@ func RunBuiltinWorkflowConfirmed(ctx context.Context, d *Deps, argsJSON string) 
 		"workflow": "cms_new_article",
 		"steps":    steps,
 	})
-	runID := RecordBrowserStep(d, BrowserStepInput{
+	runID := RecordBrowserStep(ctx, d, BrowserStepInput{
 		Tool: workbench.CapRunSkill, Action: "workflow", Intent: in.Intent,
 		Summary: "工作流 cms_new_article", Title: "cms_new_article",
 		Args: map[string]interface{}{"name": "cms_new_article", "title": in.Title, "frame": frame},

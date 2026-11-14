@@ -21,6 +21,7 @@ type Endpoint struct {
 	baseURL    string
 	srv        *http.Server
 	handler    http.Handler
+	authToken  string
 }
 
 // Listen 绑定地址并开始接受连接。此时还没有工具面，请求会等到 SetHandler。
@@ -60,6 +61,26 @@ func (e *Endpoint) SetHandler(h http.Handler) {
 	e.mu.Lock()
 	e.handler = h
 	e.mu.Unlock()
+}
+
+// SetAuthToken 设置 Bearer token（空则不鉴权；生产由 Store 保证非空）。
+func (e *Endpoint) SetAuthToken(token string) {
+	if e == nil {
+		return
+	}
+	e.mu.Lock()
+	e.authToken = strings.TrimSpace(token)
+	e.mu.Unlock()
+}
+
+// AuthToken 当前鉴权 token。
+func (e *Endpoint) AuthToken() string {
+	if e == nil {
+		return ""
+	}
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.authToken
 }
 
 // ListenAddr 实际绑定地址。
@@ -113,25 +134,37 @@ func (e *Endpoint) current() http.Handler {
 	return e.handler
 }
 
+func (e *Endpoint) token() string {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.authToken
+}
+
 func (e *Endpoint) serve(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
-		writeCORS(w, r)
+		writeRestrictedCORS(w, r)
 		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	path := r.URL.Path
+	isHealth := path == "/health" || path == "/health/"
+	if !isHealth && !authorizeRequest(r, e.token()) {
+		writeUnauthorized(w, r)
 		return
 	}
 	if h := e.current(); h != nil {
 		h.ServeHTTP(w, r)
 		return
 	}
-	if r.URL.Path == "/health" {
-		writeCORS(w, r)
+	if isHealth {
+		writeRestrictedCORS(w, r)
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"ok":true,"ready":false,"name":"wworkbench"}`))
 		return
 	}
 	h := e.waitHandler(r.Context())
 	if h == nil {
-		writeCORS(w, r)
+		writeRestrictedCORS(w, r)
 		w.Header().Set("Retry-After", "1")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
@@ -161,13 +194,3 @@ func (e *Endpoint) waitHandler(ctx context.Context) http.Handler {
 	}
 }
 
-func writeCORS(w http.ResponseWriter, r *http.Request) {
-	origin := strings.TrimSpace(r.Header.Get("Origin"))
-	if origin == "" {
-		origin = "*"
-	}
-	w.Header().Set("Access-Control-Allow-Origin", origin)
-	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept, Mcp-Session-Id")
-	w.Header().Set("Vary", "Origin")
-}

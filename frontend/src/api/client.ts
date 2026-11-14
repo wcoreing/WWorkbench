@@ -303,6 +303,7 @@ import {
   StartBrowserRecording,
   StopBrowserRecording,
   RevealBrowserExtDir,
+  ReloadBrowserExtension,
   OpenChromeExtensionsPage,
 } from '../../wailsjs/go/app/Service'
 
@@ -1195,6 +1196,13 @@ export const api = {
     },
   revealBrowserExtDir: () =>
     unwrap(() => RevealBrowserExtDir()) as Promise<{ path: string }>,
+  reloadBrowserExtension: () =>
+    unwrap(() => ReloadBrowserExtension()) as Promise<{
+      ok?: boolean
+      reloading?: boolean
+      hint?: string
+      version?: string
+    }>,
   openChromeExtensionsPage: () =>
     unwrap(() => OpenChromeExtensionsPage()) as Promise<{ opened: boolean; url?: string; hint?: string }>,
 }

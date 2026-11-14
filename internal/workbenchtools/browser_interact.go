@@ -70,10 +70,10 @@ func BrowserUploadConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolR
 	data, err := b.Call(ctx, "upload", args)
 	step.Provider = b.Provider()
 	if err != nil {
-		return recordBrowserFail(d, step, err)
+		return recordBrowserFail(ctx, d, step, err)
 	}
 	stageBrowser(d, "已上传文件")
-	return recordBrowserOK(d, step, data)
+	return recordBrowserOK(ctx, d, step, data)
 }
 
 
@@ -145,10 +145,10 @@ func BrowserSelectOptionConfirmed(ctx context.Context, d *Deps, argsJSON string)
 	data, err := b.Call(ctx, "select_option", args)
 	step.Provider = b.Provider()
 	if err != nil {
-		return recordBrowserFail(d, step, err)
+		return recordBrowserFail(ctx, d, step, err)
 	}
 	stageBrowser(d, "已选下拉项")
-	return recordBrowserOK(d, step, data)
+	return recordBrowserOK(ctx, d, step, data)
 }
 
 type browserDragArgs struct {
@@ -234,10 +234,10 @@ func BrowserDragConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolRes
 	data, err := b.Call(ctx, "drag", args)
 	step.Provider = b.Provider()
 	if err != nil {
-		return recordBrowserFail(d, step, err)
+		return recordBrowserFail(ctx, d, step, err)
 	}
 	stageBrowser(d, "已拖拽")
-	return recordBrowserOK(d, step, data)
+	return recordBrowserOK(ctx, d, step, data)
 }
 
 
@@ -311,10 +311,10 @@ func BrowserClickConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolRe
 	data, err := b.Call(ctx, "click", args)
 	step.Provider = b.Provider()
 	if err != nil {
-		return recordBrowserFail(d, step, err)
+		return recordBrowserFail(ctx, d, step, err)
 	}
 	stageBrowser(d, "已点击")
-	return recordBrowserOK(d, step, data)
+	return recordBrowserOK(ctx, d, step, data)
 }
 
 
@@ -382,10 +382,10 @@ func BrowserKeysConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolRes
 	data, err := b.Call(ctx, "keys", args)
 	step.Provider = b.Provider()
 	if err != nil {
-		return recordBrowserFail(d, step, err)
+		return recordBrowserFail(ctx, d, step, err)
 	}
 	stageBrowser(d, "已发送按键")
-	return recordBrowserOK(d, step, data)
+	return recordBrowserOK(ctx, d, step, data)
 }
 
 
@@ -449,9 +449,9 @@ func BrowserFillConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolRes
 	data, err := b.Call(ctx, "fill", args)
 	step.Provider = b.Provider()
 	if err != nil {
-		return recordBrowserFail(d, step, err)
+		return recordBrowserFail(ctx, d, step, err)
 	}
 	stageBrowser(d, "已填表")
-	return recordBrowserOK(d, step, data)
+	return recordBrowserOK(ctx, d, step, data)
 }
 

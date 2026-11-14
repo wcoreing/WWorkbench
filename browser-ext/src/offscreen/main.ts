@@ -1,7 +1,9 @@
 import { EXT_VERSION } from '../shared/version'
 
-// 常驻页面持有 WebSocket，避免 MV3 service worker 休眠后断线
-const BRIDGE_URL = 'ws://127.0.0.1:18765/ext'
+// 常驻页面持有 WebSocket，避免 MV3 service worker 休眠后断线。
+// 构建产物中的 __WW_BRIDGE_TOKEN__ 由 Host 启动时注入真值。
+const BRIDGE_TOKEN = '__WW_BRIDGE_TOKEN__'
+const BRIDGE_URL = `ws://127.0.0.1:18765/ext?token=${encodeURIComponent(BRIDGE_TOKEN)}`
 const RECONNECT_MS = 1500
 
 let ws: WebSocket | null = null

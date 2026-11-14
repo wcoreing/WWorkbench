@@ -1091,14 +1091,16 @@ type AgentSettingsSaveDO struct {
 
 // MCPStatusDO MCP HTTP 运行时状态（给设置页展示）。
 type MCPStatusDO struct {
-	Enabled      bool   `json:"enabled"`
-	Configured   bool   `json:"configured"` // 设置里是否开启
-	Addr         string `json:"addr"`
-	ListenAddr   string `json:"listenAddr"`
-	MCPURL       string `json:"mcpUrl"`
-	WorkbenchURL string `json:"workbenchUrl"`
-	HealthURL    string `json:"healthUrl"`
-	Error        string `json:"error,omitempty"`
+	Enabled       bool   `json:"enabled"`
+	Configured    bool   `json:"configured"` // 设置里是否开启
+	Addr          string `json:"addr"`
+	ListenAddr    string `json:"listenAddr"`
+	MCPURL        string `json:"mcpUrl"`
+	WorkbenchURL  string `json:"workbenchUrl"`
+	HealthURL     string `json:"healthUrl"`
+	AuthToken     string `json:"authToken,omitempty"`     // Bearer token（本机设置页复制用）
+	CursorSnippet string `json:"cursorSnippet,omitempty"` // 可直接粘贴的 mcp.json 片段
+	Error         string `json:"error,omitempty"`
 }
 
 // MCPConfigSaveDO 保存 MCP 开关与监听地址。

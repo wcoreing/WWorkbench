@@ -12,7 +12,7 @@ The sidebar assistant can see the host and shell you are looking at — **it hel
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/wcoreing/WWorkbench)](https://github.com/wcoreing/WWorkbench/releases/latest)
 
-> Current version: **v0.54.138** (shown in the bottom-right corner of the app)
+> Current version: **v0.54.520** (shown in the bottom-right corner of the app)
 
 ### Download (unzip and run)
 
@@ -59,17 +59,19 @@ Recording scripts: [docs/demo-scripts.md](docs/demo-scripts.md).
 2. Copy the **Workbench URL** (must be `/mcp/workbench`, not `/mcp`).
 3. Add to Cursor `mcp.json`:
 
+Copy the snippet from assistant settings → MCP, or write it yourself (**real token required**; a fake token makes Cursor hang on Authenticating):
+
 ```json
 {
   "mcpServers": {
     "wworkbench": {
-      "url": "http://127.0.0.1:51021/mcp/workbench"
+      "url": "http://127.0.0.1:51021/mcp/workbench?token=<token from settings>"
     }
   }
 }
 ```
 
-Writes may return `ww_confirm` text — confirm in the **WWorkbench sidebar**. External clients do not click confirm for you.
+Dangerous writes prompt in the **WWorkbench confirm dialog**. External clients do not click confirm for you.
 
 ---
 
@@ -86,6 +88,9 @@ Writes may return `ww_confirm` text — confirm in the **WWorkbench sidebar**. E
 | **API** | HTTP requests, environments, folders, and response viewer |
 | **Logs** | Local, SSH, Docker and Compose log viewer with live follow |
 | **Assistant** | Ask / Plan / Agent modes; `@` bind hosts/DBs/containers; writes confirm. Visible mutations go to the terminal pane; headless probes are read-only |
+| **Backup** | Host health scan, before-write policies, remote crontab; three-layer data-file guard |
+| **Browser stage** | Chromium extension / Kimi executor; task ledger → Skill distill |
+| **Plugins** | Hot-updatable product UI packs (database today); Agent can edit, build, roll back |
 
 Additional:
 
@@ -93,6 +98,7 @@ Additional:
 - UI language: **English / 简体中文** (globe icon in the top bar)
 - Multi-product workspace restore; asset radar refreshes the UI after saves
 - Capability switches: disabled AI tools are refused
+- MCP / browser bridge local Bearer auth; notebook Skill protocol is workflow SSOT
 
 ---
 

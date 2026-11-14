@@ -3,32 +3,30 @@ package workbenchtools
 import (
 	"context"
 	"encoding/json"
-	"sync/atomic"
+	"strings"
 	"time"
 
 	"WWorkbench/internal/workbench"
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.12v"
-
-// agentRulesAckUntilUnix 第三方 MCP 已读规则的截止时间；内置 Agent 开跑时也会标记。
-var agentRulesAckUntilUnix atomic.Int64
+const AgentRulesVersion = "2026.11.14b"
 
 const agentRulesAckTTL = 2 * time.Hour
 
-// AgentRulesText 第三方 Agent 系统约束全文（get_agent_rules 返回；须先读再动手）。
+// AgentRulesText 第三方 Agent 系统约束全文（get_agent_rules 返回；MCP initialize 已注入摘要）。
 const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 
-## 0. 强制首步
-- 每个新会话、重启工作台后，在 shell_run / execute_sql / 容器变更 / 插件写 / 资产写 等动手操作之前，必须先调用 get_agent_rules。
-- 未读规则时，写类工具会被拒绝并提示先读本文件。
+## 0. 前馈优先（不再事后拒）
+- MCP initialize.instructions 与本文件已说明约束；**不会**因未调用 get_agent_rules 而拒绝工具。
+- get_agent_rules 可选：按 domain 复核分片（terminal/database/browser/notebook/backup/plugin/all）。
+- 内置侧栏 Agent 开跑仍会 Mark 已读，供遥测。
 
 ## 0b. 意图声明卡（intent）
-- 凡动手类工具（有命令的 shell_run、写入 SQL、容器启停删、插件写、save_*、写 HTTP 等）必须传 intent：人话说明「要干什么、影响谁/哪台机/哪个库」。
-- 确认弹窗标题与状态栏舞台优先展示 intent；get_workbench_context.intentCards 可回放近期声明。
+- 动手类请传 intent：人话说明「要干什么、影响谁/哪台机/哪个库」。
+- 缺省或占位词时系统合成「未声明意图 · …」卡片，**不阻断**；确认弹窗与舞台仍可见。
 - 浏览器/任务写操作写入**任务账本**（TaskRun；list_task_runs / get_task_run / task_record；session 对齐标签组）；同步 log.md。日志≠待办。
-- 禁止用 test/试试 等占位词；空命令仅开终端时可不填。
+- 空命令仅开终端时可不填。
 
 ## 0c. 词典与自学习闭环（先探索，再确定）
 - **任务**：人分配的目标（要办成的事；常与 Chrome 标签组 session 对齐）。不是待办列表实体名。
@@ -134,30 +132,84 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 【询问开关】舞台顶栏「询问」默认关闭；打开后逐步确认。
 - 舞台顶栏「网页 | 日志」：网页=操作面；日志=任务账本 + IDE（log.md 含思考/操作；Skill=SKILL.md）。
 - **推荐闭环**：接目标 → task_record(thought) + browser_* 探索 → 完成后 update_skill。run_skill 仅为可选捷径。
-- distill_workflow 仅草稿；正式技能以 Agent 总结后的 update_skill 为准。
+- distill_skill 仅草稿；正式技能以 Agent 总结后的 update_skill 为准。
 - 录制：source=record 写入账本；list_task_runs / get_task_run / SyncTaskRunLog→log.md。
 `
 
-// MarkAgentRulesAck 标记「已读系统规则」（内置 Agent 开跑时调用；get_agent_rules 成功时调用）。
-func MarkAgentRulesAck() {
-	agentRulesAckUntilUnix.Store(time.Now().Add(agentRulesAckTTL).Unix())
+// MarkAgentRulesAck 标记当前调用方「已读系统规则」（内置 Agent 开跑 / get_agent_rules）。
+func MarkAgentRulesAck(ctx context.Context) {
+	stateOf(ctx).markRulesAck()
 }
 
-// AgentRulesAcked 当前是否仍在已读有效期内。
-func AgentRulesAcked() bool {
-	until := agentRulesAckUntilUnix.Load()
-	return until > 0 && time.Now().Unix() <= until
+// AgentRulesAcked 当前调用方是否仍在已读有效期内。
+func AgentRulesAcked(ctx context.Context) bool {
+	return stateOf(ctx).rulesAcked()
 }
 
-// toolGetAgentRules 返回系统约束全文，并标记已读。
-func toolGetAgentRules(_ context.Context, _ *Deps, _ json.RawMessage) ToolResult {
-	MarkAgentRulesAck()
+// AgentRulesDomains 可分片领域。
+func AgentRulesDomains() []string {
+	return []string{"all", "terminal", "database", "browser", "notebook", "backup", "plugin"}
+}
+
+// AgentRulesForDomain 按领域返回约束分片（all=全文）。
+func AgentRulesForDomain(domain string) string {
+	domain = strings.ToLower(strings.TrimSpace(domain))
+	if domain == "" || domain == "all" {
+		return AgentRulesText
+	}
+	sections := map[string][]string{
+		"terminal": {"## 3. 终端与舞台", "## 9. 软写护照"},
+		"database": {"## 5. 数据库", "## 4. 数据文件三层防护", "## 4b. 统一备份策略"},
+		"browser":  {"## 10. 浏览器舞台与任务账本", "## 0c. 词典与自学习闭环"},
+		"notebook": {"## 7. 笔记本 = 底座", "## 0c. 词典与自学习闭环"},
+		"backup":   {"## 4. 数据文件三层防护", "## 4b. 统一备份策略", "## 4c. 服务发现"},
+		"plugin":   {"## 8. 插件包"},
+	}
+	heads, ok := sections[domain]
+	if !ok {
+		return AgentRulesText
+	}
+	var b strings.Builder
+	b.WriteString("WWorkbench 约束分片 domain=" + domain + "（rulesVersion=" + AgentRulesVersion + "）\n\n")
+	b.WriteString("## 0. 前馈优先\n- 本分片为摘要；完整见 get_agent_rules(domain=all)。不会因未读而拒绝工具。\n\n")
+	full := AgentRulesText
+	for _, head := range heads {
+		start := strings.Index(full, head)
+		if start < 0 {
+			continue
+		}
+		rest := full[start+len(head):]
+		endRel := strings.Index(rest, "\n## ")
+		chunk := full[start:]
+		if endRel >= 0 {
+			chunk = full[start : start+len(head)+endRel]
+		}
+		b.WriteString(strings.TrimSpace(chunk))
+		b.WriteString("\n\n")
+	}
+	return strings.TrimSpace(b.String())
+}
+
+// toolGetAgentRules 返回系统约束（可按 domain 分片），并标记已读。
+func toolGetAgentRules(ctx context.Context, _ *Deps, raw json.RawMessage) ToolResult {
+	var in struct {
+		Domain string `json:"domain"`
+	}
+	_ = json.Unmarshal(raw, &in)
+	domain := strings.TrimSpace(in.Domain)
+	if domain == "" {
+		domain = "all"
+	}
+	MarkAgentRulesAck(ctx)
 	return OKData(map[string]interface{}{
-		"ok":          true,
+		"ok":           true,
 		"rulesVersion": AgentRulesVersion,
-		"ackedFor":    agentRulesAckTTL.String(),
-		"rules":       AgentRulesText,
-		"note":        "已标记已读。写操作前请遵守上述约束；规则变更后请重新调用本工具。",
+		"domain":       domain,
+		"domains":      AgentRulesDomains(),
+		"ackedFor":     agentRulesAckTTL.String(),
+		"caller":       CallerID(ctx),
+		"rules":        AgentRulesForDomain(domain),
+		"note":         "可选复核；MCP initialize 已注入摘要。不会因未调用本工具而拒绝写操作。",
 	})
 }
 
@@ -172,7 +224,6 @@ func requiresAgentRulesAck(name string) bool {
 		workbench.CapBuildPluginPackUI,
 		workbench.CapRollbackPluginPack,
 		workbench.CapPublishAgentSkill,
-		workbench.CapUpdateAgentSkill,
 		"execute_http",
 		"start_container",
 		"stop_container",
@@ -193,8 +244,7 @@ func requiresAgentRulesAck(name string) bool {
 		workbench.CapBrowserKeys,
 		workbench.CapBrowserOpenFrame,
 		workbench.CapReplayTaskStep,
-		workbench.CapDistillWorkflow,
-		workbench.CapSaveWorkflow,
+		workbench.CapDistillSkill,
 		workbench.CapUpdateSkill,
 		workbench.CapEnableDirVersion,
 		workbench.CapPinDirVersion,
@@ -215,4 +265,3 @@ func requiresAgentRulesAck(name string) bool {
 	}
 }
 
-const errNeedAgentRules = "请先调用 get_agent_rules 阅读系统约束，再执行写/动手操作（第三方 Agent 强制）"

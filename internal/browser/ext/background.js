@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // src/shared/version.ts
-  var EXT_VERSION = "0.3.14";
+  var EXT_VERSION = "0.3.16";
   var CAPABILITIES = [
     "snapshot",
     "click",

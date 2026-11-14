@@ -35,6 +35,7 @@ function subjectLabel(subject: string): string {
   if (!s) return '—'
   if (s.startsWith('update_skill:')) return s.slice('update_skill:'.length).trim() || s
   if (s.startsWith('restore:')) return `↩ ${s.slice('restore:'.length).trim() || s}`
+  if (s.startsWith('update_skill:')) return s.slice('update_skill:'.length).trim() || s
   if (s.startsWith('save_workflow:')) return s.slice('save_workflow:'.length).trim() || s
   if (s === 'create_version' || s === 'ui_pin' || s === 'ui_create_version') return '手动创建'
   if (s.startsWith('create_version')) return s.slice('create_version'.length).replace(/^[:：]\s*/, '') || '手动创建'

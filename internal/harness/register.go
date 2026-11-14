@@ -22,6 +22,10 @@ func RegisterWorkbenchTools(gw *toolgateway.Gateway, reg *workbenchtools.Registr
 		}
 		toolName := name
 		gw.RegisterHandler(toolName, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			// Gateway 同时服务内置 Agent 与 MCP；若上层已 WithCaller 则保留，否则视为 MCP。
+			if workbenchtools.CallerID(ctx) == workbenchtools.CallerDefault {
+				ctx = workbenchtools.WithCaller(ctx, workbenchtools.CallerMCP)
+			}
 			args := req.GetArguments()
 			raw, err := json.Marshal(args)
 			if err != nil {

@@ -438,7 +438,7 @@ func (s *Service) SaveWorkflowNoteWithExtras(p model.WorkflowDO, extras Workflow
 	// 技能目录创建版本（gitignore 排除 log.md；内容未变则复用 HEAD）
 	pinMsg := strings.TrimSpace(p.Source)
 	if pinMsg == "" {
-		pinMsg = "save_workflow"
+		pinMsg = "update_skill"
 	}
 	if intent := strings.TrimSpace(p.Intent); intent != "" {
 		pinMsg = pinMsg + ": " + intent

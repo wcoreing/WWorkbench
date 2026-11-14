@@ -319,14 +319,14 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
               <>
                 <button
                   type="button"
-                  className={`wn-btn wn-btn-xs wn-btn-ghost${showHistory ? ' active' : ''}`}
+                  className={`agent-panel-text-btn${showHistory ? ' is-active' : ''}`}
                   {...pressProps(() => setShowHistory((v) => !v))}
                 >
                   {t('agent.history')}
                 </button>
                 <button
                   type="button"
-                  className="wn-btn wn-btn-xs wn-btn-ghost"
+                  className="agent-panel-text-btn"
                   {...pressProps(session.newThread)}
                   title={t('agent.newThread')}
                 >

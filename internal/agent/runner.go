@@ -11,7 +11,7 @@ import (
 	"unicode/utf8"
 
 	"WWorkbench/internal/agentcap"
-	"WWorkbench/internal/cursorbridge"
+	"WWorkbench/internal/brain"
 	"WWorkbench/internal/harness"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/notebook"
@@ -54,13 +54,9 @@ type Runner struct {
 	runs     map[string]context.CancelFunc
 	runsMu   sync.Mutex
 
-	cursorMu           sync.Mutex
-	cursorSess         *cursorbridge.Session
-	cursorActiveThread string
-	// cursorTurnCtx 本轮 turn 的 ctx；工具回调勿用 HTTP r.Context，否则回调断开会误杀整轮。
-	cursorTurnCtx context.Context
-	// cursorTurnBuf 本轮 Cursor 工具轨迹，Send 结束后按 guest 顺序落 history。
-	cursorTurnBuf []cursorHistTool
+	brainMu     sync.Mutex
+	cursorBrain *brain.CursorBrain
+	surface     *brain.ToolSurface
 }
 
 // cursorHistTool Cursor 回调缓冲：先跑工具，再按 assistant(tool_calls)+tool 落盘。
@@ -90,9 +86,9 @@ func (r *Runner) SetNotebook(nb *notebook.Service) {
 	}
 }
 
-// Close 释放 Cursor Bridge 等资源。
+// Close 释放外置大脑等资源。
 func (r *Runner) Close() {
-	r.closeCursorSession()
+	r.closeExternalBrains()
 }
 
 // Stop 停止指定线程正在进行的生成。
@@ -100,11 +96,10 @@ func (r *Runner) Stop(threadID string) bool {
 	if threadID == "" {
 		return false
 	}
-	// 尽力取消 Cursor 侧 active run，避免下次 already has active run
+	// 尽力取消外置大脑 active run，避免下次 already has active run
 	go func() {
 		apiKey := r.store.AgentAPIKey()
-		agentID := r.loadCursorAgentID(threadID)
-		if apiKey == "" || agentID == "" {
+		if apiKey == "" {
 			return
 		}
 		dataDir, err := store.DataDir()
@@ -113,12 +108,7 @@ func (r *Runner) Stop(threadID string) bool {
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 		defer cancel()
-		sess := r.ensureCursorSession(dataDir, apiKey)
-		cli, err := sess.Ensure(ctx, nil)
-		if err != nil {
-			return
-		}
-		_, _ = cli.CancelActiveRuns(ctx, agentID, apiKey)
+		_ = r.ensureCursorBrain(dataDir, apiKey).Abort(ctx, threadID)
 	}()
 	r.runsMu.Lock()
 	cancel, ok := r.runs[threadID]
@@ -302,7 +292,7 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 			})
 			continue
 		}
-		result := r.executeConfirmed(p.ToolName, p.ArgsJSON)
+		result := r.executeConfirmed(workbenchtools.WithCaller(r.appCtx, workbenchtools.CallerAgent(p.ThreadID)), p.ToolName, p.ArgsJSON)
 		st, summary := toolStatus(p.ToolName, result)
 		body, _ := json.Marshal(result)
 		rid, _, _ := r.harness.PutToolResult(p.ThreadID, taskID, p.ID, p.ToolName, string(body))
@@ -530,10 +520,13 @@ func (r *Runner) emitOfferChoices(threadID string, batch []model.AgentPendingDO)
 	r.emit("agent:done", map[string]interface{}{"threadId": threadID, "waitingChoice": true})
 }
 
-func (r *Runner) executeConfirmed(toolName, argsJSON string) workbenchtools.ToolResult {
-	res := workbenchtools.ExecuteConfirmed(r.appCtx, r.tools.Deps(), toolName, argsJSON)
+func (r *Runner) executeConfirmed(ctx context.Context, toolName, argsJSON string) workbenchtools.ToolResult {
+	if ctx == nil {
+		ctx = r.appCtx
+	}
+	res := workbenchtools.ExecuteConfirmed(ctx, r.tools.Deps(), toolName, argsJSON)
 	if res.Error != "" && strings.HasPrefix(res.Error, "未知待确认工具:") && r.harness != nil {
-		return r.harness.CallTool(r.appCtx, toolName, json.RawMessage(argsJSON))
+		return r.harness.CallTool(ctx, toolName, json.RawMessage(argsJSON))
 	}
 	return res
 }
@@ -739,8 +732,6 @@ func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool, sk
 			})
 		}
 	}()
-	// 内置 Agent 已有系统提示，视为已读规则，避免挡住 shell_run 等
-	workbenchtools.MarkAgentRulesAck()
 	th := r.ensureThread(threadID)
 	if th == nil || r.harness == nil {
 		r.emit("agent:done", map[string]interface{}{"threadId": threadID, "error": "会话或 harness 不可用"})
@@ -749,6 +740,9 @@ func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool, sk
 	settings := r.store.GetAgentSettings()
 	// DeepSeek 等也常多步工具；旧 180s 会被两条 60s SQL 顶穿并误报「已停止」。
 	ctx, cancel := context.WithTimeout(r.appCtx, 12*time.Minute)
+	ctx = workbenchtools.WithCaller(ctx, workbenchtools.CallerAgent(threadID))
+	// 内置 Agent 已有系统提示，视为已读规则（按 thread 隔离 ack）
+	workbenchtools.MarkAgentRulesAck(ctx)
 	r.runsMu.Lock()
 	if old, ok := r.runs[threadID]; ok {
 		old()
@@ -786,13 +780,7 @@ func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool, sk
 	th.mu.Unlock()
 
 	if settings.Provider == store.AgentProviderCursor {
-		r.cursorMu.Lock()
-		r.cursorActiveThread = threadID
-		r.cursorMu.Unlock()
-		r.runCursorTurn(ctx, threadID, prompt, feedforward, skipUser, mode)
-		r.cursorMu.Lock()
-		r.cursorActiveThread = ""
-		r.cursorMu.Unlock()
+		r.runExternalBrainTurn(ctx, brain.KindCursor, threadID, prompt, feedforward, skipUser, mode)
 		return
 	}
 
@@ -845,7 +833,8 @@ func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool, sk
 
 // recordTurnThought 有进行中任务时，把本轮助手推理摘要写入任务账本（kind=thought）。
 func (r *Runner) recordTurnThought(threadID string) {
-	if r == nil || r.tools == nil || r.harness == nil || !workbenchtools.HasActiveTask() {
+	ctx := workbenchtools.WithCaller(r.appCtx, workbenchtools.CallerAgent(threadID))
+	if r == nil || r.tools == nil || r.harness == nil || !workbenchtools.HasActiveTask(ctx) {
 		return
 	}
 	d := r.tools.Deps()
@@ -864,7 +853,7 @@ func (r *Runner) recordTurnThought(threadID string) {
 		if content == "" {
 			return
 		}
-		workbenchtools.RecordAgentThought(d, content)
+		workbenchtools.RecordAgentThought(ctx, d, content)
 		return
 	}
 }
@@ -1044,7 +1033,7 @@ func (r *Runner) systemPrompt(mode string) string {
 8. 巡检/报告：收集数据后可用 notebook_append_content 存档。当前打开的笔记常是无关草稿，禁止把前馈 noteId 当成默认写入目标；list_notes 按标题定位或新建明确 title，再 appendToNoteId。禁止把工作流正文、报表模板占位、ECharts option 模板原样 append 进笔记本；只写入填好真实数字与合法 echarts JSON 的报告。执行报表类工作流时优先**新建**笔记（标题含日期），勿向已关联 wwb-skill 的来源笔记追加草稿。
 8b. 读笔记：正文在工作台库里。list_notes 浏览，search_notes(query) 按标题/正文搜，get_note(noteId) 取全文。用户说「这篇」才用前馈 noteId 去读。禁止 cat 文件路径，禁止用 recall_resource 当笔记（那是工具结果 resource#N）。
 8c. 记忆区：前馈或 get_workbench_context.memoryNotes 列出与当前 SSH/库绑定的 role=memory 笔记。动手改机/改库前先 get_note 读匹配记忆；新坑用 notebook_append_content 或新建记忆笔记（role: memory + 关联主机/连接）。
-8d. 浏览器工作流=Agent Skill：get_skill 读前置提示后自己用 browser_* 完成目标；distill_workflow 只出草稿；**跑通/踩坑后必须 update_skill** 写回 lessons、优化 steps、script、resourcePaths（写盘自动创建版本；list_skill_versions / restore_skill_version）。run_skill 仅为可选机械捷径。产品名统一叫工作流；笔记 role=skill。
+8d. Skill（人话可叫工作流）：对外只认 list_skills / get_skill / update_skill / run_skill / distill_skill。get_skill 后用 browser_* 完成目标；distill_skill 只出草稿；**跑通/踩坑后必须 update_skill**。run_skill 仅为可选机械捷径。笔记 role=skill / SKILL.md。
 9. Docker：远端先 save_docker_context(sshHostId)，再 list_containers；变更用 start/stop/remove_container；日志：新源先 save_log_source，再用 fetch_logs(logSourceId) 或 get_container_logs。本轮已绑定 SSH 时，远程 Docker 优先用该 hostId；若用户意图是本地或其它机器，再确认。
 9b. 工作台是资产容器——凡要可复现的配置必须落盘：HTTP→save_http_request + save_http_environment；SSH→save_ssh_host / save_ssh_forward；数据库→save_connection；日志→save_log_source；Docker→save_docker_context。禁止只临时候参数打完就结束；笔记本是报告旁路，主资产在各产品树。
 10. 本轮工具返回已在上下文中，直接基于其内容作答；不要为本轮结果调用 recall_resource。跨轮或历史被挤出窗口后，用 recall_resource（resource#N / resource_id）取回全文；可用 search_session / get_task_summary 定位。

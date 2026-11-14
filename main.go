@@ -81,6 +81,11 @@ func main() {
 		if listenErr != nil {
 			log.Printf("mcp: early listen: %v", listenErr)
 		} else {
+			if tok, tokErr := st.MCPAuthToken(); tokErr != nil {
+				log.Printf("mcp: auth token: %v", tokErr)
+			} else {
+				ep.SetAuthToken(tok)
+			}
 			api.AttachMCP(ep)
 		}
 	}

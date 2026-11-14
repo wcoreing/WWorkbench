@@ -1,10 +1,9 @@
 package workbenchtools
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
-	"sync"
-	"time"
 	"unicode/utf8"
 
 	"WWorkbench/internal/workbench"
@@ -27,11 +26,6 @@ type IntentCard struct {
 	Approved *bool  `json:"approved,omitempty"` // nil=仅声明/未拍板；确认后写入
 }
 
-var (
-	intentLogMu sync.Mutex
-	intentLog   []IntentCard
-)
-
 // extractIntent 从工具参数读取 intent。
 func extractIntent(raw json.RawMessage) string {
 	if len(raw) == 0 {
@@ -46,7 +40,7 @@ func extractIntent(raw json.RawMessage) string {
 	return strings.TrimSpace(in.Intent)
 }
 
-// validateIntent 校验意图声明质量；返回空表示通过。
+// validateIntent 校验意图声明质量；返回空表示通过（调用方缺省时改合成，不拒绝）。
 func validateIntent(intent string) string {
 	intent = strings.TrimSpace(intent)
 	if intent == "" {
@@ -62,6 +56,48 @@ func validateIntent(intent string) string {
 		}
 	}
 	return ""
+}
+
+// synthesizeIntent 缺省 intent 时从参数合成可见摘要（前馈，不阻断）。
+func synthesizeIntent(name string, args json.RawMessage) string {
+	var m map[string]interface{}
+	_ = json.Unmarshal(args, &m)
+	pick := func(keys ...string) string {
+		for _, k := range keys {
+			if v, ok := m[k]; ok {
+				s := strings.TrimSpace(fmtString(v))
+				if s != "" {
+					return truncateRunes(s, 48)
+				}
+			}
+		}
+		return ""
+	}
+	if s := pick("initialCommand", "command", "sql", "url", "path", "title", "summary"); s != "" {
+		return "未声明意图 · " + s
+	}
+	if name == "" {
+		return "未声明意图"
+	}
+	return "未声明意图 · " + name
+}
+
+// injectIntentArg 把合成/规范化后的 intent 写回参数 JSON（供确认预览与下游）。
+func injectIntentArg(raw json.RawMessage, intent string) json.RawMessage {
+	intent = strings.TrimSpace(intent)
+	if intent == "" {
+		return raw
+	}
+	var m map[string]interface{}
+	if len(raw) == 0 || json.Unmarshal(raw, &m) != nil || m == nil {
+		m = map[string]interface{}{}
+	}
+	m["intent"] = intent
+	b, err := json.Marshal(m)
+	if err != nil {
+		return raw
+	}
+	return b
 }
 
 // requiresIntent 是否必须带意图声明（只读 SQL / 空命令开终端除外）。
@@ -113,7 +149,7 @@ func requiresIntent(name string, args json.RawMessage) bool {
 func intentProp() map[string]interface{} {
 	return map[string]interface{}{
 		"type":        "string",
-		"description": "意图声明（动手必填）：人话说明要干什么、影响谁/哪台机/哪个库。确认弹窗标题与舞台回放会展示。",
+		"description": "意图声明（动手建议填写）：人话说明要干什么、影响谁。缺省时系统合成「未声明意图」卡片，不阻断。",
 	}
 }
 
@@ -126,7 +162,7 @@ func executorProp() map[string]interface{} {
 }
 
 // enrichConfirmWithIntent 确认预览植入意图，标题优先用人话意图。
-func enrichConfirmWithIntent(toolName string, args json.RawMessage, res ToolResult) ToolResult {
+func enrichConfirmWithIntent(ctx context.Context, toolName string, args json.RawMessage, res ToolResult) ToolResult {
 	intent := extractIntent(args)
 	if intent == "" || !res.NeedsConfirm {
 		return res
@@ -144,7 +180,7 @@ func enrichConfirmWithIntent(toolName string, args json.RawMessage, res ToolResu
 		res.Data = raw
 	}
 	res.ConfirmSummary = truncateRunes(intent, intentTitleMaxRune)
-	RecordIntentCard(IntentCard{
+	RecordIntentCard(ctx, IntentCard{
 		Tool:    toolName,
 		Intent:  intent,
 		Risk:    stringFromPreview(preview, "risk"),
@@ -173,57 +209,19 @@ func fmtString(v interface{}) string {
 	}
 }
 
-// RecordIntentCard 写入舞台回放环（最新在前）。
-func RecordIntentCard(c IntentCard) {
-	c.Intent = strings.TrimSpace(c.Intent)
-	if c.Intent == "" {
-		return
-	}
-	if c.At == 0 {
-		c.At = time.Now().Unix()
-	}
-	intentLogMu.Lock()
-	defer intentLogMu.Unlock()
-	intentLog = append([]IntentCard{c}, intentLog...)
-	if len(intentLog) > intentMaxStore {
-		intentLog = intentLog[:intentMaxStore]
-	}
+// RecordIntentCard 写入当前调用方的舞台回放环（最新在前）。
+func RecordIntentCard(ctx context.Context, c IntentCard) {
+	stateOf(ctx).recordIntent(c)
 }
 
 // MarkLatestIntentApproved 将最近一张同 tool+intent 的卡片标为通过/拒绝。
-func MarkLatestIntentApproved(toolName, intent string, approved bool) {
-	toolName = strings.TrimSpace(toolName)
-	intent = strings.TrimSpace(intent)
-	if intent == "" {
-		return
-	}
-	intentLogMu.Lock()
-	defer intentLogMu.Unlock()
-	for i := range intentLog {
-		if intentLog[i].Approved != nil {
-			continue
-		}
-		if intentLog[i].Intent == intent && (toolName == "" || intentLog[i].Tool == toolName) {
-			v := approved
-			intentLog[i].Approved = &v
-			return
-		}
-	}
+func MarkLatestIntentApproved(ctx context.Context, toolName, intent string, approved bool) {
+	stateOf(ctx).markIntentApproved(toolName, intent, approved)
 }
 
-// ListIntentCards 回放用副本。
-func ListIntentCards(limit int) []IntentCard {
-	if limit <= 0 {
-		limit = 20
-	}
-	intentLogMu.Lock()
-	defer intentLogMu.Unlock()
-	if limit > len(intentLog) {
-		limit = len(intentLog)
-	}
-	out := make([]IntentCard, limit)
-	copy(out, intentLog[:limit])
-	return out
+// ListIntentCards 当前调用方回放用副本。
+func ListIntentCards(ctx context.Context, limit int) []IntentCard {
+	return stateOf(ctx).listIntents(limit)
 }
 
 func truncateRunes(s string, max int) string {

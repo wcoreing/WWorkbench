@@ -798,6 +798,10 @@ export function ReadSFTPText(arg1, arg2) {
   return window['go']['app']['Service']['ReadSFTPText'](arg1, arg2);
 }
 
+export function ReloadBrowserExtension() {
+  return window['go']['app']['Service']['ReloadBrowserExtension']();
+}
+
 export function RemoveContainer(arg1, arg2) {
   return window['go']['app']['Service']['RemoveContainer'](arg1, arg2);
 }

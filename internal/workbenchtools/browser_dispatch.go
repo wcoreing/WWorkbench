@@ -26,7 +26,7 @@ func browserCall(ctx context.Context, d *Deps, session, executorHint, action str
 	}
 	session = strings.TrimSpace(session)
 	if session == "" {
-		session = CurrentTaskSession()
+		session = CurrentTaskSession(ctx)
 	}
 	data, err := ex.Call(ctx, action, argsRaw, session)
 	return data, provider, err

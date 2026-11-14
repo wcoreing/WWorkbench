@@ -55,10 +55,8 @@ func ExecuteConfirmed(ctx context.Context, d *Deps, toolName, argsJSON string) T
 		return BrowserOpenFrameConfirmed(ctx, d, argsJSON)
 	case workbench.CapReplayTaskStep:
 		return ReplayTaskStepConfirmed(ctx, d, argsJSON)
-	case workbench.CapDistillWorkflow:
-		return DistillWorkflowConfirmed(ctx, d, argsJSON)
-	case workbench.CapSaveWorkflow:
-		return SaveWorkflowConfirmed(ctx, d, argsJSON)
+	case workbench.CapDistillSkill:
+		return DistillSkillConfirmed(ctx, d, argsJSON)
 	case workbench.CapUpdateSkill:
 		return UpdateSkillConfirmed(ctx, d, argsJSON)
 	case workbench.CapRestoreDirVersion:
@@ -112,7 +110,7 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 	intent := extractIntent(args)
 
 	if browserStepConfirmTool(toolName) && !browserAskConfirmEnabled(d) {
-		MarkLatestIntentApproved(toolName, intent, true)
+		MarkLatestIntentApproved(ctx, toolName, intent, true)
 		return ExecuteConfirmed(ctx, d, toolName, string(args))
 	}
 
@@ -129,7 +127,7 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 	if err != nil {
 		return Fail(err.Error())
 	}
-	MarkLatestIntentApproved(toolName, intent, approved)
+	MarkLatestIntentApproved(ctx, toolName, intent, approved)
 	if !approved {
 		return Fail("用户已在工作台拒绝：" + res.ConfirmSummary)
 	}

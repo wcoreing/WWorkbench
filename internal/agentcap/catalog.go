@@ -464,28 +464,13 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
-			Name: "distill_workflow", Label: "生成工作流", Risk: RiskWrite,
-			Description:    "从日志蒸馏工作流笔记（说明/步骤/脚本/资源；可 dropSeqs）",
-			DefaultEnabled: true,
-		},
-		{
-			Name: "list_workflows", Label: "列出工作流", Risk: RiskRead,
-			Description:    "含步骤的工作流笔记 + 内置 cms_new_article",
-			DefaultEnabled: true,
-		},
-		{
-			Name: "get_workflow", Label: "工作流详情", Risk: RiskRead,
-			Description:    "读取工作流步骤 locator/args",
-			DefaultEnabled: true,
-		},
-		{
-			Name: "save_workflow", Label: "保存工作流步骤", Risk: RiskWrite,
-			Description:    "覆盖保存工作流笔记步骤（编辑后写回）",
+			Name: "distill_skill", Label: "蒸馏 Skill 草稿", Risk: RiskWrite,
+			Description:    "从任务账本蒸馏 SKILL.md 草稿（说明/步骤/脚本/资源；可 dropSeqs）",
 			DefaultEnabled: true,
 		},
 		{
 			Name: "update_skill", Label: "沉淀更新 Skill", Risk: RiskWrite,
-			Description:    "把经验/优化步骤/脚本/资源写回工作流笔记；跑通或踩坑后应调用",
+			Description:    "把经验/优化步骤/脚本/资源写回 SKILL.md；跑通或踩坑后应调用",
 			DefaultEnabled: true,
 		},
 		{
@@ -539,14 +524,9 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
-			Name: "publish_agent_skill", Label: "标为工作流", Risk: RiskWrite,
-			Description:    "笔记标 role=skill；真源仅笔记本 工作流/{name}/；优先传 noteId",
+			Name: "publish_agent_skill", Label: "标为 Skill", Risk: RiskWrite,
+			Description:    "笔记标 role=skill；真源仅笔记本 SKILL.md 目录；优先传 noteId",
 			DefaultEnabled: true,
-		},
-		{
-			Name: "update_agent_skill", Label: "更新工作流投影（已废弃）", Risk: RiskWrite,
-			Description:    "已废弃 system/skills 投影；请用 update_skill 写笔记本",
-			DefaultEnabled: false,
 		},
 		{
 			Name: "offer_choices", Label: "向用户提问选项", Risk: RiskRead,

@@ -1,6 +1,7 @@
 package workbenchtools
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -9,13 +10,13 @@ import (
 
 func TestValidateAndRequiresIntent(t *testing.T) {
 	if validateIntent("") == "" {
-		t.Fatal("empty intent should fail")
+		t.Fatal("empty intent should fail quality check")
 	}
 	if validateIntent("测") == "" {
-		t.Fatal("too short should fail")
+		t.Fatal("too short should fail quality check")
 	}
 	if validateIntent("test") == "" {
-		t.Fatal("placeholder should fail")
+		t.Fatal("placeholder should fail quality check")
 	}
 	if validateIntent("同步代码到韦宁服务器，不碰 data 库") != "" {
 		t.Fatal("good intent should pass")
@@ -37,16 +38,26 @@ func TestValidateAndRequiresIntent(t *testing.T) {
 	if !requiresIntent(workbench.CapExecuteSQL, wrSQL) {
 		t.Fatal("write sql needs intent")
 	}
+
+	syn := synthesizeIntent(workbench.CapShellRun, []byte(`{"initialCommand":"rsync -av a/ b/"}`))
+	if syn == "" || syn[:len("未声明意图")] != "未声明意图" {
+		t.Fatalf("synthesize=%q", syn)
+	}
+	injected := injectIntentArg([]byte(`{"initialCommand":"ls"}`), "未声明意图 · ls")
+	var m map[string]interface{}
+	_ = json.Unmarshal(injected, &m)
+	if m["intent"] != "未声明意图 · ls" {
+		t.Fatalf("inject=%v", m)
+	}
 }
 
 func TestEnrichConfirmWithIntent(t *testing.T) {
-	intentLogMu.Lock()
-	intentLog = nil
-	intentLogMu.Unlock()
+	resetCallerStateForTest(CallerDefault)
+	ctx := context.Background()
 
 	args, _ := json.Marshal(map[string]string{"intent": "备份后发布前端", "initialCommand": "rsync -av a/ b/"})
 	res := Confirm("p1", "终端注入：同步未排除", map[string]interface{}{"risk": "同步未排除数据文件"})
-	out := enrichConfirmWithIntent(workbench.CapShellRun, args, res)
+	out := enrichConfirmWithIntent(ctx, workbench.CapShellRun, args, res)
 	if out.ConfirmSummary != "备份后发布前端" {
 		t.Fatalf("summary=%q", out.ConfirmSummary)
 	}
@@ -55,12 +66,12 @@ func TestEnrichConfirmWithIntent(t *testing.T) {
 	if preview["intent"] != "备份后发布前端" {
 		t.Fatalf("preview=%v", preview)
 	}
-	cards := ListIntentCards(5)
+	cards := ListIntentCards(ctx, 5)
 	if len(cards) == 0 || cards[0].Intent != "备份后发布前端" {
 		t.Fatalf("cards=%v", cards)
 	}
-	MarkLatestIntentApproved(workbench.CapShellRun, "备份后发布前端", true)
-	cards = ListIntentCards(1)
+	MarkLatestIntentApproved(ctx, workbench.CapShellRun, "备份后发布前端", true)
+	cards = ListIntentCards(ctx, 1)
 	if cards[0].Approved == nil || !*cards[0].Approved {
 		t.Fatal("should mark approved")
 	}

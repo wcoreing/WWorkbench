@@ -306,28 +306,13 @@ export function TerminalPane({ sessionId, hostId = '', active, focused = false, 
     if (focused) setActiveTerminalTailSession(sessionId)
   }, [focused, sessionId])
 
-  /** 右键打开时：探测 cwd 累计使用，并刷新常用路径菜单。 */
+  /** 右键打开：只读本地常用路径缓存，不注入 cwd 探测（避免刷屏 printf WWCWD…）。 */
   useEffect(() => {
     if (!ctxMenu) return
     let cancelled = false
     void (async () => {
       try {
-        let hostKey = hostKeyRef.current
-        let cwdPath = ''
-        try {
-          const probed = await api.probeTerminalCwd(sessionIdRef.current)
-          if (probed.hostKey) hostKey = frequentPathsHostKey(probed.hostKey)
-          cwdPath = (probed.path || '').trim()
-        } catch {
-          /* 探测失败仍展示已有常用路径 */
-        }
-        hostKeyRef.current = hostKey
-        let list: FrequentPathEntry[]
-        if (cwdPath.startsWith('/')) {
-          list = await touchFrequentPath(hostKey, cwdPath)
-        } else {
-          list = await loadFrequentPaths(hostKey)
-        }
+        const list = await loadFrequentPaths(hostKeyRef.current)
         if (!cancelled) setFrequentPaths(topFrequentPaths(list))
       } catch {
         if (!cancelled) setFrequentPaths([])
@@ -395,6 +380,13 @@ export function TerminalPane({ sessionId, hostId = '', active, focused = false, 
       try {
         setStatusMessage(t('terminal.mcpWriteGranting'))
         const allow = await api.grantMCPWriteDir(sessionIdRef.current)
+        const path = (allow.path || '').trim()
+        if (path.startsWith('/')) {
+          const hk = frequentPathsHostKey(allow.hostKey || hostKeyRef.current)
+          hostKeyRef.current = hk
+          const list = await touchFrequentPath(hk, path)
+          setFrequentPaths(topFrequentPaths(list))
+        }
         setStatusMessage(t('terminal.mcpWriteGranted', { path: allow.path }))
       } catch (e) {
         setStatusMessage((e as Error).message)
@@ -459,6 +451,8 @@ export function TerminalPane({ sessionId, hostId = '', active, focused = false, 
           setStatusMessage(t('terminal.backupNeedPath'))
           return
         }
+        const list = await touchFrequentPath(hostKeyRef.current, path)
+        setFrequentPaths(topFrequentPaths(list))
         const base = path.split('/').filter(Boolean).pop() || path
         const kind = base.toLowerCase().endsWith('.db') ? 'sqlite' : 'files'
         openBackup(

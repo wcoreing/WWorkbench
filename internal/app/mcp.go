@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"WWorkbench/internal/mcpserver"
@@ -15,6 +16,11 @@ import (
 func (s *Service) applyMCPFromSettings() error {
 	wantOn := s.store.MCPEnabled()
 	wantAddr := store.ResolveMCPListenAddr(s.store.MCPAddr())
+	token, tokErr := s.store.MCPAuthToken()
+	if tokErr != nil {
+		s.mcpLastErr = tokErr.Error()
+		return tokErr
+	}
 
 	s.mcpMu.Lock()
 	defer s.mcpMu.Unlock()
@@ -32,15 +38,16 @@ func (s *Service) applyMCPFromSettings() error {
 		s.mcpLastErr = "tool gateway 未就绪"
 		return fmt.Errorf("%s", s.mcpLastErr)
 	}
-	h, err := mcpserver.NewHandler(gw, s.toolsRegistry)
+	h, err := mcpserver.NewHandler(gw, s.toolsRegistry, token)
 	if err != nil {
 		s.mcpLastErr = err.Error()
 		return err
 	}
 	if s.mcpHTTP != nil && s.mcpHTTP.ListenAddr() == wantAddr {
+		s.mcpHTTP.SetAuthToken(token)
 		s.mcpHTTP.SetHandler(h)
 		s.mcpLastErr = ""
-		log.Printf("mcp: workbench %s", s.mcpHTTP.WorkbenchEndpointURL())
+		log.Printf("mcp: workbench %s (bearer auth)", s.mcpHTTP.WorkbenchEndpointURL())
 		return nil
 	}
 	if err := s.stopMCPLocked(); err != nil {
@@ -51,10 +58,11 @@ func (s *Service) applyMCPFromSettings() error {
 		s.mcpLastErr = err.Error()
 		return err
 	}
+	ep.SetAuthToken(token)
 	ep.SetHandler(h)
 	s.mcpHTTP = ep
 	s.mcpLastErr = ""
-	log.Printf("mcp: workbench %s", ep.WorkbenchEndpointURL())
+	log.Printf("mcp: workbench %s (bearer auth)", ep.WorkbenchEndpointURL())
 	return nil
 }
 
@@ -62,6 +70,9 @@ func (s *Service) applyMCPFromSettings() error {
 func (s *Service) AttachMCP(ep *mcpserver.Endpoint) {
 	if s == nil || ep == nil {
 		return
+	}
+	if tok, err := s.store.MCPAuthToken(); err == nil {
+		ep.SetAuthToken(tok)
 	}
 	s.mcpMu.Lock()
 	s.mcpHTTP = ep
@@ -79,6 +90,24 @@ func (s *Service) stopMCPLocked() error {
 	return err
 }
 
+// mcpCursorSnippet 生成可粘贴的 Cursor mcp.json 片段（本机优先 ?token=，避免触发 OAuth Authenticating）。
+func mcpCursorSnippet(workbenchURL, token string) string {
+	if workbenchURL == "" || token == "" {
+		return ""
+	}
+	sep := "?"
+	if strings.Contains(workbenchURL, "?") {
+		sep = "&"
+	}
+	return fmt.Sprintf(`{
+  "mcpServers": {
+    "wworkbench": {
+      "url": %q
+    }
+  }
+}`, workbenchURL+sep+"token="+token)
+}
+
 // GetMCPStatus 返回 MCP HTTP 状态。
 func (s *Service) GetMCPStatus() ApiResult[model.MCPStatusDO] {
 	configured := s.store.MCPEnabled()
@@ -86,6 +115,9 @@ func (s *Service) GetMCPStatus() ApiResult[model.MCPStatusDO] {
 	st := model.MCPStatusDO{
 		Configured: configured,
 		Addr:       addr,
+	}
+	if tok, err := s.store.MCPAuthToken(); err == nil {
+		st.AuthToken = tok
 	}
 	s.mcpMu.Lock()
 	defer s.mcpMu.Unlock()
@@ -99,7 +131,11 @@ func (s *Service) GetMCPStatus() ApiResult[model.MCPStatusDO] {
 	} else {
 		st.Enabled = false
 		st.ListenAddr = store.ResolveMCPListenAddr(addr)
+		st.WorkbenchURL = "http://" + st.ListenAddr + "/mcp/workbench"
+		st.MCPURL = "http://" + st.ListenAddr + "/mcp"
+		st.HealthURL = "http://" + st.ListenAddr + "/health"
 	}
+	st.CursorSnippet = mcpCursorSnippet(st.WorkbenchURL, st.AuthToken)
 	return OkResult(st)
 }
 

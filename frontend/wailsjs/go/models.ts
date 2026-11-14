@@ -5788,6 +5788,8 @@ export namespace model {
 	    mcpUrl: string;
 	    workbenchUrl: string;
 	    healthUrl: string;
+	    authToken?: string;
+	    cursorSnippet?: string;
 	    error?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -5803,6 +5805,8 @@ export namespace model {
 	        this.mcpUrl = source["mcpUrl"];
 	        this.workbenchUrl = source["workbenchUrl"];
 	        this.healthUrl = source["healthUrl"];
+	        this.authToken = source["authToken"];
+	        this.cursorSnippet = source["cursorSnippet"];
 	        this.error = source["error"];
 	    }
 	}

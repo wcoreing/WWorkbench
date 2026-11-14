@@ -91,6 +91,12 @@ func toolListSkills(_ context.Context, d *Deps, raw json.RawMessage) ToolResult 
 		}
 		appendItem(id, n.Title, desc, n.ID, hasSteps)
 	}
+	if _, ok := seen["cms_new_article"]; !ok {
+		out = append(out, item{
+			ID: "cms_new_article", Name: "后台新增方案",
+			Description: "内置：find(新增)→click→wait(保存)", Source: "builtin", HasSteps: true,
+		})
+	}
 
 	b, _ := json.Marshal(map[string]any{"ok": true, "skills": out, "total": len(out), "ssot": "notebook"})
 	return OKData(string(b))
@@ -113,6 +119,14 @@ func toolGetSkill(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	}
 	if key == "" {
 		return Fail("请提供 skill（id 或 name）")
+	}
+	if key == "cms_new_article" {
+		return OKData(map[string]interface{}{
+			"ok": true, "id": "cms_new_article", "name": "后台新增方案",
+			"source": "builtin", "hasSteps": true,
+			"content": "内置 Skill：find(新增) → click → wait(保存) → optional fill(title) → snapshot。用 run_skill(name=cms_new_article) 或自行 browser_*。",
+			"run":     map[string]any{"tool": "run_skill", "name": "cms_new_article"},
+		})
 	}
 	if d == nil || d.Notebook == nil {
 		return Fail("笔记本未就绪")

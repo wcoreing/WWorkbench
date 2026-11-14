@@ -131,9 +131,11 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 			out["terminalHostId"] = recent.HostID
 		}
 	}
-	if cards := ListIntentCards(20); len(cards) > 0 {
+	if cards := ListIntentCards(ctx, 20); len(cards) > 0 {
 		out["intentCards"] = cards
 	}
+	out["caller"] = CallerID(ctx)
+	out["taskSession"] = CurrentTaskSession(ctx)
 	if d.Store != nil {
 		if pols, err := d.Store.ListBackupPolicies(); err == nil && len(pols) > 0 {
 			out["backupPolicies"] = pols
@@ -145,8 +147,8 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 			out["taskRuns"] = taskRuns
 		}
 		if d.Notebook != nil {
-			if workflows := d.Notebook.ListWorkflowsSSOT(10); len(workflows) > 0 {
-				out["workflows"] = workflows
+			if skills := d.Notebook.ListWorkflowsSSOT(10); len(skills) > 0 {
+				out["skills"] = skills
 			}
 		}
 		hosts := notebook.ContextHostIDs(snap)

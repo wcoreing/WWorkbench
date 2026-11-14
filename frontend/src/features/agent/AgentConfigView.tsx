@@ -257,6 +257,31 @@ export function AgentConfigView({
               {copied === 'wb' ? t('agent.mcpCopied') : t('common.copy')}
             </button>
           </div>
+          {mcpStatus.cursorSnippet && (
+            <div className="agent-mcp-url-row">
+              <span className="agent-mcp-url-label">{t('agent.mcpCursorSnippet')}</span>
+              <button
+                type="button"
+                className="wn-btn wn-btn-xs wn-btn-ghost"
+                onClick={() => void onCopy('snippet', mcpStatus.cursorSnippet || '')}
+              >
+                {copied === 'snippet' ? t('agent.mcpCopied') : t('agent.mcpCopySnippet')}
+              </button>
+            </div>
+          )}
+          {mcpStatus.authToken && (
+            <div className="agent-mcp-url-row">
+              <span className="agent-mcp-url-label">{t('agent.mcpAuthToken')}</span>
+              <code className="agent-mcp-url">{mcpStatus.authToken}</code>
+              <button
+                type="button"
+                className="wn-btn wn-btn-xs wn-btn-ghost"
+                onClick={() => void onCopy('tok', mcpStatus.authToken || '')}
+              >
+                {copied === 'tok' ? t('agent.mcpCopied') : t('common.copy')}
+              </button>
+            </div>
+          )}
           {mcpStatus.mcpUrl && (
             <div className="agent-mcp-url-row">
               <span className="agent-mcp-url-label">{t('agent.mcpCoreUrl')}</span>

@@ -99,27 +99,3 @@ func toolPublishAgentSkill(ctx context.Context, d *Deps, raw json.RawMessage) To
 	b, _ := json.Marshal(out)
 	return OKData(string(b))
 }
-
-type updateAgentSkillArgs struct {
-	ID            string   `json:"id"`
-	Content       string   `json:"content"`
-	Name          string   `json:"name"`
-	Description   string   `json:"description"`
-	UpdateContent *bool    `json:"updateContent"`
-	UpdateGlobs   bool     `json:"updateGlobs"`
-	Globs         []string `json:"globs"`
-}
-
-// toolUpdateAgentSkill 已废弃磁盘投影；请用 update_skill 写笔记本工作流。
-func toolUpdateAgentSkill(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	_ = d
-	var in updateAgentSkillArgs
-	if err := json.Unmarshal(raw, &in); err != nil {
-		return Fail("参数无效")
-	}
-	id := strings.TrimSpace(in.ID)
-	if id == "" {
-		return Fail("请提供 id")
-	}
-	return Fail("已取消 system/skills 投影。请用 update_skill(name=\"" + id + "\", …) 或直接改笔记本 工作流/" + id + "/SKILL.md")
-}

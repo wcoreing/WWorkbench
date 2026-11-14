@@ -639,6 +639,18 @@ export function BrowserWorkbench() {
 
   const openExtManage = async () => {
     try {
+      // 已连接：经桥热重载，对齐磁盘版本；失败再打开扩展页
+      if (status?.extensionConnected) {
+        try {
+          const r = await api.reloadBrowserExtension()
+          setStatusMessage(r.hint || t('browser.reloadingExt'))
+          pushLog(t('browser.logReloadExt'))
+          window.setTimeout(() => void refreshStatus(), 1500)
+          return
+        } catch {
+          /* fall through */
+        }
+      }
       const r = await api.openChromeExtensionsPage()
       setStatusMessage(r.hint || t('browser.reloadExtHint'))
       pushLog(t('browser.logOpenExtManage'))
@@ -926,12 +938,26 @@ export function BrowserWorkbench() {
         <section className="browser-install">
           <div className="browser-install-copy">
             <strong>{t('browser.installTitle')}</strong>
-            <span>{t('browser.installShort')}</span>
+            <span>
+              {status?.listening
+                ? t('browser.installReloadHint')
+                : t('browser.installShort')}
+            </span>
+            {!!status?.lastError && (
+              <span className="browser-install-err">{status.lastError}</span>
+            )}
           </div>
-          <code className="browser-ext-path">{status?.extDir || '—'}</code>
-          <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" {...pressProps(() => void revealExt())}>
-            {t('browser.openExtDir')}
-          </button>
+          <code className="browser-ext-path" title={status?.extDir || ''}>
+            {status?.extDir || '—'}
+          </code>
+          <div className="browser-install-actions">
+            <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" {...pressProps(() => void openExtManage())}>
+              {t('browser.openExtPage')}
+            </button>
+            <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" {...pressProps(() => void revealExt())}>
+              {t('browser.openExtDir')}
+            </button>
+          </div>
         </section>
       )}
 

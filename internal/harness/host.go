@@ -12,7 +12,7 @@ import (
 	"github.com/wcoreing/ningharness/defaults"
 	"github.com/wcoreing/ningharness/guest"
 	guestmodel "github.com/wcoreing/ningharness/guest/model"
-	"github.com/wcoreing/ningharness/lifecycle"
+	"github.com/wcoreing/ningharness/learning"
 	"github.com/wcoreing/ningharness/memory"
 	"github.com/wcoreing/ningharness/resource"
 	"github.com/wcoreing/ningharness/toolgateway"
@@ -51,42 +51,9 @@ func Open(appDataDir string, prepare func(*toolgateway.Gateway)) (*Host, error) 
 		_ = rt.Close()
 		return nil, fmt.Errorf("skills: %w", err)
 	}
-	// Lesson 前馈 + 回合 JSONL 沉淀（默认 NewLesson 的 Ingest 是 no-op）
-	rt.SetMemory(memory.NewLessonWithFileIngest())
-	lc := lifecycle.NewDefault(rt)
-	// Guest 已写 assistant；此处 Ingest + 工具失败晋升 project lesson
-	_ = lc.Replace(lifecycle.StepPersistTurn, func(ctx context.Context, st *lifecycle.RunState) error {
-		if st == nil {
-			return nil
-		}
-		reply := strings.TrimSpace(st.Reply)
-		toolErrs := memory.ToolErrorsFromValues(st.Values)
-		notes := memory.NotesFromToolErrors(toolErrs)
-		if reply == "" && notes == "" {
-			return nil
-		}
-		root := st.Root
-		if root == "" {
-			root = rt.Root()
-		}
-		if ing, ok := rt.Memory.(memory.Ingester); ok && ing != nil {
-			if err := ing.Ingest(ctx, memory.IngestInput{
-				Root:        root,
-				SessionKey:  st.SessionKey,
-				TaskID:      st.TaskID,
-				Prompt:      st.Prompt,
-				Reply:       reply,
-				Feedforward: st.Feedforward,
-				SkillIDs:    memory.SkillIDsFromValues(st.Values),
-				Notes:       notes,
-			}); err != nil {
-				return err
-			}
-		}
-		promoteToolErrorsToLessons(root, st.SessionKey, st.TaskID, toolErrs)
-		return nil
-	})
-	rt.SetLifecycle(lc)
+	// Recall=Lesson(MD)；Learn=默认 Candidate+NoopPolicy（成败策略后接 Policy）
+	rt.SetMemory(memory.NewLesson())
+	rt.SetLearner(learning.NewDefault())
 	return &Host{RT: rt, Root: dir, Stream: true}, nil
 }
 

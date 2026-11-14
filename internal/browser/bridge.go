@@ -51,6 +51,7 @@ type Bridge struct {
 	mu           sync.Mutex
 	addr         string
 	extDir       string
+	authToken    string
 	ln           net.Listener
 	srv          *http.Server
 	conn         *websocket.Conn
@@ -89,6 +90,42 @@ func NewBridge(addr, extDir string) *Bridge {
 		extDir:  extDir,
 		pending: make(map[string]chan callResult),
 	}
+}
+
+// SetAuthToken 设置 WS/HTTP 鉴权 token（扩展用 ?token=，HTTP 用 Bearer）。
+func (b *Bridge) SetAuthToken(token string) {
+	if b == nil {
+		return
+	}
+	b.mu.Lock()
+	b.authToken = strings.TrimSpace(token)
+	b.mu.Unlock()
+}
+
+func (b *Bridge) tokenLocked() string {
+	return b.authToken
+}
+
+func (b *Bridge) checkAuth(r *http.Request) bool {
+	expect := strings.TrimSpace(b.tokenLocked())
+	if expect == "" {
+		return true
+	}
+	got := strings.TrimSpace(r.URL.Query().Get("token"))
+	if got == "" {
+		h := strings.TrimSpace(r.Header.Get("Authorization"))
+		if len(h) >= 7 && strings.EqualFold(h[:7], "Bearer ") {
+			got = strings.TrimSpace(h[7:])
+		}
+	}
+	if got == "" || len(got) != len(expect) {
+		return false
+	}
+	var v byte
+	for i := 0; i < len(got); i++ {
+		v |= got[i] ^ expect[i]
+	}
+	return v == 0
 }
 
 // Start 在 loopback 上监听 WebSocket。
@@ -207,6 +244,16 @@ func (b *Bridge) SetEventHandler(h ExtEventHandler) {
 }
 
 func (b *Bridge) handleExtWS(w http.ResponseWriter, r *http.Request) {
+	b.mu.Lock()
+	ok := b.checkAuth(r)
+	if !ok {
+		b.lastErr = "扩展鉴权失败：Chrome 仍在跑旧实例。请打开 chrome://extensions → WWorkbench Browser Stage → 重新加载"
+	}
+	b.mu.Unlock()
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	c, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		return
@@ -359,6 +406,7 @@ func (b *Bridge) rememberAttached(data json.RawMessage) {
 }
 
 // handleHTTPCall 本机调试 / Agent CLI：POST {"action","args","session"} → {ok,data}|{ok:false,error:{code,message}}。
+// 须 Bearer 或 ?token=；仅 loopback。任务场景应走 browser_*，勿直连本口。
 func (b *Bridge) handleHTTPCall(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
@@ -367,6 +415,22 @@ func (b *Bridge) handleHTTPCall(w http.ResponseWriter, r *http.Request) {
 	host, _, _ := net.SplitHostPort(r.RemoteAddr)
 	if host != "127.0.0.1" && host != "::1" && host != "localhost" {
 		http.Error(w, "loopback only", http.StatusForbidden)
+		return
+	}
+	b.mu.Lock()
+	ok := b.checkAuth(r)
+	b.mu.Unlock()
+	if !ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("WWW-Authenticate", `Bearer realm="wworkbench-browser"`)
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"ok": false,
+			"error": map[string]string{
+				"code":    "unauthorized",
+				"message": "需要 Authorization: Bearer <token> 或 ?token=",
+			},
+		})
 		return
 	}
 	var body struct {

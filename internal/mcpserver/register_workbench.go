@@ -59,6 +59,7 @@ func gwHandler(gw *toolgateway.Gateway, name string) toolgateway.ToolHandler {
 }
 
 func invokeRegistryTool(ctx context.Context, reg *workbenchtools.Registry, name string, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	ctx = workbenchtools.WithCaller(ctx, workbenchtools.CallerMCP)
 	args := req.GetArguments()
 	raw, err := json.Marshal(args)
 	if err != nil {

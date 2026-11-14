@@ -138,3 +138,6 @@ require (
 )
 
 // replace github.com/wailsapp/wails/v2 v2.12.0 => /Users/weining/go/pkg/mod
+
+// 本地联调 ningharness（含 guest.External）；发版前改为伪版本或打 tag。
+replace github.com/wcoreing/ningharness => ../ningharness

@@ -25,8 +25,9 @@ func (m *Manager) ProbeCwd(ctx context.Context, sessionID string) (string, error
 
 	tok := "WWCWD" + strings.ReplaceAll(uuid.NewString(), "-", "")[:10]
 	gen, _ := s.tail.snapshotMeta()
-	// 注入后可见一行 WWCWDxxx:/abs/path
-	cmd := fmt.Sprintf("printf '%%s\\n' %s:\"$(pwd)\"\r", tok)
+	// 关回显后打印标记行再开回显，减少「整行命令被 echo」；标记输出仍进 scrollback 供解析。
+	// 仅在用户点「授权写入 / 建备份」等显式动作时调用，勿在右键菜单打开时自动探测。
+	cmd := fmt.Sprintf("stty -echo 2>/dev/null; printf '%%s\\n' %s:\"$(pwd)\"; stty echo 2>/dev/null\r", tok)
 	if err := m.Write(sessionID, cmd); err != nil {
 		return "", err
 	}

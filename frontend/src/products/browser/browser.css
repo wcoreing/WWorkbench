@@ -348,6 +348,19 @@
   color: var(--color-text-muted, #6b7280);
 }
 
+.browser-install-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.browser-install-err {
+  color: var(--color-danger, #b91c1c);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 /* —— Chrome 窗口（网页页） —— */
 .browser-chrome {
   flex: 1;

@@ -403,6 +403,8 @@ export function ReadSFTPBinary(arg1:string,arg2:string):Promise<app.ApiResult_WW
 
 export function ReadSFTPText(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_SFTPTextFileDO_>;
 
+export function ReloadBrowserExtension():Promise<app.ApiResult_map_string_interface____>;
+
 export function RemoveContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
 export function RemoveDockerHost(arg1:string):Promise<app.ApiResult_bool_>;

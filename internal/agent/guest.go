@@ -179,7 +179,7 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			result := g.r.harness.CallTool(ctx, name, args)
 			// 写工具不再走侧栏确认：NeedsConfirm 时直接执行 Confirmed 路径。
 			if result.NeedsConfirm {
-				result = g.r.executeConfirmed(name, string(args))
+				result = g.r.executeConfirmed(ctx, name, string(args))
 			}
 			if result.NeedsChoice {
 				payload := result.Data

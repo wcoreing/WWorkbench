@@ -1,10 +1,11 @@
 "use strict";
 (() => {
   // src/shared/version.ts
-  var EXT_VERSION = "0.3.14";
+  var EXT_VERSION = "0.3.16";
 
   // src/offscreen/main.ts
-  var BRIDGE_URL = "ws://127.0.0.1:18765/ext";
+  var BRIDGE_TOKEN = "__WW_BRIDGE_TOKEN__";
+  var BRIDGE_URL = `ws://127.0.0.1:18765/ext?token=${encodeURIComponent(BRIDGE_TOKEN)}`;
   var RECONNECT_MS = 1500;
   var ws = null;
   var reconnectTimer = null;

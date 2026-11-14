@@ -12,7 +12,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/wcoreing/WWorkbench)](https://github.com/wcoreing/WWorkbench/releases/latest)
 
-> 当前版本：**v0.54.138**（界面右下角可查看）
+> 当前版本：**v0.54.520**（界面右下角可查看）
 
 ### 下载（解压即用）
 
@@ -59,17 +59,19 @@
 2. 复制 **工作台 URL**（须为 `/mcp/workbench`，不要用 `/mcp`）。
 3. 在 Cursor 的 `mcp.json` 中加入：
 
+在助手设置 → MCP 点「复制配置」，或手写（**须带真实 token**，见设置页；假 token 会让 Cursor 卡在 Authenticating）：
+
 ```json
 {
   "mcpServers": {
     "wworkbench": {
-      "url": "http://127.0.0.1:51021/mcp/workbench"
+      "url": "http://127.0.0.1:51021/mcp/workbench?token=<设置页 Token>"
     }
   }
 }
 ```
 
-写操作可能返回含 `ww_confirm` 的提示，需在 **WWorkbench 侧栏**确认；外置客户端不会替你点确认。
+危险写操作在 **WWorkbench 工作台弹窗**拍板；外置客户端不会替你点确认。
 
 ---
 
@@ -86,6 +88,9 @@
 | **API** | HTTP 请求、环境变量、目录与响应查看 |
 | **日志** | 本机、SSH、Docker 与 Compose 日志查看，支持实时跟随 |
 | **助手** | Ask / Plan / Agent 三模式；`@` 绑定主机/库/容器；写操作确认。看得见的改机走终端面板，无头只读探针另开会话 |
+| **备份** | 主机健康扫描、写前备份策略、远端 crontab；数据文件三层防护 |
+| **浏览器舞台** | Chromium 扩展 / Kimi 执行器；任务账本 → Skill 沉淀 |
+| **插件** | 可热更新的产品 UI 包（当前 database）；Agent 可改源码并构建回滚 |
 
 其他特性：
 
@@ -93,6 +98,7 @@
 - 界面语言：**简体中文 / English**（顶栏地球图标切换）
 - 多产品线工作区状态自动恢复；资产落盘后界面雷达刷新
 - 能力权限开关：关闭的 AI 工具不会被调用
+- MCP / 浏览器桥本机鉴权（Bearer）；笔记本 Skill 协议为工作流真源
 
 ---
 

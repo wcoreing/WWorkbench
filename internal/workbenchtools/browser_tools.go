@@ -390,10 +390,10 @@ func registerBrowserTools(r *Registry) {
 		Handler: toolReplayTaskStep,
 	})
 	r.add(ToolDef{
-		Name: workbench.CapDistillWorkflow,
-		Description: "从日志蒸馏工作流笔记草稿（role=skill：说明/步骤提示/脚本/资源；含 wwb-skill-steps）。" +
-			"日志只是参考：只保留成功写步，之后应编辑优化（合并 fill、删噪声、加 pause），不必忠实回放。" +
-			"需确认+intent。之后 get_skill 让 Agent 执行；run_skill 仅为可选机械捷径。",
+		Name: workbench.CapDistillSkill,
+		Description: "从任务账本蒸馏 Skill 草稿（SKILL.md：说明/步骤/脚本/资源；含 wwb-skill-steps）。" +
+			"日志只是参考：只保留成功写步，之后应编辑优化，不必忠实回放。" +
+			"需确认+intent。之后 get_skill 让 Agent 执行；正式沉淀用 update_skill；run_skill 仅为可选捷径。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -406,47 +406,7 @@ func registerBrowserTools(r *Registry) {
 			},
 			"required": []string{"runId", "intent"},
 		},
-		Handler: toolDistillWorkflow,
-	})
-	r.add(ToolDef{
-		Name:        workbench.CapListWorkflows,
-		Description: "列出工作流/Skill 笔记（Agent 前置提示标准包）+ 内置 cms_new_article。",
-		Parameters: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"limit": map[string]interface{}{"type": "integer"},
-			},
-		},
-		Handler: toolListWorkflows,
-	})
-	r.add(ToolDef{
-		Name:        workbench.CapGetWorkflow,
-		Description: "读取工作流笔记（含 noteId/steps）。name 或 工作流/{name}/SKILL.md。",
-		Parameters: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"name": map[string]interface{}{"type": "string"},
-				"id":   map[string]interface{}{"type": "string"},
-			},
-		},
-		Handler: toolGetWorkflow,
-	})
-	r.add(ToolDef{
-		Name:        workbench.CapSaveWorkflow,
-		Description: "覆盖保存工作流笔记步骤（可优化路径，不必等同原日志）。需确认+intent；也可 get_note 改 wwb-skill-steps。",
-		Parameters: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"name":        map[string]interface{}{"type": "string"},
-				"title":       map[string]interface{}{"type": "string"},
-				"description": map[string]interface{}{"type": "string"},
-				"steps":       map[string]interface{}{"type": "array", "description": "[{action,summary,locator,args}]"},
-				"sourceRunId": map[string]interface{}{"type": "string"},
-				"intent":      intentProp(),
-			},
-			"required": []string{"name", "steps", "intent"},
-		},
-		Handler: toolSaveWorkflow,
+		Handler: toolDistillSkill,
 	})
 	r.add(ToolDef{
 		Name: workbench.CapUpdateSkill,

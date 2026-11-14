@@ -251,7 +251,7 @@ type distillWorkflowArgs struct {
 	Intent      string `json:"intent"`
 }
 
-func toolDistillWorkflow(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
+func toolDistillSkill(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	if d == nil || d.Store == nil {
 		return Fail("存储未就绪")
 	}
@@ -287,7 +287,7 @@ func toolDistillWorkflow(_ context.Context, d *Deps, raw json.RawMessage) ToolRe
 	title := firstNonEmpty(strings.TrimSpace(in.Title), detail.Run.Title, name)
 	preview := map[string]interface{}{
 		"runId": runID, "name": name, "title": title, "stepCount": len(steps),
-		"steps": stepsBrief(steps), "dropSeqs": in.DropSeqs, "action": "distill_workflow",
+		"steps": stepsBrief(steps), "dropSeqs": in.DropSeqs, "action": "distill_skill",
 	}
 	if in.Intent != "" {
 		preview["intent"] = in.Intent
@@ -300,8 +300,8 @@ func toolDistillWorkflow(_ context.Context, d *Deps, raw json.RawMessage) ToolRe
 	return Confirm(uuid.NewString(), summary, preview)
 }
 
-// DistillWorkflowConfirmed 确认后落盘 Skill。
-func DistillWorkflowConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
+// DistillSkillConfirmed 确认后落盘 Skill。
+func DistillSkillConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
 	_ = ctx
 	if d == nil || d.Store == nil {
 		return Fail("存储未就绪")
@@ -361,118 +361,6 @@ func stepsBrief(steps []model.WorkflowStepDO) []string {
 	return out
 }
 
-func toolListWorkflows(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	if d == nil || d.Store == nil {
-		return Fail("存储未就绪")
-	}
-	var in struct {
-		Limit int `json:"limit"`
-	}
-	_ = json.Unmarshal(raw, &in)
-	list, err := listWorkflowsSSOT(d, in.Limit)
-	if err != nil {
-		return Fail(err.Error())
-	}
-	return OKData(map[string]interface{}{
-		"workflows": list,
-		"builtin":   []string{"cms_new_article"},
-		"total":     len(list),
-		"ssot":      "notebook",
-	})
-}
-
-func toolGetWorkflow(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	if d == nil || d.Store == nil {
-		return Fail("存储未就绪")
-	}
-	var in struct {
-		Name string `json:"name"`
-		ID   string `json:"id"`
-	}
-	_ = json.Unmarshal(raw, &in)
-	key := firstNonEmpty(strings.TrimSpace(in.Name), strings.TrimSpace(in.ID))
-	if key == "" {
-		return Fail("请提供 name 或 id")
-	}
-	if key == "cms_new_article" {
-		return OKData(map[string]interface{}{
-			"builtin": true,
-			"name":    "cms_new_article",
-			"title":   "后台新增方案",
-			"source":  "builtin",
-			"steps":   []string{"find(新增)", "click", "wait(保存)", "optional fill(title)", "snapshot"},
-		})
-	}
-	p, err := resolveWorkflowSSOT(d, key)
-	if err != nil {
-		return Fail(err.Error())
-	}
-	return OKData(p)
-}
-
-type saveWorkflowArgs struct {
-	Name        string                `json:"name"`
-	Title       string                `json:"title"`
-	Description string                `json:"description"`
-	Intent      string                `json:"intent"`
-	Steps       []model.WorkflowStepDO `json:"steps"`
-	SourceRunID string                `json:"sourceRunId"`
-}
-
-func toolSaveWorkflow(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	if d == nil || d.Store == nil {
-		return Fail("存储未就绪")
-	}
-	var in saveWorkflowArgs
-	_ = json.Unmarshal(raw, &in)
-	name := strings.TrimSpace(in.Name)
-	if !workflowNameRe.MatchString(name) {
-		return Fail("name 须匹配 ^[a-z][a-z0-9_-]{1,47}")
-	}
-	if name == "cms_new_article" {
-		return Fail("不能覆盖内置 cms_new_article")
-	}
-	if len(in.Steps) == 0 {
-		return Fail("steps 不能为空")
-	}
-	preview := map[string]interface{}{
-		"name": name, "title": in.Title, "stepCount": len(in.Steps),
-		"steps": stepsBrief(in.Steps), "action": "save_workflow",
-	}
-	if in.Intent != "" {
-		preview["intent"] = in.Intent
-	}
-	summary := "保存工作流 " + name
-	if in.Intent != "" {
-		summary = truncateRunes(in.Intent, intentTitleMaxRune)
-	}
-	stageBrowser(d, summary)
-	return Confirm(uuid.NewString(), summary, preview)
-}
-
-// SaveWorkflowConfirmed 确认后覆盖保存（笔记 SSOT）。
-func SaveWorkflowConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
-	_ = ctx
-	if d == nil || d.Store == nil {
-		return Fail("存储未就绪")
-	}
-	var in saveWorkflowArgs
-	_ = json.Unmarshal([]byte(argsJSON), &in)
-	p, err := saveWorkflowSSOT(d, model.WorkflowDO{
-		Name:        strings.TrimSpace(in.Name),
-		Title:       firstNonEmpty(strings.TrimSpace(in.Title), in.Name),
-		Description: strings.TrimSpace(in.Description),
-		Intent:      strings.TrimSpace(in.Intent),
-		Steps:       in.Steps,
-		SourceRunID: strings.TrimSpace(in.SourceRunID),
-	})
-	if err != nil {
-		return Fail(err.Error())
-	}
-	stageBrowser(d, "已保存 工作流笔记 "+p.Name)
-	return OKData(map[string]interface{}{"ok": true, "workflow": p, "noteId": p.NoteID})
-}
-
 type runWorkflowArgs struct {
 	Name    string `json:"name"`
 	Session string `json:"session"`
@@ -490,7 +378,7 @@ func toolRunWorkflow(_ context.Context, d *Deps, raw json.RawMessage) ToolResult
 	_ = json.Unmarshal(raw, &in)
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
-		return Fail("请提供 name（list_skills / list_workflows 或 cms_new_article）")
+		return Fail("请提供 name（list_skills 或 cms_new_article）")
 	}
 	if name == "cms_new_article" {
 		preview := map[string]interface{}{
@@ -560,13 +448,13 @@ func RunStoredWorkflowNow(ctx context.Context, d *Deps, name, session, intent st
 	}
 	runSession := firstNonEmpty(session, "workflow-"+p.Name)
 	title := "工作流 · " + firstNonEmpty(p.Title, p.Name)
-	_ = EnsureTaskRun(d, runSession, title, firstNonEmpty(intent, p.Intent), "workflow")
+	_ = EnsureTaskRun(ctx, d, runSession, title, firstNonEmpty(intent, p.Intent), "workflow")
 
 	executed := make([]map[string]interface{}, 0, len(p.Steps))
 	for i, ps := range p.Steps {
 		if ps.Action == "pause" || ps.Action == "coach" {
 			msg := firstNonEmpty(ps.Summary, "请人工继续操作")
-			RecordBrowserStep(d, BrowserStepInput{
+			RecordBrowserStep(ctx, d, BrowserStepInput{
 				Session: runSession, Tool: workbench.CapRunSkill, Action: "pause",
 				Intent: firstNonEmpty(intent, ps.Intent), Summary: msg,
 				Args: map[string]interface{}{"workflow": p.Name, "index": i + 1},
@@ -595,7 +483,7 @@ func RunStoredWorkflowNow(ctx context.Context, d *Deps, name, session, intent st
 		}
 		resolved, note, rerr := resolveReplayTarget(ctx, b, fake)
 		if rerr != nil {
-			RecordBrowserStep(d, BrowserStepInput{
+			RecordBrowserStep(ctx, d, BrowserStepInput{
 				Session: runSession, Tool: workbench.CapRunSkill, Action: ps.Action,
 				Intent: intent, Summary: fmt.Sprintf("工作流停在 #%d · %s", i+1, ps.Summary),
 				OK: false, Error: rerr.Error(), Approved: approved, Source: "workflow", Title: title,
@@ -605,7 +493,7 @@ func RunStoredWorkflowNow(ctx context.Context, d *Deps, name, session, intent st
 		}
 		data, eerr := executeReplayAction(ctx, b, fake, resolved, runSession)
 		if eerr != nil {
-			RecordBrowserStep(d, BrowserStepInput{
+			RecordBrowserStep(ctx, d, BrowserStepInput{
 				Session: runSession, Tool: workbench.CapRunSkill, Action: ps.Action,
 				Intent: intent, Summary: fmt.Sprintf("工作流失败 #%d · %s", i+1, ps.Summary),
 				OK: false, Error: eerr.Error(), Approved: approved, Source: "workflow", Title: title,
@@ -613,7 +501,7 @@ func RunStoredWorkflowNow(ctx context.Context, d *Deps, name, session, intent st
 			stageBrowser(d, "工作流执行失败")
 			return Fail(fmt.Sprintf("Skill %s 第 %d 步失败: %s（已执行 %d 步）", p.Name, i+1, eerr.Error(), len(executed)))
 		}
-		RecordBrowserStep(d, BrowserStepInput{
+		RecordBrowserStep(ctx, d, BrowserStepInput{
 			Session: runSession, Tool: workbench.CapRunSkill, Action: ps.Action,
 			Intent: firstNonEmpty(intent, ps.Intent), Summary: ps.Summary,
 			Args: map[string]interface{}{"workflow": p.Name, "index": i + 1, "resolveNote": note},
@@ -652,7 +540,7 @@ func DistillWorkflowNow(d *Deps, runID, name, title, description, intent string,
 	b, _ := json.Marshal(distillWorkflowArgs{
 		RunID: runID, Name: name, Title: title, Description: description, Intent: intent, DropSeqs: dropSeqs,
 	})
-	return DistillWorkflowConfirmed(context.Background(), d, string(b))
+	return DistillSkillConfirmed(context.Background(), d, string(b))
 }
 
 // SaveWorkflowNow UI：无确认门保存工作流 步骤（笔记 SSOT）。

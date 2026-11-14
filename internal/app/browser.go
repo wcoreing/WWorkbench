@@ -34,14 +34,24 @@ func (s *Service) startBrowserBridge() {
 		log.Printf("browser: seed ext: %v", err)
 		return
 	}
+	token, tokErr := s.store.BrowserBridgeToken()
+	if tokErr != nil {
+		log.Printf("browser: auth token: %v", tokErr)
+		return
+	}
+	if err := browser.InjectBridgeToken(extDir, token); err != nil {
+		log.Printf("browser: inject token: %v", err)
+		return
+	}
 	b := browser.NewBridge(browser.DefaultAddr, extDir)
+	b.SetAuthToken(token)
 	if err := b.Start(); err != nil {
 		log.Printf("browser: start bridge: %v", err)
 		return
 	}
 	b.SetEventHandler(s.handleBrowserExtEvent)
 	s.browserBridge = b
-	log.Printf("browser: bridge on %s · ext %s", browser.DefaultAddr, extDir)
+	log.Printf("browser: bridge on %s · ext %s (token auth)", browser.DefaultAddr, extDir)
 }
 
 // GetBrowserStatus 浏览器舞台状态（桥 + 扩展）。
@@ -150,7 +160,7 @@ func (s *Service) BrowserClick(ref, selector, mode, frame string) ApiResult[json
 	data, err := s.browserBridge.Call(browserCtx(s), "click", args)
 	if err != nil {
 		if s.toolsRegistry != nil {
-			workbenchtools.RecordBrowserStep(s.toolsRegistry.Deps(), workbenchtools.BrowserStepInput{
+			workbenchtools.RecordBrowserStep(context.Background(), s.toolsRegistry.Deps(), workbenchtools.BrowserStepInput{
 				Tool: "browser_click", Action: "click", Summary: "舞台点击 " + ref, Source: "ui",
 				Args: args, Locator: map[string]interface{}{"ref": ref, "selector": selector, "frame": frame},
 				OK: false, Error: err.Error(),
@@ -159,7 +169,7 @@ func (s *Service) BrowserClick(ref, selector, mode, frame string) ApiResult[json
 		return ErrResult[json.RawMessage](err)
 	}
 	if s.toolsRegistry != nil {
-		workbenchtools.RecordBrowserStep(s.toolsRegistry.Deps(), workbenchtools.BrowserStepInput{
+		workbenchtools.RecordBrowserStep(context.Background(), s.toolsRegistry.Deps(), workbenchtools.BrowserStepInput{
 			Tool: "browser_click", Action: "click", Summary: "舞台点击 " + ref, Source: "ui",
 			Args: args, Locator: map[string]interface{}{"ref": ref, "selector": selector, "frame": frame},
 			Result: data, OK: true,
@@ -351,7 +361,7 @@ func (s *Service) BrowserFill(ref, selector, value, frame string) ApiResult[json
 	data, err := s.browserBridge.Call(browserCtx(s), "fill", args)
 	if err != nil {
 		if s.toolsRegistry != nil {
-			workbenchtools.RecordBrowserStep(s.toolsRegistry.Deps(), workbenchtools.BrowserStepInput{
+			workbenchtools.RecordBrowserStep(context.Background(), s.toolsRegistry.Deps(), workbenchtools.BrowserStepInput{
 				Tool: "browser_fill", Action: "fill", Summary: "舞台填表 " + ref, Source: "ui",
 				Args: map[string]interface{}{"ref": ref, "selector": selector, "value": value, "valueLen": len(value), "frame": frame},
 				Locator: map[string]interface{}{"ref": ref, "selector": selector, "frame": frame},
@@ -361,7 +371,7 @@ func (s *Service) BrowserFill(ref, selector, value, frame string) ApiResult[json
 		return ErrResult[json.RawMessage](err)
 	}
 	if s.toolsRegistry != nil {
-		workbenchtools.RecordBrowserStep(s.toolsRegistry.Deps(), workbenchtools.BrowserStepInput{
+		workbenchtools.RecordBrowserStep(context.Background(), s.toolsRegistry.Deps(), workbenchtools.BrowserStepInput{
 			Tool: "browser_fill", Action: "fill", Summary: "舞台填表 " + ref, Source: "ui",
 			Args: map[string]interface{}{"ref": ref, "selector": selector, "value": value, "valueLen": len(value), "frame": frame},
 			Locator: map[string]interface{}{"ref": ref, "selector": selector, "frame": frame},
@@ -402,7 +412,7 @@ func (s *Service) BrowserNavigate(url string, newTab bool) ApiResult[json.RawMes
 	data, err := s.browserBridge.Call(browserCtx(s), "navigate", args)
 	if err != nil {
 		if s.toolsRegistry != nil {
-			workbenchtools.RecordBrowserStep(s.toolsRegistry.Deps(), workbenchtools.BrowserStepInput{
+			workbenchtools.RecordBrowserStep(context.Background(), s.toolsRegistry.Deps(), workbenchtools.BrowserStepInput{
 				Tool: "browser_navigate", Action: "navigate", Summary: "舞台导航", Source: "ui",
 				Args: args, Locator: map[string]interface{}{"url": url}, OK: false, Error: err.Error(),
 			})
@@ -410,7 +420,7 @@ func (s *Service) BrowserNavigate(url string, newTab bool) ApiResult[json.RawMes
 		return ErrResult[json.RawMessage](err)
 	}
 	if s.toolsRegistry != nil {
-		workbenchtools.RecordBrowserStep(s.toolsRegistry.Deps(), workbenchtools.BrowserStepInput{
+		workbenchtools.RecordBrowserStep(context.Background(), s.toolsRegistry.Deps(), workbenchtools.BrowserStepInput{
 			Tool: "browser_navigate", Action: "navigate", Summary: "舞台导航 " + url, Source: "ui",
 			Args: args, Locator: map[string]interface{}{"url": url}, Result: data, OK: true,
 		})
@@ -745,7 +755,7 @@ func (s *Service) StartBrowserRecording(title string) ApiResult[map[string]inter
 	runID := ""
 	if s.toolsRegistry != nil && session != "" {
 		// 扩展也会推 record_start 事件；此处先 Ensure，保证立即返回 taskRunId。首步 navigate 由事件写入。
-		runID = workbenchtools.EnsureTaskRun(s.toolsRegistry.Deps(), session, runTitle, "用户网页录制", "record")
+		runID = workbenchtools.EnsureTaskRun(context.Background(), s.toolsRegistry.Deps(), session, runTitle, "用户网页录制", "record")
 	}
 	if s.ctx != nil {
 		runtime.EventsEmit(s.ctx, "browser:recording", map[string]interface{}{
@@ -808,9 +818,9 @@ func (s *Service) handleBrowserExtEvent(action string, data json.RawMessage) {
 		if title == "" {
 			title = "网页录制"
 		}
-		runID := workbenchtools.EnsureTaskRun(deps, session, title, "用户网页录制", "record")
+		runID := workbenchtools.EnsureTaskRun(context.Background(), deps, session, title, "用户网页录制", "record")
 		if in.URL != "" {
-			workbenchtools.RecordBrowserStep(deps, workbenchtools.BrowserStepInput{
+			workbenchtools.RecordBrowserStep(context.Background(), deps, workbenchtools.BrowserStepInput{
 				Session: session, Tool: "browser_record", Action: "navigate", Source: "record",
 				Summary: "开始录制 " + in.URL, Title: title, Intent: "用户网页录制",
 				Locator: map[string]interface{}{"url": in.URL},
@@ -857,7 +867,7 @@ func (s *Service) handleBrowserExtEvent(action string, data json.RawMessage) {
 				loc["url"] = in.URL
 			}
 		}
-		runID := workbenchtools.RecordBrowserStep(deps, workbenchtools.BrowserStepInput{
+		runID := workbenchtools.RecordBrowserStep(context.Background(), deps, workbenchtools.BrowserStepInput{
 			Session: session, Tool: "browser_record", Action: act, Source: "record",
 			Summary: summary, Intent: "用户网页录制", Locator: loc, Args: in.Args,
 			OK: ok, Error: in.Error, Approved: true, Title: "网页录制",
@@ -882,6 +892,30 @@ func (s *Service) handleBrowserExtEvent(action string, data json.RawMessage) {
 			})
 		}
 	}
+}
+
+// ReloadBrowserExtension 经桥调用扩展 chrome.runtime.reload（已连接时可一键对齐磁盘版本）。
+func (s *Service) ReloadBrowserExtension() ApiResult[map[string]interface{}] {
+	if s.browserBridge == nil {
+		return ErrResult[map[string]interface{}](errno.New(errno.CodeConnFailed, "浏览器桥未启动", ""))
+	}
+	if !s.browserBridge.Connected() {
+		return ErrResult[map[string]interface{}](errno.New(errno.CodeConnFailed, "扩展未连接，请先打开扩展页手动重载", ""))
+	}
+	data, err := s.browserBridge.Call(browserCtx(s), "reload_extension", map[string]interface{}{})
+	if err != nil {
+		return ErrResult[map[string]interface{}](err)
+	}
+	out := map[string]interface{}{"ok": true, "reloading": true, "hint": "扩展正在重载，几秒后会自动重连"}
+	if len(data) > 0 {
+		var extra map[string]interface{}
+		if json.Unmarshal(data, &extra) == nil {
+			for k, v := range extra {
+				out[k] = v
+			}
+		}
+	}
+	return OkResult(out)
 }
 
 // RevealBrowserExtDir 在文件管理器中打开扩展目录，便于「加载已解压的扩展程序」。

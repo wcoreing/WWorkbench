@@ -77,7 +77,7 @@ func (r *Registry) Deps() *Deps {
 	return r.deps
 }
 
-// toolAliases 兼容旧工具名。
+// toolAliases 兼容旧工具名（对外只认 Skill 语言；*workflow / update_agent_skill 转发）。
 var toolAliases = map[string]string{
 	"open_terminal":           workbench.CapShellRun,
 	"terminal.open":           workbench.CapShellRun,
@@ -86,6 +86,11 @@ var toolAliases = map[string]string{
 	"terminal_exec":           workbench.CapShellProbe,
 	"database.open":           workbench.CapDatabaseOpen,
 	"notebook.append_content": workbench.CapNotebookAppend,
+	"list_workflows":          workbench.CapListSkills,
+	"get_workflow":            workbench.CapGetSkill,
+	"save_workflow":           workbench.CapUpdateSkill,
+	"distill_workflow":        workbench.CapDistillSkill,
+	"update_agent_skill":      workbench.CapUpdateSkill,
 }
 
 // Invoke 调用指定工具。
@@ -100,23 +105,27 @@ func (r *Registry) Invoke(ctx context.Context, name string, args json.RawMessage
 	if !ok {
 		return Fail(fmt.Sprintf("未知工具: %s", name))
 	}
-	// 第三方 MCP：动手类工具前必须已读 get_agent_rules（内置 Agent 开跑会 Mark）
-	if requiresAgentRulesAck(name) && !AgentRulesAcked() {
-		return Fail(errNeedAgentRules)
-	}
-	// 意图声明卡：动手类须人话 intent（确认标题 / 舞台回放）
+	// 意图声明卡：缺省不拒绝，合成「未声明」摘要供舞台/确认可见（前馈优于事后拒）。
+	intent := extractIntent(args)
+	intentUndeclared := false
 	if requiresIntent(name, args) {
-		if errMsg := validateIntent(extractIntent(args)); errMsg != "" {
-			return Fail(errMsg)
+		if errMsg := validateIntent(intent); errMsg != "" {
+			intent = synthesizeIntent(name, args)
+			intentUndeclared = true
+			args = injectIntentArg(args, intent)
 		}
 	}
 	// 统一规则：参数能解析到 SSH 主机 → 先打开/聚焦可见终端，再执行工具
 	ensureSSHTerminalStage(r.deps, name, args)
 	res := t.Handler(ctx, r.deps, args)
 	if res.NeedsConfirm {
-		res = enrichConfirmWithIntent(name, args, res)
-	} else if intent := extractIntent(args); intent != "" && requiresIntent(name, args) {
-		RecordIntentCard(IntentCard{Tool: name, Intent: intent, Summary: intent})
+		res = enrichConfirmWithIntent(ctx, name, args, res)
+	} else if intent != "" && requiresIntent(name, args) {
+		card := IntentCard{Tool: name, Intent: intent, Summary: intent}
+		if intentUndeclared {
+			card.Risk = "undeclared"
+		}
+		RecordIntentCard(ctx, card)
 	}
 	return res
 }
@@ -129,18 +138,23 @@ func (r *Registry) add(def ToolDef) {
 func (r *Registry) registerBuiltins() {
 	r.add(ToolDef{
 		Name: workbench.CapGetAgentRules,
-		Description: "【第三方 Agent 强制首步】返回 WWorkbench 系统约束全文（舞台/确认/数据文件防护/终端用法等）并标记已读。" +
-			"新会话或重启后，在 shell_run / execute_sql / 容器与插件写等动手操作之前必须先调用；未读将被拒绝。",
+		Description: "可选：按 domain 复核系统约束分片（terminal/database/browser/notebook/backup/plugin/all）。" +
+			"MCP initialize 已注入摘要；不会因未调用而拒绝工具。",
 		Parameters: map[string]interface{}{
-			"type":       "object",
-			"properties": map[string]interface{}{},
+			"type": "object",
+			"properties": map[string]interface{}{
+				"domain": map[string]interface{}{
+					"type":        "string",
+					"description": "分片：all|terminal|database|browser|notebook|backup|plugin",
+				},
+			},
 		},
 		MCPOnly: true,
 		Handler: toolGetAgentRules,
 	})
 	r.add(ToolDef{
 		Name:        "get_workbench_context",
-		Description: "工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）；含近期 intentCards、taskRuns、memoryNotes（焦点绑定的记忆）。问终端输出用 get_shell_output。新会话请先 get_agent_rules。",
+		Description: "工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）；含近期 intentCards、taskRuns、memoryNotes（焦点绑定的记忆）。问终端输出用 get_shell_output。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -853,7 +867,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name: workbench.CapListSkills,
-		Description: "列出笔记本工作流（任意业务根下 SKILL.md / role=skill，含 工作流/ 与 记忆区/…/项目/；不含 log.md）。返回 id（路径或短名）/name/noteId/diskPath/hasSteps。",
+		Description: "列出 Skill（任意业务根下 SKILL.md / role=skill，含 工作流/ 与 记忆区/…/项目/；不含 log.md；含内置 cms_new_article）。返回 id/name/noteId/diskPath/hasSteps。",
 		Parameters: map[string]interface{}{
 			"type":       "object",
 			"properties": map[string]interface{}{},
@@ -990,24 +1004,6 @@ func (r *Registry) registerBuiltins() {
 			"required": []interface{}{"noteId"},
 		},
 		Handler: toolPublishAgentSkill,
-	})
-	r.add(ToolDef{
-		Name:        workbench.CapUpdateAgentSkill,
-		Description: "已废弃：勿写 system/skills。请改用 update_skill 写笔记本工作流。",
-		Parameters: map[string]interface{}{
-			"type": "object",
-			"properties": map[string]interface{}{
-				"id":            map[string]interface{}{"type": "string", "description": "工作流 id"},
-				"content":       map[string]interface{}{"type": "string", "description": "SKILL.md 正文（不含 frontmatter）"},
-				"name":          map[string]interface{}{"type": "string", "description": "显示名"},
-				"description":   map[string]interface{}{"type": "string", "description": "/ 菜单一句话说明"},
-				"updateContent": map[string]interface{}{"type": "boolean", "description": "是否更新正文，content 非空时默认 true"},
-				"updateGlobs":   map[string]interface{}{"type": "boolean", "description": "是否更新 globs"},
-				"globs":         map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}},
-			},
-			"required": []interface{}{"id"},
-		},
-		Handler: toolUpdateAgentSkill,
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapListPluginPacks,
