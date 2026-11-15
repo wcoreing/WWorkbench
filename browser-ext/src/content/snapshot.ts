@@ -10,8 +10,9 @@ export function buildSnapshot(args) {
   const hasDateOverlay = !!document.querySelector(
     '.el-picker__popper:not([aria-hidden="true"]) .el-date-table, .ant-picker-dropdown:not(.ant-picker-dropdown-hidden)',
   )
-  const defaultLimit = format === 'aria' ? (hasDateOverlay ? 160 : 80) : hasDateOverlay ? 200 : 120
-  const limit = Math.max(20, Math.min(args?.maxNodes || defaultLimit, 400))
+  // 配额抬高：侧栏+主区标注控件并存时，80 容易截掉「正面/组织」等关键节点
+  const defaultLimit = format === 'aria' ? (hasDateOverlay ? 220 : 180) : hasDateOverlay ? 280 : 220
+  const limit = Math.max(20, Math.min(args?.maxNodes || defaultLimit, 500))
   const nodes = []
   const list = interactiveList(doc)
   deepQueryAll(doc, '[data-ww-ref]').forEach((n) => n.removeAttribute('data-ww-ref'))
@@ -74,6 +75,34 @@ export function buildSnapshot(args) {
     }
   }
   return { ...base, nodes }
+}
+
+/**
+ * AX 快照后的 DOM 补充：只给尚未 stamp 的可交互节点编号，不擦除 AX refs。
+ * startSeq 为下一个可用序号（与 background axSeq 对齐）。
+ */
+export function axSupplement(args) {
+  const ctx = resolveContext(args || {})
+  const { doc, frame } = ctx
+  let seq = Math.max(1, Number(args?.startSeq) || 1)
+  const limit = Math.max(0, Math.min(Number(args?.limit) || 80, 300))
+  const nodes = []
+  for (const el of interactiveList(doc)) {
+    if (nodes.length >= limit) break
+    if (el.getAttribute('data-ww-ref')) continue
+    const ref = `@e${seq++}`
+    el.setAttribute('data-ww-ref', ref)
+    nodes.push({
+      ref,
+      role: roleOf(el),
+      name: labelOf(el),
+      tag: el.tagName.toLowerCase(),
+      value: typeof el.value === 'string' ? el.value.slice(0, 60) : undefined,
+      frame,
+      source: 'dom_supplement',
+    })
+  }
+  return { ok: true, data: { nodes, nextSeq: seq, frame } }
 }
 
 export function findByRef(doc, ref) {

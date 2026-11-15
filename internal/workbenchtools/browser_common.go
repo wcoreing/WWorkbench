@@ -93,10 +93,40 @@ func requireBrowserExec(d *Deps, executorHint, session string) (*browserClient, 
 		return nil, errBrowserMissing
 	}
 	ctx := context.Background()
-	if _, _, err := browser.ResolveExecutor(ctx, executorHint, &browser.WWBExecutor{Bridge: d.Browser}, browser.NewKimiExecutor("")); err != nil {
+	if _, _, err := browser.ResolveExecutorForAction(ctx, executorHint, "", &browser.WWBExecutor{Bridge: d.Browser}, browser.NewKimiExecutor("")); err != nil {
 		return nil, err
 	}
 	return &browserClient{d: d, executorHint: executorHint, session: session}, nil
+}
+
+// withExecutorPreview 把 raw 里的 executor 拷进确认预览，避免确认后丢失执行器。
+func withExecutorPreview(raw json.RawMessage, preview map[string]interface{}) map[string]interface{} {
+	if preview == nil {
+		preview = map[string]interface{}{}
+	}
+	if ex := peekExecutor(raw); ex != "" {
+		preview["executor"] = ex
+	}
+	if sess := peekSession(raw); sess != "" {
+		preview["session"] = sess
+	}
+	return preview
+}
+
+// copyWaitForArgs 把 waitFor* 透传给扩展（内联短等，省掉单独 browser_wait）。
+func copyWaitForArgs(argsJSON string, args map[string]interface{}) {
+	if args == nil {
+		return
+	}
+	var raw map[string]interface{}
+	if json.Unmarshal([]byte(argsJSON), &raw) != nil || raw == nil {
+		return
+	}
+	for k, v := range raw {
+		if k == "waitFor" || strings.HasPrefix(k, "waitFor") {
+			args[k] = v
+		}
+	}
 }
 
 func requireBrowserRaw(d *Deps, raw json.RawMessage) (*browserClient, error) {

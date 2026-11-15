@@ -3,6 +3,30 @@ import { cdpResolveBox, debuggerMouseClick, debuggerMouseDrag } from './debugger
 import { sendWithRefRetry } from './retry'
 import { sleep } from './state'
 import { ensureContent, focusTab, sendToTab, wantActivateWindow } from './tabs'
+import { hasAxRef, maybeAttachSnapshot, resolveAxBox } from './ax_snapshot'
+import { extractWaitFor, probeUntil } from './wait_for'
+
+async function finishClick(
+  tid: number,
+  args: Record<string, unknown>,
+  data: Record<string, unknown>,
+): Promise<CmdResult> {
+  const waitSpec = extractWaitFor(args)
+  let out = { ...data }
+  if (waitSpec) {
+    const w = await probeUntil(tid, waitSpec)
+    out = { ...out, wait: w }
+    // waitFor 命中后默认 probe（快）；要继续点 @eN 时传 observation=ax
+    out = await maybeAttachSnapshot(tid, args, out, {
+      defaultMode: w.matched ? 'probe' : 'ax',
+      settleMs: w.matched ? 0 : 60,
+    })
+  } else {
+    // 无 waitFor：默认 ax，便于拿下一跳 ref
+    out = await maybeAttachSnapshot(tid, args, out, { defaultMode: 'ax' })
+  }
+  return ok(out)
+}
 
 export async function handleClick(tid: number, args: Record<string, unknown> = {}): Promise<CmdResult> {
   const mode = String(args?.mode || 'auto').toLowerCase()
@@ -11,9 +35,22 @@ export async function handleClick(tid: number, args: Record<string, unknown> = {
 
   if (mode === 'dom') {
     const res = await sendWithRefRetry(tid, 'click', args)
-    return res?.ok
-      ? ok({ ...(res.data || {}), mode: 'dom', retried: (res as any).retried })
-      : fail(res?.error || '点击失败', res?.code || 'click_failed')
+    if (!res?.ok) return fail(res?.error || '点击失败', res?.code || 'click_failed')
+    return finishClick(tid, args, { ...(res.data || {}), mode: 'dom', retried: (res as any).retried })
+  }
+
+  // AX 快照分配的 @eN：优先 CDP 取盒（不等同于 content data-ww-ref 时也能点）
+  const refHint = String(args?.ref || args?.selector || '')
+  if (hasAxRef(refHint) || hasAxRef(String(args?.ref || ''))) {
+    const axBox = await resolveAxBox(tid, String(args?.ref || refHint)).catch(() => null)
+    if (axBox) {
+      try {
+        await debuggerMouseClick(tid, axBox)
+        return finishClick(tid, args, { ...axBox, mode: 'pointer', via: axBox.via || 'ax_ref' })
+      } catch {
+        /* 继续走 content / 名称兜底 */
+      }
+    }
   }
 
   let box = await sendWithRefRetry(tid, 'resolve_box', args)
@@ -50,13 +87,13 @@ export async function handleClick(tid: number, args: Record<string, unknown> = {
       return fail(box?.error || '无法定位元素（含 CDP 兜底）', 'not_found')
     }
     const syn = await sendWithRefRetry(tid, 'click', args)
-    if (syn?.ok) return ok({ ...(syn.data || {}), mode: 'dom' })
+    if (syn?.ok) return finishClick(tid, args, { ...(syn.data || {}), mode: 'dom' })
     return fail(box?.error || syn?.error || '无法定位元素', 'not_found')
   }
 
   try {
     await debuggerMouseClick(tid, box.data)
-    return ok({ ...(box.data || {}), mode: 'pointer', via, retried: (box as any).retried })
+    return finishClick(tid, args, { ...(box.data || {}), mode: 'pointer', via, retried: (box as any).retried })
   } catch (e) {
     const err = String((e as Error)?.message || e)
     if (mode === 'pointer') {
@@ -64,7 +101,7 @@ export async function handleClick(tid: number, args: Record<string, unknown> = {
     }
     const syn = await sendWithRefRetry(tid, 'click', args)
     if (syn?.ok) {
-      return ok({ ...(syn.data || {}), mode: 'dom', pointerError: err })
+      return finishClick(tid, args, { ...(syn.data || {}), mode: 'dom', pointerError: err })
     }
     return fail(syn?.error || err, 'click_failed')
   }
@@ -131,36 +168,37 @@ export async function handleDrag(tid: number, args: Record<string, unknown> = {}
 }
 
 export async function handleWait(tid: number, args: Record<string, unknown> = {}) {
+  // 独立 wait 仍默认 8s；内联 waitFor 默认 3s（见 extractWaitFor）
   const timeoutMs = Math.min(Math.max(Number(args?.timeoutMs) || 8000, 200), 40000)
   const pollMs = Math.min(Math.max(Number(args?.pollMs) || 120, 50), 1000)
-  const started = Date.now()
-  let last: { ok?: boolean; data?: any; error?: string } | null = null
-  let injected = false
-  while (Date.now() - started < timeoutMs) {
-    if (!injected) {
-      await ensureContent(tid)
-      injected = true
-    }
-    const res = await sendToTab(tid, 'probe', args)
-    last = res
-    if (res?.ok && res.data?.matched) {
-      return ok({
-        matched: true,
-        timedOut: false,
-        waitedMs: Date.now() - started,
-        observation: res.data,
-      })
-    }
-    if (res && res.ok === false && /Receiving end|Could not establish|no_receiver/i.test(res.error || '')) {
-      injected = false
-    }
-    await sleep(pollMs)
+  const spec = {
+    text: args.text != null && String(args.text) !== '' ? String(args.text) : undefined,
+    textGone: args.textGone != null && String(args.textGone) !== '' ? String(args.textGone) : undefined,
+    nameIncludes:
+      args.nameIncludes != null && String(args.nameIncludes) !== ''
+        ? String(args.nameIncludes)
+        : undefined,
+    ref: args.ref != null && String(args.ref) !== '' ? String(args.ref) : undefined,
+    selector: args.selector != null && String(args.selector) !== '' ? String(args.selector) : undefined,
+    readyState: args.readyState === true,
+    frame: args.frame != null && String(args.frame) !== '' ? String(args.frame) : undefined,
+    timeoutMs,
+    pollMs,
   }
-  return ok({
-    matched: false,
-    timedOut: true,
-    waitedMs: Date.now() - started,
-    observation: last?.data || null,
-    error: last?.ok === false ? last.error : undefined,
+  if (
+    !spec.text &&
+    !spec.textGone &&
+    !spec.nameIncludes &&
+    !spec.ref &&
+    !spec.selector &&
+    !spec.readyState
+  ) {
+    return fail('wait 请提供 text / textGone / nameIncludes / ref / selector / readyState', 'invalid_arg')
+  }
+  const w = await probeUntil(tid, spec)
+  const withObs = await maybeAttachSnapshot(tid, args, { ...w, wait: w }, {
+    defaultMode: 'off',
+    settleMs: 0,
   })
+  return ok(withObs)
 }

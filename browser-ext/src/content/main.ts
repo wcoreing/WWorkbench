@@ -1,7 +1,7 @@
 /** Content script 入口：消息路由。 */
 import { CONTENT_VER } from './version'
 import { listFrames } from './frames'
-import { buildSnapshot, doFind, doReadPage } from './snapshot'
+import { axSupplement, buildSnapshot, doFind, doReadPage } from './snapshot'
 import { resolveBox, doClick } from './click'
 import { doFill } from './fill'
 import { doSelectOption } from './widgets/select'
@@ -31,6 +31,7 @@ function install() {
       const map: Record<string, () => any> = {
         ping: () => ({ ok: true, data: { ver: VER, url: location.href } }),
         snapshot: () => ({ ok: true, data: buildSnapshot(msg.args || {}) }),
+        ax_supplement: () => axSupplement(msg.args || {}),
         read_page: () => doReadPage(msg.args || {}),
         resolve_box: () => resolveBox(msg.args || {}),
         resolve_file_input: () => resolveFileInput(msg.args || {}),

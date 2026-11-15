@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // src/content/version.ts
-  var CONTENT_VER = 20;
+  var CONTENT_VER = 24;
 
   // src/content/frames.ts
   function listFrames() {
@@ -60,7 +60,7 @@
   }
 
   // src/content/dom.ts
-  var INTERACTIVE = 'a[href],button,input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="textbox"],[role="checkbox"],[role="radio"],[role="menuitem"],[role="option"],[role="tab"],[role="switch"],[role="gridcell"],[contenteditable=""],[contenteditable="true"],.ant-btn,.el-button,.ant-menu-item,.ProseMirror,.ql-editor,.tox-edit-area,__ww-ce';
+  var INTERACTIVE = 'a[href],button,input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="textbox"],[role="checkbox"],[role="radio"],[role="menuitem"],[role="option"],[role="tab"],[role="switch"],[role="gridcell"],[contenteditable=""],[contenteditable="true"],.ant-btn,.el-button,.ant-menu-item,.ProseMirror,.ql-editor,.tox-edit-area,.lsf-label,[class*="lsf-label"],.lsf-choice,[class*="lsf-choice"],[class*="label"][class*="selected"],__ww-ce';
   var DATE_CELL = '.el-date-table td.available,.el-date-table td.el-date-table__cell:not(.disabled),.el-month-table td .cell,.el-year-table td .cell,.ant-picker-cell-in-view:not(.ant-picker-cell-disabled),td[class*="available"],.el-picker-panel td.available';
   function visible(el) {
     if (!el || el.hidden) return false;
@@ -184,8 +184,8 @@
     const hasDateOverlay = !!document.querySelector(
       '.el-picker__popper:not([aria-hidden="true"]) .el-date-table, .ant-picker-dropdown:not(.ant-picker-dropdown-hidden)'
     );
-    const defaultLimit = format === "aria" ? hasDateOverlay ? 160 : 80 : hasDateOverlay ? 200 : 120;
-    const limit = Math.max(20, Math.min(args?.maxNodes || defaultLimit, 400));
+    const defaultLimit = format === "aria" ? hasDateOverlay ? 220 : 180 : hasDateOverlay ? 280 : 220;
+    const limit = Math.max(20, Math.min(args?.maxNodes || defaultLimit, 500));
     const nodes = [];
     const list = interactiveList(doc);
     deepQueryAll(doc, "[data-ww-ref]").forEach((n) => n.removeAttribute("data-ww-ref"));
@@ -247,6 +247,29 @@
       };
     }
     return { ...base, nodes };
+  }
+  function axSupplement(args) {
+    const ctx = resolveContext(args || {});
+    const { doc, frame } = ctx;
+    let seq = Math.max(1, Number(args?.startSeq) || 1);
+    const limit = Math.max(0, Math.min(Number(args?.limit) || 80, 300));
+    const nodes = [];
+    for (const el of interactiveList(doc)) {
+      if (nodes.length >= limit) break;
+      if (el.getAttribute("data-ww-ref")) continue;
+      const ref = `@e${seq++}`;
+      el.setAttribute("data-ww-ref", ref);
+      nodes.push({
+        ref,
+        role: roleOf(el),
+        name: labelOf(el),
+        tag: el.tagName.toLowerCase(),
+        value: typeof el.value === "string" ? el.value.slice(0, 60) : void 0,
+        frame,
+        source: "dom_supplement"
+      });
+    }
+    return { ok: true, data: { nodes, nextSeq: seq, frame } };
   }
   function findByRef(doc, ref) {
     if (!ref) return null;
@@ -1451,6 +1474,7 @@
         const map = {
           ping: () => ({ ok: true, data: { ver: VER, url: location.href } }),
           snapshot: () => ({ ok: true, data: buildSnapshot(msg.args || {}) }),
+          ax_supplement: () => axSupplement(msg.args || {}),
           read_page: () => doReadPage(msg.args || {}),
           resolve_box: () => resolveBox(msg.args || {}),
           resolve_file_input: () => resolveFileInput(msg.args || {}),

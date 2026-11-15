@@ -14,7 +14,7 @@ import (
 var extFS embed.FS
 
 const seedMarker = ".ww-browser-ext-version"
-const seedVersion = "0.3.16"
+const seedVersion = "0.3.23"
 
 // BridgeTokenPlaceholder 扩展 offscreen.js 中的 token 占位符（启动时注入真值）。
 const BridgeTokenPlaceholder = "__WW_BRIDGE_TOKEN__"

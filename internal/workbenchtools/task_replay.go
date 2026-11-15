@@ -231,6 +231,23 @@ func resolveReplayTarget(ctx context.Context, b bridgeCaller, step model.TaskSte
 			out["newTab"] = v
 		}
 		return out, "url", nil
+	case "browser_run", "run", "macro":
+		// Skill 收口形态：一条宏 = 嵌套 steps + allowWrite
+		steps, ok := args["steps"]
+		if !ok || steps == nil {
+			return nil, "", fmt.Errorf("宏步缺少 args.steps")
+		}
+		out["steps"] = steps
+		out["allowWrite"] = true
+		if v, ok := args["mode"]; ok {
+			out["mode"] = v
+		} else {
+			out["mode"] = "macro"
+		}
+		if v, ok := args["allowWrite"]; ok {
+			out["allowWrite"] = v
+		}
+		return out, "macro", nil
 	case "keys":
 		keys := strField(args, "keys")
 		if keys == "" {
@@ -437,6 +454,14 @@ func executeReplayAction(ctx context.Context, b bridgeCaller, step model.TaskSte
 		return raw, nil
 	case "open_frame":
 		return b.Call(ctx, "open_frame", resolved)
+	case "browser_run", "run", "macro":
+		session := firstNonEmpty(sourceSession, strField(resolved, "session"), strField(rawJSONMap(step.ArgsJSON), "session"))
+		args := map[string]interface{}{"allowWrite": true, "mode": "macro"}
+		for k, v := range resolved {
+			args[k] = v
+		}
+		args["allowWrite"] = true
+		return b.CallSession(ctx, "run", args, session)
 	default:
 		return nil, fmt.Errorf("不支持重放: %s", step.Action)
 	}

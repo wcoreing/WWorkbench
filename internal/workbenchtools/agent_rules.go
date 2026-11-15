@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.14b"
+const AgentRulesVersion = "2026.11.15d"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -32,10 +32,11 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **任务**：人分配的目标（要办成的事；常与 Chrome 标签组 session 对齐）。不是待办列表实体名。
 - **任务账本 / 日志**：SSOT。含 **思考（kind=thought）** 与 **操作（kind=op）**；TaskRun → 工作流/{name}/log.md。探索期如实记录；是总结技能的**资料**，不是必须逐步回放的脚本。
 - **工作流协议（Skill）**：笔记本**基础能力**（任意目录下的 SKILL.md + log.md + assets/、scripts/）。结构：说明 → 经验 → 步骤 → 脚本 → 资源。**引擎是 Agent**。顶栏「工作流/」只是任务产品的默认落点，不是唯一位置。
-- **插件解耦**：浏览器扩展（wwb）与 Kimi WebBridge（kimi）只是执行器；任务场景**禁止直连** 127.0.0.1:10086 / 18765，一律经 browser_*（可传 executor=wwb|kimi），由工作台记 op。
+- **插件解耦**：浏览器扩展（wwb）与 Kimi WebBridge（kimi）只是执行器；任务场景**禁止直连** 127.0.0.1:10086 / 18765，一律经 browser_*（executor=wwb|kimi|auto），由工作台记 op。
 - **自学习两阶段（必须遵守）**：
   1. **探索**：接受目标后动手完成；过程经验写入账本/log.md（browser_* 自动记 op；关键决策用 task_record(kind=thought)）。此阶段以达成目标为主，Skill 可先粗糙或不存在。
   2. **收口**：目标完成后，**推理总结**再 update_skill（归纳稳定路径/经验/脚本/资源）；**name=当前任务名**（与 log.md 同目录），禁止沉淀到别的工作流；禁止机械把 log 逐步贴进 Skill，禁止只口头总结不落盘。
+  3. **宏↔Skill**：探索用单工具/fill(fields)；跑稳后用 browser_run(mode=macro)。收口时把该稳定段写成一条 wwb-skill-steps（action=browser_run，args.allowWrite=true，args.steps=嵌套步）。下次 get_skill → Agent 调 browser_run，或 run_skill 机械跑宏一步。宏≠自动写 Skill；挂钩靠收口沉淀。
 - **谁执行**：当前在用的 Agent（Cursor / 侧栏 / 其他 MCP 客户端）负责两阶段；舞台只备资料与焦点，不指定通道、不机械写 Skill。
 - **磁盘真源**：笔记本 = ~/.wworkbench/notebook/。根下按**业务工作根**分区隔离：工作流/（任务产品默认）、运维/、记忆区/。产品只挂自己的根；笔记本产品看全盘。样板：get_skill(skill=wwb-skill-standard)。当前任务若只有 log.md，update_skill 可带 steps 首创同目录 SKILL.md。
 - **log.md**：与 SKILL.md 同目录的账本投影；同步时**只追加**更高 seq 的思考/操作并刷新头信息，不整文件覆盖。get_skill / list_skills **只认 SKILL.md**。
@@ -120,15 +121,29 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 数据硬风险（同步/库文件/导入）永远不可免。
 
 ## 10. 浏览器舞台与任务账本（执行器可换）
-- 先 browser_status：看 executors.wwb / executors.kimi；wwb 未连接时可按 extDir 加载扩展，或用 executor=kimi。
-- **禁止**任务场景直连插件端口（10086/18765）；一律 browser_*（可选 executor=wwb|kimi），工作台自动记 op 到账本。
+- 先 browser_status：看 executors.wwb / executors.kimi / recommended / capabilities；wwb 未连接时可按 extDir 加载扩展。
+- **禁止**任务场景直连插件端口（10086/18765）；一律 browser_*（executor=wwb|kimi|auto），工作台自动记 op。
+- **auto/默认**：优先 wwb（已含 CDP Accessibility AX 快照 + DOM 补充，效果对齐直连 Kimi）；executor=kimi 作显式对比/回退。同一任务尽量固定 executor，勿中途混用导致附着错位。
+- snapshot 默认 source=ax（getFullAXTree→@eN）；source=dom 强制旧 DOM 扫描；frame 非 #f0 时回退 DOM。
 - 思考/决策：task_record(kind=thought, summary=…)；换策略、踩坑结论、收口前必记。
 - 【标签组】一任务=一 session=一 Chrome 标签组。首次 navigate 带 session+group_title。结束 close_session；borrowed 不关。
 - 快速定位：browser_find_tab。读页：snapshot / read_page；批量只读：browser_run。
-- 标准闭环：find_tab → find/snapshot → click → wait → snapshot。
-- 上传 / 网络 / 下拉 / 拖拽：browser_upload、browser_network、browser_select_option、browser_drag。
-- click 可用 selector/name。写操作须填 intent。
-- 【填表降级】browser_fill / select_option 优先；失败或 hint=snapshot_then_click 时：打开控件 → snapshot → 点选项 → 再核对。
+- **可写宏**：路径跑稳后用 browser_run(allowWrite=true|mode=macro, intent, steps=[…]) 一次往返；允许 fill/click/keys/navigate/select_option/network；失败即停；禁 upload/drag。探索多字段仍优先 fill(fields)。**自学习挂钩**：账本记宏 op（须带 session）→ update_skill 把宏收成 skill 一步 → run_skill / 再调 browser_run 复跑。
+- 标准闭环：find_tab → snapshot → click（看 observation）→ 下一步。**禁止** observation 已够用时再 browser_wait / 再 snapshot。
+- **等壳不等数据**：waitFor* 只等稳定 UI（Submit/Update/Create/登录/保存成功/下拉选项名）；**禁止**把任务正文（如「物流很快」）当通用 wait 条件。业务正文仅当「确知打开的就是该条」时可选。
+- waitFor 优先级：waitForRef / waitForSelector → waitForNameIncludes → waitForText（壳文案）→ 业务句（最后）。
+- **observation 分级**：observation=ax|probe|false（或 includeSnapshot=true|probe|false）。无 waitFor 时 click 默认 ax（拿下一跳 @eN）；带 waitFor 且命中后默认 probe（快确认）；还需点新 ref 时传 observation=ax。
+- **仅当** 对不上下一态时：click/navigate 带 waitFor*（默认 3s）。勿无脑独立 browser_wait。
+- **标注样板**（含新建）：
+  1. **建 task**：优先宿主侧 API/manage.py（已登录会话外）；**禁止**依赖 page 内 browser_evaluate fetch（LS 等站点 CSP 禁 unsafe-eval）。UI 备选：Import → 粘贴 JSON → 导入成功壳。
+  2. navigate 列表/详情：waitForText=Labeling|Submit|Create（壳），observation=probe；勿等业务正文。
+  3. snapshot → 若无编辑器：click(Create, waitForText=Submit, observation=ax)。
+  4. click(标签, observation=false) → click(Submit, waitForText=Update, observation=probe)。
+  5. browser_network(session=同 navigate)：start → Submit → verify filter=annotations method=POST status=201；勿漏 session（否则 adhoc 无 tab）。
+  6. 连续多条：每条重复 3–5；换 task 用列表行或 ?task=id，仍等壳不业务句。
+- 上传 / 网络 / 下拉 / 拖拽：browser_upload、browser_network、browser_select_option、browser_drag（拖拽必须 wwb）。
+- navigate：load 完成后可 waitForText=壳文案（如 Labeling/Settings）；默认不附全量 ax；observation=probe 即可。勿 navigate 后再无脑 wait。
+- 【填表】探索期多字段用 browser_fill(fields=[{ref,value,action?}]) 一次往返（软写；失败即停；勿塞 Submit）。单字段仍 ref+value。select_option 可作 field.action。失败或 hint=snapshot_then_click 时：打开控件 → snapshot → 点选项 → 再核对。
 - 【询问开关】舞台顶栏「询问」默认关闭；打开后逐步确认。
 - 舞台顶栏「网页 | 日志」：网页=操作面；日志=任务账本 + IDE（log.md 含思考/操作；Skill=SKILL.md）。
 - **推荐闭环**：接目标 → task_record(thought) + browser_* 探索 → 完成后 update_skill。run_skill 仅为可选捷径。

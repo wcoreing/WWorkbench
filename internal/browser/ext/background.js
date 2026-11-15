@@ -1,9 +1,10 @@
 "use strict";
 (() => {
   // src/shared/version.ts
-  var EXT_VERSION = "0.3.16";
+  var EXT_VERSION = "0.3.23";
   var CAPABILITIES = [
     "snapshot",
+    "ax_snapshot",
     "click",
     "fill",
     "find",
@@ -462,14 +463,492 @@
     return res;
   }
 
+  // src/background/ax_snapshot.ts
+  var INTERACTIVE_ROLES = /* @__PURE__ */ new Set([
+    "button",
+    "link",
+    "textbox",
+    "checkbox",
+    "radio",
+    "combobox",
+    "listbox",
+    "menuitem",
+    "menuitemcheckbox",
+    "menuitemradio",
+    "option",
+    "searchbox",
+    "slider",
+    "spinbutton",
+    "switch",
+    "tab",
+    "treeitem",
+    "gridcell"
+  ]);
+  var axRefs = /* @__PURE__ */ new Map();
+  var axSeq = 1;
+  var lastFlat = [];
+  var lastMeta = null;
+  function clearAxRefs() {
+    axRefs.clear();
+    axSeq = 1;
+    lastFlat = [];
+    lastMeta = null;
+  }
+  function getAxRef(ref) {
+    if (!ref) return null;
+    const key = String(ref).startsWith("@") ? String(ref).slice(1) : String(ref);
+    return axRefs.get(key) || null;
+  }
+  function hasAxRef(ref) {
+    return !!getAxRef(ref);
+  }
+  function allocRef(backendDOMNodeId, role, name) {
+    const id = `e${axSeq++}`;
+    axRefs.set(id, { backendDOMNodeId, role, name });
+    return id;
+  }
+  function flattenTree(nodes) {
+    const out = [];
+    const walk = (n) => {
+      if (!n) return;
+      if (Array.isArray(n)) {
+        n.forEach(walk);
+        return;
+      }
+      if (n.ref) {
+        out.push({ ref: n.ref, role: n.role, name: n.name || "", value: n.value });
+      }
+      if (n.children?.length) walk(n.children);
+    };
+    walk(nodes);
+    return out;
+  }
+  function formatChildren(root, byId) {
+    const out = [];
+    const format = (node) => {
+      const role = node.role?.value;
+      if (!role || role === "none" || role === "generic") {
+        if (!node.childIds?.length) return null;
+        const kids = [];
+        for (const cid of node.childIds) {
+          const child = byId.get(cid);
+          if (!child) continue;
+          const t = format(child);
+          if (!t) continue;
+          if (Array.isArray(t)) kids.push(...t);
+          else kids.push(t);
+        }
+        if (kids.length === 1) return kids[0];
+        return kids.length > 0 ? kids : null;
+      }
+      const item = { role };
+      if (node.name?.value) item.name = node.name.value;
+      if (node.value?.value != null && String(node.value.value) !== "") item.value = String(node.value.value);
+      if (node.description?.value) item.description = node.description.value;
+      if (INTERACTIVE_ROLES.has(role) && node.backendDOMNodeId != null) {
+        item.ref = `@${allocRef(node.backendDOMNodeId, role, item.name || "")}`;
+      }
+      if (node.childIds?.length) {
+        const kids = [];
+        for (const cid of node.childIds) {
+          const child = byId.get(cid);
+          if (!child) continue;
+          const t = format(child);
+          if (!t) continue;
+          if (Array.isArray(t)) kids.push(...t);
+          else kids.push(t);
+        }
+        if (kids.length) item.children = kids;
+      }
+      return item;
+    };
+    if (root.childIds) {
+      for (const cid of root.childIds) {
+        const child = byId.get(cid);
+        if (!child) continue;
+        const t = format(child);
+        if (!t) continue;
+        if (Array.isArray(t)) out.push(...t);
+        else out.push(t);
+      }
+    }
+    return out;
+  }
+  function buildTree(nodes) {
+    if (!nodes.length) return [];
+    const byId = /* @__PURE__ */ new Map();
+    for (const n of nodes) byId.set(n.nodeId, n);
+    return formatChildren(nodes[0], byId);
+  }
+  function treeTextFromFlat(flat, maxChars) {
+    const lines = flat.map((n) => {
+      const bits = [n.ref, n.role, JSON.stringify(n.name || "")];
+      if (n.value) bits.push("value=" + JSON.stringify(String(n.value).slice(0, 60)));
+      return bits.join(" ");
+    });
+    let text = lines.join("\n");
+    let truncated = false;
+    if (text.length > maxChars) {
+      text = text.slice(0, maxChars);
+      truncated = true;
+    }
+    return { text, truncated };
+  }
+  async function stampRefs(target, entries) {
+    for (const e of entries) {
+      try {
+        const resolved = await chrome.debugger.sendCommand(target, "DOM.resolveNode", {
+          backendNodeId: e.backendDOMNodeId
+        });
+        const objectId = resolved?.object?.objectId;
+        if (!objectId) continue;
+        await chrome.debugger.sendCommand(target, "Runtime.callFunctionOn", {
+          objectId,
+          functionDeclaration: `function(ref) {
+          try {
+            this.setAttribute('data-ww-ref', ref);
+            return true;
+          } catch (e) { return false; }
+        }`,
+          arguments: [{ value: e.ref }],
+          returnByValue: true
+        });
+      } catch {
+      }
+    }
+  }
+  async function supplementDomRefs(tabId, startSeq, limit) {
+    const res = await sendToTab(tabId, "ax_supplement", { startSeq, limit });
+    if (!res?.ok || !Array.isArray(res.data?.nodes)) return [];
+    const nodes = res.data.nodes;
+    for (const n of nodes) {
+      const key = n.ref.startsWith("@") ? n.ref.slice(1) : n.ref;
+      const num = parseInt(key.replace(/^e/, ""), 10);
+      if (Number.isFinite(num) && num >= axSeq) axSeq = num + 1;
+      if (!axRefs.has(key)) {
+        axRefs.set(key, { backendDOMNodeId: 0, role: n.role, name: n.name || "" });
+      }
+    }
+    return nodes.map((n) => ({
+      ref: n.ref,
+      role: n.role,
+      name: n.name || "",
+      value: n.value
+    }));
+  }
+  async function handleAxSnapshot(tabId, args = {}) {
+    const source = String(args.source || args.mode || "ax").toLowerCase();
+    if (source === "dom" || args.frame && String(args.frame) !== "" && String(args.frame) !== "#f0") {
+      return fail("use_dom", "use_dom");
+    }
+    clearAxRefs();
+    let tab;
+    try {
+      tab = await chrome.tabs.get(tabId);
+    } catch (e) {
+      return fail("\u65E0\u6CD5\u8BFB\u53D6\u6807\u7B7E: " + String(e?.message || e), "no_tab");
+    }
+    try {
+      const tree = await withDebugger(tabId, async (target) => {
+        await chrome.debugger.sendCommand(target, "Runtime.evaluate", {
+          expression: `document.querySelectorAll('[data-ww-ref]').forEach(n=>n.removeAttribute('data-ww-ref'))`,
+          returnByValue: true
+        }).catch(() => {
+        });
+        const ax = await chrome.debugger.sendCommand(target, "Accessibility.getFullAXTree", {});
+        const built = buildTree(ax.nodes || []);
+        const stampList = [];
+        for (const [key, entry] of axRefs) {
+          if (entry.backendDOMNodeId > 0) {
+            stampList.push({ ref: `@${key}`, backendDOMNodeId: entry.backendDOMNodeId });
+          }
+        }
+        await stampRefs(target, stampList);
+        return built;
+      });
+      let flat = flattenTree(tree);
+      const format = String(args.format || "aria").toLowerCase();
+      const maxNodes = Math.max(20, Math.min(Number(args.maxNodes || args.max_nodes) || (format === "json" ? 280 : 220), 500));
+      const maxChars = Math.max(200, Math.min(Number(args.maxChars || args.max_chars) || 12e3, 6e4));
+      if (args.supplement !== false) {
+        const extra = await supplementDomRefs(tabId, axSeq, Math.max(0, maxNodes - flat.length));
+        if (extra.length) flat = flat.concat(extra);
+      }
+      const truncatedNodes = flat.length > maxNodes;
+      const limited = flat.slice(0, maxNodes);
+      lastFlat = limited;
+      lastMeta = { url: tab.url || "", title: tab.title || "", tabId };
+      const { text, truncated: truncatedText } = treeTextFromFlat(limited, maxChars);
+      const base = {
+        url: tab.url || "",
+        title: tab.title || "",
+        frame: "#f0",
+        source: "ax",
+        nodeCount: limited.length,
+        truncated: truncatedNodes || truncatedText
+      };
+      if (format === "json") {
+        return ok({
+          ...base,
+          nodes: limited.map((n) => ({
+            ref: n.ref,
+            role: n.role,
+            name: n.name,
+            value: n.value,
+            frame: "#f0"
+          })),
+          tree
+        });
+      }
+      return ok({
+        ...base,
+        format: "aria",
+        tree_text: text,
+        tree
+      });
+    } catch (e) {
+      const msg = String(e?.message || e);
+      if (/Cannot access|Debugger is not attached|Another debugger|Detached|Protocol error/i.test(msg)) {
+        return fail(msg, "use_dom");
+      }
+      return fail("AX \u5FEB\u7167\u5931\u8D25: " + msg, "ax_snapshot_failed");
+    }
+  }
+  async function handleAxFind(tabId, args = {}) {
+    const q = String(args.query || args.nameIncludes || "").trim().toLowerCase();
+    if (!q) return fail("\u8BF7\u63D0\u4F9B query", "invalid_arg");
+    if (!lastMeta || lastMeta.tabId !== tabId || lastFlat.length === 0) {
+      const snap = await handleAxSnapshot(tabId, { ...args, format: "json" });
+      if (!snap.ok) return snap;
+    }
+    const matches = lastFlat.filter(
+      (n) => (n.name || "").toLowerCase().includes(q) || (n.ref || "").toLowerCase().includes(q) || (n.role || "").toLowerCase().includes(q)
+    );
+    return ok({
+      query: q,
+      matches,
+      totalMatches: matches.length,
+      url: lastMeta?.url || "",
+      title: lastMeta?.title || "",
+      frame: "#f0",
+      source: "ax"
+    });
+  }
+  function resolveObservationMode(args, defaultMode = "ax") {
+    const raw = args.observation ?? args.includeSnapshot ?? args.include_snapshot;
+    if (raw === false || raw === "false" || raw === 0 || raw === "off" || raw === "none") return "off";
+    if (raw === "probe" || raw === "light") return "probe";
+    if (raw === true || raw === "true" || raw === 1 || raw === "ax" || raw === "full") return "ax";
+    return defaultMode;
+  }
+  async function maybeAttachSnapshot(tabId, args, data, opts) {
+    const mode = resolveObservationMode(args, opts?.defaultMode ?? "ax");
+    if (mode === "off") return data;
+    if (mode === "probe") {
+      const w = data.wait;
+      if (w?.probe) {
+        return {
+          ...data,
+          observation: {
+            kind: "probe",
+            matched: w.matched,
+            waitedMs: w.waitedMs,
+            ...w.probe
+          }
+        };
+      }
+      try {
+        await ensureContent(tabId);
+        const res = await sendToTab(tabId, "probe", { readyState: true });
+        return {
+          ...data,
+          observation: {
+            kind: "probe",
+            matched: !!res?.ok && !!res.data?.matched,
+            ...res?.data || {}
+          }
+        };
+      } catch {
+        return { ...data, observation: { kind: "probe", matched: false } };
+      }
+    }
+    const settle = opts?.settleMs != null ? opts.settleMs : 100;
+    if (settle > 0) await new Promise((r) => setTimeout(r, settle));
+    const snap = await handleAxSnapshot(tabId, {
+      format: "aria",
+      maxNodes: Number(args.snapshotMaxNodes || args.maxNodes) || 160,
+      maxChars: Number(args.snapshotMaxChars || args.maxChars) || 8e3
+    });
+    if (snap.ok) {
+      const obs = snap.data;
+      const { tree: _tree, ...light } = obs;
+      return { ...data, observation: { kind: "ax", ...light } };
+    }
+    return {
+      ...data,
+      observationError: snap.error || "snapshot_failed"
+    };
+  }
+  async function resolveAxBox(tabId, ref) {
+    const entry = getAxRef(ref);
+    if (!entry || !entry.backendDOMNodeId) return null;
+    return withDebugger(tabId, async (target) => {
+      try {
+        const model = await chrome.debugger.sendCommand(target, "DOM.getBoxModel", {
+          backendNodeId: entry.backendDOMNodeId
+        });
+        const c = model?.model?.content;
+        if (!c || c.length < 8) return null;
+        const xs = [c[0], c[2], c[4], c[6]];
+        const ys = [c[1], c[3], c[5], c[7]];
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
+        const resolved = await chrome.debugger.sendCommand(target, "DOM.resolveNode", {
+          backendNodeId: entry.backendDOMNodeId
+        });
+        if (resolved?.object?.objectId) {
+          await chrome.debugger.sendCommand(target, "Runtime.callFunctionOn", {
+            objectId: resolved.object.objectId,
+            functionDeclaration: `function(){ this.scrollIntoView({block:'center',inline:'center'}); }`,
+            returnByValue: true
+          });
+          const model2 = await chrome.debugger.sendCommand(target, "DOM.getBoxModel", {
+            backendNodeId: entry.backendDOMNodeId
+          });
+          const c2 = model2?.model?.content;
+          if (c2 && c2.length >= 8) {
+            const xs2 = [c2[0], c2[2], c2[4], c2[6]];
+            const ys2 = [c2[1], c2[3], c2[5], c2[7]];
+            const minX2 = Math.min(...xs2);
+            const maxX2 = Math.max(...xs2);
+            const minY2 = Math.min(...ys2);
+            const maxY2 = Math.max(...ys2);
+            return {
+              x: (minX2 + maxX2) / 2,
+              y: (minY2 + maxY2) / 2,
+              width: maxX2 - minX2,
+              height: maxY2 - minY2,
+              via: "ax_ref",
+              label: entry.name
+            };
+          }
+        }
+        return {
+          x: (minX + maxX) / 2,
+          y: (minY + maxY) / 2,
+          width: maxX - minX,
+          height: maxY - minY,
+          via: "ax_ref",
+          label: entry.name
+        };
+      } catch {
+        return null;
+      }
+    });
+  }
+
+  // src/background/wait_for.ts
+  function extractWaitFor(args = {}) {
+    let text;
+    const wf = args.waitFor ?? args.waitForText;
+    if (typeof wf === "string" && wf.trim()) text = wf.trim();
+    else if (typeof args.waitForText === "string" && args.waitForText.trim()) text = args.waitForText.trim();
+    const textGone = String(args.waitForTextGone || "").trim() || void 0;
+    const nameIncludes = String(args.waitForNameIncludes || args.waitForName || "").trim() || void 0;
+    const ref = String(args.waitForRef || "").trim() || void 0;
+    const selector = String(args.waitForSelector || "").trim() || void 0;
+    const readyState = args.waitForReady === true || args.waitForReadyState === true;
+    if (!text && !textGone && !nameIncludes && !ref && !selector && !readyState) return null;
+    const timeoutMs = Math.min(
+      Math.max(Number(args.waitForTimeoutMs || args.waitTimeoutMs) || 3e3, 200),
+      2e4
+    );
+    const pollMs = Math.min(Math.max(Number(args.waitForPollMs) || 80, 40), 500);
+    const frame = String(args.frame || args.waitForFrame || "").trim() || void 0;
+    return { text, textGone, nameIncludes, ref, selector, readyState, frame, timeoutMs, pollMs };
+  }
+  function waitForProbeArgs(spec) {
+    const a = {};
+    if (spec.text) a.text = spec.text;
+    if (spec.textGone) a.textGone = spec.textGone;
+    if (spec.nameIncludes) a.nameIncludes = spec.nameIncludes;
+    if (spec.ref) a.ref = spec.ref;
+    if (spec.selector) a.selector = spec.selector;
+    if (spec.readyState) a.readyState = true;
+    if (spec.frame) a.frame = spec.frame;
+    return a;
+  }
+  async function probeUntil(tid, spec) {
+    const probeArgs = waitForProbeArgs(spec);
+    const started = Date.now();
+    let last = null;
+    let injected = false;
+    while (Date.now() - started < spec.timeoutMs) {
+      if (!injected) {
+        await ensureContent(tid);
+        injected = true;
+      }
+      const res = await sendToTab(tid, "probe", probeArgs);
+      last = res;
+      if (res?.ok && res.data?.matched) {
+        return {
+          matched: true,
+          timedOut: false,
+          waitedMs: Date.now() - started,
+          probe: res.data
+        };
+      }
+      if (res && res.ok === false && /Receiving end|Could not establish|no_receiver/i.test(res.error || "")) {
+        injected = false;
+      }
+      await sleep(spec.pollMs);
+    }
+    return {
+      matched: false,
+      timedOut: true,
+      waitedMs: Date.now() - started,
+      probe: last?.data || null,
+      error: last?.ok === false ? last.error : void 0
+    };
+  }
+
   // src/background/click.ts
+  async function finishClick(tid, args, data) {
+    const waitSpec = extractWaitFor(args);
+    let out = { ...data };
+    if (waitSpec) {
+      const w = await probeUntil(tid, waitSpec);
+      out = { ...out, wait: w };
+      out = await maybeAttachSnapshot(tid, args, out, {
+        defaultMode: w.matched ? "probe" : "ax",
+        settleMs: w.matched ? 0 : 60
+      });
+    } else {
+      out = await maybeAttachSnapshot(tid, args, out, { defaultMode: "ax" });
+    }
+    return ok(out);
+  }
   async function handleClick(tid, args = {}) {
     const mode = String(args?.mode || "auto").toLowerCase();
     await focusTab(tid, wantActivateWindow(args));
     await ensureContent(tid);
     if (mode === "dom") {
       const res = await sendWithRefRetry(tid, "click", args);
-      return res?.ok ? ok({ ...res.data || {}, mode: "dom", retried: res.retried }) : fail(res?.error || "\u70B9\u51FB\u5931\u8D25", res?.code || "click_failed");
+      if (!res?.ok) return fail(res?.error || "\u70B9\u51FB\u5931\u8D25", res?.code || "click_failed");
+      return finishClick(tid, args, { ...res.data || {}, mode: "dom", retried: res.retried });
+    }
+    const refHint = String(args?.ref || args?.selector || "");
+    if (hasAxRef(refHint) || hasAxRef(String(args?.ref || ""))) {
+      const axBox = await resolveAxBox(tid, String(args?.ref || refHint)).catch(() => null);
+      if (axBox) {
+        try {
+          await debuggerMouseClick(tid, axBox);
+          return finishClick(tid, args, { ...axBox, mode: "pointer", via: axBox.via || "ax_ref" });
+        } catch {
+        }
+      }
     }
     let box = await sendWithRefRetry(tid, "resolve_box", args);
     let via = "content";
@@ -494,12 +973,12 @@
         return fail(box?.error || "\u65E0\u6CD5\u5B9A\u4F4D\u5143\u7D20\uFF08\u542B CDP \u515C\u5E95\uFF09", "not_found");
       }
       const syn = await sendWithRefRetry(tid, "click", args);
-      if (syn?.ok) return ok({ ...syn.data || {}, mode: "dom" });
+      if (syn?.ok) return finishClick(tid, args, { ...syn.data || {}, mode: "dom" });
       return fail(box?.error || syn?.error || "\u65E0\u6CD5\u5B9A\u4F4D\u5143\u7D20", "not_found");
     }
     try {
       await debuggerMouseClick(tid, box.data);
-      return ok({ ...box.data || {}, mode: "pointer", via, retried: box.retried });
+      return finishClick(tid, args, { ...box.data || {}, mode: "pointer", via, retried: box.retried });
     } catch (e) {
       const err = String(e?.message || e);
       if (mode === "pointer") {
@@ -507,7 +986,7 @@
       }
       const syn = await sendWithRefRetry(tid, "click", args);
       if (syn?.ok) {
-        return ok({ ...syn.data || {}, mode: "dom", pointerError: err });
+        return finishClick(tid, args, { ...syn.data || {}, mode: "dom", pointerError: err });
       }
       return fail(syn?.error || err, "click_failed");
     }
@@ -564,36 +1043,26 @@
   async function handleWait(tid, args = {}) {
     const timeoutMs = Math.min(Math.max(Number(args?.timeoutMs) || 8e3, 200), 4e4);
     const pollMs = Math.min(Math.max(Number(args?.pollMs) || 120, 50), 1e3);
-    const started = Date.now();
-    let last = null;
-    let injected = false;
-    while (Date.now() - started < timeoutMs) {
-      if (!injected) {
-        await ensureContent(tid);
-        injected = true;
-      }
-      const res = await sendToTab(tid, "probe", args);
-      last = res;
-      if (res?.ok && res.data?.matched) {
-        return ok({
-          matched: true,
-          timedOut: false,
-          waitedMs: Date.now() - started,
-          observation: res.data
-        });
-      }
-      if (res && res.ok === false && /Receiving end|Could not establish|no_receiver/i.test(res.error || "")) {
-        injected = false;
-      }
-      await sleep(pollMs);
+    const spec = {
+      text: args.text != null && String(args.text) !== "" ? String(args.text) : void 0,
+      textGone: args.textGone != null && String(args.textGone) !== "" ? String(args.textGone) : void 0,
+      nameIncludes: args.nameIncludes != null && String(args.nameIncludes) !== "" ? String(args.nameIncludes) : void 0,
+      ref: args.ref != null && String(args.ref) !== "" ? String(args.ref) : void 0,
+      selector: args.selector != null && String(args.selector) !== "" ? String(args.selector) : void 0,
+      readyState: args.readyState === true,
+      frame: args.frame != null && String(args.frame) !== "" ? String(args.frame) : void 0,
+      timeoutMs,
+      pollMs
+    };
+    if (!spec.text && !spec.textGone && !spec.nameIncludes && !spec.ref && !spec.selector && !spec.readyState) {
+      return fail("wait \u8BF7\u63D0\u4F9B text / textGone / nameIncludes / ref / selector / readyState", "invalid_arg");
     }
-    return ok({
-      matched: false,
-      timedOut: true,
-      waitedMs: Date.now() - started,
-      observation: last?.data || null,
-      error: last?.ok === false ? last.error : void 0
+    const w = await probeUntil(tid, spec);
+    const withObs = await maybeAttachSnapshot(tid, args, { ...w, wait: w }, {
+      defaultMode: "off",
+      settleMs: 0
     });
+    return ok(withObs);
   }
 
   // src/background/widget.ts
@@ -703,6 +1172,120 @@
       opened: true,
       selected: picked.data?.label || value
     });
+  }
+
+  // src/background/fill_batch.ts
+  var MAX_FIELDS = 20;
+  function normalizeFields(args) {
+    const raw = args.fields;
+    if (!Array.isArray(raw) || raw.length === 0) return null;
+    if (raw.length > MAX_FIELDS) {
+      throw Object.assign(new Error(`fields \u6700\u591A ${MAX_FIELDS} \u9879`), { code: "too_many_fields" });
+    }
+    const out = [];
+    for (let i = 0; i < raw.length; i++) {
+      const item = raw[i] || {};
+      const value = item.value ?? item.option ?? item.label;
+      if (value == null || String(value) === "") {
+        throw Object.assign(new Error(`fields[${i}] \u7F3A value`), { code: "invalid_arg" });
+      }
+      const ref = String(item.ref || "").trim();
+      const selector = String(item.selector || "").trim();
+      const name = String(item.name || "").trim();
+      if (!ref && !selector && !name) {
+        throw Object.assign(new Error(`fields[${i}] \u9700 ref / selector / name`), { code: "invalid_arg" });
+      }
+      const action = String(item.action || item.kind || "fill").trim().toLowerCase();
+      out.push({
+        ref: ref || void 0,
+        selector: selector || void 0,
+        name: name || void 0,
+        value: String(value),
+        frame: String(item.frame || args.frame || "").trim() || void 0,
+        action: action === "select" || action === "select_option" ? "select_option" : "fill"
+      });
+    }
+    return out;
+  }
+  async function finishSingleFill(tid, args, res) {
+    if (!res.ok && res.code === "custom_select") {
+      return handleSelectOption(tid, args);
+    }
+    if (res.ok && res.data?.mode === "date_picker" && res.data?.needPick) {
+      return handleDateFill(tid, args);
+    }
+    if (res.ok) {
+      const data = res.data || {};
+      const withObs = await maybeAttachSnapshot(tid, args, data, { defaultMode: "off" });
+      return ok(withObs);
+    }
+    return res;
+  }
+  async function tryHandleFillFields(args, runOne) {
+    let fields;
+    try {
+      fields = normalizeFields(args);
+    } catch (e) {
+      const err = e;
+      return fail(err.message || "fields \u65E0\u6548", err.code || "invalid_arg");
+    }
+    if (!fields) return null;
+    const tid = await resolveTabId();
+    if (!tid) return fail("\u6CA1\u6709\u53EF\u64CD\u4F5C\u7684\u6807\u7B7E\uFF1A\u8BF7\u5148 attach / find_tab / navigate", "no_tab");
+    const results = [];
+    for (let i = 0; i < fields.length; i++) {
+      const f = fields[i];
+      const oneArgs = {
+        ref: f.ref,
+        selector: f.selector,
+        name: f.name,
+        value: f.value,
+        frame: f.frame,
+        // 批填中间项默认不带 observation，末项用外层 args
+        includeSnapshot: false,
+        observation: "false"
+      };
+      let res;
+      if (f.action === "select_option") {
+        res = await handleSelectOption(tid, oneArgs);
+      } else {
+        res = await runOne(oneArgs);
+        res = await finishSingleFill(tid, { ...oneArgs, includeSnapshot: false, observation: "false" }, res);
+      }
+      const row = {
+        index: i,
+        action: f.action || "fill",
+        ref: f.ref,
+        selector: f.selector,
+        name: f.name,
+        ok: !!res.ok
+      };
+      if (res.ok && res.data) Object.assign(row, { data: res.data });
+      if (!res.ok) {
+        row.error = res.error;
+        row.code = res.code;
+        results.push(row);
+        return ok({
+          ok: false,
+          batch: true,
+          stoppedAt: i,
+          count: fields.length,
+          filled: i,
+          results
+        });
+      }
+      results.push(row);
+    }
+    let out = {
+      ok: true,
+      batch: true,
+      stoppedAt: null,
+      count: fields.length,
+      filled: fields.length,
+      results
+    };
+    out = await maybeAttachSnapshot(tid, args, out, { defaultMode: "off" });
+    return ok(out);
   }
 
   // src/background/sessions.ts
@@ -985,29 +1568,56 @@
     }
     return { stopped: true, detached: state2.attachedHere };
   }
+  function matchEntries(state2, args) {
+    const filter = String(args?.filter || "").toLowerCase();
+    const method = String(args?.method || "").trim().toUpperCase();
+    const statusRaw = args?.status;
+    const status = statusRaw === void 0 || statusRaw === null || statusRaw === "" ? null : Number(statusRaw);
+    const statusGte = args?.statusGte != null && args?.statusGte !== "" ? Number(args.statusGte) : null;
+    const statusLt = args?.statusLt != null && args?.statusLt !== "" ? Number(args.statusLt) : null;
+    return state2.order.map((id) => state2.entries.get(id)).filter(Boolean).filter((e) => !filter || e.url.toLowerCase().includes(filter)).filter((e) => !method || e.method.toUpperCase() === method).filter((e) => status == null || !Number.isFinite(status) || e.status === status).filter((e) => statusGte == null || !Number.isFinite(statusGte) || e.status != null && e.status >= statusGte).filter((e) => statusLt == null || !Number.isFinite(statusLt) || e.status != null && e.status < statusLt);
+  }
+  function summarize(e) {
+    return {
+      requestId: e.requestId,
+      url: e.url.slice(0, 300),
+      method: e.method,
+      status: e.status,
+      mimeType: e.mimeType,
+      completed: e.completed
+    };
+  }
   async function handleNetwork(tabId, args = {}) {
     const cmd = String(args?.cmd || args?.action || "list").toLowerCase();
     try {
       if (cmd === "start") {
         await attachNet(tabId);
-        return ok({ capturing: true, tabId, note: "\u5F00\u59CB\u6355\u83B7\u672C\u6807\u7B7E\u7F51\u7EDC\uFF1Blist \u67E5\u770B\uFF0Cdetail \u53D6 body\uFF0Cstop \u7ED3\u675F" });
+        return ok({ capturing: true, tabId, note: "\u5F00\u59CB\u6355\u83B7\u672C\u6807\u7B7E\u7F51\u7EDC\uFF1Blist/verify \u67E5\u770B\uFF0Cdetail \u53D6 body\uFF0Cstop \u7ED3\u675F" });
       }
       if (cmd === "stop") {
         const r = await detachNet(tabId);
         return ok(r);
       }
-      if (cmd === "list") {
-        const state2 = byTab.get(tabId);
-        if (!state2) return fail("\u5C1A\u672A network start", "not_started");
-        const filter = String(args?.filter || "").toLowerCase();
-        const list = state2.order.map((id) => state2.entries.get(id)).filter(Boolean).filter((e) => !filter || e.url.toLowerCase().includes(filter)).slice(-(Number(args?.limit) || 80)).map((e) => ({
-          requestId: e.requestId,
-          url: e.url.slice(0, 300),
-          method: e.method,
-          status: e.status,
-          mimeType: e.mimeType,
-          completed: e.completed
-        }));
+      if (cmd === "list" || cmd === "verify") {
+        let state2 = byTab.get(tabId);
+        if (!state2) {
+          state2 = await attachNet(tabId);
+        }
+        const matched = matchEntries(state2, args);
+        const limit = Number(args?.limit) || (cmd === "verify" ? 10 : 80);
+        const list = matched.slice(-limit).map(summarize);
+        if (cmd === "verify") {
+          const last = [...matched].reverse().find((e) => e.completed && e.status != null) || matched[matched.length - 1];
+          const okStatus = last?.status != null && last.status >= 200 && last.status < 300;
+          return ok({
+            verified: !!last && okStatus,
+            capturing: true,
+            match: last ? summarize(last) : null,
+            count: list.length,
+            requests: list,
+            note: last ? okStatus ? `\u5DF2\u547D\u4E2D ${last.method} ${last.status}` : `\u547D\u4E2D\u4F46\u72B6\u6001\u5F02\u5E38 status=${last.status}` : "\u65E0\u5339\u914D\u8BF7\u6C42\uFF1A\u68C0\u67E5 filter/method\uFF0C\u6216\u5148 start \u518D\u70B9 Submit"
+          });
+        }
         return ok({ count: list.length, capturing: true, requests: list });
       }
       if (cmd === "detail") {
@@ -1038,7 +1648,7 @@
         }
         return ok(out);
       }
-      return fail("\u672A\u77E5 network cmd: " + cmd + "\uFF08start|stop|list|detail\uFF09", "invalid_arg");
+      return fail("\u672A\u77E5 network cmd: " + cmd + "\uFF08start|stop|list|detail|verify\uFF09", "invalid_arg");
     } catch (e) {
       return fail("network \u5931\u8D25: " + String(e?.message || e), "network_failed");
     }
@@ -1381,26 +1991,55 @@
     if (!hit?.id) return fail("\u672A\u627E\u5230\u5339\u914D\u6807\u7B7E: " + query, "tab_not_found");
     return finish(hit);
   }
+  var RUN_WRITE_ACTIONS = /* @__PURE__ */ new Set([
+    "fill",
+    "click",
+    "keys",
+    "navigate",
+    "select_option",
+    "select",
+    "network"
+  ]);
+  var RUN_ALWAYS_ACTIONS = /* @__PURE__ */ new Set([
+    ...READ_ACTIONS,
+    "wait",
+    "list_tabs",
+    "status",
+    "find_tab",
+    "read_page"
+  ]);
+  function runAllowWrite(args) {
+    if (args.allowWrite === true || args.allow_write === true) return true;
+    const mode = String(args.mode || "").trim().toLowerCase();
+    return mode === "write" || mode === "macro";
+  }
   async function handleRun(args, session) {
     const steps = Array.isArray(args?.steps) ? args.steps : [];
     if (!steps.length) return fail("run \u9700\u8981 steps[]", "invalid_arg");
-    if (steps.length > 12) return fail("run \u6700\u591A 12 \u6B65", "too_many_steps");
+    const allowWrite = runAllowWrite(args);
+    const maxSteps = allowWrite ? 16 : 12;
+    if (steps.length > maxSteps) return fail(`run \u6700\u591A ${maxSteps} \u6B65`, "too_many_steps");
     const results = [];
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i] || {};
       const action = String(step.action || "").trim();
       if (!action) return fail(`steps[${i}] \u7F3A action`, "invalid_arg");
       const norm = normalizeAction(action, step.args || {});
-      if (!READ_ACTIONS.has(norm.action) && norm.action !== "wait" && norm.action !== "list_tabs" && norm.action !== "status" && norm.action !== "find_tab" && norm.action !== "read_page") {
-        return fail(`run \u4EC5\u5141\u8BB8\u53EA\u8BFB/\u5B9A\u4F4D\uFF1A${norm.action} \u8BF7\u5355\u72EC\u8C03\u7528`, "write_in_run");
+      const allowed = RUN_ALWAYS_ACTIONS.has(norm.action) || allowWrite && RUN_WRITE_ACTIONS.has(norm.action);
+      if (!allowed) {
+        if (!allowWrite && RUN_WRITE_ACTIONS.has(norm.action)) {
+          return fail(`run \u9ED8\u8BA4\u53EF\u8BFB\uFF1B\u5199\u6B65\u9AA4\u8BF7\u4F20 allowWrite=true\uFF08\u6216 mode=macro\uFF09\uFF1A${norm.action}`, "write_in_run");
+        }
+        return fail(`run \u4E0D\u5141\u8BB8\uFF1A${norm.action}`, "action_denied");
       }
       const res = await handleCommand({ action: norm.action, args: norm.args, session });
+      const dataOk = res.ok && !(res.data && typeof res.data === "object" && res.data.ok === false && (res.data.batch === true || res.data.stoppedAt != null));
       results.push({ action: norm.action, ...res });
-      if (!res.ok) {
-        return ok({ stoppedAt: i, results, ok: false });
+      if (!res.ok || !dataOk) {
+        return ok({ stoppedAt: i, results, ok: false, allowWrite });
       }
     }
-    return ok({ stoppedAt: null, results, ok: true });
+    return ok({ stoppedAt: null, results, ok: true, allowWrite });
   }
   async function handleCommand(msg) {
     const rawAction = String(msg.action || "");
@@ -1511,6 +2150,11 @@
       }
       await saveAttached(tab.id);
       if (args?.wait !== false) await waitTabComplete(tab.id, Number(args?.timeoutMs) || 15e3);
+      const waitSpec = extractWaitFor(args);
+      let navWait;
+      if (waitSpec && tab.id) {
+        navWait = await probeUntil(tab.id, waitSpec);
+      }
       const groupTitle = String(args?.group_title || args?.groupTitle || "").trim() || (openedNew ? "\u821E\u53F0\u4EFB\u52A1" : "");
       const sessionName = resolveSessionName(msg.session, groupTitle) || (openedNew ? "ww-task" : "");
       const g = sessionName ? await bindTabToSession(sessionName, tab.id, {
@@ -1518,7 +2162,7 @@
         createGroup: true,
         groupTitle: groupTitle || sessionName
       }) : null;
-      return ok({
+      let navData = {
         tabId: tab.id,
         url: tab.url || url,
         title: tab.title || "",
@@ -1526,7 +2170,19 @@
         session: g?.session || sessionName || void 0,
         groupId: g?.groupId ?? void 0,
         groupTitle: g?.groupTitle
-      });
+      };
+      if (navWait) navData.wait = navWait;
+      if (tab.id) {
+        const wantAx = args.includeSnapshot === true || args.include_snapshot === true || args.observation === "ax" || args.observation === "full";
+        const wantProbe = !!navWait || args.observation === "probe" || args.includeSnapshot === "probe";
+        if (wantAx || wantProbe) {
+          navData = await maybeAttachSnapshot(tab.id, args, navData, {
+            defaultMode: wantAx ? "ax" : "probe",
+            settleMs: navWait?.matched ? 0 : 40
+          });
+        }
+      }
+      return ok(navData);
     }
     if (action === "select_option") {
       const tid = await resolveTabId();
@@ -1538,18 +2194,39 @@
       if (!tid) return fail("\u6CA1\u6709\u53EF\u64CD\u4F5C\u7684\u6807\u7B7E\uFF1A\u8BF7\u5148 attach / find_tab / navigate", "no_tab");
       return handleDrag(tid, args);
     }
-    if (PAGE_ACTIONS.has(action)) {
-      const needFocus = action === "fill" || action === "keys";
-      const res = await withPage(action, args, { focus: needFocus });
-      if (action === "fill" && !res.ok && res.code === "custom_select") {
-        const tid = await resolveTabId();
-        if (tid) return handleSelectOption(tid, args);
+    if (action === "snapshot") {
+      const tid = await resolveTabId();
+      if (!tid) return fail("\u6CA1\u6709\u53EF\u64CD\u4F5C\u7684\u6807\u7B7E\uFF1A\u8BF7\u5148 attach / find_tab / navigate", "no_tab");
+      await ensureContent(tid);
+      const ax = await handleAxSnapshot(tid, args);
+      if (ax.ok) return ax;
+      if (ax.code !== "use_dom") return ax;
+      return withPage("snapshot", { ...args, format: args.format || "aria" });
+    }
+    if (action === "find") {
+      const tid = await resolveTabId();
+      if (!tid) return fail("\u6CA1\u6709\u53EF\u64CD\u4F5C\u7684\u6807\u7B7E\uFF1A\u8BF7\u5148 attach / find_tab / navigate", "no_tab");
+      await ensureContent(tid);
+      const ax = await handleAxFind(tid, args);
+      if (ax.ok) return ax;
+      if (ax.code !== "use_dom") {
+        const dom = await withPage("find", args);
+        if (dom.ok) return dom;
+        return ax;
       }
-      if (action === "fill" && res.ok && res.data?.mode === "date_picker" && res.data?.needPick) {
-        const tid = await resolveTabId();
-        if (tid) return handleDateFill(tid, args);
-      }
+      return withPage("find", args);
+    }
+    if (action === "fill") {
+      const batch = await tryHandleFillFields(args, (one) => withPage("fill", one, { focus: true }));
+      if (batch) return batch;
+      let res = await withPage("fill", args, { focus: true });
+      const tid = await resolveTabId();
+      if (tid) res = await finishSingleFill(tid, args, res);
       return res;
+    }
+    if (PAGE_ACTIONS.has(action)) {
+      const needFocus = action === "keys";
+      return withPage(action, args, { focus: needFocus });
     }
     if (action === "click") {
       const tid = await resolveTabId();

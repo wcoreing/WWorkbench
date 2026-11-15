@@ -16,7 +16,7 @@ func browserCall(ctx context.Context, d *Deps, session, executorHint, action str
 		wwb.Bridge = d.Browser
 	}
 	kimi := browser.NewKimiExecutor("")
-	ex, provider, err := browser.ResolveExecutor(ctx, executorHint, wwb, kimi)
+	ex, provider, err := browser.ResolveExecutorForAction(ctx, executorHint, action, wwb, kimi)
 	if err != nil {
 		return nil, "", err
 	}

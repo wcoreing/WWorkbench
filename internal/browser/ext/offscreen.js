@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // src/shared/version.ts
-  var EXT_VERSION = "0.3.16";
+  var EXT_VERSION = "0.3.23";
 
   // src/offscreen/main.ts
   var BRIDGE_TOKEN = "__WW_BRIDGE_TOKEN__";

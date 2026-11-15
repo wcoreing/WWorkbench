@@ -15,7 +15,7 @@ import (
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
 // ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.54.533"
+const ServerVersion = "0.54.542"
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明（前馈；不因未读规则拒绝工具）。
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本 / 浏览器舞台 / 备份 / 插件等）。
@@ -28,7 +28,7 @@ const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据�
 - 能解析到 SSH 的操作会先打开/聚焦对应终端 + 状态栏。shell_run 返回 updatedAt → 立刻 get_shell_output(waitMs, afterUpdatedAt)。shell_probe=无头只读短探针。断线先 terminal_reconnect。
 - 容器启停删用 start/stop/remove_container，勿用 shell_probe 跑 docker rm。
 - 词典：任务=目标；账本=thought+op→log.md；Skill=任意目录 SKILL.md。对外只认 list/get/update/run/distill_skill（旧 *workflow / update_agent_skill 已别名转发）。闭环：接目标→task_record/browser_*→update_skill。禁止任务场景直连 10086/18765。样板 get_skill(wwb-skill-standard)。
-- 浏览器：browser_*（executor=wwb|kimi）；思考用 task_record(kind=thought)。
+- 浏览器：browser_*；等壳；fill(fields)；可写宏 browser_run(mode=macro)。自学习：探索记 log → 收口 update_skill（稳定段写成一条 browser_run 步骤）→ get_skill/run_skill。标注样板：建 task → navigate 等壳 → 标签/Submit → network verify。
 - 笔记本：list_notes / get_note / get_skill；动手前读主机 memory。插件 UI：先 get_plugin_protocol。
 - 工具受「AI 能力权限」开关约束。Cursor 配置本端点 /mcp/workbench（非 /mcp）。`
 

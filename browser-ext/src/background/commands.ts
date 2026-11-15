@@ -3,7 +3,7 @@ import type { BridgeCommand, CmdResult } from '../shared/types'
 import { fail, ok } from '../shared/types'
 import { handleClick, handleDrag, handleWait } from './click'
 import { sendWithRefRetry } from './retry'
-import { handleDateFill } from './date'
+import { finishSingleFill, tryHandleFillFields } from './fill_batch'
 import { handleSelectOption } from './select'
 import {
   bindTabToSession,
@@ -27,6 +27,8 @@ import {
 import { handleNetwork } from './network'
 import { handleUpload } from './upload'
 import { getRecordState, recordStatusExtra, startRecording, stopRecording } from './record'
+import { handleAxFind, handleAxSnapshot, maybeAttachSnapshot } from './ax_snapshot'
+import { extractWaitFor, probeUntil } from './wait_for'
 
 const READ_ACTIONS = new Set([
   'snapshot',
@@ -148,33 +150,71 @@ async function handleFindTab(args: Record<string, unknown>, session?: string): P
   return finish(hit)
 }
 
+/** 有界可写宏（allowWrite）：软写一次往返；不含 upload/drag/close_session。 */
+const RUN_WRITE_ACTIONS = new Set([
+  'fill',
+  'click',
+  'keys',
+  'navigate',
+  'select_option',
+  'select',
+  'network',
+])
+
+const RUN_ALWAYS_ACTIONS = new Set([
+  ...READ_ACTIONS,
+  'wait',
+  'list_tabs',
+  'status',
+  'find_tab',
+  'read_page',
+])
+
+function runAllowWrite(args: Record<string, unknown>): boolean {
+  if (args.allowWrite === true || args.allow_write === true) return true
+  const mode = String(args.mode || '')
+    .trim()
+    .toLowerCase()
+  return mode === 'write' || mode === 'macro'
+}
+
 async function handleRun(args: Record<string, unknown>, session?: string): Promise<CmdResult> {
   const steps = Array.isArray(args?.steps) ? (args.steps as Array<{ action?: string; args?: Record<string, unknown> }>) : []
   if (!steps.length) return fail('run 需要 steps[]', 'invalid_arg')
-  if (steps.length > 12) return fail('run 最多 12 步', 'too_many_steps')
+  const allowWrite = runAllowWrite(args)
+  const maxSteps = allowWrite ? 16 : 12
+  if (steps.length > maxSteps) return fail(`run 最多 ${maxSteps} 步`, 'too_many_steps')
   const results: unknown[] = []
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i] || {}
     const action = String(step.action || '').trim()
     if (!action) return fail(`steps[${i}] 缺 action`, 'invalid_arg')
     const norm = normalizeAction(action, step.args || {})
-    if (
-      !READ_ACTIONS.has(norm.action) &&
-      norm.action !== 'wait' &&
-      norm.action !== 'list_tabs' &&
-      norm.action !== 'status' &&
-      norm.action !== 'find_tab' &&
-      norm.action !== 'read_page'
-    ) {
-      return fail(`run 仅允许只读/定位：${norm.action} 请单独调用`, 'write_in_run')
+    const allowed =
+      RUN_ALWAYS_ACTIONS.has(norm.action) || (allowWrite && RUN_WRITE_ACTIONS.has(norm.action))
+    if (!allowed) {
+      if (!allowWrite && RUN_WRITE_ACTIONS.has(norm.action)) {
+        return fail(`run 默认可读；写步骤请传 allowWrite=true（或 mode=macro）：${norm.action}`, 'write_in_run')
+      }
+      return fail(`run 不允许：${norm.action}`, 'action_denied')
     }
     const res = await handleCommand({ action: norm.action, args: norm.args, session })
+    // 批填/宏步：扩展层 ok 但 data.ok===false（失败即停）也算停
+    const dataOk =
+      res.ok &&
+      !(
+        res.data &&
+        typeof res.data === 'object' &&
+        (res.data as { ok?: boolean }).ok === false &&
+        ((res.data as { batch?: boolean }).batch === true ||
+          (res.data as { stoppedAt?: unknown }).stoppedAt != null)
+      )
     results.push({ action: norm.action, ...res })
-    if (!res.ok) {
-      return ok({ stoppedAt: i, results, ok: false })
+    if (!res.ok || !dataOk) {
+      return ok({ stoppedAt: i, results, ok: false, allowWrite })
     }
   }
-  return ok({ stoppedAt: null, results, ok: true })
+  return ok({ stoppedAt: null, results, ok: true, allowWrite })
 }
 
 export async function handleCommand(msg: BridgeCommand): Promise<CmdResult> {
@@ -295,6 +335,12 @@ export async function handleCommand(msg: BridgeCommand): Promise<CmdResult> {
     }
     await saveAttached(tab.id!)
     if (args?.wait !== false) await waitTabComplete(tab.id!, Number(args?.timeoutMs) || 15000)
+    // 内联 waitFor*：导航完成后短等正文/控件，避免外面再 browser_wait
+    const waitSpec = extractWaitFor(args)
+    let navWait: Awaited<ReturnType<typeof probeUntil>> | undefined
+    if (waitSpec && tab.id) {
+      navWait = await probeUntil(tab.id, waitSpec)
+    }
     // 未传 session 时：有 group_title 或 newTab 也自动建组，标签栏才看得到
     const groupTitle =
       String(args?.group_title || args?.groupTitle || '').trim() ||
@@ -307,7 +353,7 @@ export async function handleCommand(msg: BridgeCommand): Promise<CmdResult> {
           groupTitle: groupTitle || sessionName,
         })
       : null
-    return ok({
+    let navData: Record<string, unknown> = {
       tabId: tab.id,
       url: tab.url || url,
       title: tab.title || '',
@@ -315,7 +361,24 @@ export async function handleCommand(msg: BridgeCommand): Promise<CmdResult> {
       session: g?.session || sessionName || undefined,
       groupId: g?.groupId ?? undefined,
       groupTitle: g?.groupTitle,
-    })
+    }
+    if (navWait) navData.wait = navWait
+    // navigate：有 waitFor 默认 probe；显式 observation=ax / includeSnapshot=true 才全量
+    if (tab.id) {
+      const wantAx =
+        args.includeSnapshot === true ||
+        args.include_snapshot === true ||
+        args.observation === 'ax' ||
+        args.observation === 'full'
+      const wantProbe = !!navWait || args.observation === 'probe' || args.includeSnapshot === 'probe'
+      if (wantAx || wantProbe) {
+        navData = await maybeAttachSnapshot(tab.id, args, navData, {
+          defaultMode: wantAx ? 'ax' : 'probe',
+          settleMs: navWait?.matched ? 0 : 40,
+        })
+      }
+    }
+    return ok(navData)
   }
   if (action === 'select_option') {
     const tid = await resolveTabId()
@@ -327,25 +390,41 @@ export async function handleCommand(msg: BridgeCommand): Promise<CmdResult> {
     if (!tid) return fail('没有可操作的标签：请先 attach / find_tab / navigate', 'no_tab')
     return handleDrag(tid, args)
   }
-  if (PAGE_ACTIONS.has(action)) {
-    const needFocus = action === 'fill' || action === 'keys'
-    const res = await withPage(action, args, { focus: needFocus })
-    // fill 碰到 Ant/Element 自定义下拉时自动改道
-    if (action === 'fill' && !res.ok && (res as { code?: string }).code === 'custom_select') {
-      const tid = await resolveTabId()
-      if (tid) return handleSelectOption(tid, args)
+  // 默认 CDP AX 快照（对齐 Kimi）；source=dom / frame 非主文档时回退 content
+  if (action === 'snapshot') {
+    const tid = await resolveTabId()
+    if (!tid) return fail('没有可操作的标签：请先 attach / find_tab / navigate', 'no_tab')
+    await ensureContent(tid)
+    const ax = await handleAxSnapshot(tid, args)
+    if (ax.ok) return ax
+    if ((ax as { code?: string }).code !== 'use_dom') return ax
+    return withPage('snapshot', { ...args, format: args.format || 'aria' })
+  }
+  if (action === 'find') {
+    const tid = await resolveTabId()
+    if (!tid) return fail('没有可操作的标签：请先 attach / find_tab / navigate', 'no_tab')
+    await ensureContent(tid)
+    const ax = await handleAxFind(tid, args)
+    if (ax.ok) return ax
+    if ((ax as { code?: string }).code !== 'use_dom') {
+      // AX find 失败时仍试 DOM
+      const dom = await withPage('find', args)
+      if (dom.ok) return dom
+      return ax
     }
-    // Element/Ant 日期：改走逐步翻月（带等待）再 pick
-    if (
-      action === 'fill' &&
-      res.ok &&
-      (res as { data?: { mode?: string; needPick?: boolean } }).data?.mode === 'date_picker' &&
-      (res as { data?: { needPick?: boolean } }).data?.needPick
-    ) {
-      const tid = await resolveTabId()
-      if (tid) return handleDateFill(tid, args)
-    }
+    return withPage('find', args)
+  }
+  if (action === 'fill') {
+    const batch = await tryHandleFillFields(args, (one) => withPage('fill', one, { focus: true }))
+    if (batch) return batch
+    let res = await withPage('fill', args, { focus: true })
+    const tid = await resolveTabId()
+    if (tid) res = await finishSingleFill(tid, args, res)
     return res
+  }
+  if (PAGE_ACTIONS.has(action)) {
+    const needFocus = action === 'keys'
+    return withPage(action, args, { focus: needFocus })
   }
   if (action === 'click') {
     const tid = await resolveTabId()

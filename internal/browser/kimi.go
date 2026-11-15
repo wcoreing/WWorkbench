@@ -67,6 +67,26 @@ func (e *KimiExecutor) Call(ctx context.Context, action string, args json.RawMes
 	if action == "" {
 		return nil, errno.New(errno.CodeInvalidArg, "缺少 action", "")
 	}
+	normArgs, err := NormalizeArgsForKimi(action, args)
+	if err != nil {
+		return nil, err
+	}
+	// keys → send_keys（Kimi 工具名）
+	callAction := action
+	if action == "keys" {
+		callAction = "send_keys"
+	}
+	data, err := e.roundTrip(ctx, callAction, normArgs, session)
+	if err != nil && action == "wait" && IsKimiUnknownTool(err) {
+		return e.waitPolyfill(ctx, normArgs, session)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return NormalizeResultFromKimi(action, data), nil
+}
+
+func (e *KimiExecutor) roundTrip(ctx context.Context, action string, args json.RawMessage, session string) (json.RawMessage, error) {
 	if len(args) == 0 || string(args) == "null" {
 		args = json.RawMessage(`{}`)
 	}
@@ -116,4 +136,31 @@ func (e *KimiExecutor) Call(ctx context.Context, action string, args json.RawMes
 		return json.RawMessage(`{}`), nil
 	}
 	return env.Data, nil
+}
+
+// waitPolyfill 旧版 Kimi 扩展无 wait 时：轮询 snapshot 匹配条件。
+func (e *KimiExecutor) waitPolyfill(ctx context.Context, args json.RawMessage, session string) (json.RawMessage, error) {
+	deadline := time.Now().Add(WaitPolyfillTimeout(args))
+	start := time.Now()
+	var lastObs map[string]interface{}
+	for {
+		snapArgs, _ := json.Marshal(map[string]interface{}{"format": "aria", "max_chars": 20000})
+		snap, err := e.roundTrip(ctx, "snapshot", snapArgs, session)
+		if err == nil {
+			snap = NormalizeResultFromKimi("snapshot", snap)
+			text := SnapshotTextFromResult(snap)
+			_ = json.Unmarshal(snap, &lastObs)
+			if WaitConditionMatched(args, text) {
+				return FormatWaitPolyfillResult(true, time.Since(start).Milliseconds(), lastObs), nil
+			}
+		}
+		if time.Now().After(deadline) {
+			return FormatWaitPolyfillResult(false, time.Since(start).Milliseconds(), lastObs), nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(350 * time.Millisecond):
+		}
+	}
 }

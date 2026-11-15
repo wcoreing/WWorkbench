@@ -157,7 +157,7 @@ func intentProp() map[string]interface{} {
 func executorProp() map[string]interface{} {
 	return map[string]interface{}{
 		"type":        "string",
-		"description": "执行器 wwb|kimi；默认优先已连接的 wwb，否则 kimi。禁止直连插件端口。",
+		"description": "执行器 wwb|kimi|auto；auto/默认：指针类(drag等)→wwb，其余→kimi（快照更全）。禁止直连插件端口。",
 	}
 }
 

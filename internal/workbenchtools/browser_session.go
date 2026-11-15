@@ -59,6 +59,7 @@ func BrowserNavigateConfirmed(ctx context.Context, d *Deps, argsJSON string) Too
 	if strings.TrimSpace(in.GroupTitle) != "" {
 		args["group_title"] = strings.TrimSpace(in.GroupTitle)
 	}
+	copyWaitForArgs(argsJSON, args)
 	session := strings.TrimSpace(in.Session)
 	title := strings.TrimSpace(in.GroupTitle)
 	if title == "" {

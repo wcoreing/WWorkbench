@@ -46,26 +46,39 @@ func registerBrowserTools(r *Registry) {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapBrowserSnapshot,
-		Description: "可交互元素树（含 open Shadow DOM；select 带 options）。默认 format=aria；json 返回 nodes。禁止编造 ref。",
+		Description: "可交互元素树。默认 CDP Accessibility AX（对齐 Kimi）+ DOM 补充；format=aria 返回 tree_text。禁止编造 ref。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"format":   map[string]interface{}{"type": "string", "description": "aria|json，默认 aria"},
-				"maxNodes": map[string]interface{}{"type": "integer", "description": "最多节点数，aria 默认 80 / json 120"},
+				"maxNodes": map[string]interface{}{"type": "integer", "description": "最多节点数，默认约 220"},
 				"maxChars": map[string]interface{}{"type": "integer", "description": "aria 文本上限，默认 12000"},
 				"frame":    map[string]interface{}{"type": "string", "description": "#f0 或 #f1…，默认主文档"},
+				"source":   map[string]interface{}{"type": "string", "description": "ax（默认）|dom；frame 非主文档时自动 dom"},
 			},
 		},
 		Handler: toolBrowserSnapshot,
 	})
 	r.add(ToolDef{
-		Name:        workbench.CapBrowserRun,
-		Description: "一批只读步骤一次往返：steps=[{action,args}]，允许 snapshot/find/wait/status/list_tabs/find_tab/evaluate/probe。写操作请单独 click/fill。",
+		Name: workbench.CapBrowserRun,
+		Description: "一批步骤一次往返。默认只读（snapshot/find/wait/…）。" +
+			"可写宏：allowWrite=true 或 mode=macro，须 intent；允许 fill/click/keys/navigate/select_option/network（失败即停；禁 upload/drag）。" +
+			"收口后的稳定路径用宏；探索期多字段优先 browser_fill(fields)。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"steps":   map[string]interface{}{"type": "array", "description": "[{action,args}]，最多 12"},
-				"session": map[string]interface{}{"type": "string", "description": "任务名，可选"},
+				"steps": map[string]interface{}{
+					"type":        "array",
+					"description": "[{action,args}]；只读最多 12，可写宏最多 16",
+				},
+				"allowWrite": map[string]interface{}{
+					"type":        "boolean",
+					"description": "true=有界可写宏；也可用 mode=macro",
+				},
+				"mode":     map[string]interface{}{"type": "string", "description": "read|write|macro"},
+				"session":  map[string]interface{}{"type": "string", "description": "任务名/标签组"},
+				"executor": executorProp(),
+				"intent":   intentProp(),
 			},
 			"required": []string{"steps"},
 		},
@@ -115,14 +128,20 @@ func registerBrowserTools(r *Registry) {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapBrowserNetwork,
-		Description: "标签网络捕获。cmd=start|list|detail|stop；list 可 filter；detail 需 requestId（先 list）。调试登录/接口失败用。",
+		Description: "标签网络捕获/验提交。cmd=start|list|detail|verify|stop；list/verify 未 start 会自动开捕。" +
+			"须带 session（与 navigate 同名，否则落 adhoc 无 tab）。验标注：verify + filter=annotations + method=POST + status=201。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"cmd":       map[string]interface{}{"type": "string", "description": "start|list|detail|stop"},
-				"filter":    map[string]interface{}{"type": "string", "description": "URL 子串过滤（list）"},
+				"cmd":       map[string]interface{}{"type": "string", "description": "start|list|detail|verify|stop"},
+				"session":   map[string]interface{}{"type": "string", "description": "任务名/标签组，与 navigate 一致"},
+				"filter":    map[string]interface{}{"type": "string", "description": "URL 子串，如 annotations"},
+				"method":    map[string]interface{}{"type": "string", "description": "GET|POST|…"},
+				"status":    map[string]interface{}{"type": "integer", "description": "精确状态码，如 201"},
+				"statusGte": map[string]interface{}{"type": "integer", "description": "状态码 ≥，如 200"},
+				"statusLt":  map[string]interface{}{"type": "integer", "description": "状态码 <，如 300"},
 				"requestId": map[string]interface{}{"type": "string", "description": "detail 用"},
-				"limit":     map[string]interface{}{"type": "integer", "description": "list 条数，默认 80"},
+				"limit":     map[string]interface{}{"type": "integer", "description": "list 条数，默认 80；verify 默认 10"},
 			},
 			"required": []string{"cmd"},
 		},
@@ -184,35 +203,46 @@ func registerBrowserTools(r *Registry) {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapBrowserWait,
-		Description: "等待条件：text、textGone、nameIncludes、ref、selector、readyState。点击后先 wait 再 snapshot。",
+		Description: "等待条件：text、textGone、nameIncludes、ref、selector、readyState。includeSnapshot=true 时附带 AX。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"text":         map[string]interface{}{"type": "string", "description": "正文包含该文案"},
-				"textGone":     map[string]interface{}{"type": "string", "description": "正文不再包含"},
-				"nameIncludes": map[string]interface{}{"type": "string", "description": "可交互节点 name 子串"},
-				"ref":          map[string]interface{}{"type": "string"},
-				"selector":     map[string]interface{}{"type": "string"},
-				"readyState":   map[string]interface{}{"type": "boolean", "description": "true=等待 document.readyState=complete"},
-				"frame":        map[string]interface{}{"type": "string"},
-				"timeoutMs":    map[string]interface{}{"type": "integer", "description": "默认 8000，最大 40000"},
+				"text":            map[string]interface{}{"type": "string", "description": "正文包含该文案"},
+				"textGone":        map[string]interface{}{"type": "string", "description": "正文不再包含"},
+				"nameIncludes":    map[string]interface{}{"type": "string", "description": "可交互节点 name 子串"},
+				"ref":             map[string]interface{}{"type": "string"},
+				"selector":        map[string]interface{}{"type": "string"},
+				"readyState":      map[string]interface{}{"type": "boolean", "description": "true=等待 document.readyState=complete"},
+				"frame":           map[string]interface{}{"type": "string"},
+				"timeoutMs":       map[string]interface{}{"type": "integer", "description": "默认 8000，最大 40000"},
+				"includeSnapshot": map[string]interface{}{"type": "boolean", "description": "默认 false；命中后附带 AX observation"},
 			},
 		},
 		Handler: toolBrowserWait,
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapBrowserClick,
-		Description: "点击（ref/selector）。auto：真指针；失败可 CDP 穿 closed shadow（selector 或 name）。须 intent；「询问」开时确认。",
+		Description: "点击。waitFor* 等 UI 壳（Submit/Update），勿等业务正文。" +
+			"observation=ax|probe|false：无 waitFor 默认 ax；waitFor 命中默认 probe。须 intent。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"ref":      map[string]interface{}{"type": "string", "description": "快照中的 @eN"},
-				"selector": map[string]interface{}{"type": "string", "description": "CSS；失败时 CDP performSearch 含 shadow"},
-				"name":     map[string]interface{}{"type": "string", "description": "无障碍名称，CDP AX 兜底"},
-				"mode":     map[string]interface{}{"type": "string", "description": "auto|pointer|dom，默认 auto"},
-				"frame":    map[string]interface{}{"type": "string"},
-				"executor": executorProp(),
-				"intent":   intentProp(),
+				"ref":                 map[string]interface{}{"type": "string", "description": "快照中的 @eN"},
+				"selector":            map[string]interface{}{"type": "string", "description": "CSS；失败时 CDP performSearch 含 shadow"},
+				"name":                map[string]interface{}{"type": "string", "description": "无障碍名称，CDP AX 兜底"},
+				"mode":                map[string]interface{}{"type": "string", "description": "auto|pointer|dom，默认 auto"},
+				"frame":               map[string]interface{}{"type": "string"},
+				"observation":         map[string]interface{}{"type": "string", "description": "ax|probe|false；或用 includeSnapshot"},
+				"includeSnapshot":     map[string]interface{}{"type": "string", "description": "true/ax|probe|false，同 observation"},
+				"waitForText":         map[string]interface{}{"type": "string", "description": "点后短等 UI 壳文案（Submit/Update…）"},
+				"waitFor":             map[string]interface{}{"type": "string", "description": "同 waitForText"},
+				"waitForTextGone":     map[string]interface{}{"type": "string"},
+				"waitForNameIncludes": map[string]interface{}{"type": "string", "description": "点后短等可交互 name 子串"},
+				"waitForRef":          map[string]interface{}{"type": "string"},
+				"waitForSelector":     map[string]interface{}{"type": "string"},
+				"waitForTimeoutMs":    map[string]interface{}{"type": "integer", "description": "内联等待上限，默认 3000"},
+				"executor":            executorProp(),
+				"intent":              intentProp(),
 			},
 			"required": []string{"intent"},
 		},
@@ -248,32 +278,46 @@ func registerBrowserTools(r *Registry) {
 		Handler: toolBrowserScreenshot,
 	})
 	r.add(ToolDef{
-		Name:        workbench.CapBrowserFill,
-		Description: "填值：input/textarea/contenteditable；日期 YYYY-MM-DD 自动开面板翻月点日；自定义下拉改道 select_option。" +
-			"失败时看 hint=snapshot_then_click：snapshot 浮层后点 gridcell/option。须 intent；「询问」开时确认。",
+		Name: workbench.CapBrowserFill,
+		Description: "填值：单字段 ref+value，或 fields=[{ref,value,action?}] 一次往返批填（探索软写；最多 20；失败即停）。" +
+			"action 默认 fill，可选 select_option。不含 Submit。日期/自定义下拉自动改道。" +
+			"observation/includeSnapshot 批成功后可选带回。须 intent；「询问」开时确认。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"ref":      map[string]interface{}{"type": "string"},
 				"selector": map[string]interface{}{"type": "string"},
-				"value":    map[string]interface{}{"type": "string"},
-				"frame":    map[string]interface{}{"type": "string"},
-				"executor": executorProp(),
-				"intent":   intentProp(),
+				"value":    map[string]interface{}{"type": "string", "description": "单字段值；批填时用 fields"},
+				"fields": map[string]interface{}{
+					"type":        "array",
+					"description": "[{ref|selector|name, value, action?:fill|select_option, frame?}]，最多 20",
+				},
+				"frame":           map[string]interface{}{"type": "string"},
+				"observation":     map[string]interface{}{"type": "string", "description": "ax|probe|false；批填成功后可选"},
+				"includeSnapshot": map[string]interface{}{"type": "boolean", "description": "默认 false"},
+				"session":         map[string]interface{}{"type": "string", "description": "任务名/标签组"},
+				"executor":        executorProp(),
+				"intent":          intentProp(),
 			},
-			"required": []string{"value", "intent"},
+			"required": []string{"intent"},
 		},
 		Handler: toolBrowserFill,
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapBrowserNavigate,
-		Description: "导航到 URL。传 session+group_title 会归入 Chrome 标签组（Kimi 风格：一任务一组）。newTab 同组追加。须 intent；「询问」开时确认。",
+		Description: "导航到 URL。可 waitForText 在 load 后短等关键文案（勿再无脑 browser_wait）。" +
+			"session+group_title 归入标签组。须 intent。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"url":         map[string]interface{}{"type": "string"},
-				"newTab":      map[string]interface{}{"type": "boolean"},
-				"session":     map[string]interface{}{"type": "string", "description": "任务名，全程固定，如 xhs-publish"},
+				"url":             map[string]interface{}{"type": "string"},
+				"newTab":          map[string]interface{}{"type": "boolean"},
+				"waitForText":      map[string]interface{}{"type": "string", "description": "load 后再短等 UI 壳（勿等业务句）"},
+				"waitFor":          map[string]interface{}{"type": "string", "description": "同 waitForText"},
+				"waitForTimeoutMs": map[string]interface{}{"type": "integer", "description": "默认 3000"},
+				"observation":      map[string]interface{}{"type": "string", "description": "probe|ax|false；有 waitFor 时可 probe"},
+				"includeSnapshot":  map[string]interface{}{"type": "string", "description": "true/ax|probe|false"},
+				"session":          map[string]interface{}{"type": "string", "description": "任务名，全程固定，如 xhs-publish"},
 				"group_title": map[string]interface{}{"type": "string", "description": "标签组显示名（用户语言），建议首次 navigate 设置"},
 				"executor":    executorProp(),
 				"intent":      intentProp(),
@@ -411,7 +455,8 @@ func registerBrowserTools(r *Registry) {
 	r.add(ToolDef{
 		Name: workbench.CapUpdateSkill,
 		Description: "自我更新 Skill：依据当前任务 log.md 归纳后，把经验/步骤/脚本/资源写回同目录 SKILL.md（SSOT）。" +
-			"name=当前任务名（与 log 同目录）；禁止沉淀到别的工作流；禁止机械贴 log。主路径 get_skill→执行→update_skill。需确认+intent。",
+			"稳定浏览器段收成一条 {action:browser_run,args:{allowWrite:true,steps:[…]}}。" +
+			"name=当前任务名；禁止沉淀到别的工作流；禁止机械贴 log。主路径 get_skill→执行→update_skill。需确认+intent。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -420,8 +465,11 @@ func registerBrowserTools(r *Registry) {
 				"script":        map[string]interface{}{"type": "string", "description": "追加到 ## 脚本（可纯文本，自动包 fence）"},
 				"scriptLang":    map[string]interface{}{"type": "string", "description": "脚本语言，默认 bash"},
 				"resourcePaths": map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "description": "本机绝对路径，挂到笔记资源"},
-				"steps":         map[string]interface{}{"type": "array", "description": "优化后的步骤；传入则覆盖 wwb-skill-steps"},
-				"replaceSteps":  map[string]interface{}{"type": "boolean", "description": "是否覆盖步骤；默认有 steps 即覆盖"},
+				"steps": map[string]interface{}{
+					"type":        "array",
+					"description": "优化后的步骤；浏览器稳定段用 action=browser_run + args.steps 宏",
+				},
+				"replaceSteps": map[string]interface{}{"type": "boolean", "description": "是否覆盖步骤；默认有 steps 即覆盖"},
 				"title":         map[string]interface{}{"type": "string"},
 				"description":   map[string]interface{}{"type": "string", "description": "更新导语说明"},
 				"sourceRunId":   map[string]interface{}{"type": "string"},

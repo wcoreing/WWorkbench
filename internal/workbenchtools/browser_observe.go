@@ -3,7 +3,12 @@ package workbenchtools
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
+
+	"WWorkbench/internal/workbench"
+
+	"github.com/google/uuid"
 )
 
 func toolBrowserStatus(ctx context.Context, d *Deps, _ json.RawMessage) ToolResult {
@@ -90,6 +95,7 @@ type browserSnapshotArgs struct {
 	MaxChars int    `json:"maxChars"`
 	Frame    string `json:"frame"`
 	Format   string `json:"format"` // json|aria
+	Source   string `json:"source"` // ax|dom
 }
 
 func toolBrowserSnapshot(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
@@ -108,6 +114,9 @@ func toolBrowserSnapshot(ctx context.Context, d *Deps, raw json.RawMessage) Tool
 	}
 	if strings.TrimSpace(in.Frame) != "" {
 		args["frame"] = strings.TrimSpace(in.Frame)
+	}
+	if src := strings.ToLower(strings.TrimSpace(in.Source)); src != "" {
+		args["source"] = src
 	}
 	format := strings.ToLower(strings.TrimSpace(in.Format))
 	if format == "" {
@@ -165,30 +174,141 @@ func toolBrowserFindTab(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 }
 
 type browserRunArgs struct {
-	Steps   []map[string]interface{} `json:"steps"`
-	Session string                   `json:"session"`
+	Steps      []map[string]interface{} `json:"steps"`
+	Session    string                   `json:"session"`
+	AllowWrite bool                     `json:"allowWrite"`
+	Mode       string                   `json:"mode"` // read|write|macro
+	Intent     string                   `json:"intent"`
+}
+
+func browserRunAllowWrite(in browserRunArgs) bool {
+	if in.AllowWrite {
+		return true
+	}
+	m := strings.ToLower(strings.TrimSpace(in.Mode))
+	return m == "write" || m == "macro"
+}
+
+var browserRunWriteActions = map[string]bool{
+	"fill": true, "click": true, "keys": true, "navigate": true,
+	"select_option": true, "select": true, "network": true,
+}
+
+var browserRunDeniedInMacro = map[string]bool{
+	"upload": true, "drag": true, "close_session": true,
 }
 
 func toolBrowserRun(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	b, err := requireBrowserRaw(d, raw)
-	if err != nil {
+	if _, err := requireBrowserRaw(d, raw); err != nil {
 		return Fail(err.Error())
 	}
 	var in browserRunArgs
 	_ = json.Unmarshal(raw, &in)
 	if len(in.Steps) == 0 {
-		return Fail("请提供 steps（只读：snapshot/find/wait/status/list_tabs/find_tab/evaluate）")
+		return Fail("请提供 steps（只读或 allowWrite 宏）")
 	}
-	data, err := b.CallSession(ctx, "run", map[string]interface{}{"steps": in.Steps}, in.Session)
+	allowWrite := browserRunAllowWrite(in)
+	maxSteps := 12
+	if allowWrite {
+		maxSteps = 16
+	}
+	if len(in.Steps) > maxSteps {
+		return Fail(fmt.Sprintf("steps 最多 %d", maxSteps))
+	}
+	for i, st := range in.Steps {
+		act := strings.ToLower(strings.TrimSpace(fmt.Sprint(st["action"])))
+		if act == "" {
+			return Fail(fmt.Sprintf("steps[%d] 缺 action", i))
+		}
+		if browserRunDeniedInMacro[act] {
+			return Fail(fmt.Sprintf("宏不允许 %s（请单独调用）", act))
+		}
+		if !allowWrite && browserRunWriteActions[act] {
+			return Fail(fmt.Sprintf("写步骤 %s 需 allowWrite=true 或 mode=macro", act))
+		}
+	}
+	if !allowWrite {
+		b, err := requireBrowserRaw(d, raw)
+		if err != nil {
+			return Fail(err.Error())
+		}
+		data, err := b.CallSession(ctx, "run", map[string]interface{}{"steps": in.Steps}, in.Session)
+		if err != nil {
+			return Fail(err.Error())
+		}
+		stageBrowser(d, "批量只读")
+		var out map[string]interface{}
+		if json.Unmarshal(data, &out) != nil {
+			return OKData(map[string]interface{}{"raw": json.RawMessage(data)})
+		}
+		return OKData(out)
+	}
+	// 可写宏：走确认门（询问关则直接执行）
+	briefs := make([]string, 0, len(in.Steps))
+	for _, st := range in.Steps {
+		briefs = append(briefs, strings.TrimSpace(fmt.Sprint(st["action"])))
+	}
+	preview := withExecutorPreview(raw, map[string]interface{}{
+		"action":     "run",
+		"allowWrite": true,
+		"stepCount":  len(in.Steps),
+		"actions":    briefs,
+		"session":    in.Session,
+	})
+	if in.Intent != "" {
+		preview["intent"] = in.Intent
+	}
+	summary := fmt.Sprintf("浏览器宏 %d 步", len(in.Steps))
+	if in.Intent != "" {
+		summary = truncateRunes(in.Intent, intentTitleMaxRune)
+	}
+	stageBrowser(d, summary)
+	return Confirm(uuid.NewString(), summary, preview)
+}
+
+func BrowserRunConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
+	b, err := requireBrowserRaw(d, json.RawMessage(argsJSON))
 	if err != nil {
 		return Fail(err.Error())
 	}
-	stageBrowser(d, "批量只读")
-	var out map[string]interface{}
-	if json.Unmarshal(data, &out) != nil {
-		return OKData(map[string]interface{}{"raw": json.RawMessage(data)})
+	var in browserRunArgs
+	_ = json.Unmarshal([]byte(argsJSON), &in)
+	session := strings.TrimSpace(in.Session)
+	args := map[string]interface{}{
+		"steps":      in.Steps,
+		"allowWrite": true,
 	}
-	return OKData(out)
+	if m := strings.TrimSpace(in.Mode); m != "" {
+		args["mode"] = m
+	}
+	title := session
+	if session != "" {
+		_ = EnsureTaskRun(ctx, d, session, title, in.Intent, "mcp")
+	}
+	step := BrowserStepInput{
+		Session: session, Tool: workbench.CapBrowserRun, Action: "run", Intent: in.Intent,
+		Summary: fmt.Sprintf("宏 %d 步", len(in.Steps)), Title: title,
+		Args: map[string]interface{}{
+			"allowWrite": true, "stepCount": len(in.Steps), "session": session,
+			"actions": stepActionsBrief(in.Steps),
+		},
+		Approved: true,
+	}
+	data, err := b.CallSession(ctx, "run", args, session)
+	step.Provider = b.Provider()
+	if err != nil {
+		return recordBrowserFail(ctx, d, step, err)
+	}
+	stageBrowser(d, fmt.Sprintf("宏完成 %d 步", len(in.Steps)))
+	return recordBrowserOK(ctx, d, step, data)
+}
+
+func stepActionsBrief(steps []map[string]interface{}) []string {
+	out := make([]string, 0, len(steps))
+	for _, st := range steps {
+		out = append(out, strings.TrimSpace(fmt.Sprint(st["action"])))
+	}
+	return out
 }
 
 type browserEvaluateArgs struct {
@@ -259,8 +379,12 @@ func toolBrowserReadPage(ctx context.Context, d *Deps, raw json.RawMessage) Tool
 
 
 type browserNetworkArgs struct {
-	Cmd       string `json:"cmd"` // start|stop|list|detail
+	Cmd       string `json:"cmd"` // start|stop|list|detail|verify
 	Filter    string `json:"filter"`
+	Method    string `json:"method"`
+	Status    *int   `json:"status"`
+	StatusGte *int   `json:"statusGte"`
+	StatusLt  *int   `json:"statusLt"`
 	RequestID string `json:"requestId"`
 	Limit     int    `json:"limit"`
 }
@@ -280,6 +404,18 @@ func toolBrowserNetwork(ctx context.Context, d *Deps, raw json.RawMessage) ToolR
 	args := map[string]interface{}{"cmd": cmd}
 	if in.Filter != "" {
 		args["filter"] = in.Filter
+	}
+	if in.Method != "" {
+		args["method"] = in.Method
+	}
+	if in.Status != nil {
+		args["status"] = *in.Status
+	}
+	if in.StatusGte != nil {
+		args["statusGte"] = *in.StatusGte
+	}
+	if in.StatusLt != nil {
+		args["statusLt"] = *in.StatusLt
 	}
 	if in.RequestID != "" {
 		args["requestId"] = in.RequestID
@@ -336,14 +472,15 @@ func toolBrowserFind(ctx context.Context, d *Deps, raw json.RawMessage) ToolResu
 }
 
 type browserWaitArgs struct {
-	Text         string `json:"text"`
-	TextGone     string `json:"textGone"`
-	NameIncludes string `json:"nameIncludes"`
-	Ref          string `json:"ref"`
-	Selector     string `json:"selector"`
-	ReadyState   bool   `json:"readyState"`
-	TimeoutMs    int    `json:"timeoutMs"`
-	Frame        string `json:"frame"`
+	Text            string `json:"text"`
+	TextGone        string `json:"textGone"`
+	NameIncludes    string `json:"nameIncludes"`
+	Ref             string `json:"ref"`
+	Selector        string `json:"selector"`
+	ReadyState      bool   `json:"readyState"`
+	TimeoutMs       int    `json:"timeoutMs"`
+	Frame           string `json:"frame"`
+	IncludeSnapshot *bool  `json:"includeSnapshot"`
 }
 
 func toolBrowserWait(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
@@ -382,6 +519,9 @@ func toolBrowserWait(ctx context.Context, d *Deps, raw json.RawMessage) ToolResu
 	if in.TimeoutMs > 0 {
 		args["timeoutMs"] = in.TimeoutMs
 	}
+	if in.IncludeSnapshot != nil {
+		args["includeSnapshot"] = *in.IncludeSnapshot
+	}
 	data, err := b.Call(ctx, "wait", args)
 	if err != nil {
 		return Fail(err.Error())
@@ -419,18 +559,38 @@ func toolBrowserScreenshot(ctx context.Context, d *Deps, raw json.RawMessage) To
 		return Fail(err.Error())
 	}
 	var shot struct {
-		DataURL string `json:"dataUrl"`
-		Format  string `json:"format"`
-		URL     string `json:"url"`
-		Title   string `json:"title"`
-		TabID   int64  `json:"tabId"`
+		DataURL   string `json:"dataUrl"`
+		Path      string `json:"path"`
+		SizeBytes int    `json:"sizeBytes"`
+		Format    string `json:"format"`
+		URL       string `json:"url"`
+		Title     string `json:"title"`
+		TabID     int64  `json:"tabId"`
+		Source    string `json:"source"`
+		MimeType  string `json:"mimeType"`
 	}
-	if json.Unmarshal(data, &shot) != nil || shot.DataURL == "" {
+	if json.Unmarshal(data, &shot) != nil {
 		return Fail("截图数据无效")
 	}
-	path, size, format, err := saveBrowserShot(shot.DataURL, in.Format)
-	if err != nil {
-		return Fail(err.Error())
+	// Kimi 直出 path；WWB 扩展出 dataUrl
+	path := strings.TrimSpace(shot.Path)
+	size := shot.SizeBytes
+	format := shot.Format
+	if path == "" {
+		if shot.DataURL == "" {
+			return Fail("截图数据无效")
+		}
+		var err error
+		path, size, format, err = saveBrowserShot(shot.DataURL, in.Format)
+		if err != nil {
+			return Fail(err.Error())
+		}
+	} else if format == "" {
+		if strings.Contains(strings.ToLower(shot.MimeType), "png") || strings.HasSuffix(strings.ToLower(path), ".png") {
+			format = "png"
+		} else {
+			format = "jpeg"
+		}
 	}
 	stageBrowser(d, "已截图")
 	out := map[string]interface{}{
@@ -443,6 +603,9 @@ func toolBrowserScreenshot(ctx context.Context, d *Deps, raw json.RawMessage) To
 	}
 	if shot.TabID > 0 {
 		out["tabId"] = shot.TabID
+	}
+	if shot.Source != "" {
+		out["source"] = shot.Source
 	}
 	return OKData(out)
 }

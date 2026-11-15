@@ -1,6 +1,9 @@
 /** DOM 工具：可见性、标签、Shadow 穿透、可交互列表。 */
 export const INTERACTIVE =
-  'a[href],button,input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="textbox"],[role="checkbox"],[role="radio"],[role="menuitem"],[role="option"],[role="tab"],[role="switch"],[role="gridcell"],[contenteditable=""],[contenteditable="true"],.ant-btn,.el-button,.ant-menu-item,.ProseMirror,.ql-editor,.tox-edit-area,__ww-ce'
+  'a[href],button,input:not([type="hidden"]),select,textarea,[role="button"],[role="link"],[role="textbox"],[role="checkbox"],[role="radio"],[role="menuitem"],[role="option"],[role="tab"],[role="switch"],[role="gridcell"],[contenteditable=""],[contenteditable="true"],.ant-btn,.el-button,.ant-menu-item,.ProseMirror,.ql-editor,.tox-edit-area,' +
+  // Label Studio / 标注芯片：常为可点 span，无 button role
+  '.lsf-label,[class*="lsf-label"],.lsf-choice,[class*="lsf-choice"],[class*="label"][class*="selected"],' +
+  '__ww-ce'
 
 /** 日期面板日格（Element / Ant）：不是 button，默认 INTERACTIVE 收不到。 */
 export const DATE_CELL =

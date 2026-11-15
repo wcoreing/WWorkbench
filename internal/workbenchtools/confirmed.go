@@ -51,6 +51,8 @@ func ExecuteConfirmed(ctx context.Context, d *Deps, toolName, argsJSON string) T
 		return BrowserDragConfirmed(ctx, d, argsJSON)
 	case workbench.CapBrowserNavigate:
 		return BrowserNavigateConfirmed(ctx, d, argsJSON)
+	case workbench.CapBrowserRun:
+		return BrowserRunConfirmed(ctx, d, argsJSON)
 	case workbench.CapBrowserOpenFrame:
 		return BrowserOpenFrameConfirmed(ctx, d, argsJSON)
 	case workbench.CapReplayTaskStep:
@@ -75,7 +77,7 @@ func browserStepConfirmTool(toolName string) bool {
 	switch toolName {
 	case workbench.CapBrowserClick, workbench.CapBrowserKeys, workbench.CapBrowserFill,
 		workbench.CapBrowserUpload, workbench.CapBrowserSelectOption, workbench.CapBrowserDrag,
-		workbench.CapBrowserNavigate, workbench.CapBrowserOpenFrame,
+		workbench.CapBrowserNavigate, workbench.CapBrowserRun, workbench.CapBrowserOpenFrame,
 		workbench.CapReplayTaskStep, workbench.CapRunSkill:
 		return true
 	default:

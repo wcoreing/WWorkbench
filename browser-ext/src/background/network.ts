@@ -108,34 +108,81 @@ async function detachNet(tabId: number) {
   return { stopped: true, detached: state.attachedHere }
 }
 
+function matchEntries(state: TabNet, args: Record<string, unknown>) {
+  const filter = String(args?.filter || '').toLowerCase()
+  const method = String(args?.method || '')
+    .trim()
+    .toUpperCase()
+  const statusRaw = args?.status
+  const status =
+    statusRaw === undefined || statusRaw === null || statusRaw === ''
+      ? null
+      : Number(statusRaw)
+  const statusGte =
+    args?.statusGte != null && args?.statusGte !== '' ? Number(args.statusGte) : null
+  const statusLt =
+    args?.statusLt != null && args?.statusLt !== '' ? Number(args.statusLt) : null
+
+  return state.order
+    .map((id) => state.entries.get(id)!)
+    .filter(Boolean)
+    .filter((e) => !filter || e.url.toLowerCase().includes(filter))
+    .filter((e) => !method || e.method.toUpperCase() === method)
+    .filter((e) => status == null || !Number.isFinite(status) || e.status === status)
+    .filter((e) => statusGte == null || !Number.isFinite(statusGte) || (e.status != null && e.status >= statusGte))
+    .filter((e) => statusLt == null || !Number.isFinite(statusLt) || (e.status != null && e.status < statusLt))
+}
+
+function summarize(e: NetEntry) {
+  return {
+    requestId: e.requestId,
+    url: e.url.slice(0, 300),
+    method: e.method,
+    status: e.status,
+    mimeType: e.mimeType,
+    completed: e.completed,
+  }
+}
+
 export async function handleNetwork(tabId: number, args: Record<string, unknown> = {}): Promise<CmdResult> {
   const cmd = String(args?.cmd || args?.action || 'list').toLowerCase()
   try {
     if (cmd === 'start') {
       await attachNet(tabId)
-      return ok({ capturing: true, tabId, note: '开始捕获本标签网络；list 查看，detail 取 body，stop 结束' })
+      return ok({ capturing: true, tabId, note: '开始捕获本标签网络；list/verify 查看，detail 取 body，stop 结束' })
     }
     if (cmd === 'stop') {
       const r = await detachNet(tabId)
       return ok(r)
     }
-    if (cmd === 'list') {
-      const state = byTab.get(tabId)
-      if (!state) return fail('尚未 network start', 'not_started')
-      const filter = String(args?.filter || '').toLowerCase()
-      const list = state.order
-        .map((id) => state.entries.get(id)!)
-        .filter(Boolean)
-        .filter((e) => !filter || e.url.toLowerCase().includes(filter))
-        .slice(-(Number(args?.limit) || 80))
-        .map((e) => ({
-          requestId: e.requestId,
-          url: e.url.slice(0, 300),
-          method: e.method,
-          status: e.status,
-          mimeType: e.mimeType,
-          completed: e.completed,
-        }))
+    if (cmd === 'list' || cmd === 'verify') {
+      let state = byTab.get(tabId)
+      // list/verify 未 start 时自动开捕，少一步（对齐 DevTools「随时看网络」）
+      if (!state) {
+        state = await attachNet(tabId)
+      }
+      const matched = matchEntries(state, args)
+      const limit = Number(args?.limit) || (cmd === 'verify' ? 10 : 80)
+      const list = matched.slice(-limit).map(summarize)
+
+      if (cmd === 'verify') {
+        // 验提交：默认找最近一条匹配；ok = 有完成且 2xx
+        const last = [...matched].reverse().find((e) => e.completed && e.status != null) || matched[matched.length - 1]
+        const okStatus = last?.status != null && last.status >= 200 && last.status < 300
+        return ok({
+          verified: !!last && okStatus,
+          capturing: true,
+          match: last ? summarize(last) : null,
+          count: list.length,
+          requests: list,
+          note: last
+            ? okStatus
+              ? `已命中 ${last.method} ${last.status}`
+              : `命中但状态异常 status=${last.status}`
+            : '无匹配请求：检查 filter/method，或先 start 再点 Submit',
+        })
+      }
+
       return ok({ count: list.length, capturing: true, requests: list })
     }
     if (cmd === 'detail') {
@@ -166,7 +213,7 @@ export async function handleNetwork(tabId: number, args: Record<string, unknown>
       }
       return ok(out)
     }
-    return fail('未知 network cmd: ' + cmd + '（start|stop|list|detail）', 'invalid_arg')
+    return fail('未知 network cmd: ' + cmd + '（start|stop|list|detail|verify）', 'invalid_arg')
   } catch (e) {
     return fail('network 失败: ' + String((e as Error)?.message || e), 'network_failed')
   }
