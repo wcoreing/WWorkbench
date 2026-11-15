@@ -469,6 +469,56 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "list_projects", Label: "列出项目", Risk: RiskRead,
+			Description:    "项目组合：本机文件夹 + 钉住的产品资源",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "get_project", Label: "项目详情", Risk: RiskRead,
+			Description:    "一个项目的 localPath / links",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "save_project", Label: "保存项目", Risk: RiskWrite,
+			Description:    "创建或更新项目组合（文件夹锚点 + 资源引用）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "delete_project", Label: "删除项目", Risk: RiskWrite,
+			Description:    "删除项目组合记录（不删磁盘文件夹）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "detect_project_git", Label: "探测项目Git", Risk: RiskRead,
+			Description:    "从本机目录探测 git origin，供项目 gitRemote 自动填写",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "suggest_project_resources", Label: "智能配置建议", Risk: RiskRead,
+			Description:    "按项目名/路径匹配 ssh/db/docker/log/http/note/skill/backup 候选（含自动 git）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "configure_project_resources", Label: "智能配置应用", Risk: RiskWrite,
+			Description:    "Agent 专用：把建议候选钉进项目并保存；UI 不直连",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "sync_project_cursor_transcripts", Label: "同步Cursor对话", Risk: RiskWrite,
+			Description:    "把本机 Cursor transcripts 写入项目仓库并镜像笔记（跨机续上下文）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "list_project_cursor_transcripts", Label: "列出Cursor对话", Risk: RiskRead,
+			Description:    "列出项目仓库内已同步的 Cursor transcripts",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "get_project_cursor_transcript", Label: "读取Cursor对话", Risk: RiskRead,
+			Description:    "读取一条已同步 transcript（默认 md 可读版）",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "replay_task_step", Label: "试跑日志一步", Risk: RiskWrite,
 			Description:    "教练式：按 locator 重定位后执行/跳过一步，返回 nextSeq",
 			DefaultEnabled: true,

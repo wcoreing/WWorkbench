@@ -25,6 +25,7 @@ const (
 	RadarDomainAgentSkill      = "agent.skill"
 	RadarDomainPluginPack      = "plugin.pack"
 	RadarDomainBackupPolicy    = "backup.policy"
+	RadarDomainProject         = "project"
 )
 
 // 变更操作。

@@ -356,6 +356,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_ConfigureProjectResourcesResultDO_ {
+	    ok: boolean;
+	    data: model.ConfigureProjectResourcesResultDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_ConfigureProjectResourcesResultDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.ConfigureProjectResourcesResultDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_ConnectionDO_ {
 	    ok: boolean;
 	    data: model.ConnectionDO;
@@ -947,6 +981,108 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.HTTPSavedRequestDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_model_HomePushPullResultDO_ {
+	    ok: boolean;
+	    data: model.HomePushPullResultDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_HomePushPullResultDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.HomePushPullResultDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_model_HomeStatusDO_ {
+	    ok: boolean;
+	    data: model.HomeStatusDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_HomeStatusDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.HomeStatusDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_model_HomeSyncResultDO_ {
+	    ok: boolean;
+	    data: model.HomeSyncResultDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_HomeSyncResultDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.HomeSyncResultDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -1784,6 +1920,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_SuggestProjectResourcesResultDO_ {
+	    ok: boolean;
+	    data: model.SuggestProjectResourcesResultDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_SuggestProjectResourcesResultDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.SuggestProjectResourcesResultDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_TableDataPageDO_ {
 	    ok: boolean;
 	    data: model.TableDataPageDO;
@@ -2001,6 +2171,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.VersionDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_model_WorkbenchProjectDO_ {
+	    ok: boolean;
+	    data: model.WorkbenchProjectDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_WorkbenchProjectDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.WorkbenchProjectDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -3518,6 +3722,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult___WWorkbench_internal_model_WorkbenchProjectDO_ {
+	    ok: boolean;
+	    data: model.WorkbenchProjectDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_WorkbenchProjectDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.WorkbenchProjectDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult___WWorkbench_internal_model_WorkflowDO_ {
 	    ok: boolean;
 	    data: model.WorkflowDO[];
@@ -4705,6 +4943,122 @@ export namespace model {
 	        this.containerId = source["containerId"];
 	    }
 	}
+	export class ProjectResourceSuggestionDO {
+	    kind: string;
+	    id: string;
+	    label: string;
+	    score: number;
+	    reason: string;
+	    alreadyLinked: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectResourceSuggestionDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.id = source["id"];
+	        this.label = source["label"];
+	        this.score = source["score"];
+	        this.reason = source["reason"];
+	        this.alreadyLinked = source["alreadyLinked"];
+	    }
+	}
+	export class WorkbenchProjectLinkDO {
+	    kind: string;
+	    id: string;
+	    label?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkbenchProjectLinkDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.id = source["id"];
+	        this.label = source["label"];
+	    }
+	}
+	export class WorkbenchProjectDO {
+	    id: string;
+	    name: string;
+	    localPath: string;
+	    gitRemote?: string;
+	    links: WorkbenchProjectLinkDO[];
+	    createdAt: number;
+	    updatedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new WorkbenchProjectDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.localPath = source["localPath"];
+	        this.gitRemote = source["gitRemote"];
+	        this.links = this.convertValues(source["links"], WorkbenchProjectLinkDO);
+	        this.createdAt = source["createdAt"];
+	        this.updatedAt = source["updatedAt"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ConfigureProjectResourcesResultDO {
+	    project: WorkbenchProjectDO;
+	    added: ProjectResourceSuggestionDO[];
+	    skipped?: ProjectResourceSuggestionDO[];
+	    suggested?: ProjectResourceSuggestionDO[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ConfigureProjectResourcesResultDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.project = this.convertValues(source["project"], WorkbenchProjectDO);
+	        this.added = this.convertValues(source["added"], ProjectResourceSuggestionDO);
+	        this.skipped = this.convertValues(source["skipped"], ProjectResourceSuggestionDO);
+	        this.suggested = this.convertValues(source["suggested"], ProjectResourceSuggestionDO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ConnectionDO {
 	    id: string;
 	    name: string;
@@ -5633,6 +5987,110 @@ export namespace model {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class HomeAuthDO {
+	    username: string;
+	    password: string;
+	    device: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HomeAuthDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.username = source["username"];
+	        this.password = source["password"];
+	        this.device = source["device"];
+	    }
+	}
+	export class HomePushPullResultDO {
+	    project: WorkbenchProjectDO;
+	    docsPushed?: number;
+	    docsPulled?: number;
+	    note?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HomePushPullResultDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.project = this.convertValues(source["project"], WorkbenchProjectDO);
+	        this.docsPushed = source["docsPushed"];
+	        this.docsPulled = source["docsPulled"];
+	        this.note = source["note"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class HomeStatusDO {
+	    url: string;
+	    accountId: string;
+	    username: string;
+	    loggedIn: boolean;
+	    hasToken: boolean;
+	    reachable: boolean;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HomeStatusDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.accountId = source["accountId"];
+	        this.username = source["username"];
+	        this.loggedIn = source["loggedIn"];
+	        this.hasToken = source["hasToken"];
+	        this.reachable = source["reachable"];
+	        this.error = source["error"];
+	    }
+	}
+	export class HomeSyncResultDO {
+	    projects: number;
+	    sshHosts: number;
+	    connections: number;
+	    logSources: number;
+	    docs: number;
+	    bytes?: number;
+	    bytesGzip?: number;
+	    durationMs?: number;
+	    note?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HomeSyncResultDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.projects = source["projects"];
+	        this.sshHosts = source["sshHosts"];
+	        this.connections = source["connections"];
+	        this.logSources = source["logSources"];
+	        this.docs = source["docs"];
+	        this.bytes = source["bytes"];
+	        this.bytesGzip = source["bytesGzip"];
+	        this.durationMs = source["durationMs"];
+	        this.note = source["note"];
+	    }
+	}
 	
 	
 	export class HostMemoryBookDO {
@@ -6198,6 +6656,7 @@ export namespace model {
 	        this.suggested = source["suggested"];
 	    }
 	}
+	
 	export class QueryHistoryDO {
 	    id: string;
 	    connectionId: string;
@@ -6676,6 +7135,40 @@ export namespace model {
 	        this.updatedAt = source["updatedAt"];
 	    }
 	}
+	export class SuggestProjectResourcesResultDO {
+	    project: WorkbenchProjectDO;
+	    suggestions: ProjectResourceSuggestionDO[];
+	    tokens?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SuggestProjectResourcesResultDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.project = this.convertValues(source["project"], WorkbenchProjectDO);
+	        this.suggestions = this.convertValues(source["suggestions"], ProjectResourceSuggestionDO);
+	        this.tokens = source["tokens"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class TableRowDO {
 	    rowId: string;
 	    values: Record<string, CellValueDO>;
@@ -7020,6 +7513,8 @@ export namespace model {
 	        this.version = source["version"];
 	    }
 	}
+	
+	
 	export class WorkflowStepDO {
 	    action: string;
 	    summary?: string;

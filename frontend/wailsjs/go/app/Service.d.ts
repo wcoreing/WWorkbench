@@ -73,6 +73,8 @@ export function ComposeRestart(arg1:string,arg2:string,arg3:string):Promise<app.
 
 export function ComposeUp(arg1:string,arg2:string):Promise<app.ApiResult_string_>;
 
+export function ConfigureWorkbenchProjectResources(arg1:string,arg2:Array<string>):Promise<app.ApiResult_WWorkbench_internal_model_ConfigureProjectResourcesResultDO_>;
+
 export function CopyNotebookPath(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_notebook_PathMutation_>;
 
 export function CreateAgentSkill(arg1:model.AgentSkillCreateDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
@@ -124,6 +126,10 @@ export function DeleteSSHForwardPreset(arg1:string):Promise<app.ApiResult_bool_>
 export function DeleteSSHHost(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteTaskRuns(arg1:Array<string>):Promise<app.ApiResult_int_>;
+
+export function DeleteWorkbenchProject(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function DetectWorkbenchProjectGitRemote(arg1:string):Promise<app.ApiResult_string_>;
 
 export function DistillWorkflow(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<app.ApiResult_map_string_interface____>;
 
@@ -203,6 +209,8 @@ export function GetECSMonitor(arg1:string):Promise<app.ApiResult_WWorkbench_inte
 
 export function GetEnvScanPath():Promise<app.ApiResult_string_>;
 
+export function GetHomeStatus():Promise<app.ApiResult_WWorkbench_internal_model_HomeStatusDO_>;
+
 export function GetHostProject(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_HostProjectDO_>;
 
 export function GetMCPCallLog(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_MCPCallLogDO_>;
@@ -235,9 +243,29 @@ export function GetTaskRun(arg1:string):Promise<app.ApiResult_WWorkbench_interna
 
 export function GetVersion():Promise<app.ApiResult_WWorkbench_internal_model_VersionDO_>;
 
+export function GetWorkbenchProject(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_WorkbenchProjectDO_>;
+
 export function GetWorkflow(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_WorkflowDO_>;
 
 export function GrantMCPWriteDir(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_MCPWriteAllowDO_>;
+
+export function HomeListRemoteProjects():Promise<app.ApiResult___WWorkbench_internal_model_WorkbenchProjectDO_>;
+
+export function HomeLogin(arg1:model.HomeAuthDO):Promise<app.ApiResult_WWorkbench_internal_model_HomeStatusDO_>;
+
+export function HomeLogout():Promise<app.ApiResult_WWorkbench_internal_model_HomeStatusDO_>;
+
+export function HomePullProject(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_HomePushPullResultDO_>;
+
+export function HomePushProject(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_HomePushPullResultDO_>;
+
+export function HomeRegister(arg1:model.HomeAuthDO):Promise<app.ApiResult_WWorkbench_internal_model_HomeStatusDO_>;
+
+export function HomeSyncNow():Promise<app.ApiResult_WWorkbench_internal_model_HomeSyncResultDO_>;
+
+export function HomeSyncPull():Promise<app.ApiResult_WWorkbench_internal_model_HomeSyncResultDO_>;
+
+export function HomeSyncPush():Promise<app.ApiResult_WWorkbench_internal_model_HomeSyncResultDO_>;
 
 export function ImportConnectionsFromFile():Promise<app.ApiResult_int_>;
 
@@ -340,6 +368,8 @@ export function ListSkillVersions(arg1:string,arg2:number):Promise<app.ApiResult
 export function ListSkillsDir(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_FileEntryDO_>;
 
 export function ListTaskRuns(arg1:string,arg2:number):Promise<app.ApiResult___WWorkbench_internal_model_TaskRunDO_>;
+
+export function ListWorkbenchProjects():Promise<app.ApiResult___WWorkbench_internal_model_WorkbenchProjectDO_>;
 
 export function ListWorkflows(arg1:number):Promise<app.ApiResult___WWorkbench_internal_model_WorkflowDO_>;
 
@@ -501,6 +531,8 @@ export function SaveSSHForwardPreset(arg1:model.SSHForwardPresetDO):Promise<app.
 
 export function SaveSSHHost(arg1:model.SSHHostDO):Promise<app.ApiResult_WWorkbench_internal_model_SSHHostDO_>;
 
+export function SaveWorkbenchProject(arg1:model.WorkbenchProjectDO):Promise<app.ApiResult_WWorkbench_internal_model_WorkbenchProjectDO_>;
+
 export function SaveWorkflow(arg1:model.WorkflowDO):Promise<app.ApiResult_WWorkbench_internal_model_WorkflowDO_>;
 
 export function SaveWorkspace(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
@@ -542,6 +574,8 @@ export function StopContainer(arg1:string,arg2:string):Promise<app.ApiResult_boo
 export function StopLogFollow(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function StopSSHForward(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function SuggestWorkbenchProjectResources(arg1:model.WorkbenchProjectDO):Promise<app.ApiResult_WWorkbench_internal_model_SuggestProjectResourcesResultDO_>;
 
 export function SyncTaskRunLog(arg1:string):Promise<app.ApiResult_map_string_interface____>;
 

@@ -457,6 +457,47 @@ export interface HTTPHeaderKV {
   value: string
 }
 
+/** WorkbenchProjectLink 项目组合中的资源引用。 */
+export interface WorkbenchProjectLink {
+  kind: string
+  id: string
+  label?: string
+}
+
+/** WorkbenchProject 项目产品：本机文件夹 + 跨产品资源组合。 */
+export interface WorkbenchProject {
+  id: string
+  name: string
+  localPath: string
+  gitRemote?: string
+  links: WorkbenchProjectLink[]
+  createdAt: number
+  updatedAt: number
+}
+
+/** ProjectResourceSuggestion 智能配置候选。 */
+export interface ProjectResourceSuggestion {
+  kind: string
+  id: string
+  label: string
+  score: number
+  reason: string
+  alreadyLinked: boolean
+}
+
+export interface SuggestProjectResourcesResult {
+  project: WorkbenchProject
+  suggestions: ProjectResourceSuggestion[]
+  tokens?: string[]
+}
+
+export interface ConfigureProjectResourcesResult {
+  project: WorkbenchProject
+  added: ProjectResourceSuggestion[]
+  skipped?: ProjectResourceSuggestion[]
+  suggested?: ProjectResourceSuggestion[]
+}
+
 export type BackupKind = 'files' | 'sqlite' | 'db'
 
 export interface BackupPolicy {

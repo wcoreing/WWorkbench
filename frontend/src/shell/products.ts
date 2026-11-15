@@ -3,6 +3,7 @@
 export type ProductId =
   | 'database'
   | 'terminal'
+  | 'project'
   | 'sftp'
   | 'docker'
   | 'environment'
@@ -21,6 +22,7 @@ export interface ProductDef {
 export const PRODUCTS: ProductDef[] = [
   { id: 'database', available: true },
   { id: 'terminal', available: true },
+  { id: 'project', available: true },
   { id: 'sftp', available: true },
   { id: 'docker', available: true },
   { id: 'environment', available: true },

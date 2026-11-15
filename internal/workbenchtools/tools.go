@@ -150,6 +150,38 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 			out["mcpLogs"] = mcpLogs
 			out["mcpLogsByIntent"] = groupMCPLogsByIntent(mcpLogs)
 		}
+		if projects, err := d.Store.ListWorkbenchProjects(); err == nil && len(projects) > 0 {
+			items := make([]map[string]interface{}, 0, len(projects))
+			for _, p := range projects {
+				item := map[string]interface{}{
+					"id":        p.ID,
+					"name":      p.Name,
+					"localPath": p.LocalPath,
+					"gitRemote": p.GitRemote,
+					"links":     p.Links,
+					"createdAt": p.CreatedAt,
+					"updatedAt": p.UpdatedAt,
+				}
+				if trs, err := ListProjectCursorTranscripts(p.LocalPath); err == nil && len(trs) > 0 {
+					n := len(trs)
+					if n > 5 {
+						n = 5
+					}
+					brief := make([]map[string]interface{}, 0, n)
+					for i := 0; i < n; i++ {
+						brief = append(brief, map[string]interface{}{
+							"id":        trs[i].ID,
+							"title":     trs[i].Title,
+							"updatedAt": trs[i].UpdatedAt,
+							"noteId":    trs[i].NoteID,
+						})
+					}
+					item["cursorTranscripts"] = brief
+				}
+				items = append(items, item)
+			}
+			out["projects"] = items
+		}
 		if d.Notebook != nil {
 			if skills := d.Notebook.ListWorkflowsSSOT(10); len(skills) > 0 {
 				out["skills"] = skills

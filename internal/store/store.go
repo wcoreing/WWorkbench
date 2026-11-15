@@ -388,6 +388,21 @@ CREATE INDEX IF NOT EXISTS idx_mcp_call_logs_tool ON mcp_call_logs(tool);
 	if err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "迁移 MCP 调用日志表失败", err)
 	}
+	_, err = s.db.Exec(`
+CREATE TABLE IF NOT EXISTS workbench_projects (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT '',
+  local_path TEXT NOT NULL DEFAULT '',
+  git_remote TEXT NOT NULL DEFAULT '',
+  links_json TEXT NOT NULL DEFAULT '[]',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_workbench_projects_updated ON workbench_projects(updated_at DESC);
+`)
+	if err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移项目表失败", err)
+	}
 	if err := s.EnsureMemoryZone(); err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "写入记忆区失败", err)
 	}

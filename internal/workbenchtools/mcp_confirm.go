@@ -145,6 +145,10 @@ func ProductForTool(toolName string) string {
 		return "terminal"
 	case workbench.CapEnsureHostBackupPolicies, workbench.CapHostHealthScan, workbench.CapBackupOpen:
 		return "backup"
+	case workbench.CapListProjects, workbench.CapGetProject, workbench.CapSaveProject, workbench.CapDeleteProject,
+		workbench.CapSuggestProjectResources, workbench.CapConfigureProjectResources, workbench.CapDetectProjectGit,
+		workbench.CapSyncProjectCursorTranscripts, workbench.CapListProjectCursorTranscripts, workbench.CapGetProjectCursorTranscript:
+		return "project"
 	case "edit_plugin_pack_file", "write_plugin_pack_file", "build_plugin_pack_ui", "rollback_plugin_pack":
 		return "plugins"
 	case workbench.CapBrowserClick, workbench.CapBrowserFill, workbench.CapBrowserUpload,

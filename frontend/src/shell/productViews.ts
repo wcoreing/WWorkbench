@@ -15,6 +15,7 @@ function lazyNamed<T extends ComponentType>(
 export const PRODUCT_VIEWS: Record<ProductId, ComponentType> = {
   database: lazyNamed(() => import('../products/database/DatabaseProductHost'), 'DatabaseProductHost'),
   terminal: lazyNamed(() => import('../products/terminal/TerminalWorkbench'), 'TerminalWorkbench'),
+  project: lazyNamed(() => import('../products/project/ProjectWorkbench'), 'ProjectWorkbench'),
   sftp: lazyNamed(() => import('../products/sftp/SftpWorkbench'), 'SftpWorkbench'),
   docker: lazyNamed(() => import('../products/docker/DockerWorkbench'), 'DockerWorkbench'),
   environment: lazyNamed(() => import('../products/environment/EnvironmentWorkbench'), 'EnvironmentWorkbench'),

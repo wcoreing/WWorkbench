@@ -1,5 +1,5 @@
 import type { ProductId } from './products'
-import { IconDatabase, IconDocker, IconFolder, IconHttp, IconLayers, IconLogs, IconNotebook, IconPlay, IconSave, IconSettings, IconTerminal } from '../components/Icons'
+import { IconDatabase, IconDocker, IconFolder, IconHttp, IconLaptop, IconLayers, IconLogs, IconNotebook, IconPlay, IconSave, IconSettings, IconTerminal } from '../components/Icons'
 import { chromeProps, pressProps } from '../components/compat'
 import { useI18n, useLocalizedProducts } from '../i18n'
 import { useAppStore } from '../stores/appStore'
@@ -8,9 +8,10 @@ import './shell.css'
 const PRODUCT_ICONS: Record<ProductId, typeof IconDatabase> = {
   database: IconDatabase,
   terminal: IconTerminal,
+  project: IconLayers,
   sftp: IconFolder,
   docker: IconDocker,
-  environment: IconLayers,
+  environment: IconLaptop,
   notebook: IconNotebook,
   httpapi: IconHttp,
   logs: IconLogs,

@@ -870,6 +870,89 @@ type HostProjectDO struct {
 	SkillNoteID string `json:"skillNoteId,omitempty"`
 }
 
+// WorkbenchProjectLinkDO 项目组合里钉住的产品资源引用（无密钥）。
+type WorkbenchProjectLinkDO struct {
+	Kind  string `json:"kind"` // ssh|database|docker|log|http|note|backup|skill
+	ID    string `json:"id"`
+	Label string `json:"label,omitempty"`
+}
+
+// WorkbenchProjectDO 项目产品：本机文件夹锚点 + 跨产品资源组合。
+type WorkbenchProjectDO struct {
+	ID        string                   `json:"id"`
+	Name      string                   `json:"name"`
+	LocalPath string                   `json:"localPath"`
+	GitRemote string                   `json:"gitRemote,omitempty"`
+	Links     []WorkbenchProjectLinkDO `json:"links"`
+	LinksJSON string                   `json:"-"`
+	CreatedAt int64                    `json:"createdAt"`
+	UpdatedAt int64                    `json:"updatedAt"`
+}
+
+// ProjectResourceSuggestionDO 智能配置给出的候选资源。
+type ProjectResourceSuggestionDO struct {
+	Kind          string `json:"kind"`
+	ID            string `json:"id"`
+	Label         string `json:"label"`
+	Score         int    `json:"score"`
+	Reason        string `json:"reason"`
+	AlreadyLinked bool   `json:"alreadyLinked"`
+}
+
+// SuggestProjectResourcesResultDO 智能配置建议结果。
+type SuggestProjectResourcesResultDO struct {
+	Project     WorkbenchProjectDO           `json:"project"`
+	Suggestions []ProjectResourceSuggestionDO `json:"suggestions"`
+	Tokens      []string                     `json:"tokens,omitempty"`
+}
+
+// ConfigureProjectResourcesResultDO 智能配置应用结果。
+type ConfigureProjectResourcesResultDO struct {
+	Project   WorkbenchProjectDO           `json:"project"`
+	Added     []ProjectResourceSuggestionDO `json:"added"`
+	Skipped   []ProjectResourceSuggestionDO `json:"skipped,omitempty"`
+	Suggested []ProjectResourceSuggestionDO `json:"suggested,omitempty"`
+}
+
+// HomeStatusDO 本机连接账号服务的状态。
+type HomeStatusDO struct {
+	URL       string `json:"url"`
+	AccountID string `json:"accountId"`
+	Username  string `json:"username"`
+	LoggedIn  bool   `json:"loggedIn"`
+	HasToken  bool   `json:"hasToken"`
+	Reachable bool   `json:"reachable"`
+	Error     string `json:"error,omitempty"`
+}
+
+// HomeAuthDO 注册/登录账号服务。
+type HomeAuthDO struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Device   string `json:"device"`
+}
+
+// HomePushPullResultDO 推送/拉取结果。
+type HomePushPullResultDO struct {
+	Project    WorkbenchProjectDO `json:"project"`
+	DocsPushed int                `json:"docsPushed,omitempty"`
+	DocsPulled int                `json:"docsPulled,omitempty"`
+	Note       string             `json:"note,omitempty"`
+}
+
+// HomeSyncResultDO 全量资源同步结果。
+type HomeSyncResultDO struct {
+	Projects    int    `json:"projects"`
+	SSHHosts    int    `json:"sshHosts"`
+	Connections int    `json:"connections"`
+	LogSources  int    `json:"logSources"`
+	Docs        int    `json:"docs"`
+	Bytes       int64  `json:"bytes,omitempty"`     // JSON 原始体积
+	BytesGzip   int64  `json:"bytesGzip,omitempty"` // 线上传输 gzip 体积
+	DurationMs  int64  `json:"durationMs,omitempty"`
+	Note        string `json:"note,omitempty"`
+}
+
 // LogFetchResultDO 拉取日志结果。
 type LogFetchResultDO struct {
 	Content string `json:"content"`

@@ -1,6 +1,7 @@
 import { chromeProps, pressProps } from '../components/compat'
 import { useI18n, useLocalizedProduct } from '../i18n'
 import { useAppStore } from '../stores/appStore'
+import { ShellAccountMenu } from './ShellAccountMenu'
 import { ShellSettingsMenu } from './ShellSettingsMenu'
 import appMark from '../assets/brand/mark.png'
 
@@ -39,6 +40,7 @@ export function ShellChrome({
           <span className="chrome-ai-label">AI</span>
         </button>
       )}
+      <ShellAccountMenu />
       <ShellSettingsMenu />
     </header>
   )

@@ -138,6 +138,10 @@ export function ComposeUp(arg1, arg2) {
   return window['go']['app']['Service']['ComposeUp'](arg1, arg2);
 }
 
+export function ConfigureWorkbenchProjectResources(arg1, arg2) {
+  return window['go']['app']['Service']['ConfigureWorkbenchProjectResources'](arg1, arg2);
+}
+
 export function CopyNotebookPath(arg1, arg2) {
   return window['go']['app']['Service']['CopyNotebookPath'](arg1, arg2);
 }
@@ -240,6 +244,14 @@ export function DeleteSSHHost(arg1) {
 
 export function DeleteTaskRuns(arg1) {
   return window['go']['app']['Service']['DeleteTaskRuns'](arg1);
+}
+
+export function DeleteWorkbenchProject(arg1) {
+  return window['go']['app']['Service']['DeleteWorkbenchProject'](arg1);
+}
+
+export function DetectWorkbenchProjectGitRemote(arg1) {
+  return window['go']['app']['Service']['DetectWorkbenchProjectGitRemote'](arg1);
 }
 
 export function DistillWorkflow(arg1, arg2, arg3, arg4, arg5) {
@@ -398,6 +410,10 @@ export function GetEnvScanPath() {
   return window['go']['app']['Service']['GetEnvScanPath']();
 }
 
+export function GetHomeStatus() {
+  return window['go']['app']['Service']['GetHomeStatus']();
+}
+
 export function GetHostProject(arg1) {
   return window['go']['app']['Service']['GetHostProject'](arg1);
 }
@@ -462,12 +478,52 @@ export function GetVersion() {
   return window['go']['app']['Service']['GetVersion']();
 }
 
+export function GetWorkbenchProject(arg1) {
+  return window['go']['app']['Service']['GetWorkbenchProject'](arg1);
+}
+
 export function GetWorkflow(arg1) {
   return window['go']['app']['Service']['GetWorkflow'](arg1);
 }
 
 export function GrantMCPWriteDir(arg1) {
   return window['go']['app']['Service']['GrantMCPWriteDir'](arg1);
+}
+
+export function HomeListRemoteProjects() {
+  return window['go']['app']['Service']['HomeListRemoteProjects']();
+}
+
+export function HomeLogin(arg1) {
+  return window['go']['app']['Service']['HomeLogin'](arg1);
+}
+
+export function HomeLogout() {
+  return window['go']['app']['Service']['HomeLogout']();
+}
+
+export function HomePullProject(arg1) {
+  return window['go']['app']['Service']['HomePullProject'](arg1);
+}
+
+export function HomePushProject(arg1) {
+  return window['go']['app']['Service']['HomePushProject'](arg1);
+}
+
+export function HomeRegister(arg1) {
+  return window['go']['app']['Service']['HomeRegister'](arg1);
+}
+
+export function HomeSyncNow() {
+  return window['go']['app']['Service']['HomeSyncNow']();
+}
+
+export function HomeSyncPull() {
+  return window['go']['app']['Service']['HomeSyncPull']();
+}
+
+export function HomeSyncPush() {
+  return window['go']['app']['Service']['HomeSyncPush']();
 }
 
 export function ImportConnectionsFromFile() {
@@ -672,6 +728,10 @@ export function ListSkillsDir(arg1) {
 
 export function ListTaskRuns(arg1, arg2) {
   return window['go']['app']['Service']['ListTaskRuns'](arg1, arg2);
+}
+
+export function ListWorkbenchProjects() {
+  return window['go']['app']['Service']['ListWorkbenchProjects']();
 }
 
 export function ListWorkflows(arg1) {
@@ -994,6 +1054,10 @@ export function SaveSSHHost(arg1) {
   return window['go']['app']['Service']['SaveSSHHost'](arg1);
 }
 
+export function SaveWorkbenchProject(arg1) {
+  return window['go']['app']['Service']['SaveWorkbenchProject'](arg1);
+}
+
 export function SaveWorkflow(arg1) {
   return window['go']['app']['Service']['SaveWorkflow'](arg1);
 }
@@ -1076,6 +1140,10 @@ export function StopLogFollow(arg1) {
 
 export function StopSSHForward(arg1) {
   return window['go']['app']['Service']['StopSSHForward'](arg1);
+}
+
+export function SuggestWorkbenchProjectResources(arg1) {
+  return window['go']['app']['Service']['SuggestWorkbenchProjectResources'](arg1);
 }
 
 export function SyncTaskRunLog(arg1) {

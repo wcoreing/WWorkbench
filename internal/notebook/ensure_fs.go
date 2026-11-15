@@ -82,6 +82,9 @@ func (s *Service) ensureSystemDirs() error {
 	if err := s.ensureOpsSeedFS(); err != nil {
 		return err
 	}
+	if err := s.ensureProjectSeedFS(); err != nil {
+		return err
+	}
 	return nil
 }
 

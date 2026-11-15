@@ -5,12 +5,14 @@ import type { ProductId } from '../../shell/products'
 export const NOTEBOOK_ROOT_WORKFLOW = '工作流'
 export const NOTEBOOK_ROOT_OPS = '运维'
 export const NOTEBOOK_ROOT_MEMORY = '记忆区'
+export const NOTEBOOK_ROOT_PROJECT = '项目'
 
 /** 系统顶栏目录（不可删改名）。 */
 export const SYSTEM_NOTEBOOK_ROOTS = [
   NOTEBOOK_ROOT_WORKFLOW,
   NOTEBOOK_ROOT_OPS,
   NOTEBOOK_ROOT_MEMORY,
+  NOTEBOOK_ROOT_PROJECT,
 ] as const
 
 export type SystemNotebookRoot = (typeof SYSTEM_NOTEBOOK_ROOTS)[number]
@@ -22,6 +24,7 @@ export type SystemNotebookRoot = (typeof SYSTEM_NOTEBOOK_ROOTS)[number]
 export const PRODUCT_NOTEBOOK_ROOTS: Record<ProductId, readonly string[]> = {
   browser: [NOTEBOOK_ROOT_WORKFLOW],
   terminal: [NOTEBOOK_ROOT_OPS],
+  project: [NOTEBOOK_ROOT_PROJECT, NOTEBOOK_ROOT_MEMORY],
   sftp: [NOTEBOOK_ROOT_OPS],
   docker: [NOTEBOOK_ROOT_OPS],
   environment: [NOTEBOOK_ROOT_OPS],
@@ -33,9 +36,10 @@ export const PRODUCT_NOTEBOOK_ROOTS: Record<ProductId, readonly string[]> = {
   plugins: [],
 }
 
-/** primaryNotebookRoot 产品主工作根（新建默认落点）；运维壳优先运维/。 */
+/** primaryNotebookRoot 产品主工作根（新建默认落点）；项目壳优先项目/；运维壳优先运维/。 */
 export function primaryNotebookRoot(productId: ProductId): string {
   const roots = PRODUCT_NOTEBOOK_ROOTS[productId] || []
+  if (roots.includes(NOTEBOOK_ROOT_PROJECT)) return NOTEBOOK_ROOT_PROJECT
   if (roots.includes(NOTEBOOK_ROOT_OPS)) return NOTEBOOK_ROOT_OPS
   return roots[0] || ''
 }

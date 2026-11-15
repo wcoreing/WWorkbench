@@ -8,9 +8,12 @@ import (
 // OpsGroupName 运维业务工作根（终端/Docker/备份等产品挂载；与「工作流」隔离）。
 const OpsGroupName = "运维"
 
+// ProjectGroupName 项目产品工作根（本机文件夹锚点组合；Cursor 对话镜像等）。
+const ProjectGroupName = "项目"
+
 // SystemTopDirs 笔记本根下的业务工作根（系统目录，不可删/改名）。
 func SystemTopDirs() []string {
-	return []string{SkillGroupName, MemoryGroupName, OpsGroupName}
+	return []string{SkillGroupName, MemoryGroupName, OpsGroupName, ProjectGroupName}
 }
 
 // IsSystemTopDir 是否为根级业务工作根。

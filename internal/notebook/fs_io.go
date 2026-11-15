@@ -240,6 +240,10 @@ func (s *Service) getNoteFS(id string) (*model.NoteDO, error) {
 			relDir := filepath.ToSlash(filepath.Dir(id))
 			return s.readNoteFile(filepath.ToSlash(id), abs, groupIDFromRelDir(relDir))
 		}
+		// 路径型 ID 已明确却读不到文件：直接失败，禁止再整库扫描（避免同 ID 递归卡死）
+		if strings.Contains(id, "/") {
+			return nil, errno.New(errno.CodeNotFound, "笔记不存在", id)
+		}
 	}
 	// 短名优先直达 SKILL.md，避免扫描时误命中同目录 log.md
 	if !strings.Contains(id, "/") {
@@ -255,7 +259,11 @@ func (s *Service) getNoteFS(id string) (*model.NoteDO, error) {
 	}
 	var basenameHits []string
 	for _, sum := range list {
-		if sum.ID == id || SkillNameFromNoteID(sum.ID) == id {
+		if sum.ID == id {
+			// 已是同一 ID 仍 Stat 失败：禁止递归
+			continue
+		}
+		if SkillNameFromNoteID(sum.ID) == id {
 			return s.getNoteFS(sum.ID)
 		}
 		if SkillBasename(sum.ID) == id {
@@ -275,6 +283,80 @@ func (s *Service) getNoteFS(id string) (*model.NoteDO, error) {
 		return s.getNoteFS(basenameHits[0])
 	}
 	return nil, errno.New(errno.CodeNotFound, "笔记不存在", id)
+}
+
+// SyncDoc 换机同步用的笔记正文条目。
+type SyncDoc struct {
+	Path    string
+	Content string
+}
+
+// ExportDocsForSync 一次扫盘导出可上云笔记（跳过 Cursor 对话镜像与隐藏目录）。
+func (s *Service) ExportDocsForSync(onProgress func(done, total int, path string)) ([]SyncDoc, error) {
+	_ = s.EnsureFSNotebook()
+	root := s.workspaceRoot()
+	var paths []string
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		name := d.Name()
+		if d.IsDir() {
+			if path != root && strings.HasPrefix(name, ".") {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !isNotebookContentFile(name) {
+			return nil
+		}
+		rel, _ := filepath.Rel(root, path)
+		rel = filepath.ToSlash(rel)
+		if shouldSkipSyncDoc(rel) {
+			return nil
+		}
+		paths = append(paths, rel)
+		return nil
+	})
+	sort.Strings(paths)
+	total := len(paths)
+	out := make([]SyncDoc, 0, total)
+	for i, rel := range paths {
+		abs := filepath.Join(root, filepath.FromSlash(rel))
+		raw, err := os.ReadFile(abs)
+		if err != nil {
+			continue
+		}
+		// front matter 再过滤 cursor-transcript（路径未命中时）
+		if isCursorTranscriptContent(string(raw)) {
+			continue
+		}
+		out = append(out, SyncDoc{Path: rel, Content: string(raw)})
+		if onProgress != nil {
+			onProgress(i+1, total, rel)
+		}
+	}
+	return out, nil
+}
+
+func shouldSkipSyncDoc(rel string) bool {
+	rel = filepath.ToSlash(rel)
+	if strings.Contains(rel, "/对话/") || strings.HasPrefix(rel, "对话/") {
+		return true
+	}
+	if strings.Contains(rel, "/.wwb/") || strings.HasPrefix(rel, ".wwb/") {
+		return true
+	}
+	return false
+}
+
+func isCursorTranscriptContent(raw string) bool {
+	head := raw
+	if len(head) > 800 {
+		head = head[:800]
+	}
+	return strings.Contains(head, "kind: cursor-transcript") ||
+		strings.Contains(head, "kind:cursor-transcript")
 }
 
 func (s *Service) readNoteFile(id, path, groupID string) (*model.NoteDO, error) {

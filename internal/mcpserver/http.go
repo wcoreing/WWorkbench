@@ -15,12 +15,13 @@ import (
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
 // ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.54.553"
+const ServerVersion = "0.54.571"
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明（前馈；不因未读规则拒绝工具）。
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本 / 浏览器舞台 / 备份 / 插件等）。
 - 【前馈】本段即系统约束摘要；可选 get_agent_rules(domain?) 复核全文。不会因未调用 get_agent_rules 而拒绝工具。
 - 【意图】动手类请传 intent（人话：要干什么、影响谁）；缺省时系统会合成「未声明意图」卡片，仍继续执行，确认弹窗与舞台可见。审计：list_mcp_logs 看意图→产品资源(ssh/db/docker/log/http/note/backup/skill)→工具。
+- 【项目】list/get/save_project；detect_project_git；智能配置：suggest/configure_project_resources。Cursor 跨机：sync/list/get_project_cursor_transcripts（仓库 .wworkbench/cursor-transcripts；非 requestId）。
 - 【鉴权】URL ?token= 或 Authorization Bearer（设置页可复制 mcp.json）；/health 免鉴权。勿用假 token（Cursor 会卡 Authenticating）。
 - 【备份】host_health_scan(sshHostId, workDir) → 用户勾选后 ensure_host_backup_policies(findingIds)；或 save_backup_policy → run_backup 无头。禁止全盘扫、禁止默认全选。
 - 参数=schema 顶层字段（勿再包 {"arguments":…}）。

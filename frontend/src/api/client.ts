@@ -156,6 +156,13 @@ import {
   SaveBackupPolicy,
   DeleteBackupPolicy,
   DeleteBackupPolicies,
+  ListWorkbenchProjects,
+  GetWorkbenchProject,
+  SaveWorkbenchProject,
+  DeleteWorkbenchProject,
+  SuggestWorkbenchProjectResources,
+  ConfigureWorkbenchProjectResources,
+  DetectWorkbenchProjectGitRemote,
   ListBackupRuns,
   ListTaskRuns,
   GetTaskRun,
@@ -207,6 +214,16 @@ import {
   SaveAgentPermissions,
   GetMCPStatus,
   SaveMCPConfig,
+  GetHomeStatus,
+  HomeLogin,
+  HomeRegister,
+  HomeLogout,
+  HomePushProject,
+  HomePullProject,
+  HomeListRemoteProjects,
+  HomeSyncPush,
+  HomeSyncPull,
+  HomeSyncNow,
   ListAgentCapabilities,
   ApplyAgentProviderPreset,
   TestAgentConnection,
@@ -773,6 +790,23 @@ export const api = {
   saveBackupPolicy: (p: model.BackupPolicyDO) =>
     unwrap(() => SaveBackupPolicy(p)) as Promise<import('./types').BackupPolicy>,
   deleteBackupPolicy: (id: string) => unwrap(() => DeleteBackupPolicy(id)),
+  listWorkbenchProjects: async () =>
+    asArray(await unwrap(() => ListWorkbenchProjects())) as import('./types').WorkbenchProject[],
+  getWorkbenchProject: (id: string) =>
+    unwrap(() => GetWorkbenchProject(id)) as Promise<import('./types').WorkbenchProject>,
+  saveWorkbenchProject: (p: model.WorkbenchProjectDO) =>
+    unwrap(() => SaveWorkbenchProject(p)) as Promise<import('./types').WorkbenchProject>,
+  deleteWorkbenchProject: (id: string) => unwrap(() => DeleteWorkbenchProject(id)),
+  detectWorkbenchProjectGitRemote: (localPath: string) =>
+    unwrap(() => DetectWorkbenchProjectGitRemote(localPath)) as Promise<string>,
+  suggestWorkbenchProjectResources: (p: model.WorkbenchProjectDO) =>
+    unwrap(() => SuggestWorkbenchProjectResources(p)) as Promise<
+      import('./types').SuggestProjectResourcesResult
+    >,
+  configureWorkbenchProjectResources: (id: string, keys: string[]) =>
+    unwrap(() => ConfigureWorkbenchProjectResources(id, keys)) as Promise<
+      import('./types').ConfigureProjectResourcesResult
+    >,
   deleteBackupPolicies: async (ids: string[]) =>
     (await unwrap(() => DeleteBackupPolicies(ids))) as {
       deleted: number
@@ -1082,6 +1116,20 @@ export const api = {
   saveAgentPermissions: (in_: model.AgentPermissionsSaveDO) => unwrap(() => SaveAgentPermissions(in_)),
   getMCPStatus: async () => unwrap(() => GetMCPStatus()),
   saveMCPConfig: (in_: model.MCPConfigSaveDO) => unwrap(() => SaveMCPConfig(in_)),
+  getHomeStatus: async () => unwrap(() => GetHomeStatus()) as Promise<model.HomeStatusDO>,
+  homeLogin: (in_: model.HomeAuthDO) => unwrap(() => HomeLogin(in_)) as Promise<model.HomeStatusDO>,
+  homeRegister: (in_: model.HomeAuthDO) =>
+    unwrap(() => HomeRegister(in_)) as Promise<model.HomeStatusDO>,
+  homeLogout: async () => unwrap(() => HomeLogout()) as Promise<model.HomeStatusDO>,
+  homePushProject: (id: string) =>
+    unwrap(() => HomePushProject(id)) as Promise<model.HomePushPullResultDO>,
+  homePullProject: (id: string) =>
+    unwrap(() => HomePullProject(id)) as Promise<model.HomePushPullResultDO>,
+  homeListRemoteProjects: async () =>
+    asArray(await unwrap(() => HomeListRemoteProjects())) as import('./types').WorkbenchProject[],
+  homeSyncPush: async () => unwrap(() => HomeSyncPush()) as Promise<model.HomeSyncResultDO>,
+  homeSyncPull: async () => unwrap(() => HomeSyncPull()) as Promise<model.HomeSyncResultDO>,
+  homeSyncNow: async () => unwrap(() => HomeSyncNow()) as Promise<model.HomeSyncResultDO>,
   agentChat: async (req: model.AgentChatRequestDO) => unwrap(() => AgentChat(req)),
   agentStop: (threadId: string) => unwrap(() => AgentStop(threadId)),
   agentChoose: (answers: model.AgentChoiceAnswerDO[]) => unwrap(() => AgentChoose(answers)),

@@ -1,0 +1,4 @@
+[submodule "wwb-home"]
+	path = wwb-home
+	url = https://gitee.com/wei3ning/wwb-home.git
+	branch = master

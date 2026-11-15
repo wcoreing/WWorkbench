@@ -204,6 +204,69 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   padding: 6px;
 }
 
+.shell-account-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.shell-account-current {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text);
+}
+
+.shell-account-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-danger, #c0392b);
+}
+
+.shell-account-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.shell-account-field .wn-input {
+  width: 100%;
+}
+
+.shell-account-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.shell-account-progress-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.shell-account-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.shell-account-progress-text {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text);
+}
+
+.shell-account-progress-meta {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
 .shell-settings-section {
   display: flex;
   flex-direction: column;

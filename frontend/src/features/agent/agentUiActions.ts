@@ -262,6 +262,7 @@ function asProductId(v: unknown): ProductId | null {
   const allowed: ProductId[] = [
     'database',
     'terminal',
+    'project',
     'sftp',
     'docker',
     'environment',

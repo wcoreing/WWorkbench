@@ -339,20 +339,41 @@ export function TerminalWorkbench() {
     )
   }
 
-  /** writeInitialCommand 连接建立后向终端写入并执行命令（带重试）。 */
-  const writeInitialCommand = async (sessionId: string, command?: string) => {
-    if (!command?.trim()) return
+  /** writeInitialCommand 连接建立后向终端写入并执行命令（带重试）。成功 true。 */
+  const writeInitialCommand = async (sessionId: string, command?: string): Promise<boolean> => {
+    if (!command?.trim()) return true
     const data = command.endsWith('\r') || command.endsWith('\n') ? command : `${command}\r`
-    for (let i = 0; i < 6; i++) {
-      await new Promise((r) => setTimeout(r, 250 + i * 150))
+    for (let i = 0; i < 8; i++) {
+      await new Promise((r) => setTimeout(r, 200 + i * 150))
       try {
         await api.writeTerminal(sessionId, data)
-        return
+        return true
       } catch {
-        /* PTY 可能尚未就绪 */
+        /* PTY 可能尚未就绪或已断开 */
       }
     }
-    setStatusMessage(t('terminal.cmdSent'))
+    return false
+  }
+
+  /** injectIntoTab 向已有标签注入命令；写入失败则重连后再写一次。 */
+  const injectIntoTab = async (tabId: string, initialCommand?: string) => {
+    if (!initialCommand?.trim()) return
+    const tab0 = tabsRef.current.find((t) => t.id === tabId)
+    const sid0 = tab0 ? firstSessionId(tab0.layout) : ''
+    if (sid0 && (await writeInitialCommand(sid0, initialCommand))) {
+      setStatusMessage(t('terminal.cmdExecuted'))
+      return
+    }
+    // 僵死会话：MCP 确认后常见——UI 仍显示 ready，但 write 失败
+    setStatusMessage(t('terminal.reconnecting', { name: tab0?.title || '' }))
+    await reconnectTab(tabId)
+    const tab1 = tabsRef.current.find((t) => t.id === tabId)
+    const sid1 = tab1 ? firstSessionId(tab1.layout) : ''
+    if (sid1 && (await writeInitialCommand(sid1, initialCommand))) {
+      setStatusMessage(t('terminal.cmdExecuted'))
+      return
+    }
+    setStatusMessage(t('terminal.cmdInjectFailed'))
   }
 
   /** runTerminalLink 打开/聚焦终端；有命令则注入。MCP 反复操作同一主机时复用已有标签。 */
@@ -375,12 +396,8 @@ export function TerminalWorkbench() {
       setActiveTabId(existing.id)
       setActiveProduct('terminal')
       if (existing.connectState === 'ready' && initialCommand?.trim()) {
-        const sessionId = firstSessionId(existing.layout)
-        if (sessionId) {
-          await writeInitialCommand(sessionId, initialCommand)
-          setStatusMessage(t('terminal.cmdExecuted'))
-          return
-        }
+        await injectIntoTab(existing.id, initialCommand)
+        return
       }
       if (existing.connectState === 'ready') {
         setStatusMessage(t('terminal.connected', { title: existing.title }))
@@ -389,13 +406,28 @@ export function TerminalWorkbench() {
       if (existing.connectState === 'failed') {
         await retryTabConnect(existing.id)
         if (initialCommand?.trim()) {
-          const tab = tabsRef.current.find((t) => t.id === existing.id)
-          const sessionId = tab ? firstSessionId(tab.layout) : ''
-          if (sessionId) await writeInitialCommand(sessionId, initialCommand)
+          await injectIntoTab(existing.id, initialCommand)
         }
         return
       }
-      // connecting：只聚焦，等连上
+      // connecting：等连上后补注入（避免 MCP 命令被丢弃）
+      if (initialCommand?.trim()) {
+        for (let i = 0; i < 40; i++) {
+          await new Promise((r) => setTimeout(r, 250))
+          const tab = tabsRef.current.find((t) => t.id === existing.id)
+          if (!tab) return
+          if (tab.connectState === 'failed') {
+            await retryTabConnect(existing.id)
+            await injectIntoTab(existing.id, initialCommand)
+            return
+          }
+          if (tab.connectState === 'ready') {
+            await injectIntoTab(existing.id, initialCommand)
+            return
+          }
+        }
+        setStatusMessage(t('terminal.cmdInjectFailed'))
+      }
       return
     }
     if (localShell) {

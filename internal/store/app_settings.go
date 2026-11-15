@@ -20,6 +20,12 @@ const (
 	SettingEnvScanPath        = "env_scan_path"
 	SettingDockerComposeDir   = "docker_compose_dir"
 	SettingTerminalFrequentPaths = "terminal.frequent_paths" // JSON：hostKey → [{path,count,lastAt}]
+	SettingHomeURL               = "home_url"          // 废弃：地址改内置/配置文件
+	SettingHomeDeviceID          = "home_device_id"    // 废弃：改账号
+	SettingHomeDeviceToken       = "home_device_token" // 废弃：改 access token
+	SettingHomeAccountID         = "home_account_id"
+	SettingHomeUsername          = "home_username"
+	SettingHomeAccessToken       = "home_access_token"
 )
 
 // 产品线扩展执行顺序（实现时按 phase 递增，勿跳号）：
