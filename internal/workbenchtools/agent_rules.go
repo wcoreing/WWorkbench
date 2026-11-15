@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.15d"
+const AgentRulesVersion = "2026.11.15e"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -35,7 +35,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **插件解耦**：浏览器扩展（wwb）与 Kimi WebBridge（kimi）只是执行器；任务场景**禁止直连** 127.0.0.1:10086 / 18765，一律经 browser_*（executor=wwb|kimi|auto），由工作台记 op。
 - **自学习两阶段（必须遵守）**：
   1. **探索**：接受目标后动手完成；过程经验写入账本/log.md（browser_* 自动记 op；关键决策用 task_record(kind=thought)）。此阶段以达成目标为主，Skill 可先粗糙或不存在。
-  2. **收口**：目标完成后，**推理总结**再 update_skill（归纳稳定路径/经验/脚本/资源）；**name=当前任务名**（与 log.md 同目录），禁止沉淀到别的工作流；禁止机械把 log 逐步贴进 Skill，禁止只口头总结不落盘。
+  2. **收口**：目标完成后，**推理总结**再 update_skill（归纳稳定路径/经验/脚本/资源）；**name=当前任务名**（与 log.md 同目录），禁止沉淀到别的工作流；禁止机械把 log 逐步贴进 Skill，禁止只口头总结不落盘。**update_skill 免确认直接落盘**（仍须 intent），避免 MCP 等确认超时。
   3. **宏↔Skill**：探索用单工具/fill(fields)；跑稳后用 browser_run(mode=macro)。收口时把该稳定段写成一条 wwb-skill-steps（action=browser_run，args.allowWrite=true，args.steps=嵌套步）。下次 get_skill → Agent 调 browser_run，或 run_skill 机械跑宏一步。宏≠自动写 Skill；挂钩靠收口沉淀。
 - **谁执行**：当前在用的 Agent（Cursor / 侧栏 / 其他 MCP 客户端）负责两阶段；舞台只备资料与焦点，不指定通道、不机械写 Skill。
 - **磁盘真源**：笔记本 = ~/.wworkbench/notebook/。根下按**业务工作根**分区隔离：工作流/（任务产品默认）、运维/、记忆区/。产品只挂自己的根；笔记本产品看全盘。样板：get_skill(skill=wwb-skill-standard)。当前任务若只有 log.md，update_skill 可带 steps 首创同目录 SKILL.md。

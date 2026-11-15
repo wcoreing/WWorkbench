@@ -14,8 +14,6 @@ import (
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/notebook"
 	"WWorkbench/internal/workbench"
-
-	"github.com/google/uuid"
 )
 
 // UpdateSkillArgs 自我更新 Skill 的入参（经验 / 脚本 / 资源 / 优化步骤）。
@@ -33,7 +31,7 @@ type UpdateSkillArgs struct {
 	ReplaceSteps  *bool                  `json:"replaceSteps"` // 显式 false 时忽略 steps
 }
 
-func toolUpdateSkill(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
+func toolUpdateSkill(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	var in UpdateSkillArgs
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return Fail("参数无效")
@@ -58,13 +56,10 @@ func toolUpdateSkill(_ context.Context, d *Deps, raw json.RawMessage) ToolResult
 	if !hasLessons && !hasScript && !hasRes && !replaceSteps && !hasMeta {
 		return Fail("请至少提供 lessons / script / resourcePaths / steps / description / title 之一")
 	}
-	summary := "沉淀 Skill · " + name
-	preview := map[string]interface{}{
-		"name": name, "intent": intent, "action": "update_skill",
-		"hasLessons": hasLessons, "hasScript": hasScript,
-		"resourceCount": len(in.ResourcePaths), "replaceSteps": replaceSteps,
-	}
-	return Confirm(uuid.NewString(), summary, preview)
+	// 自学习收口：免确认直接落盘（避免 MCP 客户端等确认超时）；仍须 intent。
+	_ = ctx
+	stageBrowser(d, "沉淀 Skill · "+name)
+	return UpdateSkillNow(d, in)
 }
 
 // UpdateSkillConfirmed 确认后把经验/脚本/资源/优化步骤写回工作流笔记。

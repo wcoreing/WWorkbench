@@ -470,7 +470,7 @@ func Catalog() []Item {
 		},
 		{
 			Name: "update_skill", Label: "沉淀更新 Skill", Risk: RiskWrite,
-			Description:    "把经验/优化步骤/脚本/资源写回 SKILL.md；跑通或踩坑后应调用",
+			Description:    "把经验/优化步骤/脚本/资源写回 SKILL.md；免确认直接落盘；跑通或踩坑后应调用",
 			DefaultEnabled: true,
 		},
 		{
