@@ -15,7 +15,7 @@ require (
 	github.com/pkg/sftp v1.13.10
 	github.com/redis/go-redis/v9 v9.20.0
 	github.com/wailsapp/wails/v2 v2.12.0
-	github.com/wcoreing/ningharness v0.0.0-20260823071431-38ea638305b8
+	github.com/wcoreing/ningharness v0.0.0-20261114150533-16473a3af354
 	github.com/xuri/excelize/v2 v2.10.1
 	golang.org/x/crypto v0.51.0
 	golang.org/x/sys v0.46.0
@@ -140,4 +140,5 @@ require (
 // replace github.com/wailsapp/wails/v2 v2.12.0 => /Users/weining/go/pkg/mod
 
 // 本地联调 ningharness（含 guest.External）；发版前改为伪版本或打 tag。
-replace github.com/wcoreing/ningharness => ../ningharness
+// 本地 ../ningharness 缺 jsonparse/learning，暂用代理伪版本；本地代码追上后再打开。
+// replace github.com/wcoreing/ningharness => ../ningharness

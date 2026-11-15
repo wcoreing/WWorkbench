@@ -10,6 +10,7 @@ import (
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/homeclient"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/workbench"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -30,6 +31,11 @@ func stripSecretFields(m map[string]any) map[string]any {
 	out := make(map[string]any, len(m))
 	for k, v := range m {
 		lk := strings.ToLower(k)
+		// hasPassword / clearPassword 是展示/控制位，不是密钥，必须保留以便换机知道要补密。
+		if lk == "haspassword" || lk == "clearpassword" {
+			out[k] = v
+			continue
+		}
 		if strings.Contains(lk, "password") || strings.Contains(lk, "secret") ||
 			lk == "privatekey" || lk == "accesskeysecret" || lk == "token" || lk == "apikey" {
 			continue
@@ -104,22 +110,53 @@ func (s *Service) buildLocalSnapshot() (homeclient.WorkspaceSnapshot, error) {
 		hp = append(hp, projectToHomeClient(p))
 	}
 
-	sshHosts, _ := s.store.ListSSHHosts()
-	for i := range sshHosts {
-		sshHosts[i].Password = ""
+	sshHosts, err := s.store.ListSSHHosts()
+	if err != nil {
+		return homeclient.WorkspaceSnapshot{}, errno.Wrap(errno.CodeStoreFailed, "收集 SSH 主机失败", err)
 	}
-	conns, _ := s.store.ListConnections()
+	for i := range sshHosts {
+		if strings.TrimSpace(sshHosts[i].Password) != "" {
+			sshHosts[i].HasPassword = true
+		}
+		sshHosts[i].Password = ""
+		sshHosts[i].ClearPassword = false
+	}
+	conns, err := s.store.ListConnections()
+	if err != nil {
+		return homeclient.WorkspaceSnapshot{}, errno.Wrap(errno.CodeStoreFailed, "收集数据库连接失败", err)
+	}
 	for i := range conns {
 		conns[i].Password = ""
 		conns[i].SSHPassword = ""
 	}
-	logs, _ := s.store.ListLogSources()
-	httpFolders, _ := s.store.ListHTTPFolders()
-	httpReqs, _ := s.store.ListHTTPRequests()
-	httpEnvs, _ := s.store.ListHTTPEnvironments()
-	dockers, _ := s.store.ListDockerContexts()
-	dockerShells, _ := s.store.ListDockerShellHosts()
-	backups, _ := s.store.ListBackupPolicies()
+	logs, err := s.store.ListLogSources()
+	if err != nil {
+		return homeclient.WorkspaceSnapshot{}, errno.Wrap(errno.CodeStoreFailed, "收集日志源失败", err)
+	}
+	httpFolders, err := s.store.ListHTTPFolders()
+	if err != nil {
+		return homeclient.WorkspaceSnapshot{}, errno.Wrap(errno.CodeStoreFailed, "收集 HTTP 目录失败", err)
+	}
+	httpReqs, err := s.store.ListHTTPRequests()
+	if err != nil {
+		return homeclient.WorkspaceSnapshot{}, errno.Wrap(errno.CodeStoreFailed, "收集 HTTP 请求失败", err)
+	}
+	httpEnvs, err := s.store.ListHTTPEnvironments()
+	if err != nil {
+		return homeclient.WorkspaceSnapshot{}, errno.Wrap(errno.CodeStoreFailed, "收集 HTTP 环境失败", err)
+	}
+	dockers, err := s.store.ListDockerContexts()
+	if err != nil {
+		return homeclient.WorkspaceSnapshot{}, errno.Wrap(errno.CodeStoreFailed, "收集 Docker 上下文失败", err)
+	}
+	dockerShells, err := s.store.ListDockerShellHosts()
+	if err != nil {
+		return homeclient.WorkspaceSnapshot{}, errno.Wrap(errno.CodeStoreFailed, "收集 Docker Shell 主机失败", err)
+	}
+	backups, err := s.store.ListBackupPolicies()
+	if err != nil {
+		return homeclient.WorkspaceSnapshot{}, errno.Wrap(errno.CodeStoreFailed, "收集备份策略失败", err)
+	}
 
 	docs := make([]homeclient.SnapshotDoc, 0)
 	if s.notebook != nil {
@@ -193,13 +230,19 @@ func decodeMap[T any](m map[string]any) (T, error) {
 
 func mergeSSHHost(local *model.SSHHostDO, remote model.SSHHostDO) model.SSHHostDO {
 	out := remote
+	out.Password = ""
+	out.ClearPassword = false
 	if local != nil {
-		out.Password = local.Password
 		if strings.TrimSpace(out.KeyPath) == "" {
 			out.KeyPath = local.KeyPath
 		}
-	} else {
-		out.Password = ""
+		if strings.TrimSpace(out.Name) == "" {
+			out.Name = local.Name
+		}
+		if out.CreatedAt == 0 {
+			out.CreatedAt = local.CreatedAt
+		}
+		out.HasPassword = out.HasPassword || local.HasPassword || strings.TrimSpace(local.Password) != ""
 	}
 	return out
 }
@@ -412,15 +455,35 @@ func (s *Service) homeSyncApplyPull(snap *homeclient.WorkspaceSnapshot) ApiResul
 	}
 
 	sshN := 0
+	sshFail := 0
 	for _, m := range snap.SSHHosts {
 		remote, err := decodeMap[model.SSHHostDO](m)
 		if err != nil || strings.TrimSpace(remote.ID) == "" {
+			sshFail++
 			continue
 		}
-		local, _ := s.store.GetSSHHost(remote.ID)
+		if strings.TrimSpace(remote.Name) == "" {
+			remote.Name = strings.TrimSpace(remote.User) + "@" + strings.TrimSpace(remote.Host)
+		}
+		var local *model.SSHHostDO
+		if existing, err := s.store.GetSSHHost(remote.ID); err == nil {
+			local = existing
+		} else if ae := errno.Extract(err); ae == nil || ae.Code != errno.CodeNotFound {
+			sshFail++
+			continue
+		}
 		merged := mergeSSHHost(local, remote)
-		if err := s.store.SaveSSHHost(merged); err == nil {
-			sshN++
+		if err := s.store.SaveSSHHostLedger(merged); err != nil {
+			sshFail++
+			continue
+		}
+		sshN++
+		if s.radar != nil {
+			op := workbench.RadarOpCreate
+			if local != nil {
+				op = workbench.RadarOpUpdate
+			}
+			s.radar.EmitSSHHost(op, merged.ID, "home-sync", merged.Name, false)
 		}
 	}
 
@@ -512,6 +575,10 @@ func (s *Service) homeSyncApplyPull(snap *homeclient.WorkspaceSnapshot) ApiResul
 		}
 	}
 
+	note := "已整包拉取并合并；本机已有密钥未覆盖"
+	if sshFail > 0 {
+		note = fmt.Sprintf("%s；SSH 主机 %d 条写入失败（已同步 %d）", note, sshFail, sshN)
+	}
 	return OkResult(model.HomeSyncResultDO{
 		Projects:    projN,
 		SSHHosts:    sshN,
@@ -519,6 +586,6 @@ func (s *Service) homeSyncApplyPull(snap *homeclient.WorkspaceSnapshot) ApiResul
 		LogSources:  logN,
 		Docs:        docsN,
 		Bytes:       bytes,
-		Note:        "已整包拉取并合并；本机已有密钥未覆盖",
+		Note:        note,
 	})
 }
