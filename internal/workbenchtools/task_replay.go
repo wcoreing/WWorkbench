@@ -456,7 +456,7 @@ func executeReplayAction(ctx context.Context, b bridgeCaller, step model.TaskSte
 		return b.Call(ctx, "open_frame", resolved)
 	case "browser_run", "run", "macro":
 		session := firstNonEmpty(sourceSession, strField(resolved, "session"), strField(rawJSONMap(step.ArgsJSON), "session"))
-		args := map[string]interface{}{"allowWrite": true, "mode": "macro"}
+		args := map[string]interface{}{"mode": "macro"}
 		for k, v := range resolved {
 			args[k] = v
 		}

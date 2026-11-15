@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"time"
 
 	"WWorkbench/internal/store"
 	"WWorkbench/internal/workbench"
@@ -108,16 +109,24 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 	if !res.NeedsConfirm {
 		return res
 	}
+	started := time.Now()
 	ensureSSHTerminalStage(d, toolName, args)
 	intent := extractIntent(args)
 
+	var out ToolResult
+	defer func() {
+		recordMCPCall(ctx, d, toolName, args, out, started)
+	}()
+
 	if browserStepConfirmTool(toolName) && !browserAskConfirmEnabled(d) {
 		MarkLatestIntentApproved(ctx, toolName, intent, true)
-		return ExecuteConfirmed(ctx, d, toolName, string(args))
+		out = ExecuteConfirmed(ctx, d, toolName, string(args))
+		return out
 	}
 
 	if d == nil || d.MCPConfirm == nil {
-		return Fail("工作台确认门未就绪，请在 App 内打开 WWorkbench 后重试")
+		out = Fail("工作台确认门未就绪，请在 App 内打开 WWorkbench 后重试")
+		return out
 	}
 	approved, err := d.MCPConfirm.Await(ctx, MCPConfirmRequest{
 		PendingID: res.PendingID,
@@ -127,11 +136,14 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 		Product:   ProductForTool(toolName),
 	})
 	if err != nil {
-		return Fail(err.Error())
+		out = Fail(err.Error())
+		return out
 	}
 	MarkLatestIntentApproved(ctx, toolName, intent, approved)
 	if !approved {
-		return Fail("用户已在工作台拒绝：" + res.ConfirmSummary)
+		out = Fail("用户已在工作台拒绝：" + res.ConfirmSummary)
+		return out
 	}
-	return ExecuteConfirmed(ctx, d, toolName, string(args))
+	out = ExecuteConfirmed(ctx, d, toolName, string(args))
+	return out
 }

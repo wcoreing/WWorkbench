@@ -18,6 +18,7 @@ const (
 	RadarDomainSSHHost         = "ssh.host"
 	RadarDomainConnection      = "database.connection"
 	RadarDomainLogSource       = "logs.source"
+	RadarDomainMCPCall         = "logs.mcp" // Agent/MCP 调用审计流水
 	RadarDomainEnvPreset       = "environment.preset"
 	RadarDomainSFTPBookmark    = "sftp.bookmark"
 	RadarDomainSSHForward      = "ssh.forward"

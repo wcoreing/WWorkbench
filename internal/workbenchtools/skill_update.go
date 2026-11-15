@@ -31,7 +31,7 @@ type UpdateSkillArgs struct {
 	ReplaceSteps  *bool                  `json:"replaceSteps"` // 显式 false 时忽略 steps
 }
 
-func toolUpdateSkill(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
+func toolUpdateSkill(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	var in UpdateSkillArgs
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return Fail("参数无效")
@@ -44,32 +44,69 @@ func toolUpdateSkill(ctx context.Context, d *Deps, raw json.RawMessage) ToolResu
 	if name == "cms_new_article" {
 		return Fail("不能更新内置 cms_new_article")
 	}
-	hasLessons := strings.TrimSpace(in.Lessons) != ""
-	hasScript := strings.TrimSpace(in.Script) != ""
-	hasRes := len(in.ResourcePaths) > 0
-	replaceSteps := len(in.Steps) > 0
-	if in.ReplaceSteps != nil {
-		replaceSteps = *in.ReplaceSteps && len(in.Steps) > 0
-	}
-	hasMeta := strings.TrimSpace(in.Title) != "" || strings.TrimSpace(in.Description) != "" ||
-		strings.TrimSpace(in.SourceRunID) != ""
-	if !hasLessons && !hasScript && !hasRes && !replaceSteps && !hasMeta {
+	if !updateSkillHasPayload(in) {
 		return Fail("请至少提供 lessons / script / resourcePaths / steps / description / title 之一")
 	}
-	// 自学习收口：免确认直接落盘（避免 MCP 客户端等确认超时）；仍须 intent。
-	_ = ctx
 	stageBrowser(d, "沉淀 Skill · "+name)
 	return UpdateSkillNow(d, in)
 }
 
-// UpdateSkillConfirmed 确认后把经验/脚本/资源/优化步骤写回工作流笔记。
-func UpdateSkillConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
+// UpdateSkillConfirmed 兼容确认门回调（现已免确认，等同 UpdateSkillNow）。
+func UpdateSkillConfirmed(_ context.Context, d *Deps, argsJSON string) ToolResult {
 	var in UpdateSkillArgs
 	_ = json.Unmarshal([]byte(argsJSON), &in)
 	return UpdateSkillNow(d, in)
 }
 
-// UpdateSkillNow 写回 Skill 沉淀（UI 可无确认门调用）。
+func updateSkillHasPayload(in UpdateSkillArgs) bool {
+	if strings.TrimSpace(in.Lessons) != "" || strings.TrimSpace(in.Script) != "" {
+		return true
+	}
+	if updateSkillWantResources(in) {
+		return true
+	}
+	if updateSkillReplaceSteps(in) {
+		return true
+	}
+	return strings.TrimSpace(in.Title) != "" ||
+		strings.TrimSpace(in.Description) != "" ||
+		strings.TrimSpace(in.SourceRunID) != ""
+}
+
+func updateSkillReplaceSteps(in UpdateSkillArgs) bool {
+	if len(in.Steps) == 0 {
+		return false
+	}
+	if in.ReplaceSteps != nil {
+		return *in.ReplaceSteps
+	}
+	return true
+}
+
+func updateSkillWantResources(in UpdateSkillArgs) bool {
+	for _, p := range in.ResourcePaths {
+		if strings.TrimSpace(p) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// textAlreadyInSection 经验/脚本去重：正文已出现则不再追加（避免时间戳导致假变更）。
+func textAlreadyInSection(section, piece string) bool {
+	piece = strings.TrimSpace(piece)
+	section = strings.TrimSpace(section)
+	if piece == "" {
+		return true
+	}
+	if section == "" || strings.Contains(section, "尚无沉淀") || strings.Contains(section, "update_skill(script") {
+		return false
+	}
+	return strings.Contains(section, piece)
+}
+
+// UpdateSkillNow 写回 Skill 沉淀（免确认）。
+// 无实质变更则跳过；有变更则写前 pin 目录版本，再落盘（Save 写后再 pin）。
 func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	if d == nil || d.Notebook == nil {
 		return Fail("笔记本未就绪")
@@ -79,8 +116,8 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 		return Fail("name 不能为空")
 	}
 	cur, err := resolveWorkflowSSOT(d, name)
+	created := false
 	if err != nil {
-		// 当前任务目录往往只有 log.md：允许带 steps 直接首创 SKILL.md（沉淀到当前任务）
 		if len(in.Steps) == 0 {
 			return Fail(err.Error() + "；若要新建当前任务 Skill，请传入 steps")
 		}
@@ -97,6 +134,7 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 			SourceRunID: strings.TrimSpace(in.SourceRunID),
 			Source:      "note",
 		}
+		created = true
 	}
 	noteID := firstNonEmpty(cur.NoteID, notebook.SkillNoteID(name))
 	existing, _ := d.Notebook.GetNote(noteID)
@@ -114,11 +152,7 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	if v := strings.TrimSpace(in.SourceRunID); v != "" {
 		cur.SourceRunID = v
 	}
-	replaceSteps := len(in.Steps) > 0
-	if in.ReplaceSteps != nil {
-		replaceSteps = *in.ReplaceSteps && len(in.Steps) > 0
-	}
-	if replaceSteps {
+	if updateSkillReplaceSteps(in) {
 		cur.Steps = in.Steps
 	}
 	if len(cur.Steps) == 0 {
@@ -126,30 +160,73 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	}
 
 	stamp := time.Now().Format("2006-01-02 15:04")
+	lessonsAdded := false
 	if lesson := strings.TrimSpace(in.Lessons); lesson != "" {
-		line := fmt.Sprintf("- [%s] %s", stamp, lesson)
-		if strings.TrimSpace(extras.Lessons) == "" ||
-			strings.Contains(extras.Lessons, "尚无沉淀") {
-			extras.Lessons = line
-		} else {
-			extras.Lessons = strings.TrimSpace(extras.Lessons) + "\n" + line
+		if !textAlreadyInSection(extras.Lessons, lesson) {
+			line := fmt.Sprintf("- [%s] %s", stamp, lesson)
+			if strings.TrimSpace(extras.Lessons) == "" || strings.Contains(extras.Lessons, "尚无沉淀") {
+				extras.Lessons = line
+			} else {
+				extras.Lessons = strings.TrimSpace(extras.Lessons) + "\n" + line
+			}
+			lessonsAdded = true
 		}
 	}
 
+	scriptAdded := false
 	if script := strings.TrimSpace(in.Script); script != "" {
-		lang := strings.TrimSpace(in.ScriptLang)
-		if lang == "" {
-			lang = "bash"
+		if !textAlreadyInSection(extras.Scripts, script) {
+			lang := strings.TrimSpace(in.ScriptLang)
+			if lang == "" {
+				lang = "bash"
+			}
+			block := script
+			if !strings.Contains(script, "```") {
+				block = "```" + lang + "\n" + script + "\n```"
+			}
+			headed := fmt.Sprintf("### 沉淀 %s\n\n%s", stamp, block)
+			if strings.TrimSpace(extras.Scripts) == "" || strings.Contains(extras.Scripts, "update_skill(script") {
+				extras.Scripts = headed
+			} else {
+				extras.Scripts = strings.TrimSpace(extras.Scripts) + "\n\n" + headed
+			}
+			scriptAdded = true
 		}
-		block := script
-		if !strings.Contains(script, "```") {
-			block = "```" + lang + "\n" + script + "\n```"
+	}
+
+	wantResources := updateSkillWantResources(in)
+	if intent := strings.TrimSpace(in.Intent); intent != "" {
+		cur.Intent = intent
+	}
+	cur.Source = "update_skill"
+
+	previewContent := notebook.FormatWorkflowNoteContent(cur, extras)
+	contentSame := !created && existing != nil &&
+		normalizeSkillContent(existing.Content) == normalizeSkillContent(previewContent)
+	if contentSame && !wantResources && !lessonsAdded && !scriptAdded {
+		stageBrowser(d, "Skill 无变更 · "+name)
+		out := map[string]interface{}{
+			"ok": true, "updated": false, "skipped": true,
+			"noteId": noteID, "workflow": cur,
+			"note": "内容无实质变更，跳过写盘与版本；list_skill_versions 可回看。",
 		}
-		headed := fmt.Sprintf("### 沉淀 %s\n\n%s", stamp, block)
-		if strings.TrimSpace(extras.Scripts) == "" || strings.Contains(extras.Scripts, "update_skill(script") {
-			extras.Scripts = headed
+		if st, e := d.Notebook.ListSkillVersions(name, 1); e == nil && len(st.Commits) > 0 {
+			out["version"] = st.Commits[0]
+		}
+		return OKData(out)
+	}
+
+	var beforeVer interface{}
+	var beforePinErr string
+	if existing != nil {
+		msg := "写前检查点"
+		if intent := strings.TrimSpace(in.Intent); intent != "" {
+			msg = "写前检查点: " + truncateRunes(intent, 48)
+		}
+		if v, pinErr := d.Notebook.PinSkillVersion(name, msg); pinErr != nil {
+			beforePinErr = pinErr.Error()
 		} else {
-			extras.Scripts = strings.TrimSpace(extras.Scripts) + "\n\n" + headed
+			beforeVer = v
 		}
 	}
 
@@ -186,10 +263,6 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 		}
 	}
 
-	if intent := strings.TrimSpace(in.Intent); intent != "" {
-		cur.Intent = intent
-	}
-	cur.Source = "update_skill"
 	saved, err := d.Notebook.SaveWorkflowNoteWithExtras(cur, extras)
 	if err != nil {
 		return Fail(err.Error())
@@ -200,14 +273,27 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	revealNotebook(d, saved.NoteID, true)
 	stageBrowser(d, "已沉淀 Skill "+saved.Name)
 	out := map[string]interface{}{
-		"ok": true, "workflow": saved, "noteId": saved.NoteID,
+		"ok": true, "updated": true, "skipped": false,
+		"workflow": saved, "noteId": saved.NoteID,
 		"attached": attached,
-		"note":     "Skill 已自我更新并创建目录版本（不含 log.md）；list_skill_versions 可回看；下次 get_skill 即生效。",
+		"note":     "已写前打版本并更新 Skill；list_skill_versions / restore_skill_version 可回滚；下次 get_skill 即生效。",
+	}
+	if beforeVer != nil {
+		out["beforeVersion"] = beforeVer
+	}
+	if beforePinErr != "" {
+		out["beforePinError"] = beforePinErr
 	}
 	if st, e := d.Notebook.ListSkillVersions(saved.Name, 1); e == nil && len(st.Commits) > 0 {
 		out["version"] = st.Commits[0]
 	}
 	return OKData(out)
+}
+
+func normalizeSkillContent(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	return strings.TrimSpace(s)
 }
 
 func attachLocalFileToSkillNote(d *Deps, noteID, absPath string) (*model.NotebookAssetDO, error) {

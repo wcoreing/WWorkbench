@@ -156,6 +156,7 @@ func ProductForTool(toolName string) string {
 		workbench.CapBrowserOpen, workbench.CapBrowserFindTab, workbench.CapBrowserGroupSession,
 		workbench.CapBrowserCloseSession, workbench.CapBrowserRun, workbench.CapBrowserEvaluate,
 		workbench.CapBrowserNetwork, workbench.CapListTaskRuns, workbench.CapGetTaskRun,
+		workbench.CapListMCPLogs, workbench.CapGetMCPLog,
 		workbench.CapReplayTaskStep, workbench.CapDistillSkill,
 		workbench.CapUpdateSkill, workbench.CapRunSkill,
 		workbench.CapListSkills, workbench.CapGetSkill,

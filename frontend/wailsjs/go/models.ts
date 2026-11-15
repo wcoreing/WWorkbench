@@ -1206,6 +1206,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_MCPCallLogDO_ {
+	    ok: boolean;
+	    data: model.MCPCallLogDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_MCPCallLogDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.MCPCallLogDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_MCPStatusDO_ {
 	    ok: boolean;
 	    data: model.MCPStatusDO;
@@ -2919,6 +2953,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.LogSourceDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WWorkbench_internal_model_MCPCallLogDO_ {
+	    ok: boolean;
+	    data: model.MCPCallLogDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_MCPCallLogDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.MCPCallLogDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -5764,6 +5832,96 @@ export namespace model {
 	        this.sortOrder = source["sortOrder"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	export class MCPAssetRef {
+	    kind: string;
+	    id: string;
+	    label?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MCPAssetRef(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.kind = source["kind"];
+	        this.id = source["id"];
+	        this.label = source["label"];
+	    }
+	}
+	export class MCPCallLogDO {
+	    id: string;
+	    at: number;
+	    caller: string;
+	    tool: string;
+	    intent: string;
+	    ok: boolean;
+	    error?: string;
+	    durationMs: number;
+	    resources?: MCPAssetRef[];
+	    argsSummary?: string;
+	    taskSession?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MCPCallLogDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.at = source["at"];
+	        this.caller = source["caller"];
+	        this.tool = source["tool"];
+	        this.intent = source["intent"];
+	        this.ok = source["ok"];
+	        this.error = source["error"];
+	        this.durationMs = source["durationMs"];
+	        this.resources = this.convertValues(source["resources"], MCPAssetRef);
+	        this.argsSummary = source["argsSummary"];
+	        this.taskSession = source["taskSession"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MCPCallLogFilter {
+	    limit: number;
+	    intentContains: string;
+	    tool: string;
+	    resourceKind: string;
+	    resourceId: string;
+	    caller: string;
+	    since: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MCPCallLogFilter(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.limit = source["limit"];
+	        this.intentContains = source["intentContains"];
+	        this.tool = source["tool"];
+	        this.resourceKind = source["resourceKind"];
+	        this.resourceId = source["resourceId"];
+	        this.caller = source["caller"];
+	        this.since = source["since"];
 	    }
 	}
 	export class MCPConfigSaveDO {

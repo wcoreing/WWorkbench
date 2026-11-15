@@ -3,13 +3,16 @@ import { createDebouncedWorkspaceSaver, loadWorkspaceSnapshot } from './workspac
 const PRODUCT = 'logs'
 const SNAPSHOT_VERSION = 1
 
+export type LogsPane = 'sources' | 'audit'
+
 export interface LogsWorkspaceSnapshot {
   version: number
   activeId: string
+  pane?: LogsPane
 }
 
 export function defaultLogsWorkspace(): LogsWorkspaceSnapshot {
-  return { version: SNAPSHOT_VERSION, activeId: '' }
+  return { version: SNAPSHOT_VERSION, activeId: '', pane: 'sources' }
 }
 
 const saveWorkspace = createDebouncedWorkspaceSaver(PRODUCT)

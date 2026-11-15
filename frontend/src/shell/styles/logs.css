@@ -285,3 +285,334 @@
   }
 }
 
+/* 顶栏：日志源 | Agent 审计 */
+.logs-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.logs-pane-tabs {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  flex-shrink: 0;
+}
+
+.logs-pane-tab {
+  appearance: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.logs-pane-tab:hover {
+  color: var(--color-text);
+}
+
+.logs-pane-tab.is-active {
+  color: var(--color-text);
+  border-bottom-color: var(--accent, #5b8def);
+}
+
+/* Agent 审计：左资源 → 右审计 → 折叠 MCP（紧凑） */
+.mcp-audit-body {
+  min-height: 0;
+}
+
+.mcp-audit-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.mcp-audit-sidebar .conn-item {
+  min-height: 32px;
+  padding-block: 4px;
+}
+
+.mcp-audit-res-list .conn-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.mcp-audit-res-list .conn-host {
+  font-size: 10px;
+}
+
+.mcp-audit-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.mcp-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 5px;
+  border-radius: 3px;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface);
+  font-size: 10px;
+  line-height: 16px;
+  color: var(--color-text-muted);
+}
+
+.mcp-chip-ssh { border-color: color-mix(in srgb, #3b82f6 35%, var(--color-border-subtle)); }
+.mcp-chip-database { border-color: color-mix(in srgb, #10b981 35%, var(--color-border-subtle)); }
+.mcp-chip-docker { border-color: color-mix(in srgb, #06b6d4 35%, var(--color-border-subtle)); }
+.mcp-chip-backup { border-color: color-mix(in srgb, #f59e0b 35%, var(--color-border-subtle)); }
+.mcp-chip-skill { border-color: color-mix(in srgb, #8b5cf6 35%, var(--color-border-subtle)); }
+
+.mcp-audit-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.mcp-audit-detail-head {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border-strong);
+  background: var(--color-surface);
+}
+
+.mcp-audit-detail-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.mcp-audit-detail-title h2 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.mcp-audit-meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.mcp-audit-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mcp-audit-intent {
+  border: 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  border-radius: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.mcp-audit-intent.has-fail {
+  border-bottom-color: color-mix(in srgb, var(--color-danger) 40%, var(--color-border-subtle));
+}
+
+.mcp-audit-intent-head {
+  appearance: none;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 6px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.mcp-audit-intent-head:hover {
+  background: var(--color-hover);
+}
+
+/* 标题后紧贴资源标签，同一行；空间不够时裁标题，标签尽量完整 */
+.mcp-audit-intent-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.mcp-audit-caret {
+  display: inline-block;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--color-text-muted);
+  transition: transform 0.1s ease;
+  transform: rotate(0deg);
+}
+
+.mcp-audit-caret.is-open {
+  transform: rotate(90deg);
+}
+
+.mcp-audit-intent-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mcp-audit-intent-main > .mcp-chip {
+  flex: 0 0 auto;
+  max-width: 140px;
+}
+
+.mcp-audit-intent-meta {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.mcp-audit-mcp-fold {
+  padding: 0 0 2px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.mcp-audit-row {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.mcp-audit-row + .mcp-audit-row {
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.mcp-audit-row.is-fail .mcp-audit-tool {
+  color: var(--color-danger);
+}
+
+.mcp-audit-row-main {
+  appearance: none;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 12px 28px minmax(0, 1fr) auto auto;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 4px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+}
+
+.mcp-audit-row-main:hover {
+  background: var(--color-hover);
+}
+
+.mcp-audit-ok {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--color-success, #059669);
+}
+
+.mcp-audit-ok.bad {
+  color: var(--color-danger);
+}
+
+.mcp-audit-tool-wrap {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.mcp-audit-tool {
+  flex: 0 0 auto;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.mcp-audit-cmd {
+  min-width: 0;
+  flex: 1 1 auto;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mcp-audit-dur,
+.mcp-audit-at {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.mcp-audit-row-detail {
+  padding: 2px 6px 6px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mcp-audit-err {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: 11px;
+}
+
+.mcp-audit-caller {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.mcp-audit-args {
+  margin: 0;
+  padding: 4px 6px;
+  border-radius: 3px;
+  background: var(--color-surface);
+  font-size: 10px;
+  line-height: 1.35;
+  overflow: auto;
+  max-height: 100px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+

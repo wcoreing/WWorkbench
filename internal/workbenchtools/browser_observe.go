@@ -199,7 +199,8 @@ var browserRunDeniedInMacro = map[string]bool{
 }
 
 func toolBrowserRun(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
-	if _, err := requireBrowserRaw(d, raw); err != nil {
+	b, err := requireBrowserRaw(d, raw)
+	if err != nil {
 		return Fail(err.Error())
 	}
 	var in browserRunArgs
@@ -228,10 +229,6 @@ func toolBrowserRun(ctx context.Context, d *Deps, raw json.RawMessage) ToolResul
 		}
 	}
 	if !allowWrite {
-		b, err := requireBrowserRaw(d, raw)
-		if err != nil {
-			return Fail(err.Error())
-		}
 		data, err := b.CallSession(ctx, "run", map[string]interface{}{"steps": in.Steps}, in.Session)
 		if err != nil {
 			return Fail(err.Error())
@@ -244,15 +241,11 @@ func toolBrowserRun(ctx context.Context, d *Deps, raw json.RawMessage) ToolResul
 		return OKData(out)
 	}
 	// 可写宏：走确认门（询问关则直接执行）
-	briefs := make([]string, 0, len(in.Steps))
-	for _, st := range in.Steps {
-		briefs = append(briefs, strings.TrimSpace(fmt.Sprint(st["action"])))
-	}
 	preview := withExecutorPreview(raw, map[string]interface{}{
 		"action":     "run",
 		"allowWrite": true,
 		"stepCount":  len(in.Steps),
-		"actions":    briefs,
+		"actions":    stepActionsBrief(in.Steps),
 		"session":    in.Session,
 	})
 	if in.Intent != "" {

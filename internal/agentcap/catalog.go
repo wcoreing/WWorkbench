@@ -459,6 +459,16 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "list_mcp_logs", Label: "MCP调用审计", Risk: RiskRead,
+			Description:    "意图→产品资源(ssh/db/…)→工具；可按资源/意图过滤；默认 byIntent 聚合",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "get_mcp_log", Label: "MCP调用详情", Risk: RiskRead,
+			Description:    "一条调用的资源/意图/参数摘要/耗时",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "replay_task_step", Label: "试跑日志一步", Risk: RiskWrite,
 			Description:    "教练式：按 locator 重定位后执行/跳过一步，返回 nextSeq",
 			DefaultEnabled: true,
@@ -470,7 +480,7 @@ func Catalog() []Item {
 		},
 		{
 			Name: "update_skill", Label: "沉淀更新 Skill", Risk: RiskWrite,
-			Description:    "把经验/优化步骤/脚本/资源写回 SKILL.md；免确认直接落盘；跑通或踩坑后应调用",
+			Description:    "无变更则跳过；有变更则写前打目录版本再落盘（免确认）；跑通或踩坑后应调用",
 			DefaultEnabled: true,
 		},
 		{

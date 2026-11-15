@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.15e"
+const AgentRulesVersion = "2026.11.15g"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -26,6 +26,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 动手类请传 intent：人话说明「要干什么、影响谁/哪台机/哪个库」。
 - 缺省或占位词时系统合成「未声明意图 · …」卡片，**不阻断**；确认弹窗与舞台仍可见。
 - 浏览器/任务写操作写入**任务账本**（TaskRun；list_task_runs / get_task_run / task_record；session 对齐标签组）；同步 log.md。日志≠待办。
+- **MCP 审计日志**（全产品资源）：每次工具终态写入 mcp_call_logs（意图 + 触及资源 kind:id + 工具）。复盘用 list_mcp_logs（默认 byIntent）/ get_mcp_log；get_workbench_context.mcpLogs 也有近期摘要。资源含 ssh/database/docker/log/http/note/backup/skill/browser，不只任务。
 - 空命令仅开终端时可不填。
 
 ## 0c. 词典与自学习闭环（先探索，再确定）
@@ -35,12 +36,12 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **插件解耦**：浏览器扩展（wwb）与 Kimi WebBridge（kimi）只是执行器；任务场景**禁止直连** 127.0.0.1:10086 / 18765，一律经 browser_*（executor=wwb|kimi|auto），由工作台记 op。
 - **自学习两阶段（必须遵守）**：
   1. **探索**：接受目标后动手完成；过程经验写入账本/log.md（browser_* 自动记 op；关键决策用 task_record(kind=thought)）。此阶段以达成目标为主，Skill 可先粗糙或不存在。
-  2. **收口**：目标完成后，**推理总结**再 update_skill（归纳稳定路径/经验/脚本/资源）；**name=当前任务名**（与 log.md 同目录），禁止沉淀到别的工作流；禁止机械把 log 逐步贴进 Skill，禁止只口头总结不落盘。**update_skill 免确认直接落盘**（仍须 intent），避免 MCP 等确认超时。
+  2. **收口**：目标完成后，**推理总结**再 update_skill（归纳稳定路径/经验/脚本/资源）；**name=当前任务名**（与 log.md 同目录），禁止沉淀到别的工作流；禁止机械把 log 逐步贴进 Skill，禁止只口头总结不落盘。**update_skill 免确认**：无实质变更则 skipped；有变更则**写前 pin 目录版本**再落盘（仍须 intent）。
   3. **宏↔Skill**：探索用单工具/fill(fields)；跑稳后用 browser_run(mode=macro)。收口时把该稳定段写成一条 wwb-skill-steps（action=browser_run，args.allowWrite=true，args.steps=嵌套步）。下次 get_skill → Agent 调 browser_run，或 run_skill 机械跑宏一步。宏≠自动写 Skill；挂钩靠收口沉淀。
 - **谁执行**：当前在用的 Agent（Cursor / 侧栏 / 其他 MCP 客户端）负责两阶段；舞台只备资料与焦点，不指定通道、不机械写 Skill。
 - **磁盘真源**：笔记本 = ~/.wworkbench/notebook/。根下按**业务工作根**分区隔离：工作流/（任务产品默认）、运维/、记忆区/。产品只挂自己的根；笔记本产品看全盘。样板：get_skill(skill=wwb-skill-standard)。当前任务若只有 log.md，update_skill 可带 steps 首创同目录 SKILL.md。
 - **log.md**：与 SKILL.md 同目录的账本投影；同步时**只追加**更高 seq 的思考/操作并刷新头信息，不整文件覆盖。get_skill / list_skills **只认 SKILL.md**。
-- **目录版本（笔记本基础能力）**：任意文件夹可 enable_dir_version；仓在目录内 .git。技能目录默认 ignore log.md。list_dir_versions / pin_dir_version；Skill 兼容 list/pin/restore_skill_version（dir=该技能目录）。update_skill 写盘后自动创建版本。
+- **目录版本（笔记本基础能力）**：任意文件夹可 enable_dir_version；仓在目录内 .git。技能目录默认 ignore log.md。list_dir_versions / pin_dir_version；Skill 兼容 list/pin/restore_skill_version。update_skill：有变更时写前+写后各 pin（可 restore 回更新前）。
 - 关系：分配目标 → 探索记账本（思考+操作）→ 完成后 update_skill(当前任务) → 下次 get_skill 更强。
 
 ## 1. 产品定位（勿做成 Cursor 插件叙事）

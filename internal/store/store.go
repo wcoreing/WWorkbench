@@ -367,6 +367,27 @@ CREATE INDEX IF NOT EXISTS idx_task_steps_run ON task_steps(run_id, seq);
 	if err := s.ensureColumn("task_steps", "provider", "TEXT NOT NULL DEFAULT ''"); err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "升级任务步骤 provider 失败", err)
 	}
+	_, err = s.db.Exec(`
+CREATE TABLE IF NOT EXISTS mcp_call_logs (
+  id TEXT PRIMARY KEY,
+  at INTEGER NOT NULL,
+  caller TEXT NOT NULL DEFAULT '',
+  tool TEXT NOT NULL DEFAULT '',
+  intent TEXT NOT NULL DEFAULT '',
+  ok INTEGER NOT NULL DEFAULT 1,
+  error TEXT NOT NULL DEFAULT '',
+  duration_ms INTEGER NOT NULL DEFAULT 0,
+  resources_json TEXT NOT NULL DEFAULT '[]',
+  args_summary TEXT NOT NULL DEFAULT '',
+  task_session TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_call_logs_at ON mcp_call_logs(at DESC);
+CREATE INDEX IF NOT EXISTS idx_mcp_call_logs_intent ON mcp_call_logs(intent);
+CREATE INDEX IF NOT EXISTS idx_mcp_call_logs_tool ON mcp_call_logs(tool);
+`)
+	if err != nil {
+		return errno.Wrap(errno.CodeStoreFailed, "迁移 MCP 调用日志表失败", err)
+	}
 	if err := s.EnsureMemoryZone(); err != nil {
 		return errno.Wrap(errno.CodeStoreFailed, "写入记忆区失败", err)
 	}

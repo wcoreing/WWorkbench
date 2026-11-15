@@ -205,6 +205,8 @@ export function GetEnvScanPath():Promise<app.ApiResult_string_>;
 
 export function GetHostProject(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_HostProjectDO_>;
 
+export function GetMCPCallLog(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_MCPCallLogDO_>;
+
 export function GetMCPStatus():Promise<app.ApiResult_WWorkbench_internal_model_MCPStatusDO_>;
 
 export function GetNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_NoteDO_>;
@@ -308,6 +310,8 @@ export function ListLocalDir(arg1:string):Promise<app.ApiResult_WWorkbench_inter
 export function ListLocalPortProcesses(arg1:number):Promise<app.ApiResult___WWorkbench_internal_model_LocalPortProcessDO_>;
 
 export function ListLogSources():Promise<app.ApiResult___WWorkbench_internal_model_LogSourceDO_>;
+
+export function ListMCPCallLogs(arg1:model.MCPCallLogFilter):Promise<app.ApiResult___WWorkbench_internal_model_MCPCallLogDO_>;
 
 export function ListMCPWriteDirs():Promise<app.ApiResult___WWorkbench_internal_model_MCPWriteAllowDO_>;
 

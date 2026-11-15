@@ -79,6 +79,8 @@ const (
 	CapBrowserOpen          = "browser_open"
 	CapListTaskRuns         = "list_task_runs"
 	CapGetTaskRun           = "get_task_run"
+	CapListMCPLogs          = "list_mcp_logs"
+	CapGetMCPLog            = "get_mcp_log"
 	CapTaskRecord           = "task_record"
 	CapReplayTaskStep = "replay_task_step"
 	// Skill 对外语言（唯一）：list/get/update/run/distill_skill；旧 *workflow / update_agent_skill 仅别名。

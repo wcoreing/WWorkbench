@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"WWorkbench/internal/workbench"
 )
@@ -117,6 +118,7 @@ func (r *Registry) Invoke(ctx context.Context, name string, args json.RawMessage
 	}
 	// 统一规则：参数能解析到 SSH 主机 → 先打开/聚焦可见终端，再执行工具
 	ensureSSHTerminalStage(r.deps, name, args)
+	started := time.Now()
 	res := t.Handler(ctx, r.deps, args)
 	if res.NeedsConfirm {
 		res = enrichConfirmWithIntent(ctx, name, args, res)
@@ -126,6 +128,10 @@ func (r *Registry) Invoke(ctx context.Context, name string, args json.RawMessage
 			card.Risk = "undeclared"
 		}
 		RecordIntentCard(ctx, card)
+	}
+	// 终态记账（待确认留给 AwaitConfirmAndExecute）
+	if !res.NeedsConfirm {
+		recordMCPCall(ctx, r.deps, name, args, res, started)
 	}
 	return res
 }
@@ -152,9 +158,10 @@ func (r *Registry) registerBuiltins() {
 		MCPOnly: true,
 		Handler: toolGetAgentRules,
 	})
+	registerMCPCallLogTools(r)
 	r.add(ToolDef{
 		Name:        "get_workbench_context",
-		Description: "工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）；含近期 intentCards、taskRuns、memoryNotes（焦点绑定的记忆）。问终端输出用 get_shell_output。",
+		Description: "工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）；含近期 intentCards、taskRuns、mcpLogs、memoryNotes（焦点绑定的记忆）。问终端输出用 get_shell_output。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{

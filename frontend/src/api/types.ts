@@ -528,6 +528,38 @@ export interface TaskRunDetail {
   steps: TaskStep[]
 }
 
+/** MCP 审计资源引用（与 AgentMentionKind 对齐并扩展）。 */
+export interface MCPAssetRef {
+  kind: string
+  id: string
+  label?: string
+}
+
+/** 一次 MCP/工具调用流水。 */
+export interface MCPCallLog {
+  id: string
+  at: number
+  caller: string
+  tool: string
+  intent: string
+  ok: boolean
+  error?: string
+  durationMs: number
+  resources?: MCPAssetRef[]
+  argsSummary?: string
+  taskSession?: string
+}
+
+export interface MCPCallLogFilter {
+  limit?: number
+  intentContains?: string
+  tool?: string
+  resourceKind?: string
+  resourceId?: string
+  caller?: string
+  since?: number
+}
+
 export interface WorkflowStep {
   action: string
   summary?: string

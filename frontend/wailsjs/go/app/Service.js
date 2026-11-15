@@ -402,6 +402,10 @@ export function GetHostProject(arg1) {
   return window['go']['app']['Service']['GetHostProject'](arg1);
 }
 
+export function GetMCPCallLog(arg1) {
+  return window['go']['app']['Service']['GetMCPCallLog'](arg1);
+}
+
 export function GetMCPStatus() {
   return window['go']['app']['Service']['GetMCPStatus']();
 }
@@ -608,6 +612,10 @@ export function ListLocalPortProcesses(arg1) {
 
 export function ListLogSources() {
   return window['go']['app']['Service']['ListLogSources']();
+}
+
+export function ListMCPCallLogs(arg1) {
+  return window['go']['app']['Service']['ListMCPCallLogs'](arg1);
 }
 
 export function ListMCPWriteDirs() {

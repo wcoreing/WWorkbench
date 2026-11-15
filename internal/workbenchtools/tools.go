@@ -146,6 +146,10 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 		if taskRuns, err := d.Store.ListTaskRuns("", 10); err == nil && len(taskRuns) > 0 {
 			out["taskRuns"] = taskRuns
 		}
+		if mcpLogs, err := d.Store.ListMCPCallLogs(model.MCPCallLogFilter{Limit: 20}); err == nil && len(mcpLogs) > 0 {
+			out["mcpLogs"] = mcpLogs
+			out["mcpLogsByIntent"] = groupMCPLogsByIntent(mcpLogs)
+		}
 		if d.Notebook != nil {
 			if skills := d.Notebook.ListWorkflowsSSOT(10); len(skills) > 0 {
 				out["skills"] = skills

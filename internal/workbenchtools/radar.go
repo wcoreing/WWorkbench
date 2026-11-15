@@ -129,6 +129,11 @@ func (b *RadarBus) EmitLogSource(op, id, writeID, label string, reveal bool) {
 	b.EmitAsset(workbench.RadarDomainLogSource, "logs", op, id, writeID, label, reveal)
 }
 
+// EmitMCPCall 快捷广播 MCP/工具调用审计流水（日志产品 Agent 审计刷新）。
+func (b *RadarBus) EmitMCPCall(op, id, writeID, label string, reveal bool) {
+	b.EmitAsset(workbench.RadarDomainMCPCall, "logs", op, id, writeID, label, reveal)
+}
+
 // EmitEnvPreset 快捷广播环境预设变更。
 func (b *RadarBus) EmitEnvPreset(op, id, writeID, label string, reveal bool) {
 	b.EmitAsset(workbench.RadarDomainEnvPreset, "environment", op, id, writeID, label, reveal)

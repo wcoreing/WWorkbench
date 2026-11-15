@@ -745,6 +745,53 @@ type TaskRunDetailDO struct {
 	Steps []TaskStepDO `json:"steps"`
 }
 
+// MCP 审计资源 kind（与 AgentMentionKind 对齐，并扩展 backup/skill/browser）。
+const (
+	MCPAssetSSH      = "ssh"
+	MCPAssetDatabase = "database"
+	MCPAssetDocker   = "docker"
+	MCPAssetLog      = "log"
+	MCPAssetHTTP     = "http"
+	MCPAssetNote     = "note"
+	MCPAssetBackup   = "backup"
+	MCPAssetSkill    = "skill"
+	MCPAssetBrowser  = "browser"
+)
+
+// MCPAssetRef 一次 MCP/工具调用触及的产品资源（kind:id）。
+type MCPAssetRef struct {
+	Kind  string `json:"kind"` // ssh|database|docker|log|http|note|backup|skill|browser
+	ID    string `json:"id"`
+	Label string `json:"label,omitempty"`
+}
+
+// MCPCallLogDO 全产品资源维度的 MCP/工具调用流水（意图 + 资源 + 工具）。
+type MCPCallLogDO struct {
+	ID            string        `json:"id"`
+	At            int64         `json:"at"`
+	Caller        string        `json:"caller"`
+	Tool          string        `json:"tool"`
+	Intent        string        `json:"intent"`
+	OK            bool          `json:"ok"`
+	Error         string        `json:"error,omitempty"`
+	DurationMs    int64         `json:"durationMs"`
+	Resources     []MCPAssetRef `json:"resources,omitempty"`
+	ResourcesJSON string        `json:"-"` // 落库用
+	ArgsSummary   string        `json:"argsSummary,omitempty"`
+	TaskSession   string        `json:"taskSession,omitempty"`
+}
+
+// MCPCallLogFilter 查询过滤。
+type MCPCallLogFilter struct {
+	Limit          int    `json:"limit"`
+	IntentContains string `json:"intentContains"`
+	Tool           string `json:"tool"`
+	ResourceKind   string `json:"resourceKind"`
+	ResourceID     string `json:"resourceId"`
+	Caller         string `json:"caller"`
+	Since          int64  `json:"since"`
+}
+
 // WorkflowStepDO 工作流中的一步（稳定定位，少用 @eN）。
 type WorkflowStepDO struct {
 	Action  string                 `json:"action"`

@@ -159,6 +159,8 @@ import {
   ListBackupRuns,
   ListTaskRuns,
   GetTaskRun,
+  ListMCPCallLogs,
+  GetMCPCallLog,
   SyncTaskRunLog,
   RenameTaskRun,
   DeleteTaskRuns,
@@ -784,6 +786,24 @@ export const api = {
     asArray(await unwrap(() => ListTaskRuns(session, limit))) as import('./types').TaskRun[],
   getTaskRun: async (runId: string) =>
     (await unwrap(() => GetTaskRun(runId))) as import('./types').TaskRunDetail,
+  listMCPCallLogs: async (filter: import('./types').MCPCallLogFilter = {}) =>
+    asArray(
+      await unwrap(() =>
+        ListMCPCallLogs(
+          model.MCPCallLogFilter.createFrom({
+            limit: filter.limit ?? 50,
+            intentContains: filter.intentContains ?? '',
+            tool: filter.tool ?? '',
+            resourceKind: filter.resourceKind ?? '',
+            resourceId: filter.resourceId ?? '',
+            caller: filter.caller ?? '',
+            since: filter.since ?? 0,
+          }),
+        ),
+      ),
+    ) as import('./types').MCPCallLog[],
+  getMCPCallLog: async (id: string) =>
+    (await unwrap(() => GetMCPCallLog(id))) as import('./types').MCPCallLog,
   syncTaskRunLog: async (runId: string) =>
     (await unwrap(() => SyncTaskRunLog(runId))) as {
       ok?: boolean

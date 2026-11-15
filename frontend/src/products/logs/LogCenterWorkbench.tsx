@@ -14,7 +14,8 @@ import { useWorkbenchCommand } from '../../stores/productLink'
 import { Capability } from '../../workbench/capabilities'
 import { payloadBool, payloadStr } from '../../workbench/commandPayload'
 import { subscribeLogsChunks } from '../../api/logsEvents'
-import { loadLogsWorkspace, scheduleLogsWorkspacePersist } from '../../stores/logsWorkspacePersist'
+import { loadLogsWorkspace, scheduleLogsWorkspacePersist, type LogsPane } from '../../stores/logsWorkspacePersist'
+import { MCPAuditPane } from './MCPAuditPane'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { model } from '../../../wailsjs/go/models'
 import { Select, pressProps, useDismissOverlays } from '../../components/compat'
@@ -94,6 +95,7 @@ function sourceToDO(item: LogSource, tail: number): model.LogSourceDO {
 export function LogCenterWorkbench() {
   const { t } = useI18n()
   const { setStatusMessage, setAgentSurface, activeProduct } = useAppStore()
+  const [pane, setPane] = useState<LogsPane>('sources')
   const [items, setItems] = useState<LogSource[]>([])
   const [activeId, setActiveId] = useState('')
   const [name, setName] = useState('')
@@ -347,6 +349,7 @@ export function LogCenterWorkbench() {
     void (async () => {
       const list = await refreshList()
       const snap = await loadLogsWorkspace()
+      if (snap?.pane === 'audit' || snap?.pane === 'sources') setPane(snap.pane)
       const id = snap?.activeId && list.some((x) => x.id === snap.activeId) ? snap.activeId : list[0]?.id ?? ''
       setActiveId(id)
       const item = list.find((x) => x.id === id) ?? null
@@ -505,8 +508,8 @@ export function LogCenterWorkbench() {
   }, [refreshList, loadEditor, activeId, resetHistoryCursor])
 
   useEffect(() => {
-    scheduleLogsWorkspacePersist({ version: 1, activeId })
-  }, [activeId])
+    scheduleLogsWorkspacePersist({ version: 1, activeId, pane })
+  }, [activeId, pane])
 
   const selectItem = (item: LogSource) => {
     setActiveId(item.id)
@@ -649,43 +652,68 @@ export function LogCenterWorkbench() {
   return (
     <div className="product-workbench logs-workbench">
       <header className="product-toolbar logs-toolbar">
-        <div className="product-actions">
+        <div className="logs-pane-tabs" role="tablist">
           <button
             type="button"
-            className="wn-btn wn-btn-sm wn-btn-primary"
-            disabled={contentLoading.active || !fetchReady}
-            {...pressProps(() => void refreshLogs(), { disabled: contentLoading.active || !fetchReady })}
+            role="tab"
+            aria-selected={pane === 'sources'}
+            className={`logs-pane-tab${pane === 'sources' ? ' is-active' : ''}`}
+            {...pressProps(() => setPane('sources'))}
           >
-            <IconRefresh size={14} /> {t('logs.refresh')}
+            {t('logs.paneSources')}
           </button>
-          <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => void save())}>
-            {t('logs.save')}
+          <button
+            type="button"
+            role="tab"
+            aria-selected={pane === 'audit'}
+            className={`logs-pane-tab${pane === 'audit' ? ' is-active' : ''}`}
+            {...pressProps(() => setPane('audit'))}
+          >
+            {t('logs.paneAudit')}
           </button>
-          {activeItem && (
+        </div>
+        {pane === 'sources' && (
+          <div className="product-actions">
             <button
               type="button"
-              className="wn-btn wn-btn-sm wn-btn-tool"
-              {...pressProps(() => sendToAgent(activeItem))}
+              className="wn-btn wn-btn-sm wn-btn-primary"
+              disabled={contentLoading.active || !fetchReady}
+              {...pressProps(() => void refreshLogs(), { disabled: contentLoading.active || !fetchReady })}
             >
-              {t('agent.sendToAgent')}
+              <IconRefresh size={14} /> {t('logs.refresh')}
             </button>
-          )}
-          <label
-            className={`logs-auto-label${followDisabled ? ' is-disabled' : ''}`}
-            {...pressProps(
-              () => {
-                if (followDisabled) return
-                setFollowLive((v) => !v)
-              },
-              { disabled: followDisabled },
+            <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => void save())}>
+              {t('logs.save')}
+            </button>
+            {activeItem && (
+              <button
+                type="button"
+                className="wn-btn wn-btn-sm wn-btn-tool"
+                {...pressProps(() => sendToAgent(activeItem))}
+              >
+                {t('agent.sendToAgent')}
+              </button>
             )}
-          >
-            <input type="checkbox" checked={followLive} readOnly tabIndex={-1} disabled={followDisabled} />
-            {t('logs.followLive')}
-          </label>
-        </div>
+            <label
+              className={`logs-auto-label${followDisabled ? ' is-disabled' : ''}`}
+              {...pressProps(
+                () => {
+                  if (followDisabled) return
+                  setFollowLive((v) => !v)
+                },
+                { disabled: followDisabled },
+              )}
+            >
+              <input type="checkbox" checked={followLive} readOnly tabIndex={-1} disabled={followDisabled} />
+              {t('logs.followLive')}
+            </label>
+          </div>
+        )}
       </header>
 
+      {pane === 'audit' ? (
+        <MCPAuditPane />
+      ) : (
       <div className="product-body">
         <aside className="app-sidebar logs-sidebar">
           <section className="sidebar-section">
@@ -902,6 +930,7 @@ export function LogCenterWorkbench() {
           </div>
         </main>
       </div>
+      )}
 
       {ctxMenu && (
         <ContextMenu

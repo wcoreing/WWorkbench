@@ -454,9 +454,9 @@ func registerBrowserTools(r *Registry) {
 	})
 	r.add(ToolDef{
 		Name: workbench.CapUpdateSkill,
-		Description: "自我更新 Skill：依据当前任务 log.md 归纳后，把经验/步骤/脚本/资源写回同目录 SKILL.md（SSOT）。" +
-			"免确认直接落盘（仍须 intent）。稳定浏览器段收成一条 {action:browser_run,args:{allowWrite:true,steps:[…]}}。" +
-			"name=当前任务名；禁止沉淀到别的工作流；禁止机械贴 log。主路径 get_skill→执行→update_skill。",
+		Description: "自我更新 Skill：无实质变更则 skipped；有变更则写前 pin 目录版本再落盘（免确认，仍须 intent）。" +
+			"稳定浏览器段收成一条 {action:browser_run,args:{allowWrite:true,steps:[…]}}。" +
+			"name=当前任务名；禁止沉淀到别的工作流；禁止机械贴 log。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
