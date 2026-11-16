@@ -52,8 +52,9 @@ button {
   align-items: center;
   height: var(--chrome-height);
   padding: 0 var(--chrome-pad-x);
-  background: var(--color-chrome);
-  border-bottom: none;
+  background: var(--fill-chrome);
+  border-bottom: 1px solid var(--hairline-shade);
+  box-shadow: inset 0 1px 0 var(--hairline-shine);
   gap: var(--chrome-gap);
   flex-shrink: 0;
 }
@@ -66,21 +67,21 @@ button {
 }
 
 .chrome-brand .logo-mark {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-chrome);
+  height: var(--icon-chrome);
   border-radius: var(--radius);
   background: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 8px;
+  font-size: calc(8 * var(--ui-scale) * 1px);
   font-weight: 700;
   color: #fff;
   letter-spacing: -0.04em;
 }
 
 .chrome-brand .logo-text {
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--color-text);
@@ -91,13 +92,13 @@ button {
   height: 16px;
   background: var(--color-border);
   flex-shrink: 0;
-  margin: 0 2px;
+  margin: 0 calc(2 * var(--ui-scale) * 1px);
 }
 
 .chrome-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: calc(2 * var(--ui-scale) * 1px);
   min-width: 0;
 }
 
@@ -109,10 +110,10 @@ button {
   display: flex;
   align-items: center;
   gap: var(--chrome-gap);
-  max-width: 280px;
+  max-width: calc(280 * var(--ui-scale) * 1px);
   min-width: 0;
   padding: 0 var(--chrome-pad-x);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
 }
 
@@ -143,12 +144,13 @@ button {
   min-height: 0;
 }
 
-/* 侧栏 */
+/* 侧栏：铝面 */
 .app-sidebar {
   width: var(--sidebar-width);
-  min-width: 188px;
-  background: var(--color-sidebar);
-  border-right: 1px solid var(--color-divider);
+  min-width: calc(188 * var(--ui-scale) * 1px);
+  background: var(--fill-sidebar);
+  border-right: 1px solid var(--hairline-shade);
+  box-shadow: inset 1px 0 0 var(--hairline-shine);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -182,15 +184,15 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 4px;
-  min-height: 30px;
-  padding: 7px var(--chrome-pad-x) 5px;
-  font-size: var(--font-size-caption);
+  gap: var(--space-1);
+  min-height: var(--control-height);
+  padding: calc(7 * var(--ui-scale) * 1px) var(--chrome-pad-x) calc(5 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui-sm);
   font-weight: 600;
-  letter-spacing: 0.035em;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--color-text-muted);
-  background: var(--color-sidebar);
+  background: var(--fill-sidebar);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -218,7 +220,7 @@ button {
 .sidebar-body .empty-hint {
   text-align: left;
   padding: var(--space-2);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   line-height: 1.5;
 }
 
@@ -229,7 +231,7 @@ button {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: var(--color-surface);
+  background: var(--color-canvas);
   overflow: hidden;
 }
 
@@ -238,8 +240,9 @@ button {
   align-items: stretch;
   flex-shrink: 0;
   min-height: var(--tab-height);
-  background: var(--color-tab-bar);
-  border-bottom: 1px solid var(--color-divider);
+  background: var(--fill-toolbar);
+  border-bottom: 1px solid var(--hairline-shade);
+  box-shadow: inset 0 1px 0 var(--hairline-shine);
   position: relative;
   z-index: 2;
   overflow: hidden;
@@ -259,7 +262,7 @@ button {
   padding: 0 var(--content-pad);
   border-left: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
 }
 
 .query-bar label {
@@ -269,9 +272,9 @@ button {
 }
 
 .query-bar .wn-select {
-  min-width: 120px;
+  min-width: calc(120 * var(--ui-scale) * 1px);
   height: var(--control-height-chrome);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   padding: 0 var(--space-2);
   background: var(--color-surface);
 }
@@ -312,7 +315,7 @@ button {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   white-space: pre-wrap;
   color: var(--color-danger);
 }
@@ -336,7 +339,7 @@ button {
 
 .bottom-panel-tab {
   padding: var(--space-1) var(--space-2);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   font-weight: 500;
   border: none;
   background: transparent;
@@ -402,10 +405,11 @@ button {
   justify-content: space-between;
   height: var(--statusbar-height);
   padding: 0 var(--chrome-pad-x);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
-  background: var(--color-chrome);
-  border-top: 1px solid var(--color-border-strong);
+  background: var(--fill-chrome);
+  border-top: 1px solid var(--hairline-shade);
+  box-shadow: inset 0 1px 0 var(--hairline-shine);
   flex-shrink: 0;
 }
 
@@ -422,7 +426,7 @@ button {
 .app-statusbar .status-mcp-stage {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
@@ -448,9 +452,10 @@ button {
   color: var(--color-warning);
 }
 
+
 .empty-hint {
   padding: var(--space-3) var(--space-2);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
   line-height: 1.5;
   text-align: center;
@@ -465,11 +470,11 @@ button {
   color: var(--color-text-muted);
   text-align: center;
   gap: var(--chrome-gap);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
 }
 
 .empty-state .empty-icon {
-  font-size: 24px;
+  font-size: calc(24 * var(--ui-scale) * 1px);
   opacity: 0.25;
   margin-bottom: var(--space-1);
 }
@@ -480,7 +485,7 @@ button {
   padding: var(--space-2) var(--content-pad);
   overflow: auto;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   line-height: 1.55;
   background: var(--color-editor);
   color: var(--color-text-secondary);

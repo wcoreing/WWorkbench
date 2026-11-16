@@ -28,7 +28,7 @@
 }
 
 .logs-sidebar .conn-item {
-  min-height: 38px;
+  min-height: var(--chrome-height);
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
@@ -61,9 +61,9 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: start;
-  gap: 8px 12px;
+  gap: calc(8 * var(--ui-scale) * 1px) calc(12 * var(--ui-scale) * 1px);
   max-height: min(40vh, 320px);
-  padding: 10px 12px;
+  padding: calc(10 * var(--ui-scale) * 1px) calc(12 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-border-strong);
   background: var(--color-surface);
   overflow-x: hidden;
@@ -75,7 +75,7 @@
 .logs-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -83,14 +83,14 @@
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: minmax(0, 1fr) 110px;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .logs-field {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .logs-field-narrow {
@@ -108,7 +108,7 @@
   grid-column: 1 / -1;
   flex-direction: row;
   align-items: flex-end;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .logs-row-compose-dir .wn-input {
@@ -118,10 +118,10 @@
 .logs-auto-label {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
-  margin-left: 4px;
+  margin-left: calc(4 * var(--ui-scale) * 1px);
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
@@ -169,9 +169,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  min-height: 30px;
-  padding: 0 10px;
+  gap: var(--space-3);
+  min-height: var(--control-height);
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-toolbar);
   flex-shrink: 0;
@@ -180,7 +180,7 @@
 .logs-viewer-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: calc(10 * var(--ui-scale) * 1px);
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   font-size: var(--font-size-caption);
@@ -189,7 +189,7 @@
 .logs-live-badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: calc(5 * var(--ui-scale) * 1px);
   color: var(--color-success);
   font-family: var(--font-sans);
   font-weight: 650;
@@ -214,10 +214,10 @@
 .logs-pre {
   flex: 1;
   margin: 0;
-  padding: 8px 0 24px;
+  padding: calc(8 * var(--ui-scale) * 1px) 0 calc(24 * var(--ui-scale) * 1px);
   overflow: auto;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   line-height: 1.55;
   white-space: pre;
   word-break: normal;
@@ -230,16 +230,16 @@
 .logs-line {
   display: block;
   min-width: max-content;
-  padding-right: 12px;
+  padding-right: calc(12 * var(--ui-scale) * 1px);
   counter-increment: log-line;
 }
 
 .logs-line::before {
   content: counter(log-line);
   display: inline-block;
-  width: 46px;
-  margin-right: 10px;
-  padding-right: 8px;
+  width: calc(46 * var(--ui-scale) * 1px);
+  margin-right: calc(10 * var(--ui-scale) * 1px);
+  padding-right: calc(8 * var(--ui-scale) * 1px);
   border-right: 1px solid var(--color-border-subtle);
   color: var(--color-text-disabled);
   text-align: right;
@@ -289,7 +289,7 @@
 .logs-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
@@ -305,10 +305,10 @@
   border: 0;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
-  padding: 8px 12px;
+  padding: calc(8 * var(--ui-scale) * 1px) calc(12 * var(--ui-scale) * 1px);
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 13px;
+  font-size: var(--font-size-title);
   font-weight: 600;
   cursor: pointer;
 }
@@ -330,13 +330,13 @@
 .mcp-audit-filters {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 6px 8px;
+  gap: var(--space-1);
+  padding: calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .mcp-audit-sidebar .conn-item {
-  min-height: 32px;
+  min-height: var(--toolbar-height);
   padding-block: 4px;
 }
 
@@ -344,31 +344,31 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
 }
 
 .mcp-audit-res-list .conn-host {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .mcp-audit-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px;
+  gap: calc(3 * var(--ui-scale) * 1px);
 }
 
 .mcp-chip {
   display: inline-flex;
   align-items: center;
-  max-width: 160px;
+  max-width: calc(160 * var(--ui-scale) * 1px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 0 5px;
+  padding: 0 calc(5 * var(--ui-scale) * 1px);
   border-radius: 3px;
   border: 1px solid var(--color-border-subtle);
   background: var(--color-surface);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   line-height: 16px;
   color: var(--color-text-muted);
 }
@@ -387,7 +387,7 @@
 
 .mcp-audit-detail-head {
   flex: 0 0 auto;
-  padding: 6px 10px;
+  padding: calc(6 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-border-strong);
   background: var(--color-surface);
 }
@@ -396,20 +396,20 @@
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 4px 10px;
+  gap: calc(4 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   min-width: 0;
 }
 
 .mcp-audit-detail-title h2 {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--font-size-title);
   font-weight: 650;
   line-height: 1.3;
   word-break: break-word;
 }
 
 .mcp-audit-meta {
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
 }
 
@@ -417,18 +417,20 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 4px 6px 10px;
+  padding: calc(4 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: calc(2 * var(--ui-scale) * 1px);
 }
 
 .mcp-audit-intent {
+  /* overflow≠visible 时 flex 子项 min-height:auto→0，99 条会被压成密线 */
+  flex: 0 0 auto;
   border: 0;
   border-bottom: 1px solid var(--color-border-subtle);
   border-radius: 0;
   background: transparent;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .mcp-audit-intent.has-fail {
@@ -440,14 +442,15 @@
   width: 100%;
   display: grid;
   grid-template-columns: 12px minmax(0, 1fr) auto;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   align-items: center;
-  padding: 5px 6px;
+  padding: calc(5 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px);
   border: 0;
   background: transparent;
   text-align: left;
   cursor: pointer;
   color: inherit;
+  min-height: var(--control-height-sm);
 }
 
 .mcp-audit-intent-head:hover {
@@ -459,13 +462,13 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   overflow: hidden;
 }
 
 .mcp-audit-caret {
   display: inline-block;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   line-height: 1;
   color: var(--color-text-muted);
   transition: transform 0.1s ease;
@@ -480,7 +483,7 @@
   flex: 0 1 auto;
   min-width: 0;
   max-width: 100%;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   font-weight: 600;
   line-height: 1.3;
   overflow: hidden;
@@ -490,27 +493,28 @@
 
 .mcp-audit-intent-main > .mcp-chip {
   flex: 0 0 auto;
-  max-width: 140px;
+  max-width: calc(140 * var(--ui-scale) * 1px);
 }
 
 .mcp-audit-intent-meta {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .mcp-audit-mcp-fold {
-  padding: 0 0 2px 18px;
+  padding: 0 0 calc(2 * var(--ui-scale) * 1px) calc(18 * var(--ui-scale) * 1px);
   display: flex;
   flex-direction: column;
   gap: 0;
 }
 
 .mcp-audit-row {
+  flex: 0 0 auto;
   border: 0;
   border-radius: 0;
   background: transparent;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .mcp-audit-row + .mcp-audit-row {
@@ -526,9 +530,9 @@
   width: 100%;
   display: grid;
   grid-template-columns: 12px 28px minmax(0, 1fr) auto auto;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   align-items: center;
-  padding: 3px 4px;
+  padding: calc(3 * var(--ui-scale) * 1px) calc(4 * var(--ui-scale) * 1px);
   border: 0;
   background: transparent;
   text-align: left;
@@ -541,7 +545,7 @@
 }
 
 .mcp-audit-ok {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 700;
   letter-spacing: 0.03em;
   color: var(--color-success, #059669);
@@ -555,14 +559,14 @@
   min-width: 0;
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   overflow: hidden;
 }
 
 .mcp-audit-tool {
   flex: 0 0 auto;
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   white-space: nowrap;
 }
 
@@ -570,7 +574,7 @@
   min-width: 0;
   flex: 1 1 auto;
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -579,36 +583,36 @@
 
 .mcp-audit-dur,
 .mcp-audit-at {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
   white-space: nowrap;
 }
 
 .mcp-audit-row-detail {
-  padding: 2px 6px 6px 40px;
+  padding: calc(2 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px) calc(40 * var(--ui-scale) * 1px);
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: calc(3 * var(--ui-scale) * 1px);
 }
 
 .mcp-audit-err {
   margin: 0;
   color: var(--color-danger);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
 }
 
 .mcp-audit-caller {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
 }
 
 .mcp-audit-args {
   margin: 0;
-  padding: 4px 6px;
+  padding: calc(4 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px);
   border-radius: 3px;
   background: var(--color-surface);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   line-height: 1.35;
   overflow: auto;
   max-height: 100px;

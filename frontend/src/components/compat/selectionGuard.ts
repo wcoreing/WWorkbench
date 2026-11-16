@@ -1,9 +1,9 @@
-/** 小于此像素位移的拖拽视为点击，清掉误选区（壳层 zoom 下尤其容易飞选）。 */
+/** 小于此像素位移的拖拽视为点击，清掉误选区。 */
 export const SELECT_DRAG_SLOP_PX = 5
 
 /**
  * bindSelectionGuard — 抑制误触选区：未形成有效拖拽则 clearSelection。
- * 用于 xterm / Monaco 等在 CSS zoom 下「稍一移动就大块选中」的场景。
+ * 用于 xterm / Monaco 等「稍一移动就大块选中」的场景。
  */
 export function bindSelectionGuard(el: HTMLElement, clearSelection: () => void): () => void {
   let origin: { x: number; y: number } | null = null

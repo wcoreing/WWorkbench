@@ -10,9 +10,10 @@ import {
 import Editor, { type OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
 import type { NoteLanguage } from '../../api/types'
-import { bindSelectionGuard, zoomCompensatedPx } from '../../components/compat'
+import { bindSelectionGuard } from '../../components/compat'
 import { useContainerHeight } from '../../hooks/useContainerHeight'
 import { useAppStore } from '../../stores/appStore'
+import { isDarkTheme } from '../../theme/appTheme'
 import { collectTransferFiles } from './notebookAssets'
 import { DEFAULT_NOTEBOOK_EDITOR_FONT } from './notebookEditorFont'
 import { monacoLanguageForNote } from './noteFileTypes'
@@ -39,10 +40,7 @@ interface Props {
 
 type MonacoNS = typeof import('monaco-editor')
 
-/**
- * NoteEditor IDE 源码编辑区（Monaco）。
- * 与 SQL/SFTP 同套：ww-zoom-content + zoomCompensatedPx，避开壳层 CSS zoom 错位。
- */
+/** NoteEditor IDE 源码编辑区（Monaco；正文字号用笔记设置，不跟壳层 --ui-scale）。 */
 export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEditor(
   {
     noteId,
@@ -56,7 +54,6 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
   ref,
 ) {
   const theme = useAppStore((s) => s.theme)
-  const uiFontSize = useAppStore((s) => s.uiFontSize)
   const hostRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<MonacoNS | null>(null)
@@ -70,8 +67,8 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
   contentRef.current = content
   const [dragOver, setDragOver] = useState(false)
   const editorHeight = useContainerHeight(hostRef, 120)
-  const fontSize = zoomCompensatedPx(editorFontSize, uiFontSize)
-  const lineHeight = zoomCompensatedPx(Math.round(editorFontSize * 1.7), uiFontSize)
+  const fontSize = Math.max(10, Math.round(editorFontSize))
+  const lineHeight = Math.max(14, Math.round(editorFontSize * 1.7))
   const monacoLang = monacoLanguageForNote(language)
 
   useImperativeHandle(
@@ -205,12 +202,12 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
       onDragLeave={onDragLeave}
       onDrop={onDrop}
     >
-      <div ref={hostRef} className="note-editor-host ww-zoom-content">
+      <div ref={hostRef} className="note-editor-host">
         <Editor
           key={noteId}
           height={editorHeight}
           language={monacoLang}
-          theme={theme === 'dark' ? 'vs-dark' : 'vs'}
+          theme={isDarkTheme(theme) ? 'vs-dark' : 'vs'}
           value={content}
           onChange={(v) => onChange(v || '')}
           loading={<div className="empty-hint">…</div>}
@@ -221,6 +218,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
             fontFamily: 'var(--font-mono)',
             wordWrap: 'on',
             automaticLayout: true,
+            fixedOverflowWidgets: false,
             scrollBeyondLastLine: false,
             padding: { top: 8, bottom: 8 },
             renderLineHighlight: 'line',

@@ -10,6 +10,9 @@ interface Props {
   threadLabel?: string
   onRemove?: (id: string, kind: AgentMentionKind) => void
   removeLabel?: string
+  /** 一键清除本行全部引用。 */
+  onClearAll?: () => void
+  clearAllLabel?: string
   className?: string
 }
 
@@ -21,6 +24,8 @@ export function AgentMentionChips({
   threadLabel,
   onRemove,
   removeLabel,
+  onClearAll,
+  clearAllLabel,
   className,
 }: Props) {
   if (!mentions.length) return null
@@ -51,6 +56,11 @@ export function AgentMentionChips({
           ) : null}
         </span>
       ))}
+      {onClearAll ? (
+        <button type="button" className="agent-mention-clear-all" onClick={onClearAll}>
+          {clearAllLabel ?? 'Clear'}
+        </button>
+      ) : null}
     </div>
   )
 }

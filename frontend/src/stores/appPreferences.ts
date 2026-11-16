@@ -3,6 +3,7 @@ import { normalizeProductId } from '../shell/products'
 import { api } from '../api/client'
 import type { AppLocale } from '../i18n/types'
 import { clampUiFontSize, DEFAULT_UI_FONT_SIZE, type UiFontSize } from '../shell/uiFontSize'
+import { parseAppTheme, type AppTheme } from '../theme/appTheme'
 
 /** 应用设置键（与 Go store 常量一致）。 */
 export const APP_SETTING_KEYS = {
@@ -17,7 +18,7 @@ export const APP_SETTING_KEYS = {
 } as const
 
 export interface AppPreferences {
-  theme: 'light' | 'dark'
+  theme: AppTheme
   locale: AppLocale
   activeProduct: ProductId
   terminalOpacity: number
@@ -38,7 +39,7 @@ const DEFAULT_PREFERENCES: AppPreferences = {
 
 /** parsePreferences 将后端设置映射为偏好对象。 */
 function parsePreferences(settings: Record<string, string>): AppPreferences {
-  const theme = settings[APP_SETTING_KEYS.theme] === 'dark' ? 'dark' : 'light'
+  const theme = parseAppTheme(settings[APP_SETTING_KEYS.theme])
   const localeRaw = settings[APP_SETTING_KEYS.locale]
   const locale: AppLocale = localeRaw === 'en' ? 'en' : 'zh'
   const activeProduct = normalizeProductId(settings[APP_SETTING_KEYS.activeProduct])
@@ -60,7 +61,8 @@ async function migratePreferencesFromLocalStorage(settings: Record<string, strin
   const pairs: Array<[string, string]> = []
   if (!settings[APP_SETTING_KEYS.theme]) {
     const v = localStorage.getItem('wn-theme')
-    if (v === 'light' || v === 'dark') pairs.push([APP_SETTING_KEYS.theme, v])
+    const theme = parseAppTheme(v)
+    if (v === theme || v === 'ink') pairs.push([APP_SETTING_KEYS.theme, theme])
   }
   if (!settings[APP_SETTING_KEYS.activeProduct]) {
     const v = localStorage.getItem('wn-product')

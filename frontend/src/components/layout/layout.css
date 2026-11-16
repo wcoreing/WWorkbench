@@ -172,7 +172,7 @@ body.is-row-resizing .wn-resize-handle-y::after {
 
 .wn-sidebar-columns-pane.is-flex {
   flex: 1;
-  min-width: 120px;
+  min-width: calc(120 * var(--ui-scale) * 1px);
 }
 
 body.is-row-resizing,
@@ -266,14 +266,14 @@ body.is-row-resizing .wn-pane-gutter-y::before {
 
 .wn-collapse-rail-x {
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 0;
+  gap: calc(10 * var(--ui-scale) * 1px);
+  padding: calc(12 * var(--ui-scale) * 1px) 0;
 }
 
 .wn-collapse-rail-y {
   flex-direction: row;
-  gap: 8px;
-  padding: 0 12px;
+  gap: var(--space-2);
+  padding: 0 calc(12 * var(--ui-scale) * 1px);
 }
 
 .wn-collapse-rail-x::after {
@@ -308,7 +308,7 @@ body.is-row-resizing .wn-pane-gutter-y::before {
   align-items: center;
   justify-content: center;
   width: 22px;
-  height: 22px;
+  height: var(--list-row-height);
   margin: 0;
   padding: 0;
   border: none;
@@ -333,7 +333,7 @@ body.is-row-resizing .wn-pane-gutter-y::before {
 }
 
 .wn-collapse-rail-label {
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   font-weight: 500;
   line-height: 1.2;
   letter-spacing: 0.04em;

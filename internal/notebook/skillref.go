@@ -8,15 +8,17 @@ import (
 // Skill 路径域（单一寻址规则）
 //
 // 协议：任意目录下的 SKILL.md + 同级 log.md / assets / scripts。
-// 「工作流/」只是任务产品默认落点，不是唯一合法位置。
+// Skill 跟资源走：项目方法 → 项目/{名}/；主机部署 → 记忆区/…/项目/…；
+// 「工作流/」只是任务产品默认落点（短名新建默认），不是 Skill 的父概念。
 //
 // 引用形态：
-//   - 短名 demo          → 工作流/demo/SKILL.md（任务区默认）
+//   - 短名 demo          → 工作流/demo/SKILL.md（任务区新建默认；查找时优先已有 项目/）
 //   - 目录路径 a/b/c     → a/b/c/SKILL.md（就地；不做短名映射）
 //   - 已是 …/SKILL.md    → 原样
 
 // SkillNoteID 把 skill 引用规范成 …/SKILL.md 相对路径。
-// 短名 → 工作流/{name}/SKILL.md；含路径 → 该目录下 SKILL.md。
+// 短名 → 工作流/{name}/SKILL.md（任务新建默认）；含路径 → 该目录下 SKILL.md。
+// 查找请用 FindNoteIDBySkillID（短名会优先命中已有 项目/ 等）。
 func SkillNoteID(name string) string {
 	name = strings.TrimSpace(strings.ReplaceAll(name, "\\", "/"))
 	name = strings.Trim(name, "/")

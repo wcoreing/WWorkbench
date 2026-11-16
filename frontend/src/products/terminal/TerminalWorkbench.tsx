@@ -933,7 +933,6 @@ export function TerminalWorkbench() {
                   disabled: splitting || activePaneCount >= MAX_PANES,
                 })}
               >
-                <span className="terminal-toolbar-glyph">▥</span>
                 <span>{t('terminal.splitRow')}</span>
               </button>
               <button
@@ -945,7 +944,6 @@ export function TerminalWorkbench() {
                   disabled: splitting || activePaneCount >= MAX_PANES,
                 })}
               >
-                <span className="terminal-toolbar-glyph">▤</span>
                 <span>{t('terminal.splitCol')}</span>
               </button>
               <button

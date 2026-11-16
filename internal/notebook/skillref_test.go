@@ -55,6 +55,32 @@ func TestMarkNoteAsSkillStaysInPlace(t *testing.T) {
 	}
 }
 
+func TestFindNoteIDBySkillIDPrefersProjectOverTask(t *testing.T) {
+	dir := t.TempDir()
+	s := NewService(nil, dir)
+	writeSkill := func(relDir string) {
+		abs := filepath.Join(s.workspaceRoot(), filepath.FromSlash(relDir))
+		if err := os.MkdirAll(abs, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		body := "---\nrole: skill\nname: demo\n---\n\n# demo\n\n## 步骤\n\n```wwb-skill-steps\n[]\n```\n"
+		if err := os.WriteFile(filepath.Join(abs, SkillEntryFile), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeSkill(ProjectGroupName + "/demo")
+	writeSkill(SkillGroupName + "/demo")
+	found := s.FindNoteIDBySkillID("demo")
+	want := ProjectGroupName + "/demo/" + SkillEntryFile
+	if found != want {
+		t.Fatalf("short prefer project: got %q want %q", found, want)
+	}
+	foundPath := s.FindNoteIDBySkillID(ProjectGroupName + "/demo")
+	if foundPath != want {
+		t.Fatalf("path: got %q want %q", foundPath, want)
+	}
+}
+
 func TestPublishSkillToTaskRoot(t *testing.T) {
 	dir := t.TempDir()
 	s := NewService(nil, dir)

@@ -1,4 +1,4 @@
-/** 笔记本编辑区 / 预览字号档位（与界面全局 zoom 独立）。 */
+/** 笔记本编辑区 / 预览字号档位（与界面 --ui-scale 密度独立）。 */
 export const NOTEBOOK_EDITOR_FONT_SIZES = [12, 13, 14, 15, 16, 18] as const
 export type NotebookEditorFontSize = (typeof NOTEBOOK_EDITOR_FONT_SIZES)[number]
 export const DEFAULT_NOTEBOOK_EDITOR_FONT: NotebookEditorFontSize = 13

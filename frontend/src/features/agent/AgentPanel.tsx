@@ -412,6 +412,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
               }
               onStop={() => void session.stopGeneration()}
               onUnbindThreadMention={(id, kind) => void session.unbindThreadMention(id, kind)}
+              onClearThreadMentions={() => void session.clearThreadMentions()}
               onUnbindThreadSkill={session.unbindThreadSkill}
               onSuggest={(item) => {
                 if (item.goTerminal) {

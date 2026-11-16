@@ -72,6 +72,31 @@ export function buildStarterItems(
     ]
   }
 
+  if (activeProduct === 'project' || focusKind === 'project') {
+    return [
+      {
+        id: 'project-round',
+        label: t('agent.starterProjectRound'),
+        hint: focusLabel ? t('agent.starterFocusHint', { label: focusLabel }) : undefined,
+        message: t('agent.starterProjectRoundMsg'),
+        mode: 'ask',
+        primary: true,
+      },
+      {
+        id: 'project-distill',
+        label: t('agent.starterProjectDistill'),
+        message: t('agent.starterProjectDistillMsg'),
+        mode: 'agent',
+      },
+      {
+        id: 'next-steps',
+        label: t('agent.starterNextSteps'),
+        message: t('agent.starterNextStepsMsg'),
+        mode: 'ask',
+      },
+    ]
+  }
+
   const items: AgentStarterItem[] = []
   if (activeProduct !== 'terminal') {
     items.push({

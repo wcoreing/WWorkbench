@@ -1,11 +1,19 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { getWorkbenchOverlayRoot } from './overlayRoot'
 
 interface Props {
   children: ReactNode
 }
 
-/** ModalPortal 将弹层挂到 document.body，避免侧栏 overflow 影响 fixed 定位与点击。 */
+/** ModalPortal 将弹层挂到工作台叠加层，随界面字号一起缩放。 */
 export function ModalPortal({ children }: Props) {
-  return createPortal(children, document.body)
+  const [root, setRoot] = useState<HTMLElement | null>(null)
+
+  useEffect(() => {
+    setRoot(getWorkbenchOverlayRoot())
+  }, [])
+
+  if (!root) return null
+  return createPortal(children, root)
 }

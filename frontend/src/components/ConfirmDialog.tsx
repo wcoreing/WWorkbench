@@ -10,6 +10,7 @@ interface ConfirmDialogProps {
   /** 命令/SQL 等，以等宽代码块展示 */
   code?: string
   confirmLabel?: string
+  cancelLabel?: string
   danger?: boolean
   children?: ReactNode
   onConfirm: () => void
@@ -23,6 +24,7 @@ export function ConfirmDialog({
   message,
   code,
   confirmLabel,
+  cancelLabel,
   danger = false,
   children,
   onConfirm,
@@ -30,51 +32,49 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const { t } = useI18n()
   const okLabel = confirmLabel ?? t('common.confirm')
+  const noLabel = cancelLabel ?? t('common.cancel')
   const hasCode = Boolean(code?.trim())
 
   if (!open) return null
 
   return (
     <ModalPortal>
-    <div
-      className="wn-modal-backdrop wn-modal-backdrop-top"
-      {...backdropDismissProps(onCancel)}
-    >
-      <div
-        className={`wn-modal wn-modal-compact${hasCode ? ' is-code-confirm' : ''}`}
-        onClick={(e) => e.stopPropagation()}
-        onPointerDown={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-labelledby="confirm-dialog-title"
-      >
-        <header className="wn-modal-header">
-          <h2 id="confirm-dialog-title" className="wn-modal-title">
-            {title}
-          </h2>
-          {message && <p className="wn-modal-desc">{message}</p>}
-        </header>
-        {hasCode ? (
-          <div className="wn-modal-body wn-confirm-code-wrap">
-            <pre className="wn-confirm-code" tabIndex={0}>
-              {code}
-            </pre>
-          </div>
-        ) : null}
-        {children ? <div className="wn-modal-body">{children}</div> : null}
-        <footer className="wn-modal-footer">
-          <button type="button" className="wn-btn wn-btn-tool" {...pressProps(onCancel)}>
-            {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            className={`wn-btn wn-btn-sm ${danger ? 'wn-btn-danger' : 'wn-btn-primary'}`}
-            {...pressProps(onConfirm)}
-          >
-            {okLabel}
-          </button>
-        </footer>
+      <div className="wn-modal-backdrop wn-modal-backdrop-top" {...backdropDismissProps(onCancel)}>
+        <div
+          className={`wn-modal wn-modal-compact${hasCode ? ' is-code-confirm' : ''}`}
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-labelledby="confirm-dialog-title"
+        >
+          <header className="wn-modal-header">
+            <h2 id="confirm-dialog-title" className="wn-modal-title">
+              {title}
+            </h2>
+            {message && <p className="wn-modal-desc">{message}</p>}
+          </header>
+          {hasCode ? (
+            <div className="wn-modal-body wn-confirm-code-wrap">
+              <pre className="wn-confirm-code" tabIndex={0}>
+                {code}
+              </pre>
+            </div>
+          ) : null}
+          {children ? <div className="wn-modal-body">{children}</div> : null}
+          <footer className="wn-modal-footer">
+            <button type="button" className="wn-btn wn-btn-tool" {...pressProps(onCancel)}>
+              {noLabel}
+            </button>
+            <button
+              type="button"
+              className={`wn-btn wn-btn-sm ${danger ? 'wn-btn-danger' : 'wn-btn-primary'}`}
+              {...pressProps(onConfirm)}
+            >
+              {okLabel}
+            </button>
+          </footer>
+        </div>
       </div>
-    </div>
     </ModalPortal>
   )
 }

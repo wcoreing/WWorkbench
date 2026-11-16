@@ -6,7 +6,7 @@
 }
 
 .docker-list-bar .pane-toolbar-start {
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .docker-table-wrap {
@@ -28,8 +28,8 @@
   top: 0;
   z-index: 1;
   text-align: left;
-  height: 30px;
-  padding: 0 10px;
+  height: var(--control-height);
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   font-weight: 550;
   font-size: var(--font-size-caption);
   letter-spacing: 0;
@@ -40,8 +40,8 @@
 }
 
 .docker-table td {
-  height: 34px;
-  padding: 0 10px;
+  height: calc(34 * var(--ui-scale) * 1px);
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   color: var(--color-text-secondary);
   border-bottom: 1px solid var(--color-border-subtle);
   transition:
@@ -57,22 +57,9 @@
   background: var(--color-hover);
 }
 
-/* Docker Desktop 风格：左侧选中条，无整行填色。 */
+/* 勾选列承担选中标记，不用左边线 */
 .docker-row.selected td:first-child {
-  position: relative;
   box-shadow: none;
-}
-
-.docker-row.selected td:first-child::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
-  background: var(--accent);
-  pointer-events: none;
 }
 
 .docker-row.has-shell .docker-name::after {
@@ -80,7 +67,7 @@
   display: inline-block;
   width: 6px;
   height: 6px;
-  margin-left: 6px;
+  margin-left: calc(6 * var(--ui-scale) * 1px);
   border-radius: 50%;
   background: var(--accent);
   vertical-align: middle;
@@ -100,7 +87,7 @@
 .docker-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   padding: 0;
   border-radius: 0;
   background: transparent;
@@ -153,9 +140,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  min-height: 32px;
-  padding: 0 10px;
+  gap: var(--space-2);
+  min-height: var(--toolbar-height);
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   font-size: var(--font-size-caption);
   font-weight: 550;
   color: var(--color-text-muted);
@@ -176,7 +163,7 @@
   background: transparent;
   color: var(--color-text-muted);
   font-size: var(--font-size-ui-sm);
-  padding: 0 10px;
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   border-radius: 0;
   cursor: pointer;
 }
@@ -221,8 +208,8 @@
 
 .docker-env-empty {
   margin: 0;
-  padding: 12px;
-  font-size: 12px;
+  padding: var(--space-3);
+  font-size: var(--font-size-ui);
   color: var(--color-text-muted);
 }
 
@@ -236,8 +223,8 @@
 
 .docker-env-table th,
 .docker-env-table td {
-  height: 30px;
-  padding: 0 10px;
+  height: var(--control-height);
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   text-align: left;
   border-bottom: 1px solid var(--color-border-subtle);
 }
@@ -272,10 +259,10 @@
 .docker-log-body {
   flex: 1;
   margin: 0;
-  padding: 10px 12px;
+  padding: calc(10 * var(--ui-scale) * 1px) calc(12 * var(--ui-scale) * 1px);
   overflow: auto;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   line-height: 1.5;
   color: #a8a8b0;
   background: #0c0c0e;
@@ -286,15 +273,15 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: calc(10 * var(--ui-scale) * 1px);
   text-align: center;
-  padding: 48px 24px;
+  padding: calc(48 * var(--ui-scale) * 1px) calc(24 * var(--ui-scale) * 1px);
 }
 
 .docker-empty-hint {
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
-  max-width: 420px;
+  max-width: calc(420 * var(--ui-scale) * 1px);
   line-height: 1.5;
 }
 
@@ -310,8 +297,8 @@
 .docker-context-item .docker-context-item-del {
   flex-shrink: 0;
   opacity: 0;
-  padding: 2px 6px;
-  font-size: 11px;
+  padding: calc(2 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui-sm);
 }
 
 .docker-context-item:hover .docker-context-item-del,
@@ -320,9 +307,9 @@
 }
 
 .docker-table-images .docker-col-actions {
-  width: 72px;
-  min-width: 72px;
-  max-width: 72px;
+  width: calc(72 * var(--ui-scale) * 1px);
+  min-width: calc(72 * var(--ui-scale) * 1px);
+  max-width: calc(72 * var(--ui-scale) * 1px);
 }
 
 .docker-run-modal {
@@ -340,14 +327,14 @@
 }
 
 .docker-run-form .wn-field + .wn-field {
-  margin-top: 12px;
+  margin-top: calc(12 * var(--ui-scale) * 1px);
 }
 
 .docker-run-ports,
 .docker-run-env {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .docker-run-port-row,
@@ -355,16 +342,16 @@
 .docker-run-extra-env-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .docker-run-port-input {
-  width: 88px;
+  width: calc(88 * var(--ui-scale) * 1px);
   flex-shrink: 0;
 }
 
 .docker-run-port-proto {
-  width: 72px;
+  width: calc(72 * var(--ui-scale) * 1px);
   flex-shrink: 0;
 }
 
@@ -374,9 +361,9 @@
 }
 
 .docker-run-env-key {
-  width: 140px;
+  width: calc(140 * var(--ui-scale) * 1px);
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   font-family: var(--font-mono, ui-monospace, monospace);
   color: var(--color-text-muted);
   overflow: hidden;
@@ -390,7 +377,7 @@
 }
 
 .docker-run-env-key-input {
-  width: 120px;
+  width: calc(120 * var(--ui-scale) * 1px);
   flex-shrink: 0;
   font-family: var(--font-mono, ui-monospace, monospace);
 }
@@ -399,8 +386,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: var(--space-2);
+  margin-bottom: calc(8 * var(--ui-scale) * 1px);
 }
 
 .docker-run-extra-env-head .wn-label {
@@ -411,27 +398,27 @@
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 16px;
+  gap: var(--space-4);
 }
 
 .docker-run-option {
   flex: 1;
-  min-width: 160px;
+  min-width: calc(160 * var(--ui-scale) * 1px);
   margin-top: 0 !important;
 }
 
 .docker-run-checkbox {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui);
   color: var(--color-text-muted);
-  padding-bottom: 6px;
+  padding-bottom: calc(6 * var(--ui-scale) * 1px);
   cursor: default;
 }
 
 .docker-run-hint {
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   color: var(--color-text-muted);
 }
 

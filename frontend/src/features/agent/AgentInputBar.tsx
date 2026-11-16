@@ -52,6 +52,7 @@ interface Props {
   onSend: (text: string, mentions: AgentMention[], images: ChatImage[], skillIds?: string[]) => void | Promise<void>
   onStop: () => void
   onUnbindThreadMention?: (id: string, kind: AgentMention['kind']) => void
+  onClearThreadMentions?: () => void
   threadSkillIds?: string[]
   onUnbindThreadSkill?: (id: string) => void
 }
@@ -70,6 +71,7 @@ export function AgentInputBar({
   onSend,
   onStop,
   onUnbindThreadMention,
+  onClearThreadMentions,
   threadSkillIds = [],
   onUnbindThreadSkill,
 }: Props) {
@@ -333,6 +335,10 @@ export function AgentInputBar({
     setMentions((prev) => prev.filter((m) => !(m.id === id && m.kind === kind)))
   }
 
+  const clearMentions = () => {
+    setMentions([])
+  }
+
   const addMention = (item: AgentMentionMenuItem) => {
     setMentions((prev) => {
       if (prev.some((m) => m.kind === item.kind && m.id === item.id)) return prev
@@ -423,6 +429,8 @@ export function AgentInputBar({
         threadLabel={t('agent.threadMentions')}
         onRemove={onUnbindThreadMention}
         removeLabel={t('agent.mentionRemove')}
+        onClearAll={onClearThreadMentions}
+        clearAllLabel={t('agent.mentionClearAll')}
       />
       {pendingAuto.length > 0 && (
         <p className="agent-auto-hint">
@@ -446,6 +454,8 @@ export function AgentInputBar({
         mentions={mentions}
         onRemove={removeMention}
         removeLabel={t('agent.mentionRemove')}
+        onClearAll={clearMentions}
+        clearAllLabel={t('agent.mentionClearAll')}
       />
       <div className="agent-composer">
       {images.length > 0 && (

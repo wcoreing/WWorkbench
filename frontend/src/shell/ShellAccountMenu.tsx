@@ -6,6 +6,9 @@ import { useI18n } from '../i18n'
 import { notify } from '../notify'
 import { model } from '../../wailsjs/go/models'
 
+const LAST_SYNC_AT = 'home_last_sync_at'
+const LAST_SYNC_NOTE = 'home_last_sync_note'
+
 /** 与 wwb-home / homeclient.ValidateAuth 对齐的前端预检。 */
 function validateAuthLocal(username: string, password: string): string {
   const u = username.trim().toLowerCase()
@@ -35,9 +38,24 @@ function formatSync(res: model.HomeSyncResultDO): string {
   return parts.join(' · ')
 }
 
+function formatSyncWhen(iso: string, locale: string): string {
+  const raw = iso.trim()
+  if (!raw) return ''
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return raw
+  try {
+    return new Intl.DateTimeFormat(locale === 'en' ? 'en-US' : 'zh-CN', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(d)
+  } catch {
+    return d.toLocaleString()
+  }
+}
+
 /** ShellAccountMenu 顶栏账号：居中弹窗；登录后自动全量同步。 */
 export function ShellAccountMenu() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [open, setOpen] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -45,10 +63,15 @@ export function ShellAccountMenu() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [progress, setProgress] = useState<HomeSyncProgressEvent | null>(null)
+  const [lastSyncAt, setLastSyncAt] = useState('')
+  const [lastSyncNote, setLastSyncNote] = useState('')
 
   const refresh = useCallback(async () => {
     const st = await api.getHomeStatus()
     setStatus(st)
+    const settings = await api.listAppSettings()
+    setLastSyncAt(String(settings[LAST_SYNC_AT] || ''))
+    setLastSyncNote(String(settings[LAST_SYNC_NOTE] || ''))
   }, [])
 
   useEffect(() => {
@@ -83,6 +106,7 @@ export function ShellAccountMenu() {
     }
     const size = progress?.bytes ? ` · ${formatBytes(progress.bytes)}` : ''
     notify.success(`${okMsg} · ${t('shell.accountSynced')}${size}`)
+    void refresh().catch(() => {})
     close()
   }
 
@@ -139,18 +163,26 @@ export function ShellAccountMenu() {
     }
   }
 
-  const syncNow = async () => {
+  const runSync = async (
+    kind: 'now' | 'push' | 'pull',
+    okKey: 'shell.accountSyncOk' | 'shell.accountSyncPushOk' | 'shell.accountSyncPullOk',
+  ) => {
     setBusy(true)
     setError('')
     setProgress({ stage: 'start', percent: 0, message: t('shell.accountSyncStarting') })
     try {
-      const res = await api.homeSyncNow()
-      notify.success(`${t('shell.accountSyncOk')} · ${formatSync(res)}`)
+      const res =
+        kind === 'push'
+          ? await api.homeSyncPush()
+          : kind === 'pull'
+            ? await api.homeSyncPull()
+            : await api.homeSyncNow()
+      notify.success(`${t(okKey)} · ${formatSync(res)}`)
       await refresh()
       setProgress({
         stage: 'done',
         percent: 100,
-        message: t('shell.accountSyncOk'),
+        message: t(okKey),
         bytes: res.bytes,
         docs: res.docs,
         durationMs: res.durationMs,
@@ -175,6 +207,7 @@ export function ShellAccountMenu() {
     : t('shell.account')
 
   const pct = Math.max(0, Math.min(100, progress?.percent ?? 0))
+  const lastWhen = formatSyncWhen(lastSyncAt, locale)
 
   return (
     <div className="shell-locale-menu">
@@ -254,6 +287,19 @@ export function ShellAccountMenu() {
                     </label>
                   </>
                 )}
+                {status?.loggedIn ? (
+                  <div className="shell-account-sync-meta">
+                    <p className="shell-account-hint">{t('shell.accountSecretHint')}</p>
+                    <p className="shell-account-last">
+                      {lastWhen
+                        ? t('shell.accountLastSync', { when: lastWhen })
+                        : t('shell.accountLastSyncNever')}
+                    </p>
+                    {lastSyncNote ? (
+                      <p className="shell-account-last-note">{t('shell.accountLastSyncNote', { note: lastSyncNote })}</p>
+                    ) : null}
+                  </div>
+                ) : null}
                 {progress ? (
                   <div className="shell-account-progress" aria-live="polite">
                     <div className="shell-account-progress-bar">
@@ -276,15 +322,40 @@ export function ShellAccountMenu() {
                   </div>
                 ) : null}
               </div>
-              <footer className="wn-modal-footer">
+              <footer className="wn-modal-footer shell-account-footer">
                 {status?.loggedIn ? (
                   <>
                     <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" disabled={busy} {...pressProps(() => void logout())}>
                       {t('shell.accountLogout')}
                     </button>
-                    <button type="button" className="wn-btn wn-btn-sm wn-btn-primary" disabled={busy} {...pressProps(() => void syncNow())}>
-                      {busy ? t('shell.accountSyncing') : t('shell.accountSyncNow')}
-                    </button>
+                    <div className="shell-account-sync-actions">
+                      <button
+                        type="button"
+                        className="wn-btn wn-btn-sm wn-btn-tool"
+                        disabled={busy}
+                        title={t('shell.accountSyncPush')}
+                        {...pressProps(() => void runSync('push', 'shell.accountSyncPushOk'))}
+                      >
+                        {t('shell.accountSyncPush')}
+                      </button>
+                      <button
+                        type="button"
+                        className="wn-btn wn-btn-sm wn-btn-tool"
+                        disabled={busy}
+                        title={t('shell.accountSyncPull')}
+                        {...pressProps(() => void runSync('pull', 'shell.accountSyncPullOk'))}
+                      >
+                        {t('shell.accountSyncPull')}
+                      </button>
+                      <button
+                        type="button"
+                        className="wn-btn wn-btn-sm wn-btn-primary"
+                        disabled={busy}
+                        {...pressProps(() => void runSync('now', 'shell.accountSyncOk'))}
+                      >
+                        {busy ? t('shell.accountSyncing') : t('shell.accountSyncNow')}
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <>

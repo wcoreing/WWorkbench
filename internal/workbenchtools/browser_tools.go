@@ -456,11 +456,15 @@ func registerBrowserTools(r *Registry) {
 		Name: workbench.CapUpdateSkill,
 		Description: "自我更新 Skill：无实质变更则 skipped；有变更则写前 pin 目录版本再落盘（免确认，仍须 intent）。" +
 			"稳定浏览器段收成一条 {action:browser_run,args:{allowWrite:true,steps:[…]}}。" +
-			"name=当前任务名；禁止沉淀到别的工作流；禁止机械贴 log。",
+			"name=归属目录完整路径（任务=工作流/{任务}；项目=项目/{名}；主机部署=记忆区/…/项目/…）。" +
+			"禁止项目方法落到工作流/；禁止机械贴 log。短名新建默认任务区，项目/运维收口勿用短名。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"name":          map[string]interface{}{"type": "string", "description": "当前任务名=工作流目录名（与 log.md 同目录），如 小红书爆款·少即是多"},
+				"name": map[string]interface{}{
+					"type":        "string",
+					"description": "完整目录路径（推荐）：工作流/{任务} 或 项目/{名}；短名仅任务区兼容",
+				},
 				"lessons":       map[string]interface{}{"type": "string", "description": "追加到 ## 经验（人话：这次学到什么）"},
 				"script":        map[string]interface{}{"type": "string", "description": "追加到 ## 脚本（可纯文本，自动包 fence）"},
 				"scriptLang":    map[string]interface{}{"type": "string", "description": "脚本语言，默认 bash"},

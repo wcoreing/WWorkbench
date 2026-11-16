@@ -21,24 +21,24 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 36px;
-  padding: 0 10px;
+  min-height: calc(36 * var(--ui-scale) * 1px);
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-toolbar);
   flex-shrink: 0;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .httpapi-run-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
   flex: 1;
 }
 
 .httpapi-run-mode {
-  padding-right: 8px;
+  padding-right: var(--space-2);
   border-right: 1px solid var(--color-divider);
   font-family: var(--font-mono);
   font-size: var(--font-size-caption);
@@ -61,7 +61,7 @@
 .httpapi-run-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   flex-shrink: 0;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -70,9 +70,9 @@
 .httpapi-env-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   height: var(--control-height-chrome);
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   background: transparent;
@@ -88,14 +88,14 @@
 }
 
 .httpapi-env-icon {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
 }
 
 .httpapi-url-bar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  padding: var(--space-2) calc(10 * var(--ui-scale) * 1px);
   flex-shrink: 0;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
@@ -119,7 +119,7 @@
   border-color: var(--accent) !important;
   color: #fff !important;
   font-weight: 600;
-  min-width: 76px;
+  min-width: calc(76 * var(--ui-scale) * 1px);
   box-shadow: var(--shadow-sm);
 }
 
@@ -173,8 +173,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 32px;
-  padding: 0 10px;
+  min-height: var(--toolbar-height);
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   background: var(--color-toolbar);
   flex-shrink: 0;
 }
@@ -186,7 +186,7 @@
 
 .httpapi-res-meta {
   display: flex;
-  gap: 10px;
+  gap: calc(10 * var(--ui-scale) * 1px);
   font-family: var(--font-mono);
   font-size: var(--font-size-caption);
   color: var(--color-text-muted);
@@ -199,32 +199,32 @@
 }
 
 .httpapi-res-toolbar {
-  min-height: 30px;
-  padding: 3px 10px;
+  min-height: var(--control-height);
+  padding: calc(3 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   border-top: 1px solid var(--color-border-subtle);
   background: var(--color-toolbar);
   display: flex;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   flex-shrink: 0;
 }
 
 .httpapi-body-type-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 
 .httpapi-body-type-label {
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
-  margin-right: 4px;
+  margin-right: var(--space-1);
 }
 
 .httpapi-body-type-btn {
-  min-height: 24px;
-  padding: 2px 8px;
+  min-height: var(--control-height-chrome);
+  padding: calc(2 * var(--ui-scale) * 1px) var(--space-2);
   font-size: var(--font-size-ui-sm);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border-subtle);
@@ -247,7 +247,7 @@
 }
 
 .httpapi-tree-toolbar {
-  padding: 6px 8px;
+  padding: calc(6 * var(--ui-scale) * 1px) var(--space-2);
   flex-shrink: 0;
 }
 
@@ -257,8 +257,8 @@
 
 .httpapi-tree-action-bar {
   display: flex;
-  gap: 6px;
-  padding: 0 8px 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  padding: 0 var(--space-2) calc(6 * var(--ui-scale) * 1px);
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-border-subtle);
 }
@@ -273,8 +273,8 @@
 .httpapi-env-quick {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui-sm);
 }
 
 .httpapi-env-quick-label {
@@ -283,8 +283,8 @@
 }
 
 .httpapi-env-quick select {
-  min-width: 100px;
-  max-width: 140px;
+  min-width: calc(100 * var(--ui-scale) * 1px);
+  max-width: calc(140 * var(--ui-scale) * 1px);
 }
 
 .httpapi-folder-modal {
@@ -292,7 +292,7 @@
 }
 
 .httpapi-tree-body {
-  padding: 4px 0;
+  padding: var(--space-1) 0;
 }
 
 .httpapi-tree {
@@ -308,7 +308,7 @@
   gap: var(--list-row-gap, 3px);
   min-height: var(--list-row-height, 22px);
   height: var(--list-row-height, 22px);
-  margin: 0 4px;
+  margin: 0 var(--space-1);
   padding: 0 var(--list-row-pad-x, 6px);
   border-radius: var(--radius-sm);
   cursor: pointer;
@@ -382,8 +382,8 @@ body.httpapi-tree-dragging * {
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  padding: 2px 6px;
-  font-size: 14px;
+  padding: calc(2 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px);
+  font-size: calc(14 * var(--ui-scale) * 1px);
   line-height: 1;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
@@ -396,7 +396,7 @@ body.httpapi-tree-dragging * {
 
 .httpapi-tree-action-bar.is-batch {
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .httpapi-tree-check {
@@ -438,14 +438,14 @@ body.httpapi-tree-dragging * {
 
 .httpapi-drop-slot {
   height: 3px;
-  margin: 0 6px;
+  margin: 0 calc(6 * var(--ui-scale) * 1px);
   border-radius: var(--radius-xs);
   pointer-events: auto;
 }
 
 body.httpapi-tree-dragging .httpapi-drop-slot {
   height: 6px;
-  margin: 1px 6px;
+  margin: 1px calc(6 * var(--ui-scale) * 1px);
 }
 
 .httpapi-drop-slot.is-active {
@@ -463,15 +463,15 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
   z-index: 10001;
   display: flex;
   align-items: center;
-  gap: 6px;
-  max-width: 280px;
-  padding: 6px 10px;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  max-width: calc(280 * var(--ui-scale) * 1px);
+  padding: calc(6 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   border-radius: var(--radius-lg);
   background: var(--color-surface-raised);
   border: 1px solid var(--accent);
   box-shadow: var(--shadow);
   pointer-events: none;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   transform: translate(0, 0);
 }
 
@@ -489,9 +489,9 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
 }
 
 .httpapi-tree-drop-hint {
-  margin: 4px 8px 6px;
-  padding: 4px 8px;
-  font-size: 10px;
+  margin: var(--space-1) var(--space-2) calc(6 * var(--ui-scale) * 1px);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
   border-radius: var(--radius);
   background: rgba(0, 122, 255, 0.08);
@@ -519,7 +519,7 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
   position: absolute;
   right: 12px;
   top: 88px;
-  width: 300px;
+  width: calc(300 * var(--ui-scale) * 1px);
   max-height: min(320px, 50vh);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
@@ -535,8 +535,8 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
 .httpapi-history-drawer-head {
   display: flex;
   justify-content: space-between;
-  padding: 8px 10px;
-  font-size: 11px;
+  padding: var(--space-2) calc(10 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui-sm);
   font-weight: 600;
   border-bottom: 1px solid var(--color-border-subtle);
 }
@@ -544,17 +544,17 @@ body.httpapi-tree-dragging .httpapi-drop-slot {
 .httpapi-history-drawer ul {
   list-style: none;
   margin: 0;
-  padding: 4px;
+  padding: var(--space-1);
   overflow-y: auto;
 }
 
 .httpapi-history-drawer li {
-  padding: 6px 8px;
-  font-size: 11px;
+  padding: calc(6 * var(--ui-scale) * 1px) var(--space-2);
+  font-size: var(--font-size-ui-sm);
   border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   align-items: center;
 }
 

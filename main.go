@@ -102,6 +102,8 @@ func main() {
 		},
 		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
 		Mac: &mac.Options{
+			// 隐藏系统白标题栏，红绿灯叠在主题顶栏上（壳层跟色板走）
+			TitleBar:             mac.TitleBarHidden(),
 			// 只要透明 WebView；不要 WindowIsTranslucent（会铺暗色 vibrancy，看起来像死黑）
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  false,

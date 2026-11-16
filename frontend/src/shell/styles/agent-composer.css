@@ -15,7 +15,7 @@
   align-items: flex-start;
   gap: 1px;
   width: 100%;
-  padding: 6px 8px;
+  padding: calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -30,39 +30,39 @@
 }
 
 .agent-composer-option-title {
-  font-size: 12.5px;
+  font-size: var(--font-size-ui);
   font-weight: 560;
 }
 
 .agent-composer-option-hint {
-  font-size: 10.5px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
   line-height: 1.3;
 }
 
 .agent-composer-custom {
   display: flex;
-  gap: 4px;
-  padding: 6px 4px 4px;
-  margin-top: 2px;
+  gap: var(--space-1);
+  padding: calc(6 * var(--ui-scale) * 1px) calc(4 * var(--ui-scale) * 1px) calc(4 * var(--ui-scale) * 1px);
+  margin-top: calc(2 * var(--ui-scale) * 1px);
   border-top: 1px solid var(--color-border-subtle);
 }
 
 .agent-composer-custom-input {
   flex: 1;
   min-width: 0;
-  height: 26px;
-  font-size: 12px;
+  height: var(--control-height-sm);
+  font-size: var(--font-size-ui);
 }
 
 .agent-composer-send {
-  min-width: 52px;
+  min-width: calc(52 * var(--ui-scale) * 1px);
   color: #ffffff;
 }
 
 .agent-auto-hint {
   margin: 0;
-  font-size: 10.5px;
+  font-size: var(--font-size-caption);
   line-height: 1.35;
   color: var(--color-text-muted);
   word-break: break-word;
@@ -70,32 +70,32 @@
 }
 
 .agent-auto-hint-item {
-  margin-right: 8px;
+  margin-right: calc(8 * var(--ui-scale) * 1px);
 }
 
 .agent-input-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .agent-input-actions-main {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   margin-left: auto;
 }
 
 .agent-user-content {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .agent-mention-chips-inline {
-  margin-bottom: 2px;
+  margin-bottom: calc(2 * var(--ui-scale) * 1px);
 }
 
 .agent-input-wrap {
@@ -107,14 +107,14 @@
 .agent-msg-images {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .agent-image-draft {
   position: relative;
   display: inline-flex;
-  width: 56px;
-  height: 56px;
+  width: calc(56 * var(--ui-scale) * 1px);
+  height: calc(56 * var(--ui-scale) * 1px);
   border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid var(--color-border);
@@ -130,8 +130,8 @@
 }
 
 .agent-msg-image {
-  width: 120px;
-  height: 120px;
+  width: calc(120 * var(--ui-scale) * 1px);
+  height: calc(120 * var(--ui-scale) * 1px);
   border-radius: var(--radius);
   border: 1px solid var(--color-border);
 }
@@ -140,12 +140,12 @@
   position: absolute;
   top: 2px;
   right: 2px;
-  width: 16px;
-  height: 16px;
+  width: var(--list-chevron-size);
+  height: var(--list-chevron-size);
   padding: 0;
   border: 0;
   border-radius: 50%;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   line-height: 16px;
   cursor: pointer;
   color: #fff;
@@ -157,8 +157,8 @@
 }
 
 .agent-input {
-  min-height: 52px;
-  max-height: 140px;
+  min-height: calc(52 * var(--ui-scale) * 1px);
+  max-height: calc(140 * var(--ui-scale) * 1px);
   resize: vertical;
   font-family: var(--agent-font, var(--font-sans));
   font-size: var(--font-size-ui);
@@ -172,15 +172,15 @@
 .agent-mention-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
 }
 
 .agent-mention-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   max-width: 100%;
-  padding: 2px 6px 2px 5px;
+  padding: calc(2 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px) calc(2 * var(--ui-scale) * 1px) calc(5 * var(--ui-scale) * 1px);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-ui-sm);
   border: 1px solid var(--color-border);
@@ -217,20 +217,20 @@
 }
 
 .agent-mention-chips-thread {
-  margin-bottom: 4px;
+  margin-bottom: calc(4 * var(--ui-scale) * 1px);
   align-items: center;
 }
 
 .agent-thread-mentions-label {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 600;
   color: var(--color-text-muted);
-  margin-right: 4px;
+  margin-right: calc(4 * var(--ui-scale) * 1px);
   flex-shrink: 0;
 }
 
 .agent-mention-chip-kind {
-  font-size: 9px;
+  font-size: var(--font-size-rail);
   font-weight: 700;
   color: var(--accent);
   opacity: 1;
@@ -240,7 +240,25 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 160px;
+  max-width: calc(160 * var(--ui-scale) * 1px);
+}
+
+.agent-mention-clear-all {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: calc(2 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui-sm);
+  font-weight: 600;
+  line-height: 1.2;
+  border-radius: var(--radius-sm);
+  align-self: center;
+}
+
+.agent-mention-clear-all:hover {
+  color: var(--color-text);
+  background: var(--color-selection);
 }
 
 .agent-mention-chip-remove {
@@ -249,8 +267,8 @@
   color: inherit;
   opacity: 0.65;
   cursor: pointer;
-  padding: 0 2px;
-  font-size: 14px;
+  padding: 0 calc(2 * var(--ui-scale) * 1px);
+  font-size: calc(14 * var(--ui-scale) * 1px);
   line-height: 1;
 }
 
@@ -264,7 +282,7 @@
   right: 0;
   bottom: calc(100% + 6px);
   z-index: 20;
-  max-height: 220px;
+  max-height: calc(220 * var(--ui-scale) * 1px);
   overflow-y: auto;
   border-radius: var(--radius-xl);
   border: 1px solid var(--color-border);
@@ -274,8 +292,8 @@
 }
 
 .agent-mention-section-title {
-  padding: 6px 10px 4px;
-  font-size: 10px;
+  padding: calc(6 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px) calc(4 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-caption);
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -285,15 +303,15 @@
 .agent-mention-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
-  padding: 7px 10px;
+  padding: calc(7 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   border: none;
   background: none;
   color: var(--color-text);
   text-align: left;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
 }
 
 .agent-mention-item:hover,
@@ -303,9 +321,9 @@
 
 .agent-mention-icon {
   flex-shrink: 0;
-  font-size: 9px;
+  font-size: var(--font-size-rail);
   font-weight: 700;
-  padding: 2px 5px;
+  padding: calc(2 * var(--ui-scale) * 1px) calc(5 * var(--ui-scale) * 1px);
   border-radius: var(--radius);
   background: rgba(0, 122, 255, 0.2);
 }
@@ -333,7 +351,7 @@
 }
 
 .agent-mention-sublabel {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -341,18 +359,18 @@
 }
 
 .agent-mention-empty {
-  padding: 12px 10px;
-  font-size: 12px;
+  padding: calc(12 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui);
   color: var(--color-text-muted);
 }
 
 .agent-turn-tools {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: calc(3 * var(--ui-scale) * 1px);
   width: 100%;
   max-width: 100%;
-  margin: 6px 0 8px;
+  margin: calc(6 * var(--ui-scale) * 1px) 0 calc(8 * var(--ui-scale) * 1px);
   min-width: 0;
   box-sizing: border-box;
 }
@@ -376,14 +394,14 @@
 .agent-turn-tool-head {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: calc(7 * var(--ui-scale) * 1px);
   width: 100%;
   margin: 0;
-  padding: 6px 8px;
+  padding: calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
   border: 0;
   background: transparent;
   color: inherit;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   text-align: left;
   cursor: pointer;
   min-width: 0;
@@ -415,7 +433,7 @@
 
 .agent-turn-tool-status {
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
 }
 
@@ -440,7 +458,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 700;
   line-height: 1;
   color: var(--color-text-muted);
@@ -488,19 +506,19 @@
 
 .agent-turn-tool-body {
   min-width: 0;
-  padding: 0 8px 8px;
+  padding: 0 calc(8 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
   border-top: 1px solid var(--color-border-subtle);
   overflow: hidden;
 }
 
 .agent-turn-tool-pre {
-  margin: 6px 0 0;
+  margin: calc(6 * var(--ui-scale) * 1px) 0 0;
   max-width: 100%;
-  max-height: 220px;
+  max-height: calc(220 * var(--ui-scale) * 1px);
   overflow: auto;
-  padding: 6px 8px;
+  padding: calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
   border-radius: var(--radius);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   line-height: 1.4;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   background: var(--color-editor);
@@ -510,7 +528,7 @@
 }
 
 .agent-turn-actions-loose {
-  margin-top: 4px;
+  margin-top: calc(4 * var(--ui-scale) * 1px);
   border-top: none;
   padding-top: 0;
 }
@@ -541,7 +559,7 @@
 
 /* 确认条：从 skills.css 收拢到 composer 域 */
 .agent-confirm {
-  padding: 10px 12px;
+  padding: calc(10 * var(--ui-scale) * 1px) calc(12 * var(--ui-scale) * 1px);
   border-top: 1px solid var(--color-border);
   border-left: 2px solid var(--color-warning, #d97706);
   background: color-mix(in srgb, var(--color-warning, #d97706) 10%, var(--color-surface));
@@ -549,22 +567,22 @@
 
 .agent-confirm-summary {
   font-size: var(--font-size-ui, 12px);
-  margin: 0 0 8px;
+  margin: 0 0 calc(8 * var(--ui-scale) * 1px);
 }
 
 .agent-confirm-list {
   list-style: none;
-  margin: 0 0 10px;
+  margin: 0 0 calc(10 * var(--ui-scale) * 1px);
   padding: 0;
-  max-height: 220px;
+  max-height: calc(220 * var(--ui-scale) * 1px);
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
 }
 
 .agent-confirm-item {
-  padding: 6px 8px;
+  padding: calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -574,8 +592,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: var(--space-2);
+  font-size: var(--font-size-ui);
 }
 
 .agent-confirm-item-label {
@@ -586,46 +604,46 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  font-size: 11px;
+  gap: var(--space-2);
+  margin-top: calc(6 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui-sm);
 }
 
 .agent-confirm-sql-compact {
-  margin-top: 6px;
-  max-height: 80px;
+  margin-top: calc(6 * var(--ui-scale) * 1px);
+  max-height: calc(80 * var(--ui-scale) * 1px);
 }
 
 .agent-confirm-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .agent-confirm-detail {
-  margin: 0 0 10px;
+  margin: 0 0 calc(10 * var(--ui-scale) * 1px);
 }
 
 .agent-confirm-detail-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-  font-size: 11px;
+  gap: var(--space-2);
+  margin-bottom: calc(6 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
 }
 
 .agent-confirm-detail-label {
-  margin: 0 0 4px;
-  font-size: 11px;
+  margin: 0 0 calc(4 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui-sm);
   font-weight: 600;
   color: var(--color-text-muted);
 }
 
 .agent-confirm-badge {
-  padding: 1px 6px;
+  padding: 1px calc(6 * var(--ui-scale) * 1px);
   border-radius: var(--radius-xs);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 700;
   background: color-mix(in srgb, var(--color-warning, #d97706) 18%, transparent);
   color: var(--color-warning, #d97706);
@@ -638,11 +656,11 @@
 
 .agent-confirm-sql {
   margin: 0;
-  max-height: 200px;
+  max-height: calc(200 * var(--ui-scale) * 1px);
   overflow: auto;
-  padding: 8px 10px;
+  padding: calc(8 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   border-radius: var(--radius-sm);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   line-height: 1.45;
   font-family: var(--font-mono);
   background: var(--color-editor);

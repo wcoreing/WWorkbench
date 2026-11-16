@@ -2,6 +2,8 @@ export type { CommandSource, WorkbenchCommand } from '../workbench/workbenchComm
 export { useWorkbenchCommand } from '../workbench/useWorkbenchCommand'
 export { capabilityToProductId } from '../workbench/routing'
 export { dispatchWorkbenchCommand, openCapability } from '../workbench/workbenchCommandBus'
+export { openResource, openAsProduct } from '../workbench/resourceWindow'
+export type { OpenResourceInput, ResourceKind, ResourcePresentation } from '../workbench/resourceWindow'
 export {
   openTerminal,
   openSftp,

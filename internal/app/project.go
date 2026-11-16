@@ -5,9 +5,18 @@ import (
 
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
 	"WWorkbench/internal/workbench"
 	"WWorkbench/internal/workbenchtools"
 )
+
+// ensureProjectNotebookRoot 确保 项目/{名}/对话/ 落盘，供指挥台一跳打开。
+func (s *Service) ensureProjectNotebookRoot(name string) {
+	if s == nil || s.notebook == nil {
+		return
+	}
+	_, _ = s.notebook.EnsureWorkbenchProjectDialogDir(name)
+}
 
 // ListWorkbenchProjects 列出项目组合。
 func (s *Service) ListWorkbenchProjects() ApiResult[[]model.WorkbenchProjectDO] {
@@ -41,6 +50,8 @@ func (s *Service) SaveWorkbenchProject(p model.WorkbenchProjectDO) ApiResult[mod
 	if err != nil {
 		return ErrResult[model.WorkbenchProjectDO](err)
 	}
+	s.ensureProjectNotebookRoot(saved.Name)
+	_ = s.store.SetAppSetting(store.SettingLastWorkbenchProjectID, saved.ID)
 	if s.radar != nil {
 		s.radar.EmitAsset(workbench.RadarDomainProject, "project", op, saved.ID, "ui-project-save", saved.Name, true)
 	}

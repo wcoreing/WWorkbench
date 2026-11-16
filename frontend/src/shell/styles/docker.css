@@ -22,7 +22,7 @@
   }
 
   .docker-table-containers {
-    min-width: 420px;
+    min-width: calc(420 * var(--ui-scale) * 1px);
   }
 }
 
@@ -68,7 +68,7 @@
 }
 
 .docker-table-containers .docker-col-state {
-  width: 78px;
+  width: calc(78 * var(--ui-scale) * 1px);
 }
 
 .docker-table-containers .docker-col-ports {
@@ -85,11 +85,11 @@
 }
 
 .docker-table-containers .docker-col-uptime {
-  width: 64px;
+  width: calc(64 * var(--ui-scale) * 1px);
 }
 
 .docker-table-containers .docker-col-actions {
-  width: 148px;
+  width: calc(148 * var(--ui-scale) * 1px);
 }
 
 .docker-table-containers th.docker-th-actions,
@@ -123,7 +123,7 @@
 .docker-image-cell {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
@@ -141,7 +141,7 @@
 .docker-summary-cell {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: calc(5 * var(--ui-scale) * 1px);
   max-width: 100%;
   margin: 0;
   padding: 0;
@@ -174,7 +174,7 @@
 
 .docker-summary-extra {
   flex-shrink: 0;
-  padding-left: 5px;
+  padding-left: calc(5 * var(--ui-scale) * 1px);
   border-left: 1px solid var(--color-divider);
   font-size: var(--font-size-caption);
   font-weight: 500;
@@ -188,7 +188,7 @@
 
 .docker-edit-empty {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   color: var(--color-text-muted);
 }
 
@@ -199,20 +199,20 @@
 .docker-edit-rw {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
+  gap: var(--space-1);
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-2);
   white-space: nowrap;
 }
 
 .docker-copy-btn {
   flex-shrink: 0;
-  padding: 0 4px;
+  padding: 0 calc(4 * var(--ui-scale) * 1px);
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   line-height: 1.4;
   opacity: 0;
 }
@@ -228,11 +228,11 @@
 }
 
 .docker-col-actions {
-  width: 148px;
+  width: calc(148 * var(--ui-scale) * 1px);
   white-space: nowrap;
   text-align: right;
-  padding-left: 4px;
-  padding-right: 8px;
+  padding-left: calc(4 * var(--ui-scale) * 1px);
+  padding-right: calc(8 * var(--ui-scale) * 1px);
 }
 
 .docker-table-containers th,
@@ -243,10 +243,10 @@
 .docker-selection-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 32px;
+  gap: calc(10 * var(--ui-scale) * 1px);
+  min-height: var(--toolbar-height);
   flex-wrap: nowrap;
-  padding: 0 10px;
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
   flex-shrink: 0;
@@ -266,7 +266,7 @@
 .docker-selection-actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   flex-wrap: nowrap;
 }
 
@@ -287,7 +287,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 2px;
+  gap: calc(2 * var(--ui-scale) * 1px);
   flex-wrap: nowrap;
 }
 
@@ -303,8 +303,8 @@
 }
 
 .docker-act-btn {
-  height: 22px;
-  padding: 0 6px;
+  height: var(--list-row-height);
+  padding: 0 calc(6 * var(--ui-scale) * 1px);
   border: none;
   border-radius: var(--radius);
   background: transparent;
@@ -353,8 +353,8 @@
 .docker-chrome-status {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 10px;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
   white-space: nowrap;
@@ -398,16 +398,16 @@
 .docker-compose-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: var(--toolbar-height);
-  padding: 0 10px;
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   background: var(--color-toolbar);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
 .docker-compose-path {
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
   max-width: 40%;
   overflow: hidden;
@@ -432,8 +432,8 @@
 }
 
 .docker-compose-log-service {
-  margin-left: 8px;
-  font-size: 11px;
+  margin-left: calc(8 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
 }
 
@@ -446,7 +446,7 @@
 }
 
 .ssh-forward-subhead {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -473,7 +473,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   font-weight: 500;
   color: var(--color-text);
 }
@@ -484,20 +484,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-family: var(--font-mono);
   color: var(--color-text-muted);
 }
 
 .ssh-forward-act {
   flex-shrink: 0;
-  height: 20px;
+  height: var(--icon-rail);
   padding: 0 var(--space-1);
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   cursor: pointer;
   opacity: 0.55;
   transition: opacity 0.12s, color 0.12s, background 0.12s;
@@ -582,7 +582,7 @@
 .local-port-quick {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: calc(2 * var(--ui-scale) * 1px);
   flex-shrink: 0;
 }
 
@@ -590,14 +590,14 @@
   font-variant-numeric: tabular-nums;
   min-width: 0;
   padding: 0 var(--space-1);
-  height: 20px;
+  height: var(--icon-rail);
 }
 
 .local-port-force-dialog {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   color: var(--color-text-secondary);
   user-select: none;
 }
@@ -628,7 +628,7 @@
 .local-port-num {
   flex-shrink: 0;
   min-width: 3.25em;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
@@ -641,7 +641,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-secondary);
 }
 
@@ -651,20 +651,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-family: var(--font-mono);
   color: var(--color-text-muted);
 }
 
 .local-port-kill {
   flex-shrink: 0;
-  height: 20px;
+  height: var(--icon-rail);
   padding: 0 var(--space-2);
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   cursor: pointer;
   opacity: 0.55;
   transition: opacity 0.12s, color 0.12s, background 0.12s;
@@ -704,8 +704,8 @@
 }
 
 .wn-field-hint {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
-  margin-top: 4px;
+  margin-top: calc(4 * var(--ui-scale) * 1px);
 }
 

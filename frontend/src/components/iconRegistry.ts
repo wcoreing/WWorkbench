@@ -31,6 +31,7 @@ import plus from '../assets/icons/plus.png'
 import port from '../assets/icons/port.png'
 import primarykey from '../assets/icons/primarykey.png'
 import procedure from '../assets/icons/procedure.png'
+import project from '../assets/icons/project.png'
 import refresh from '../assets/icons/refresh.png'
 import save from '../assets/icons/save.png'
 import schema from '../assets/icons/schema.png'
@@ -82,6 +83,7 @@ export const ICON_SRC = {
   port,
   primarykey,
   procedure,
+  project,
   refresh,
   save,
   schema,
@@ -101,7 +103,7 @@ export const ICON_SRC = {
   view,
   // 语义别名（业务名 → 资源名）
   folder: sftp,
-  layers: environment,
+  layers: project,
   http: httpapi,
 } as const
 

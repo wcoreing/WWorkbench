@@ -296,7 +296,7 @@ func toolDistillSkill(_ context.Context, d *Deps, raw json.RawMessage) ToolResul
 	if in.Intent != "" {
 		summary = truncateRunes(in.Intent, intentTitleMaxRune)
 	}
-	stageBrowser(d, summary)
+	// 确认门 ProductForTool=notebook；此处不再 stageBrowser，避免项目误调时抢走当前页。
 	return Confirm(uuid.NewString(), summary, preview)
 }
 
@@ -342,7 +342,7 @@ func DistillSkillConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolRe
 	if err != nil {
 		return Fail(err.Error())
 	}
-	stageBrowser(d, "已保存 工作流笔记 "+p.Name)
+	// 落盘后不 stageBrowser：Skill 跟资源走，避免从项目误调 distill 时跳到任务页。
 	noteHint := "已写入 工作流笔记草稿；请编辑优化后 get_skill 让 Agent 执行（run_skill 仅为可选捷径）。"
 	if p.NoteID != "" {
 		noteHint = "已写入 工作流笔记 noteId=" + p.NoteID + "；编辑优化 → get_skill；run_skill 可选。"

@@ -4,7 +4,17 @@ import { IconUiSettings } from '../components/ShellChromeIcons'
 import { pressProps, useDismissOverlays } from '../components/compat'
 import { useI18n } from '../i18n'
 import { useAppStore } from '../stores/appStore'
+import { APP_THEMES, type AppTheme } from '../theme/appTheme'
 import { DEFAULT_UI_FONT_SIZE, UI_FONT_SIZES } from './uiFontSize'
+
+const THEME_LABEL_KEYS: Record<AppTheme, string> = {
+  light: 'shell.themeLight',
+  cream: 'shell.themeCream',
+  gold: 'shell.themeGold',
+  grass: 'shell.themeGrass',
+  olive: 'shell.themeOlive',
+  dark: 'shell.themeDark',
+}
 
 const LOCALE_OPTIONS: Array<{ id: AppLocale; labelKey: string }> = [
   { id: 'zh', labelKey: 'shell.langZh' },
@@ -49,24 +59,18 @@ export function ShellSettingsMenu() {
         <div className="shell-locale-dropdown shell-settings-dropdown" role="menu">
           <div className="shell-settings-section" role="group" aria-label={t('shell.theme')}>
             <div className="shell-settings-label">{t('shell.theme')}</div>
-            <button
-              type="button"
-              role="menuitemradio"
-              aria-checked={theme === 'light'}
-              className={`shell-locale-item${theme === 'light' ? ' active' : ''}`}
-              {...pressProps(() => setTheme('light'))}
-            >
-              {t('shell.themeLight')}
-            </button>
-            <button
-              type="button"
-              role="menuitemradio"
-              aria-checked={theme === 'dark'}
-              className={`shell-locale-item${theme === 'dark' ? ' active' : ''}`}
-              {...pressProps(() => setTheme('dark'))}
-            >
-              {t('shell.themeDark')}
-            </button>
+            {APP_THEMES.map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="menuitemradio"
+                aria-checked={theme === id}
+                className={`shell-locale-item${theme === id ? ' active' : ''}`}
+                {...pressProps(() => setTheme(id))}
+              >
+                {t(THEME_LABEL_KEYS[id])}
+              </button>
+            ))}
           </div>
 
           <div className="shell-settings-sep" />
@@ -98,16 +102,20 @@ export function ShellSettingsMenu() {
                 role="menuitemradio"
                 aria-checked={uiFontSize === size}
                 className={`shell-locale-item shell-settings-fontsize-item${uiFontSize === size ? ' active' : ''}`}
+                title={size >= 16 ? t('shell.fontSizeComfortHint') : undefined}
                 {...pressProps(() => setUiFontSize(size))}
               >
                 <span className="shell-fontsize-label" style={{ fontSize: size }}>
                   {size}px
                 </span>
-                {size === DEFAULT_UI_FONT_SIZE && (
+                {size === DEFAULT_UI_FONT_SIZE ? (
                   <span className="shell-fontsize-tag">{t('shell.fontSizeDefault')}</span>
-                )}
+                ) : size >= 16 ? (
+                  <span className="shell-fontsize-tag">{t('shell.fontSizeComfort')}</span>
+                ) : null}
               </button>
             ))}
+            <p className="shell-settings-hint">{t('shell.fontSizeDesc')}</p>
           </div>
         </div>
       )}

@@ -1,0 +1,111 @@
+/* 结构 token：字号 / 间距 / 控件高 / 轨宽。由 --ui-scale 驱动；圆角不随 scale 放大。 */
+:root {
+  /* macOS 系统字体优先；Windows 用微软雅黑（中文），再 Segoe。 */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei UI', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'SFMono-Regular', ui-monospace, Menlo, Consolas, 'Microsoft YaHei Mono',
+    monospace;
+
+  /*
+   * UI 控制分层：
+   * - data-theme：只换色/阴影（见 tokens-color.css）
+   * - --ui-scale：密度/舒适度（设置「字体大小」驱动；禁止再用整壳 CSS zoom）
+   * 组件只消费下方已 calc 的 token，禁止写死 px（编辑器正文除外，走各自字号设置）。
+   */
+  --ui-scale: 1;
+
+  --font-size-caption-n: 10;
+  --font-size-ui-sm-n: 11;
+  --font-size-ui-n: 12;
+  --font-size-title-n: 13;
+  --font-size-rail-n: 9;
+  --font-size-caption: calc(var(--font-size-caption-n) * var(--ui-scale) * 1px);
+  --font-size-ui-sm: calc(var(--font-size-ui-sm-n) * var(--ui-scale) * 1px);
+  --font-size-ui: calc(var(--font-size-ui-n) * var(--ui-scale) * 1px);
+  --font-size-title: calc(var(--font-size-title-n) * var(--ui-scale) * 1px);
+  --font-size-rail: calc(var(--font-size-rail-n) * var(--ui-scale) * 1px);
+  --line-height-tight: 1.25;
+  --line-height-ui: 1.4;
+
+  /* 圆角：不随密度放大，避免大字号变「泡芙」。主题可覆盖。 */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --space-1-n: 4;
+  --space-2-n: 8;
+  --space-3-n: 12;
+  --space-4-n: 16;
+  --space-5-n: 20;
+  --space-6-n: 24;
+  --chrome-pad-x-n: 10;
+  --chrome-gap-n: 4;
+  --content-pad-n: 12;
+  --space-1: calc(var(--space-1-n) * var(--ui-scale) * 1px);
+  --space-2: calc(var(--space-2-n) * var(--ui-scale) * 1px);
+  --space-3: calc(var(--space-3-n) * var(--ui-scale) * 1px);
+  --space-4: calc(var(--space-4-n) * var(--ui-scale) * 1px);
+  --space-5: calc(var(--space-5-n) * var(--ui-scale) * 1px);
+  --space-6: calc(var(--space-6-n) * var(--ui-scale) * 1px);
+  --chrome-pad-x: calc(var(--chrome-pad-x-n) * var(--ui-scale) * 1px);
+  --chrome-gap: calc(var(--chrome-gap-n) * var(--ui-scale) * 1px);
+  --content-pad: calc(var(--content-pad-n) * var(--ui-scale) * 1px);
+  --section-gap: 0px;
+
+  --icon-sm-n: 14;
+  --icon-md-n: 18;
+  --icon-chrome-n: 18;
+  --icon-rail-n: 20;
+  --icon-sm: calc(var(--icon-sm-n) * var(--ui-scale) * 1px);
+  --icon-md: calc(var(--icon-md-n) * var(--ui-scale) * 1px);
+  --icon-chrome: calc(var(--icon-chrome-n) * var(--ui-scale) * 1px);
+  --icon-rail: calc(var(--icon-rail-n) * var(--ui-scale) * 1px);
+
+  /* 分栏宽度随密度略增，避免大字号轨/侧栏挤爆 */
+  --sidebar-width-n: 220;
+  --product-rail-width-n: 48;
+  --rail-item-height-n: 44;
+  --chrome-height-n: 38;
+  --toolbar-height-n: 32;
+  --tab-height-n: 30;
+  --statusbar-height-n: 22;
+  --control-height-n: 30;
+  --control-height-sm-n: 26;
+  --control-height-chrome-n: 24;
+  --sidebar-width: calc(var(--sidebar-width-n) * var(--ui-scale) * 1px);
+  --product-rail-width: calc(var(--product-rail-width-n) * var(--ui-scale) * 1px);
+  --rail-item-height: calc(var(--rail-item-height-n) * var(--ui-scale) * 1px);
+  --chrome-height: calc(var(--chrome-height-n) * var(--ui-scale) * 1px);
+  --toolbar-height: calc(var(--toolbar-height-n) * var(--ui-scale) * 1px);
+  --tab-height: calc(var(--tab-height-n) * var(--ui-scale) * 1px);
+  --statusbar-height: calc(var(--statusbar-height-n) * var(--ui-scale) * 1px);
+  --control-height: calc(var(--control-height-n) * var(--ui-scale) * 1px);
+  --control-height-sm: calc(var(--control-height-sm-n) * var(--ui-scale) * 1px);
+  --control-height-chrome: calc(var(--control-height-chrome-n) * var(--ui-scale) * 1px);
+
+  /* 侧栏/对象树列表密度（对齐 Cursor/VS Code explorer ~22px） */
+  /* 列表行：对齐 --font-size-ui + icon-sm，大字号下不挤 */
+  --list-row-height-n: 26;
+  --list-row-pad-y-n: 1;
+  --list-row-pad-x-n: 6;
+  --list-row-gap-n: 3;
+  --list-chevron-size-n: 16;
+  --list-row-height: calc(var(--list-row-height-n) * var(--ui-scale) * 1px);
+  --list-row-pad-y: calc(var(--list-row-pad-y-n) * var(--ui-scale) * 1px);
+  --list-row-pad-x: calc(var(--list-row-pad-x-n) * var(--ui-scale) * 1px);
+  --list-row-gap: calc(var(--list-row-gap-n) * var(--ui-scale) * 1px);
+  --list-chevron-size: calc(var(--list-chevron-size-n) * var(--ui-scale) * 1px);
+
+  --motion-fast: 100ms;
+  --motion-ui: 140ms;
+  --ease-ui: cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-ui: 0ms;
+  }
+}

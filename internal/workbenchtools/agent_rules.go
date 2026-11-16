@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.15m"
+const AgentRulesVersion = "2026.11.16b"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -32,17 +32,22 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 ## 0c. 词典与自学习闭环（先探索，再确定）
 - **任务**：人分配的目标（要办成的事；常与 Chrome 标签组 session 对齐）。不是待办列表实体名。
 - **任务账本 / 日志**：SSOT。含 **思考（kind=thought）** 与 **操作（kind=op）**；TaskRun → 工作流/{name}/log.md。探索期如实记录；是总结技能的**资料**，不是必须逐步回放的脚本。
-- **工作流协议（Skill）**：笔记本**基础能力**（任意目录下的 SKILL.md + log.md + assets/、scripts/）。结构：说明 → 经验 → 步骤 → 脚本 → 资源。**引擎是 Agent**。顶栏「工作流/」只是任务产品的默认落点，不是唯一位置。
+- **工作流协议（Skill）**：笔记本**基础能力**（任意目录下的 SKILL.md + log.md + assets/、scripts/）。结构：说明 → 经验 → 步骤 → 脚本 → 资源。**引擎是 Agent**。Skill **跟资源走**，不是「任务」的子类；顶栏「工作流/」只是任务产品默认落点。
+- **Skill 归属（强制）**：
+  - **项目方法**（智能配置、跨机同步、部署清单等）→ 项目/{项目名}/SKILL.md；update_skill / get_skill 必须传完整目录路径（如 name=项目/百度标注），**禁止**落到 工作流/。
+  - **主机部署/巡检** → 记忆区/{主机}/项目/{名}/SKILL.md（传完整路径）。
+  - **浏览器任务探索** → 仅此时默认 工作流/{任务名}/（与 log.md 同目录）。
+  - 短名新建默认仍映射任务区；项目/运维收口**禁止用短名新建**，以免误进 工作流/。
 - **插件解耦**：浏览器扩展（wwb）与 Kimi WebBridge（kimi）只是执行器；任务场景**禁止直连** 127.0.0.1:10086 / 18765，一律经 browser_*（executor=wwb|kimi|auto），由工作台记 op。
 - **自学习两阶段（必须遵守）**：
   1. **探索**：接受目标后动手完成；过程经验写入账本/log.md（browser_* 自动记 op；关键决策用 task_record(kind=thought)）。此阶段以达成目标为主，Skill 可先粗糙或不存在。
-  2. **收口**：目标完成后，**推理总结**再 update_skill（归纳稳定路径/经验/脚本/资源）；**name=当前任务名**（与 log.md 同目录），禁止沉淀到别的工作流；禁止机械把 log 逐步贴进 Skill，禁止只口头总结不落盘。**update_skill 免确认**：无实质变更则 skipped；有变更则**写前 pin 目录版本**再落盘（仍须 intent）。
+  2. **收口**：目标完成后，**推理总结**再 update_skill（归纳稳定路径/经验/脚本/资源）；**name=归属目录**（任务=工作流/{任务}；项目=项目/{名}；与 log.md 同目录），禁止沉淀到错误业务根；禁止机械把 log 逐步贴进 Skill，禁止只口头总结不落盘。**项目收口**用 update_skill(lessons=…) 即可，**不必 steps**，**禁止** distill_skill / 切任务页。**update_skill 免确认**：无实质变更则 skipped；有变更则**写前 pin 目录版本**再落盘（仍须 intent）。
   3. **宏↔Skill**：探索用单工具/fill(fields)；跑稳后用 browser_run(mode=macro)。收口时把该稳定段写成一条 wwb-skill-steps（action=browser_run，args.allowWrite=true，args.steps=嵌套步）。下次 get_skill → Agent 调 browser_run，或 run_skill 机械跑宏一步。宏≠自动写 Skill；挂钩靠收口沉淀。
 - **谁执行**：当前在用的 Agent（Cursor / 侧栏 / 其他 MCP 客户端）负责两阶段；舞台只备资料与焦点，不指定通道、不机械写 Skill。
-- **磁盘真源**：笔记本 = ~/.wworkbench/notebook/。根下按**业务工作根**分区隔离：工作流/（任务产品默认）、运维/、记忆区/。产品只挂自己的根；笔记本产品看全盘。样板：get_skill(skill=wwb-skill-standard)。当前任务若只有 log.md，update_skill 可带 steps 首创同目录 SKILL.md。
+- **磁盘真源**：笔记本 = ~/.wworkbench/notebook/。根下按**业务工作根**分区：工作流/（任务）、项目/（Workbench 项目）、运维/、记忆区/。产品只挂自己的根；笔记本产品看全盘。样板：get_skill(skill=wwb-skill-standard)。当前目录若只有 log.md，update_skill 可带 steps 首创同目录 SKILL.md。
 - **log.md**：与 SKILL.md 同目录的账本投影；同步时**只追加**更高 seq 的思考/操作并刷新头信息，不整文件覆盖。get_skill / list_skills **只认 SKILL.md**。
 - **目录版本（笔记本基础能力）**：任意文件夹可 enable_dir_version；仓在目录内 .git。技能目录默认 ignore log.md。list_dir_versions / pin_dir_version；Skill 兼容 list/pin/restore_skill_version。update_skill：有变更时写前+写后各 pin（可 restore 回更新前）。
-- 关系：分配目标 → 探索记账本（思考+操作）→ 完成后 update_skill(当前任务) → 下次 get_skill 更强。
+- 关系：分配目标 → 探索记账本（思考+操作）→ 完成后 update_skill(归属目录) → 下次 get_skill 更强。
 
 ## 1. 产品定位（勿做成 Cursor 插件叙事）
 - WWorkbench 是舞台：人看得见终端、确认弹窗、状态栏；你是外置协作者，不是取代人完成任务。
@@ -99,20 +104,21 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 ## 7. 笔记本 = 底座；业务 = 工作根组合
 - 笔记本是基础服务（树/编辑/版本/角色）；业务产品组合舞台 + 自己的工作根，禁止再造第二套文件树。
 - 读：list_notes / search_notes / get_note。写：notebook_append_content；附件进该笔记/Skill 目录的 assets。
-- **任务产品**工作根 = 工作流/；新任务 Skill 默认落 工作流/{name}/SKILL.md + log.md。
+- **任务产品**工作根 = 工作流/；仅网页任务 Skill 默认落 工作流/{name}/SKILL.md + log.md。
+- **项目产品**工作根 = 项目/（+ 记忆区/）；项目方法 Skill = 项目/{项目名}/SKILL.md；收口与智能配置沉淀**必须** update_skill(name=项目/{名})，并可用 configure_project_resources 把 skill:项目/{名}/SKILL.md 钉进 links。
 - **运维类产品**工作根 = 运维/ + 记忆区/；主机约定写记忆册，不要塞进任务区「工作流/」。
 - **整理页**（运维/整理页/）：人多选笔记作数据源并写需求；骨架页已落盘。收口时 get_note 读源 → notebook_append_content(appendToNoteId=整理页) 写重组正文；不是图谱、不要机械粘贴全文。
 - **整理页账密**：该目录用于管理账号密码。源笔记中的账号/密码/口令/密钥/连接串必须原样写入整理页；禁止脱敏、打码、省略。聊天勿复述明文密码，写进整理页即可。
 - **主机记忆册**：选中/连接 SSH 后自动成册于 记忆区/{主机名}/。开跑优先注入该册。
-- **记忆区项目 + 工作流协议**：部署等方法可落在 记忆区/{主机}/项目/{名}/SKILL.md（同一套 get_skill / update_skill）；get_skill 传完整目录路径或无歧义短名。
+- **记忆区项目 + Skill 协议**：绑主机的部署等方法落 记忆区/{主机}/项目/{名}/SKILL.md（同一套 get_skill / update_skill）；必须传完整目录路径。
 - **项目本地/远端目录**：约定笔记 frontmatter localPath / remotePath（侧栏右键设置）。发版前读约定或 get_workbench_context.hostProjects；本地改代码用 localPath，远端操作对准 remotePath。
-- **项目产品线**：组合器——选本机文件夹为锚点；gitRemote 空则 detect_project_git / save_project 自动探测 origin。手动「添加资源」可钉 ssh/db/docker/log/http/**note**/skill/backup；**智能配置必须经 Agent**：suggest_project_resources → 核对 → configure_project_resources。list/get/save_project；get_workbench_context.projects。
+- **项目产品线**：组合器——选本机文件夹为锚点；gitRemote 空则 detect_project_git / save_project 自动探测 origin。手动「添加资源」可钉 ssh/db/docker/log/http/**note**/skill/backup；**智能配置必须经 Agent**：suggest_project_resources → 核对 → configure_project_resources。list/get/save_project；get_workbench_context.projects。智能配置经验沉淀到 项目/{名}/，不要写进 工作流/。
 - **Cursor 对话跨机**：不能靠 requestId。真源={localPath}/.wworkbench/cursor-transcripts/（跟 git）。sync_project_cursor_transcripts(id, intent) 从本机 ~/.cursor/projects/*/agent-transcripts 导入并镜像笔记；换机 pull 后 list_project_cursor_transcripts → get_project_cursor_transcript（默认 md）读最近 1～2 条再续作。禁止整份 jsonl 贴进聊天。
 - **动手改某台机之前**：list_notes(sshHostId, role=memory) → get_note；部署再 get_skill(记忆区/…/项目/…)。
-- **工作流笔记**（role=skill / **/SKILL.md）：真源。list_skills / get_skill；**优先 get_skill 后自己用工具执行**；跑完 **update_skill**（name=目录路径或短名）沉淀。
+- **Skill 笔记**（role=skill / **/SKILL.md）：真源。list_skills / get_skill；**优先 get_skill 后自己用工具执行**；跑完 **update_skill**（name=完整目录路径；仅任务区可用短名）沉淀。
 - publish_agent_skill(noteId) **就地**标为 Skill（同目录 SKILL.md），不迁到「工作流/」；任务区发布须显式落到 工作流/{name}/。
-- 长期主机上下文 role=memory 且必须带 sshHostId；优先落主机册；项目方法用同目录 Skill。
-- Skill 寻址：短名默认 工作流/{name}；目录路径/业务根名 → 该目录 SKILL.md（见 notebook/skillref）。
+- 长期主机上下文 role=memory 且必须带 sshHostId；优先落主机册；项目方法用 项目/{名}/ Skill。
+- Skill 寻址：短名查找优先已有 项目/→记忆区/→运维/→工作流/；短名**新建**默认仍 工作流/{name}；目录路径 → 该目录 SKILL.md（见 notebook/skillref）。
 - 笔记本路径变更（改名/移动/复制/删除/建目录/建文件）会发 workbench-changed domain=notebook.path；writeId 前缀 ui-notebook-* 表示本机 UI 已处理。
 
 ## 8. 插件包（database 产品 UI，不是连库）

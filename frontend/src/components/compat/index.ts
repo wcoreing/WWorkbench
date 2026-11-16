@@ -9,7 +9,7 @@
  * 3. 弹层挂载 → ModalPortal
  * 4. 菜单外点关闭 → pointerdown（useDismissOnPointerDown），禁止 click/mousedown
  * 5. 抢焦区 / 命令壳 → FocusGate（data-ww-focus-hog / data-ww-chrome）
- * 6. CSS zoom 飞选 → 宿主加 ww-zoom-content + zoomCompensatedPx；可选 bindSelectionGuard
+ * 6. Monaco/xterm 选区飞选 → bindSelectionGuard（UI 密度走 --ui-scale token，无整壳 zoom）
  * 7. 弹窗遮罩关闭 → backdropDismissProps（禁止 pressProps/裸 onClick，防拖选误关）
  *
  * 套其他框架示例：
@@ -34,4 +34,4 @@ export {
   CHROME_ATTR,
 } from './focusGate'
 export { bindSelectionGuard, SELECT_DRAG_SLOP_PX } from './selectionGuard'
-export { zoomCompensatedPx } from './zoomContent'
+export { getWorkbenchOverlayRoot } from './overlayRoot'

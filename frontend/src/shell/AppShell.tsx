@@ -14,6 +14,7 @@ import { useAgentStore } from '../stores/agentStore'
 import { ConfirmHost } from '../components/ConfirmHost'
 import { NotifyHost } from '../notify'
 import { installFocusGate } from '../components/compat'
+import { ResourceDialogHost } from '../workbench/resourceWindow'
 import { useI18n } from '../i18n'
 import type { ProductId } from './products'
 import './shell.css'
@@ -90,8 +91,10 @@ export function AppShell() {
         <AgentPanel collapsed={!agentOpen} />
       </div>
       <StatusBar />
+      <div id="wwb-overlay-root" className="workbench-overlay-root" />
       <ConfirmHost />
       <NotifyHost />
+      <ResourceDialogHost />
     </div>
   )
 }

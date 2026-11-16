@@ -61,15 +61,22 @@ export function openDatabase(
   )
 }
 
-/** openNotebook 按主机/连接创建或打开笔记。 */
+/** openNotebook 按主机/连接创建或打开笔记；folderId 仅定位侧栏目录。 */
 export function openNotebook(
-  opts: { noteId?: string; hostId?: string; connectionId?: string; initialCommand?: string },
+  opts: {
+    noteId?: string
+    folderId?: string
+    hostId?: string
+    connectionId?: string
+    initialCommand?: string
+  },
   source: CommandSource = 'user',
 ) {
   openCapability(
     Capability.NotebookOpen,
     {
       noteId: opts.noteId,
+      folderId: opts.folderId,
       hostId: opts.hostId,
       connectionId: opts.connectionId,
       initialCommand: opts.initialCommand,

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
-import { backdropDismissProps, pressProps, bindSelectionGuard, zoomCompensatedPx } from '../../components/compat'
+import { backdropDismissProps, pressProps, bindSelectionGuard } from '../../components/compat'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
+import { isDarkTheme } from '../../theme/appTheme'
 import { askConfirm } from '../../utils/askConfirm'
 import { guessMonacoLanguage } from './sftpTextLanguage'
 
@@ -39,11 +40,10 @@ export function SftpTextEditor({
 }: Props) {
   const { t } = useI18n()
   const theme = useAppStore((s) => s.theme)
-  const uiFontSize = useAppStore((s) => s.uiFontSize)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const [dirty, setDirty] = useState(false)
-  const fontSize = zoomCompensatedPx(BASE_FONT_PX, uiFontSize)
-  const lineHeight = zoomCompensatedPx(BASE_LINE_PX, uiFontSize)
+  const fontSize = BASE_FONT_PX
+  const lineHeight = BASE_LINE_PX
   const language = guessMonacoLanguage(name)
 
   useEffect(() => {
@@ -148,11 +148,11 @@ export function SftpTextEditor({
           <span className="sftp-text-editor-tab">{name}</span>
         </div>
 
-        <div className="sftp-text-editor-host ww-zoom-content">
+        <div className="sftp-text-editor-host">
           <Editor
             height="100%"
             language={language}
-            theme={theme === 'dark' ? 'vs-dark' : 'light'}
+            theme={isDarkTheme(theme) ? 'vs-dark' : 'light'}
             value={content}
             onChange={handleChange}
             onMount={onMount}
@@ -163,6 +163,7 @@ export function SftpTextEditor({
               scrollBeyondLastLine: false,
               wordWrap: 'on',
               automaticLayout: true,
+              fixedOverflowWidgets: false,
               tabSize: 2,
             }}
           />

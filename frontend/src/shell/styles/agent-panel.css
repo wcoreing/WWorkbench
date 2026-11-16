@@ -1,14 +1,10 @@
 /* Agent 侧栏壳：面板 / 历史 / 子视图
  * 左缘 ResizeHandle + 右侧内容列（与 ProductLayout 同一套分栏语言） */
 .agent-panel {
-  /* 对齐 Cursor workbench token（conversation / cursor-font-size-lg） */
-  --font-size-caption: 11px; /* --cursor-font-size-xs */
-  --font-size-ui-sm: 12px; /* --cursor-font-size-sm */
-  --font-size-ui: 14px; /* --cursor-font-size-lg / conversation */
-  --font-size-title: 14px;
-  --agent-prose-lh: 22px; /* --cursor-line-height-lg */
-  --agent-prose-gap: 0.75em; /* --rte-paragraph-margin-bottom */
-  --agent-turn-gap: 8px; /* --cursor-spacing-2 / transcript-row-gap */
+  /* 字号沿用系统 tokens.css（caption/ui-sm/ui/title），不再单独放大 */
+  --agent-prose-lh: calc(18 * var(--ui-scale) * 1px);
+  --agent-prose-gap: 0.65em;
+  --agent-turn-gap: var(--space-2);
   /*
    * Cursor 对话层实际优先 "SF Pro"（见 workbench .ui-y1aii3），
    * 再回落到 system-ui；中文由系统 CJK 补齐。
@@ -52,7 +48,7 @@
   display: flex;
   flex-shrink: 0;
   gap: 0;
-  min-height: 30px;
+  min-height: var(--control-height);
   padding: 0;
   border-bottom: 1px solid var(--color-divider);
   background: var(--color-toolbar);
@@ -61,7 +57,7 @@
 .agent-panel-tab {
   flex: 1;
   position: relative;
-  padding: 5px 8px;
+  padding: calc(5 * var(--ui-scale) * 1px) var(--space-2);
   font-size: var(--font-size-ui-sm);
   border: none;
   border-right: 1px solid var(--color-divider);
@@ -85,8 +81,8 @@
 .agent-panel-tab.is-active::after {
   content: '';
   position: absolute;
-  left: 10px;
-  right: 10px;
+  left: calc(10 * var(--ui-scale) * 1px);
+  right: calc(10 * var(--ui-scale) * 1px);
   bottom: 0;
   height: 1px;
   background: var(--accent);
@@ -103,9 +99,9 @@
   display: block;
   width: auto;
   text-align: left;
-  min-height: 34px;
-  padding: 8px 10px;
-  margin: 1px 8px;
+  min-height: calc(34 * var(--ui-scale) * 1px);
+  padding: var(--space-2) calc(10 * var(--ui-scale) * 1px);
+  margin: 1px var(--space-2);
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -166,8 +162,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-divider);
   font-size: var(--font-size-ui);
   font-weight: 600;

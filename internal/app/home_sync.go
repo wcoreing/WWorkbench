@@ -10,10 +10,22 @@ import (
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/homeclient"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
 	"WWorkbench/internal/workbench"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// rememberHomeSync 记录上次同步时间与说明，供账号弹窗展示。
+func (s *Service) rememberHomeSync(note string) {
+	if s == nil || s.store == nil {
+		return
+	}
+	_ = s.store.SetAppSetting(store.SettingHomeLastSyncAt, time.Now().UTC().Format(time.RFC3339))
+	if strings.TrimSpace(note) != "" {
+		_ = s.store.SetAppSetting(store.SettingHomeLastSyncNote, strings.TrimSpace(note))
+	}
+}
 
 func toMap(v any) map[string]any {
 	b, err := json.Marshal(v)
@@ -346,6 +358,7 @@ func (s *Service) HomeSyncNow() ApiResult[model.HomeSyncResultDO] {
 		if res.Data.BytesGzip > 0 && res.Data.BytesGzip != res.Data.Bytes {
 			sizeMsg = fmt.Sprintf("%s → gzip %s", humanBytes(res.Data.Bytes), humanBytes(res.Data.BytesGzip))
 		}
+		s.rememberHomeSync(res.Data.Note)
 		s.emitHomeSync("done", 100, fmt.Sprintf("同步完成 · %s · %dms", sizeMsg, res.Data.DurationMs), map[string]any{
 			"bytes": res.Data.Bytes, "bytesGzip": res.Data.BytesGzip, "docs": res.Data.Docs, "durationMs": res.Data.DurationMs,
 		})
@@ -370,6 +383,7 @@ func (s *Service) HomeSyncPush() ApiResult[model.HomeSyncResultDO] {
 	res := s.homeSyncPushWith(c, snap)
 	if res.Ok {
 		res.Data.DurationMs = time.Since(start).Milliseconds()
+		s.rememberHomeSync(res.Data.Note)
 	}
 	return res
 }
@@ -422,6 +436,7 @@ func (s *Service) HomeSyncPull() ApiResult[model.HomeSyncResultDO] {
 	res := s.homeSyncApplyPull(snap)
 	if res.Ok {
 		res.Data.DurationMs = time.Since(start).Milliseconds()
+		s.rememberHomeSync(res.Data.Note)
 	}
 	return res
 }

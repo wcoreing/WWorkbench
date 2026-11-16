@@ -19,28 +19,18 @@
 }
 
 .terminal-toolbar .product-actions > .chrome-vrule {
-  height: 14px;
+  height: var(--icon-sm);
   margin-inline: 3px;
   background: var(--color-divider);
 }
 
 .terminal-toolbar .wn-btn-run {
   padding-inline: 9px;
-  color: #fff;
-  background: var(--accent);
-  border-color: var(--accent);
-  box-shadow: var(--shadow-sm);
-}
-
-.terminal-toolbar .wn-btn-run:not(:disabled):hover {
-  color: #fff;
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
 }
 
 .terminal-toolbar .product-toolbar-status {
-  max-width: 180px;
-  padding-left: 10px;
+  max-width: calc(180 * var(--ui-scale) * 1px);
+  padding-left: calc(10 * var(--ui-scale) * 1px);
   border-left: 1px solid var(--color-divider);
 }
 
@@ -60,65 +50,81 @@
   overflow: hidden;
 }
 
+.terminal-sidebar,
+.sftp-sidebar,
+.database-sidebar {
+  container-type: inline-size;
+  container-name: product-sidebar;
+}
+
+/* 侧栏分段：无底无框，选中靠字色/字重 */
 .terminal-side-tabs,
 .sftp-side-tabs,
 .database-side-tabs {
   display: flex;
   flex-shrink: 0;
-  gap: 2px;
-  margin: 8px 8px 4px;
-  padding: 2px;
+  gap: calc(2 * var(--ui-scale) * 1px);
+  margin: calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px) calc(2 * var(--ui-scale) * 1px);
+  padding: 0;
   border: none;
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  border-radius: 0;
+  background: transparent;
 }
 
 .terminal-side-tab,
 .sftp-side-tab,
 .database-side-tab {
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
-  height: 24px;
-  padding: 0 4px;
+  height: var(--control-height-sm);
+  padding: 0 calc(2 * var(--ui-scale) * 1px);
   border: none;
-  border-radius: calc(var(--radius) - 2px);
+  border-radius: var(--radius-sm);
   background: transparent;
+  box-shadow: none;
   color: var(--color-text-muted);
-  font-size: var(--font-size-ui-sm);
+  font-size: var(--font-size-ui);
   font-weight: 500;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: background var(--motion-fast) var(--ease-ui), color var(--motion-fast) var(--ease-ui);
+  transition: color var(--motion-fast) var(--ease-ui), background var(--motion-fast) var(--ease-ui);
 }
 
 .terminal-side-tab:hover,
 .sftp-side-tab:hover,
 .database-side-tab:hover {
   color: var(--color-text);
+  background: transparent;
 }
 
 .terminal-side-tab.is-active,
 .sftp-side-tab.is-active,
 .database-side-tab.is-active {
-  color: var(--color-text);
-  background: var(--color-surface-raised);
-  font-weight: 550;
-  box-shadow: 0 0.5px 0.5px rgba(24, 25, 31, 0.04), 0 1px 2px rgba(24, 25, 31, 0.06);
+  color: var(--accent);
+  background: transparent;
+  font-weight: 600;
+  box-shadow: none;
 }
 
 [data-theme='dark'] .terminal-side-tabs,
 [data-theme='dark'] .sftp-side-tabs,
-[data-theme='dark'] .database-side-tabs {
-  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+[data-theme='dark'] .database-side-tabs,
+[data-theme='olive'] .terminal-side-tabs,
+[data-theme='olive'] .sftp-side-tabs,
+[data-theme='olive'] .database-side-tabs {
+  background: transparent;
 }
 
 [data-theme='dark'] .terminal-side-tab.is-active,
 [data-theme='dark'] .sftp-side-tab.is-active,
-[data-theme='dark'] .database-side-tab.is-active {
-  box-shadow: 0 0.5px 0.5px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.28);
+[data-theme='dark'] .database-side-tab.is-active,
+[data-theme='olive'] .terminal-side-tab.is-active,
+[data-theme='olive'] .sftp-side-tab.is-active,
+[data-theme='olive'] .database-side-tab.is-active {
+  box-shadow: none;
 }
 
 .terminal-side-panel,
@@ -145,7 +151,7 @@
 }
 
 .terminal-sidebar .conn-item {
-  min-height: 26px;
+  min-height: var(--control-height-sm);
 }
 
 .terminal-sidebar .conn-item .mock-icon {
@@ -184,8 +190,8 @@
 
 .terminal-connect-empty {
   flex-direction: column;
-  gap: 10px;
-  padding: 32px 24px;
+  gap: calc(10 * var(--ui-scale) * 1px);
+  padding: calc(32 * var(--ui-scale) * 1px) calc(24 * var(--ui-scale) * 1px);
   text-align: center;
 }
 
@@ -206,16 +212,16 @@
 
 .terminal-connect-hint {
   margin: 0;
-  max-width: 420px;
-  font-size: 12px;
+  max-width: calc(420 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui);
   color: #9a9aa3;
   line-height: 1.5;
 }
 
 .terminal-connect-error {
   margin: 0;
-  max-width: 520px;
-  padding: 9px 11px;
+  max-width: calc(520 * var(--ui-scale) * 1px);
+  padding: calc(9 * var(--ui-scale) * 1px) calc(11 * var(--ui-scale) * 1px);
   border-radius: var(--radius);
   background: rgba(196, 68, 68, 0.12);
   border-left: 2px solid #dd6262;
@@ -223,7 +229,7 @@
   border-right: 0;
   border-bottom: 0;
   color: #f0a8a8;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   line-height: 1.5;
   word-break: break-word;
   text-align: left;
@@ -232,9 +238,9 @@
 .terminal-connect-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   justify-content: center;
-  margin-top: 4px;
+  margin-top: calc(4 * var(--ui-scale) * 1px);
 }
 
 .terminal-tab-status-pane {
@@ -269,14 +275,14 @@
   border-radius: 0;
   background: transparent;
   color: #f0a8a8;
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 700;
   line-height: 1.2;
 }
 
 .terminal-connect-spinner {
-  width: 18px;
-  height: 18px;
+  width: var(--icon-md);
+  height: var(--icon-md);
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.12);
   border-top-color: var(--accent);
@@ -292,17 +298,17 @@
 .terminal-opacity-control {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   height: var(--control-height-chrome);
-  padding: 0 8px;
+  padding: 0 calc(8 * var(--ui-scale) * 1px);
   border-left: 1px solid var(--color-divider);
   font-size: var(--font-size-caption);
   color: var(--color-text-muted);
-  margin-right: 6px;
+  margin-right: calc(6 * var(--ui-scale) * 1px);
 }
 
 .terminal-opacity-control input[type='range'] {
-  width: 72px;
+  width: calc(72 * var(--ui-scale) * 1px);
   height: 2px;
   accent-color: var(--accent);
 }
@@ -315,15 +321,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-.terminal-toolbar-glyph {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1;
-}
-
 .tab-split-badge {
   margin-left: 1px;
-  padding-left: 5px;
+  padding-left: calc(5 * var(--ui-scale) * 1px);
   border-left: 1px solid var(--color-divider);
   border-radius: 0;
   background: transparent;
@@ -391,8 +391,8 @@
   display: flex;
   justify-content: flex-end;
   flex-shrink: 0;
-  height: 20px;
-  padding: 0 4px;
+  height: var(--icon-rail);
+  padding: 0 calc(4 * var(--ui-scale) * 1px);
   /* 叠在 leaf 的 terminalBackground 上；勿用近乎透明底（glass 下会透桌面） */
   background: rgba(255, 255, 255, 0.045);
   border-bottom: 1px solid rgba(255, 255, 255, 0.075);
@@ -400,12 +400,12 @@
 
 .terminal-split-leaf-close {
   width: 22px;
-  height: 18px;
+  height: var(--icon-md);
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: #8a8a96;
-  font-size: 14px;
+  font-size: calc(14 * var(--ui-scale) * 1px);
   line-height: 1;
   cursor: pointer;
 }
@@ -431,9 +431,9 @@
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 28px;
-  padding: 2px 10px;
+  gap: calc(10 * var(--ui-scale) * 1px);
+  min-height: var(--control-height-sm);
+  padding: calc(2 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(28, 24, 16, 0.72);
   color: #e8d9a8;
@@ -443,9 +443,9 @@
 .ecs-monitor-cell {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   line-height: 1;
 }
 
@@ -459,8 +459,8 @@
 }
 
 .ecs-monitor-spark {
-  width: 72px;
-  height: 16px;
+  width: calc(72 * var(--ui-scale) * 1px);
+  height: var(--list-chevron-size);
 }
 
 .ecs-monitor-spark path {
@@ -476,7 +476,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   opacity: 0.7;
 }
 
@@ -488,7 +488,7 @@
 .ecs-monitor-refresh {
   margin-left: auto;
   flex-shrink: 0;
-  padding: 2px 6px;
+  padding: calc(2 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px);
 }
 
 .terminal-pane-stack {
@@ -505,12 +505,12 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: var(--space-2);
+  padding: calc(8 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(28, 24, 16, 0.92);
   color: #e8d9a8;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
 }
 
 .terminal-ended-bar-text {
@@ -522,7 +522,7 @@
 .terminal-ended-bar-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   flex-shrink: 0;
 }
 
@@ -530,17 +530,9 @@
   flex: 1;
   min-height: 0;
   width: 100%;
-  padding: 6px 8px;
+  padding: calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
   box-sizing: border-box;
   overflow: hidden;
-}
-
-/*
- * 壳层 .workbench-shell 使用 CSS zoom；xterm/Monaco 按未缩放坐标命中，
- * 轻微移动鼠标就会大块飞选。反缩放后字号用 zoomCompensatedPx 同步放大。
- */
-.ww-zoom-content {
-  zoom: calc(1 / var(--ui-zoom, 1));
 }
 
 .terminal-xterm-host .xterm {
@@ -559,9 +551,9 @@
 
 .terminal-screen {
   margin: 0;
-  padding: 12px 14px;
+  padding: calc(12 * var(--ui-scale) * 1px) calc(14 * var(--ui-scale) * 1px);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   line-height: 1.55;
   color: #c8c8d0;
   white-space: pre-wrap;
@@ -580,8 +572,8 @@
 }
 
 .mock-hint {
-  padding-top: 4px;
-  font-size: 10px;
+  padding-top: calc(4 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-caption);
   text-align: center;
 }
 
@@ -594,7 +586,8 @@
 }
 
 @container terminal-workbench (max-width: 980px) {
-  .terminal-toolbar .product-actions .wn-btn-chrome span:not(.terminal-toolbar-glyph) {
+  /* 有图标的按钮收成图标；纯文字按钮（如分屏）保留文案 */
+  .terminal-toolbar .product-actions .wn-btn-chrome:has(svg) > span {
     display: none;
   }
 

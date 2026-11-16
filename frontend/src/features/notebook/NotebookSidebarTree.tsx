@@ -15,6 +15,7 @@ import {
   opRelForNote,
   type NotebookInlineEdit,
 } from './notebookPathOps'
+import { formatNoteUpdatedAt, formatNoteUpdatedAtFull } from './noteModel'
 import { resolveFolderResourceTags, resolveNoteResourceTags } from './notebookResourceTags'
 import type { NotebookTreeNode } from './notebookTree'
 
@@ -246,6 +247,14 @@ export function NotebookSidebarTree(props: {
                   {basenameRel(note.id) || note.title}
                 </span>
               )}
+              {note.updatedAt > 0 ? (
+                <span
+                  className="notebook-tree-mtime"
+                  title={`${t('notebook.colUpdated')} ${formatNoteUpdatedAtFull(note.updatedAt)}`}
+                >
+                  {formatNoteUpdatedAt(note.updatedAt)}
+                </span>
+              ) : null}
               <ResourceTags tags={resolveNoteResourceTags(note, tagLabels)} onActivate={onTagActivate} />
               <input
                 type="checkbox"

@@ -153,12 +153,23 @@ func (s *Service) ListSkillNotes(limit int) ([]model.NoteSummaryDO, error) {
 }
 
 // FindNoteIDBySkillID 按路径 / 短名 / 关联标记 / frontmatter name 找 Skill 入口（寻址 SSOT）。
+// 短名查找优先已有 项目/ → 记忆区/ → 运维/，最后才是任务区 工作流/（Skill 跟资源走）。
 func (s *Service) FindNoteIDBySkillID(skillID string) string {
 	skillID = strings.TrimSpace(strings.ReplaceAll(skillID, "\\", "/"))
 	if skillID == "" {
 		return ""
 	}
-	try := []string{skillID, SkillNoteID(skillID)}
+	// 注意：GetNote(短名) 内部会先映射到 工作流/{短名}，故短名查找勿先 GetNote(裸短名)。
+	var try []string
+	if strings.Contains(skillID, "/") {
+		try = []string{skillID, SkillNoteID(skillID)}
+	} else {
+		try = []string{
+			SkillEntryIDInDir(ProjectGroupName + "/" + skillID),
+			SkillEntryIDInDir(WorkbenchProjectDirRel(skillID)),
+			SkillNoteID(skillID), // 任务区默认路径放最后
+		}
+	}
 	for _, id := range try {
 		if id == "" {
 			continue
@@ -204,9 +215,16 @@ func (s *Service) FindNoteIDBySkillID(skillID string) string {
 			titleHit = sum.ID
 		}
 	}
-	for _, hit := range basenameHits {
-		if strings.HasPrefix(hit, SkillGroupName+"/") {
-			return hit
+	for _, prefix := range []string{
+		ProjectGroupName + "/",
+		MemoryGroupName + "/",
+		OpsGroupName + "/",
+		SkillGroupName + "/",
+	} {
+		for _, hit := range basenameHits {
+			if strings.HasPrefix(hit, prefix) {
+				return hit
+			}
 		}
 	}
 	if len(basenameHits) == 1 {

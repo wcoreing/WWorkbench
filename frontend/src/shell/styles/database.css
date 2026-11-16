@@ -21,7 +21,7 @@
 }
 
 .database-side-panel .sidebar-header {
-  min-height: 32px;
+  min-height: var(--toolbar-height);
 }
 
 .database-side-panel .sidebar-body {
@@ -32,11 +32,11 @@
 }
 
 .database-conn-type-tabs {
-  margin: 4px 8px;
+  margin: calc(4 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
 }
 
 .database-side-panel .sidebar-filter {
-  padding: 6px 8px 4px;
+  padding: calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px) calc(4 * var(--ui-scale) * 1px);
   flex-shrink: 0;
 }
 
@@ -45,11 +45,11 @@
 }
 
 .database-side-panel .conn-group {
-  margin-bottom: 6px;
+  margin-bottom: calc(6 * var(--ui-scale) * 1px);
 }
 
 .database-side-panel .conn-group-title {
-  padding: 6px 10px 2px;
+  padding: calc(6 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px) calc(2 * var(--ui-scale) * 1px);
   font-size: var(--font-size-caption);
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -57,7 +57,7 @@
 }
 
 .database-side-panel .conn-item {
-  min-height: 26px;
+  min-height: var(--control-height-sm);
 }
 
 .database-side-panel .conn-item.active {
@@ -69,7 +69,7 @@
 }
 
 .database-side-panel .conn-item .conn-db-type {
-  margin-right: 4px;
+  margin-right: calc(4 * var(--ui-scale) * 1px);
   color: var(--color-text-muted);
 }
 
@@ -78,13 +78,13 @@
 }
 
 .database-side-panel .conn-item .conn-ssh-tag {
-  margin-left: 6px;
+  margin-left: calc(6 * var(--ui-scale) * 1px);
 }
 
 .database-side-panel .wn-tree-item {
   min-height: var(--list-row-height, 22px);
   height: var(--list-row-height, 22px);
-  margin: 0 4px;
+  margin: 0 calc(4 * var(--ui-scale) * 1px);
   padding-block: 0;
 }
 
@@ -107,23 +107,13 @@
 }
 
 .database-toolbar .product-actions > .chrome-vrule {
-  height: 14px;
-  margin: 0 3px;
+  height: var(--icon-sm);
+  margin: 0 calc(3 * var(--ui-scale) * 1px);
   background: var(--color-divider);
 }
 
 .database-toolbar .wn-btn-run {
   padding-inline: 9px;
-  color: #fff;
-  background: var(--accent);
-  border-color: var(--accent);
-  box-shadow: var(--shadow-sm);
-}
-
-.database-toolbar .wn-btn-run:not(:disabled):hover {
-  color: #fff;
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
 }
 
 .database-toolbar .wn-btn-run:disabled {
@@ -134,8 +124,8 @@
 }
 
 .database-toolbar .product-toolbar-status {
-  max-width: 260px;
-  padding-left: 10px;
+  max-width: calc(260 * var(--ui-scale) * 1px);
+  padding-left: calc(10 * var(--ui-scale) * 1px);
   border-left: 1px solid var(--color-divider);
 }
 
@@ -156,13 +146,13 @@
 }
 
 .database-side-panel .conn-group-title {
-  font-size: 9px;
+  font-size: var(--font-size-rail);
   font-weight: 650;
   letter-spacing: 0.045em;
 }
 
 .database-side-panel .conn-item {
-  min-height: 26px;
+  min-height: var(--control-height-sm);
 }
 
 .database-side-panel .conn-item .conn-name {
@@ -170,7 +160,7 @@
 }
 
 .database-side-panel .conn-item .conn-db-type {
-  font-size: 9px;
+  font-size: var(--font-size-rail);
 }
 
 .database-side-panel .conn-item.active .conn-db-type {
@@ -180,7 +170,7 @@
 .database-side-panel .wn-tree-item {
   min-height: var(--list-row-height, 22px);
   height: var(--list-row-height, 22px);
-  margin: 0 4px;
+  margin: 0 calc(4 * var(--ui-scale) * 1px);
   padding-block: 0;
   border-radius: var(--radius-sm);
 }
@@ -207,7 +197,7 @@
 }
 
 .database-query-bar .wn-select-trigger {
-  min-width: 132px;
+  min-width: calc(132 * var(--ui-scale) * 1px);
   border-color: transparent;
   background: var(--color-tab-active);
   font-family: var(--font-mono);
@@ -231,7 +221,7 @@
 }
 
 .database-workbench .bottom-panel-tabs {
-  min-height: 28px;
+  min-height: var(--control-height-sm);
   background: var(--color-toolbar);
   border-bottom-color: var(--color-border);
 }
@@ -261,8 +251,8 @@
 
 .database-workbench .wn-grid th,
 .database-workbench .wn-grid td {
-  height: 29px;
-  padding: 4px 9px;
+  height: var(--control-height-sm);
+  padding: calc(4 * var(--ui-scale) * 1px) calc(9 * var(--ui-scale) * 1px);
 }
 
 .database-workbench .wn-grid th {
@@ -279,11 +269,14 @@
   background: var(--color-hover);
 }
 
-.database-workbench .wn-grid tbody tr.is-selected td,
-.database-workbench .wn-grid tbody tr.is-selected:hover td {
+.database-workbench .wn-grid tbody tr.is-selected td {
   background: var(--color-row-selected);
   color: var(--color-row-selected-fg);
-  box-shadow: none;
+}
+
+.database-workbench .wn-grid tbody tr.is-selected:hover td {
+  background: var(--color-row-selected-hover);
+  color: var(--color-row-selected-fg);
 }
 
 .database-workbench .wn-grid .grid-cell-value {
@@ -313,7 +306,7 @@
   }
 
   .database-toolbar .product-toolbar-status {
-    max-width: 180px;
+    max-width: calc(180 * var(--ui-scale) * 1px);
   }
 }
 

@@ -68,7 +68,6 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
   const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('source')
   const [busy, setBusy] = useState(false)
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState<'' | NoteRole>('')
   const [selectedFolderId, setSelectedFolderId] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const noteRef = useRef<Note | null>(null)
@@ -426,8 +425,6 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
               search={search}
               activeTabId={note?.id ?? null}
               selectedFolderId={selectedFolderId || scopeRootId}
-              roleFilter={roleFilter}
-              onRoleFilterChange={setRoleFilter}
               onSelectFolder={setSelectedFolderId}
               onSearchChange={setSearch}
               onOpenNote={(id) => void openNote(id)}

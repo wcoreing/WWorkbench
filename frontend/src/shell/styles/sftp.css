@@ -10,7 +10,7 @@
 }
 
 .sftp-toolbar .product-toolbar-status {
-  padding-left: 10px;
+  padding-left: calc(10 * var(--ui-scale) * 1px);
   border-left: 1px solid var(--color-divider);
   font-family: var(--font-mono);
   font-size: var(--font-size-caption);
@@ -35,7 +35,7 @@
 }
 
 .sftp-sidebar .conn-item {
-  min-height: 26px;
+  min-height: var(--control-height-sm);
   border-bottom: none;
 }
 
@@ -73,7 +73,7 @@
 }
 
 .sftp-panes-single .sftp-bt-chrome {
-  padding-left: 12px;
+  padding-left: calc(12 * var(--ui-scale) * 1px);
 }
 
 .sftp-pane {
@@ -89,9 +89,9 @@
 .sftp-bt-chrome {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 34px;
-  padding: 4px 10px;
+  gap: var(--space-2);
+  min-height: calc(34 * var(--ui-scale) * 1px);
+  padding: calc(4 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-divider);
   background: var(--color-toolbar);
   position: sticky;
@@ -106,7 +106,7 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--color-text-muted);
-  padding-right: 8px;
+  padding-right: calc(8 * var(--ui-scale) * 1px);
   border-right: 1px solid var(--color-divider);
 }
 
@@ -118,7 +118,7 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: calc(2 * var(--ui-scale) * 1px);
   min-width: 0;
   flex: 1;
 }
@@ -130,9 +130,9 @@
 }
 
 .sftp-bt-crumb-sep {
-  margin: 0 2px;
+  margin: 0 calc(2 * var(--ui-scale) * 1px);
   color: var(--color-text-muted);
-  font-size: 12px;
+  font-size: var(--font-size-ui);
 }
 
 .sftp-bt-crumb {
@@ -140,10 +140,10 @@
   background: transparent;
   color: var(--accent);
   font-size: var(--font-size-ui-sm);
-  padding: 2px 4px;
+  padding: calc(2 * var(--ui-scale) * 1px) calc(4 * var(--ui-scale) * 1px);
   border-radius: var(--radius-xs);
   cursor: pointer;
-  max-width: 160px;
+  max-width: calc(160 * var(--ui-scale) * 1px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -162,18 +162,18 @@
 .sftp-bt-path-edit {
   flex: 1;
   min-width: 0;
-  height: 26px;
+  height: var(--control-height-sm);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
 }
 
 .sftp-bt-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  min-height: 36px;
-  padding: 4px 10px;
+  gap: var(--space-2);
+  min-height: calc(36 * var(--ui-scale) * 1px);
+  padding: calc(4 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-divider);
   background: var(--color-surface);
 }
@@ -182,13 +182,13 @@
 .sftp-bt-toolbar-end {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
 }
 
 .sftp-bt-search {
-  width: 160px;
-  height: 26px;
+  width: calc(160 * var(--ui-scale) * 1px);
+  height: var(--control-height-sm);
   font-size: var(--font-size-ui-sm);
 }
 
@@ -196,9 +196,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  min-height: 26px;
-  padding: 0 10px;
+  gap: var(--space-3);
+  min-height: var(--control-height-sm);
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   border-top: 1px solid var(--color-divider);
   background: var(--color-toolbar);
   color: var(--color-text-muted);
@@ -224,17 +224,17 @@
 }
 
 .sftp-table-bt .sftp-col-size {
-  width: 80px;
+  width: calc(80 * var(--ui-scale) * 1px);
   white-space: nowrap;
 }
 
 .sftp-table-bt .sftp-col-mtime {
-  width: 148px;
+  width: calc(148 * var(--ui-scale) * 1px);
   white-space: nowrap;
 }
 
 .sftp-table-bt .sftp-col-ops {
-  width: 132px;
+  width: calc(132 * var(--ui-scale) * 1px);
   white-space: nowrap;
 }
 
@@ -248,7 +248,7 @@
 }
 
 .sftp-name-head {
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   font-weight: 650;
 }
 
@@ -280,7 +280,7 @@
 .sftp-row-ops {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: calc(2 * var(--ui-scale) * 1px);
   opacity: 0;
   transition: opacity var(--motion-fast) var(--ease-ui);
 }
@@ -295,7 +295,7 @@
   background: transparent;
   color: var(--accent);
   font-size: var(--font-size-ui-sm);
-  padding: 2px 5px;
+  padding: calc(2 * var(--ui-scale) * 1px) calc(5 * var(--ui-scale) * 1px);
   border-radius: var(--radius-xs);
   cursor: pointer;
 }
@@ -323,7 +323,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
-  padding: 2px 6px 8px;
+  padding: calc(2 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
 }
 
 .sftp-main .sftp-panes {
@@ -357,9 +357,9 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  height: 22px;
+  height: var(--list-row-height);
   text-align: left;
-  padding: 0 8px;
+  padding: 0 calc(8 * var(--ui-scale) * 1px);
   font-weight: 650;
   font-size: var(--font-size-caption);
   letter-spacing: 0.02em;
@@ -371,7 +371,7 @@
 
 .sftp-table td {
   height: var(--list-row-height, 22px);
-  padding: 0 8px;
+  padding: 0 calc(8 * var(--ui-scale) * 1px);
   border-bottom: none;
   color: var(--color-text-secondary);
   line-height: 1.2;
@@ -414,6 +414,7 @@
 
 .sftp-row.selected td:first-child {
   border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  box-shadow: none;
 }
 
 .sftp-row.selected td:last-child {
@@ -421,7 +422,7 @@
 }
 
 .sftp-row.selected:hover td {
-  background: var(--accent-hover);
+  background: var(--color-row-selected-hover);
 }
 
 .sftp-row.selected .sftp-name-text,
@@ -431,11 +432,12 @@
 }
 
 .sftp-row.selected .sftp-op {
-  color: var(--color-row-selected-fg);
+  color: var(--color-text-secondary);
 }
 
 .sftp-row.selected .sftp-op:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--color-hover);
+  color: var(--color-text);
 }
 
 .sftp-row.selected .sftp-op-danger:hover {
@@ -477,7 +479,7 @@
   min-width: 0;
   margin-left: 0;
   height: var(--control-height-sm);
-  padding: 0 8px;
+  padding: 0 calc(8 * var(--ui-scale) * 1px);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-surface-raised);
@@ -507,7 +509,7 @@
   justify-content: center;
   background: var(--accent-muted);
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   pointer-events: none;
   z-index: 2;
 }
@@ -527,10 +529,10 @@
   right: 0;
   top: 100%;
   z-index: 100;
-  min-width: 160px;
-  max-width: 280px;
-  margin-top: 4px;
-  padding: 4px;
+  min-width: calc(160 * var(--ui-scale) * 1px);
+  max-width: calc(280 * var(--ui-scale) * 1px);
+  margin-top: calc(4 * var(--ui-scale) * 1px);
+  padding: var(--space-1);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius);
@@ -540,18 +542,18 @@
 .sftp-bookmark-item {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
 .sftp-bookmark-link {
   flex: 1;
   min-width: 0;
   text-align: left;
-  padding: 5px 8px;
+  padding: calc(5 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-secondary);
   cursor: pointer;
   overflow: hidden;
@@ -567,13 +569,13 @@
 .sftp-bookmark-del {
   flex-shrink: 0;
   width: 22px;
-  height: 22px;
+  height: var(--list-row-height);
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
-  font-size: 14px;
+  font-size: calc(14 * var(--ui-scale) * 1px);
   line-height: 1;
 }
 
@@ -613,7 +615,7 @@ body.is-sftp-file-dragging * {
 
 @container sftp-workbench (max-width: 700px) {
   .sftp-sidebar {
-    width: 180px;
+    width: calc(180 * var(--ui-scale) * 1px);
   }
 
   .sftp-table th:nth-child(2),
@@ -635,15 +637,15 @@ body.is-sftp-file-dragging * {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding-right: 12px;
+  padding-right: calc(12 * var(--ui-scale) * 1px);
 }
 
 .sftp-upload-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 16px 8px;
+  gap: var(--space-2);
+  padding: calc(10 * var(--ui-scale) * 1px) calc(16 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
   flex-shrink: 0;
 }
 
@@ -671,8 +673,8 @@ body.is-sftp-file-dragging * {
   top: calc(100% + 4px);
   left: 0;
   z-index: 5;
-  min-width: 148px;
-  padding: 4px;
+  min-width: calc(148 * var(--ui-scale) * 1px);
+  padding: var(--space-1);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   background: var(--color-surface-raised);
@@ -682,12 +684,12 @@ body.is-sftp-file-dragging * {
 .sftp-upload-add-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
   border: none;
   background: transparent;
   color: var(--color-text);
-  padding: 7px 10px;
+  padding: calc(7 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-ui-sm);
   cursor: pointer;
@@ -700,12 +702,12 @@ body.is-sftp-file-dragging * {
 
 .sftp-upload-table-wrap {
   flex: 1;
-  min-height: 180px;
-  max-height: 320px;
+  min-height: calc(180 * var(--ui-scale) * 1px);
+  max-height: calc(320 * var(--ui-scale) * 1px);
   overflow-y: auto;
   border-top: 1px solid var(--color-divider);
   border-bottom: 1px solid var(--color-divider);
-  margin: 0 16px;
+  margin: 0 calc(16 * var(--ui-scale) * 1px);
 }
 
 .sftp-upload-table {
@@ -717,7 +719,7 @@ body.is-sftp-file-dragging * {
 
 .sftp-upload-table th,
 .sftp-upload-table td {
-  padding: 8px 10px;
+  padding: calc(8 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   text-align: left;
   border-bottom: 1px solid var(--color-border-subtle);
   vertical-align: middle;
@@ -765,7 +767,7 @@ body.is-sftp-file-dragging * {
 .sftp-upload-empty {
   text-align: center !important;
   color: var(--color-text-muted);
-  padding: 36px 12px !important;
+  padding: calc(36 * var(--ui-scale) * 1px) calc(12 * var(--ui-scale) * 1px) !important;
 }
 
 .sftp-upload-status {
@@ -811,7 +813,7 @@ body.is-sftp-file-dragging * {
   background: var(--color-surface-raised);
   color: var(--color-text);
   box-shadow: var(--shadow-md);
-  padding: 8px 14px;
+  padding: calc(8 * var(--ui-scale) * 1px) calc(14 * var(--ui-scale) * 1px);
   font-size: var(--font-size-ui-sm);
   cursor: pointer;
 }
@@ -833,26 +835,26 @@ body.is-sftp-file-dragging * {
 .sftp-text-editor-header .sftp-text-editor-title {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
 }
 
 .sftp-text-editor-dirty {
   color: var(--accent);
-  font-size: 18px;
+  font-size: calc(18 * var(--ui-scale) * 1px);
   line-height: 1;
 }
 
 .sftp-text-editor-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: var(--space-2);
+  padding: calc(8 * var(--ui-scale) * 1px) calc(16 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-divider);
   flex-shrink: 0;
 }
 
 .sftp-text-editor-tab {
-  margin-left: 8px;
+  margin-left: calc(8 * var(--ui-scale) * 1px);
   font-size: var(--font-size-ui-sm);
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
@@ -870,8 +872,8 @@ body.is-sftp-file-dragging * {
 .sftp-text-editor-footer {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 6px 16px;
+  gap: var(--space-4);
+  padding: calc(6 * var(--ui-scale) * 1px) calc(16 * var(--ui-scale) * 1px);
   border-top: 1px solid var(--color-divider);
   font-size: var(--font-size-caption);
   color: var(--color-text-muted);
@@ -899,8 +901,8 @@ body.is-sftp-file-dragging * {
 .sftp-image-preview-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 16px;
+  gap: var(--space-3);
+  padding: calc(8 * var(--ui-scale) * 1px) calc(16 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-divider);
   flex-shrink: 0;
 }
@@ -919,12 +921,12 @@ body.is-sftp-file-dragging * {
 .sftp-image-preview-zoom {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   flex-shrink: 0;
 }
 
 .sftp-image-preview-zoom-label {
-  min-width: 52px;
+  min-width: calc(52 * var(--ui-scale) * 1px);
   font-variant-numeric: tabular-nums;
 }
 
@@ -934,7 +936,7 @@ body.is-sftp-file-dragging * {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: var(--space-4);
   overflow: hidden;
   touch-action: none;
   cursor: grab;
@@ -975,7 +977,7 @@ body.is-sftp-file-dragging * {
   top: 0;
   left: 0;
   width: 32px;
-  height: 32px;
+  height: var(--toolbar-height);
   margin: 0;
   padding: 0;
   pointer-events: none;

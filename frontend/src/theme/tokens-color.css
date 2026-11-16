@@ -1,0 +1,413 @@
+/* 色板 token：data-theme 只覆色/阴影/overlay；结构尺寸见 tokens-structure.css。
+ * 仪器分层 + Pro 铝壳：机壳用 --fill-* / 发丝；画布保持纸面；选中 muted 淡底。 */
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  /* 工作台蓝：偏冷、可读，不与 iOS systemBlue 1:1 撞脸。 */
+  --accent: #2b6de8;
+  --accent-hover: #1f5fd6;
+  --accent-pressed: #184fba;
+  --accent-muted: rgba(43, 109, 232, 0.1);
+  --accent-ring: rgba(43, 109, 232, 0.24);
+
+  /* 三级面：chrome/sidebar 浅灰 · canvas/editor 白 · raised 略抬 */
+  --color-bg: #f3f3f5;
+  --color-canvas: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-2: #f0f0f2;
+  --color-surface-3: #e8e8eb;
+  --color-editor: #ffffff;
+  --color-sidebar: #f4f4f6;
+  --color-toolbar: #f4f4f6;
+  --color-chrome: #f4f4f6;
+  --color-tab-bar: #efeff2;
+  --color-tab-active: #ffffff;
+  --color-overlay: rgba(24, 25, 31, 0.28);
+
+  /* Pro 铝壳：机壳渐变填充（实色 --color-* 仍作回退） */
+  --fill-chrome: linear-gradient(180deg, #fcfcfd 0%, #f0f0f3 100%);
+  --fill-rail: linear-gradient(90deg, #e8e8ec 0%, #f3f3f6 52%, #f5f5f7 100%);
+  --fill-sidebar: linear-gradient(180deg, #f6f6f8 0%, #f1f1f4 100%);
+  --fill-toolbar: linear-gradient(180deg, #f8f8fa 0%, #efeff2 100%);
+  --fill-btn-chrome: linear-gradient(180deg, #fbfbfc 0%, #f3f3f6 100%);
+  --fill-btn-chrome-hover: linear-gradient(180deg, #ffffff 0%, #eeeef2 100%);
+  --fill-btn-chrome-pressed: linear-gradient(180deg, #ebebef 0%, #f4f4f7 100%);
+  --hairline-shine: rgba(255, 255, 255, 0.72);
+  --hairline-shade: rgba(0, 0, 0, 0.07);
+  /* 按钮描边：比壳缝更淡，避免「贴纸描边」 */
+  --hairline-edge: rgba(0, 0, 0, 0.045);
+
+  --color-border-strong: #d2d2d7;
+  --color-border: #e5e5ea;
+  --color-border-subtle: #ededf0;
+  --color-divider: rgba(0, 0, 0, 0.07);
+
+  --color-text: #23242a;
+  --color-text-secondary: #5b5e69;
+  --color-text-muted: #898c96;
+  --color-text-disabled: #b4b6be;
+
+  --color-hover: rgba(0, 0, 0, 0.04);
+  --color-active: rgba(0, 0, 0, 0.06);
+  --color-selection: rgba(43, 109, 232, 0.08);
+  /* 安静选中：淡底，正文色不变 */
+  --color-sidebar-selected: rgba(43, 109, 232, 0.1);
+  --color-row-selected: rgba(43, 109, 232, 0.1);
+  --color-row-selected-fg: var(--color-text);
+  --color-row-selected-hover: rgba(43, 109, 232, 0.14);
+  --color-focus: var(--accent);
+  --color-tree-hover: var(--color-hover);
+  --color-tree-active: var(--color-sidebar-selected);
+
+  --color-primary: var(--accent);
+  --color-primary-hover: var(--accent-hover);
+  --color-danger: #c83d4a;
+  --color-danger-muted: rgba(200, 61, 74, 0.08);
+  --color-success: #16845b;
+  --color-success-muted: rgba(22, 132, 91, 0.08);
+  --color-warning: #a96814;
+  --color-warning-muted: rgba(169, 104, 20, 0.09);
+
+  /* 平面区无阴影，只有浮层有高度；更弥散、更轻。 */
+  --shadow-sm: 0 1px 3px rgba(24, 25, 31, 0.04), 0 1px 2px rgba(24, 25, 31, 0.03);
+  --shadow: 0 8px 28px rgba(24, 25, 31, 0.08), 0 2px 6px rgba(24, 25, 31, 0.04);
+  --shadow-lg: 0 20px 56px rgba(24, 25, 31, 0.1), 0 4px 12px rgba(24, 25, 31, 0.05);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --accent: #4b8dff;
+  --accent-hover: #6ba0ff;
+  --accent-pressed: #3a7aef;
+  --accent-muted: rgba(75, 141, 255, 0.16);
+  --accent-ring: rgba(75, 141, 255, 0.28);
+
+  --color-bg: #0e0f13;
+  --color-canvas: #111216;
+  --color-surface: #18191e;
+  --color-surface-raised: #22232a;
+  --color-surface-2: #15161a;
+  --color-surface-3: #23242a;
+  --color-editor: #15161a;
+  --color-sidebar: #13141a;
+  --color-toolbar: #17181e;
+  --color-chrome: #121318;
+  --color-tab-bar: #13141a;
+  --color-tab-active: #1b1c21;
+  --color-overlay: rgba(0, 0, 0, 0.55);
+
+  /* Space Gray 炭铝 */
+  --fill-chrome: linear-gradient(180deg, #1c1d24 0%, #121318 100%);
+  --fill-rail: linear-gradient(90deg, #0c0d11 0%, #15161c 55%, #16171d 100%);
+  --fill-sidebar: linear-gradient(180deg, #16171d 0%, #121318 100%);
+  --fill-toolbar: linear-gradient(180deg, #1d1e25 0%, #15161c 100%);
+  --fill-btn-chrome: linear-gradient(180deg, #26272f 0%, #1a1b21 100%);
+  --fill-btn-chrome-hover: linear-gradient(180deg, #2e2f38 0%, #202128 100%);
+  --fill-btn-chrome-pressed: linear-gradient(180deg, #16171d 0%, #22232b 100%);
+  --hairline-shine: rgba(255, 255, 255, 0.08);
+  --hairline-shade: rgba(0, 0, 0, 0.4);
+  --hairline-edge: rgba(255, 255, 255, 0.06);
+
+  --color-border-strong: #34363e;
+  --color-border: #2a2c33;
+  --color-border-subtle: #22242a;
+  --color-divider: rgba(255, 255, 255, 0.06);
+
+  --color-text: #ececf0;
+  --color-text-secondary: #a6a7b0;
+  --color-text-muted: #70727d;
+  --color-text-disabled: #4b4d56;
+
+  --color-hover: rgba(255, 255, 255, 0.06);
+  --color-active: rgba(255, 255, 255, 0.1);
+  --color-selection: rgba(75, 141, 255, 0.14);
+  --color-sidebar-selected: rgba(75, 141, 255, 0.14);
+  --color-row-selected: rgba(75, 141, 255, 0.14);
+  --color-row-selected-fg: var(--color-text);
+  --color-row-selected-hover: rgba(75, 141, 255, 0.2);
+  --color-tree-hover: var(--color-hover);
+  --color-tree-active: var(--color-sidebar-selected);
+
+  --color-danger: #ef6b76;
+  --color-danger-muted: rgba(239, 107, 118, 0.1);
+  --color-success: #55bd8b;
+  --color-success-muted: rgba(85, 189, 139, 0.1);
+  --color-warning: #d9a052;
+  --color-warning-muted: rgba(217, 160, 82, 0.1);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.16);
+  --shadow: 0 10px 32px rgba(0, 0, 0, 0.32), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 22px 60px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.22);
+}
+
+/* 军绿：olive drab 机壳 + 卡其绿 accent */
+[data-theme='olive'] {
+  color-scheme: dark;
+
+  --accent: #a3b56d;
+  --accent-hover: #b5c67f;
+  --accent-pressed: #8fa05c;
+  --accent-muted: rgba(163, 181, 109, 0.18);
+  --accent-ring: rgba(163, 181, 109, 0.32);
+
+  --color-bg: #24291e;
+  --color-canvas: #292f22;
+  --color-surface: #32392a;
+  --color-surface-raised: #3c4432;
+  --color-surface-2: #2c3224;
+  --color-surface-3: #404834;
+  --color-editor: #2c3224;
+  --color-sidebar: #2b3123;
+  --color-toolbar: #31382a;
+  --color-chrome: #272d20;
+  --color-tab-bar: #2b3123;
+  --color-tab-active: #363e2e;
+  --color-overlay: rgba(22, 26, 16, 0.52);
+
+  --fill-chrome: linear-gradient(180deg, #363e2e 0%, #272d20 100%);
+  --fill-rail: linear-gradient(90deg, #22271b 0%, #30372a 55%, #333a2c 100%);
+  --fill-sidebar: linear-gradient(180deg, #333a2c 0%, #2b3123 100%);
+  --fill-toolbar: linear-gradient(180deg, #363e2e 0%, #31382a 100%);
+  --fill-btn-chrome: linear-gradient(180deg, #414a36 0%, #32392a 100%);
+  --fill-btn-chrome-hover: linear-gradient(180deg, #4a543e 0%, #3a4232 100%);
+  --fill-btn-chrome-pressed: linear-gradient(180deg, #292f22 0%, #3c4432 100%);
+  --hairline-shine: rgba(220, 230, 190, 0.12);
+  --hairline-shade: rgba(0, 0, 0, 0.28);
+  --hairline-edge: rgba(220, 230, 190, 0.09);
+
+  --color-border-strong: #4e5740;
+  --color-border: #404834;
+  --color-border-subtle: #363e2e;
+  --color-divider: rgba(220, 230, 190, 0.1);
+
+  --color-text: #eef1e6;
+  --color-text-secondary: #c0c7b0;
+  --color-text-muted: #8e967c;
+  --color-text-disabled: #646c56;
+
+  --color-hover: rgba(220, 230, 190, 0.09);
+  --color-active: rgba(220, 230, 190, 0.14);
+  --color-selection: rgba(163, 181, 109, 0.18);
+  --color-sidebar-selected: rgba(163, 181, 109, 0.18);
+  --color-row-selected: rgba(163, 181, 109, 0.18);
+  --color-row-selected-fg: var(--color-text);
+  --color-row-selected-hover: rgba(163, 181, 109, 0.24);
+  --color-tree-hover: var(--color-hover);
+  --color-tree-active: var(--color-sidebar-selected);
+
+  --color-danger: #ef6b76;
+  --color-danger-muted: rgba(239, 107, 118, 0.12);
+  --color-success: #9bbb6a;
+  --color-success-muted: rgba(155, 187, 106, 0.14);
+  --color-warning: #d9a052;
+  --color-warning-muted: rgba(217, 160, 82, 0.14);
+
+  --shadow-sm: 0 1px 3px rgba(18, 22, 12, 0.2), 0 1px 2px rgba(18, 22, 12, 0.14);
+  --shadow: 0 10px 32px rgba(18, 22, 12, 0.28), 0 2px 8px rgba(18, 22, 12, 0.18);
+  --shadow-lg: 0 22px 60px rgba(18, 22, 12, 0.34), 0 4px 14px rgba(18, 22, 12, 0.2);
+}
+
+/* 米白：暖纸面机壳 + 冷石板 accent（避 terracotta） */
+[data-theme='cream'] {
+  color-scheme: light;
+
+  --accent: #4a6a7a;
+  --accent-hover: #3d5c6b;
+  --accent-pressed: #324c59;
+  --accent-muted: rgba(74, 106, 122, 0.12);
+  --accent-ring: rgba(74, 106, 122, 0.26);
+
+  --color-bg: #f4f0e8;
+  --color-canvas: #faf6ef;
+  --color-surface: #faf6ef;
+  --color-surface-raised: #fdfaf4;
+  --color-surface-2: #ebe5da;
+  --color-surface-3: #e2dbce;
+  --color-editor: #faf6ef;
+  --color-sidebar: #f0ebe2;
+  --color-toolbar: #f0ebe2;
+  --color-chrome: #efeae1;
+  --color-tab-bar: #e9e3d8;
+  --color-tab-active: #faf6ef;
+  --color-overlay: rgba(40, 34, 26, 0.28);
+
+  --fill-chrome: linear-gradient(180deg, #faf7f1 0%, #ebe5da 100%);
+  --fill-rail: linear-gradient(90deg, #e4ddd0 0%, #efeae1 52%, #f2ede5 100%);
+  --fill-sidebar: linear-gradient(180deg, #f3efe7 0%, #ebe5da 100%);
+  --fill-toolbar: linear-gradient(180deg, #f6f2ea 0%, #e9e3d8 100%);
+  --fill-btn-chrome: linear-gradient(180deg, #fffcf7 0%, #ebe5da 100%);
+  --fill-btn-chrome-hover: linear-gradient(180deg, #ffffff 0%, #e4ddd0 100%);
+  --fill-btn-chrome-pressed: linear-gradient(180deg, #e2dbce 0%, #f0ebe2 100%);
+  --hairline-shine: rgba(255, 255, 255, 0.78);
+  --hairline-shade: rgba(60, 48, 32, 0.09);
+  --hairline-edge: rgba(60, 48, 32, 0.06);
+
+  --color-border-strong: #cfc5b4;
+  --color-border: #ddd4c5;
+  --color-border-subtle: #e8e1d4;
+  --color-divider: rgba(60, 48, 32, 0.08);
+
+  --color-text: #2a261f;
+  --color-text-secondary: #5e574c;
+  --color-text-muted: #8a8173;
+  --color-text-disabled: #b5ad9f;
+
+  --color-hover: rgba(60, 48, 32, 0.05);
+  --color-active: rgba(60, 48, 32, 0.08);
+  --color-selection: rgba(74, 106, 122, 0.1);
+  --color-sidebar-selected: rgba(74, 106, 122, 0.12);
+  --color-row-selected: rgba(74, 106, 122, 0.12);
+  --color-row-selected-fg: var(--color-text);
+  --color-row-selected-hover: rgba(74, 106, 122, 0.16);
+  --color-tree-hover: var(--color-hover);
+  --color-tree-active: var(--color-sidebar-selected);
+
+  --color-danger: #c83d4a;
+  --color-danger-muted: rgba(200, 61, 74, 0.09);
+  --color-success: #3d7a5c;
+  --color-success-muted: rgba(61, 122, 92, 0.1);
+  --color-warning: #a96814;
+  --color-warning-muted: rgba(169, 104, 20, 0.1);
+
+  --shadow-sm: 0 1px 3px rgba(60, 48, 32, 0.05), 0 1px 2px rgba(60, 48, 32, 0.04);
+  --shadow: 0 8px 28px rgba(60, 48, 32, 0.09), 0 2px 6px rgba(60, 48, 32, 0.05);
+  --shadow-lg: 0 20px 56px rgba(60, 48, 32, 0.12), 0 4px 12px rgba(60, 48, 32, 0.06);
+}
+
+/* 金色：清晨天光——淡香槟金，少饱和 */
+[data-theme='gold'] {
+  color-scheme: light;
+
+  --accent: #c9a04a;
+  --accent-hover: #b58e3c;
+  --accent-pressed: #9f7c32;
+  --accent-muted: rgba(201, 160, 74, 0.12);
+  --accent-ring: rgba(201, 160, 74, 0.26);
+
+  --color-bg: #faf4e4;
+  --color-canvas: #fdf9ef;
+  --color-surface: #fdf9ef;
+  --color-surface-raised: #fffdf6;
+  --color-surface-2: #f3e9d0;
+  --color-surface-3: #ebe0c0;
+  --color-editor: #fdf9ef;
+  --color-sidebar: #f7efdc;
+  --color-toolbar: #f7efdc;
+  --color-chrome: #f5ecd6;
+  --color-tab-bar: #f0e6cc;
+  --color-tab-active: #fdf9ef;
+  --color-overlay: rgba(60, 48, 24, 0.24);
+
+  --fill-chrome: linear-gradient(180deg, #fbf6ea 0%, #f0e4c4 100%);
+  --fill-rail: linear-gradient(90deg, #e8d9b0 0%, #f3e9d0 48%, #f7efdc 100%);
+  --fill-sidebar: linear-gradient(180deg, #f8f1e0 0%, #efe5c8 100%);
+  --fill-toolbar: linear-gradient(180deg, #f9f3e4 0%, #efe5c8 100%);
+  --fill-btn-chrome: linear-gradient(180deg, #fdf9ef 0%, #efe5c8 100%);
+  --fill-btn-chrome-hover: linear-gradient(180deg, #fffdf6 0%, #e8d9b0 100%);
+  --fill-btn-chrome-pressed: linear-gradient(180deg, #e8d9b0 0%, #f7efdc 100%);
+  --hairline-shine: rgba(255, 255, 255, 0.8);
+  --hairline-shade: rgba(140, 110, 40, 0.08);
+  --hairline-edge: rgba(140, 110, 40, 0.07);
+
+  --color-border-strong: #dccda0;
+  --color-border: #e8dcb8;
+  --color-border-subtle: #f0e6cc;
+  --color-divider: rgba(140, 110, 40, 0.09);
+
+  --color-text: #3c3420;
+  --color-text-secondary: #6a6048;
+  --color-text-muted: #95896c;
+  --color-text-disabled: #c0b698;
+
+  --color-hover: rgba(201, 160, 74, 0.07);
+  --color-active: rgba(201, 160, 74, 0.1);
+  --color-selection: rgba(201, 160, 74, 0.12);
+  --color-sidebar-selected: rgba(201, 160, 74, 0.14);
+  --color-row-selected: rgba(201, 160, 74, 0.14);
+  --color-row-selected-fg: var(--color-text);
+  --color-row-selected-hover: rgba(201, 160, 74, 0.18);
+  --color-tree-hover: var(--color-hover);
+  --color-tree-active: var(--color-sidebar-selected);
+
+  --color-danger: #c83d4a;
+  --color-danger-muted: rgba(200, 61, 74, 0.09);
+  --color-success: #3d8f5a;
+  --color-success-muted: rgba(61, 143, 90, 0.1);
+  --color-warning: #c9a04a;
+  --color-warning-muted: rgba(201, 160, 74, 0.12);
+
+  --shadow-sm: 0 1px 3px rgba(140, 110, 40, 0.05), 0 1px 2px rgba(140, 110, 40, 0.03);
+  --shadow: 0 8px 28px rgba(140, 110, 40, 0.08), 0 2px 6px rgba(140, 110, 40, 0.05);
+  --shadow-lg: 0 20px 56px rgba(140, 110, 40, 0.1), 0 4px 12px rgba(140, 110, 40, 0.06);
+}
+
+/* 草绿：#f0ff99 淡柠檬黄绿 */
+[data-theme='grass'] {
+  color-scheme: light;
+
+  --accent: #7ab800;
+  --accent-hover: #6aa400;
+  --accent-pressed: #5a8c00;
+  --accent-muted: rgba(184, 220, 40, 0.35);
+  --accent-ring: rgba(122, 184, 0, 0.28);
+
+  --color-bg: #f4ffc4;
+  --color-canvas: #f9ffe8;
+  --color-surface: #f9ffe8;
+  --color-surface-raised: #fcfff2;
+  --color-surface-2: #f0ff99;
+  --color-surface-3: #e6f87a;
+  --color-editor: #f9ffe8;
+  --color-sidebar: #f2ffb0;
+  --color-toolbar: #f2ffb0;
+  --color-chrome: #f0ff99;
+  --color-tab-bar: #e8f88a;
+  --color-tab-active: #f9ffe8;
+  --color-overlay: rgba(40, 56, 8, 0.24);
+
+  --fill-chrome: linear-gradient(180deg, #f6ffc8 0%, #f0ff99 100%);
+  --fill-rail: linear-gradient(90deg, #e6f87a 0%, #f2ffb0 48%, #f4ffc4 100%);
+  --fill-sidebar: linear-gradient(180deg, #f4ffc4 0%, #e8f88a 100%);
+  --fill-toolbar: linear-gradient(180deg, #f5ffc8 0%, #e8f88a 100%);
+  --fill-btn-chrome: linear-gradient(180deg, #f9ffe8 0%, #f0ff99 100%);
+  --fill-btn-chrome-hover: linear-gradient(180deg, #fcfff2 0%, #e6f87a 100%);
+  --fill-btn-chrome-pressed: linear-gradient(180deg, #e6f87a 0%, #f2ffb0 100%);
+  --hairline-shine: rgba(255, 255, 255, 0.75);
+  --hairline-shade: rgba(80, 110, 0, 0.1);
+  --hairline-edge: rgba(80, 110, 0, 0.08);
+
+  --color-border-strong: #c8dc6a;
+  --color-border: #d8ea88;
+  --color-border-subtle: #e8f88a;
+  --color-divider: rgba(80, 110, 0, 0.1);
+
+  --color-text: #2a3608;
+  --color-text-secondary: #4a5c18;
+  --color-text-muted: #6e8230;
+  --color-text-disabled: #a0b068;
+
+  /* 选中要比 #f0ff99 底更深一档，否则糊成一片 */
+  --color-hover: #e6f87a;
+  --color-active: #dcef5c;
+  --color-selection: #dcef5c;
+  --color-sidebar-selected: #d4e84a;
+  --color-row-selected: #d4e84a;
+  --color-row-selected-fg: var(--color-text);
+  --color-row-selected-hover: #c8dc3e;
+  --color-tree-hover: var(--color-hover);
+  --color-tree-active: var(--color-sidebar-selected);
+
+  --color-danger: #c83d4a;
+  --color-danger-muted: rgba(200, 61, 74, 0.09);
+  --color-success: #5a9e20;
+  --color-success-muted: rgba(90, 158, 32, 0.12);
+  --color-warning: #a96814;
+  --color-warning-muted: rgba(169, 104, 20, 0.1);
+
+  --shadow-sm: 0 1px 3px rgba(80, 110, 0, 0.05), 0 1px 2px rgba(80, 110, 0, 0.03);
+  --shadow: 0 8px 28px rgba(80, 110, 0, 0.08), 0 2px 6px rgba(80, 110, 0, 0.05);
+  --shadow-lg: 0 20px 56px rgba(80, 110, 0, 0.1), 0 4px 12px rgba(80, 110, 0, 0.06);
+}

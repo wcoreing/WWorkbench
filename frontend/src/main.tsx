@@ -9,6 +9,11 @@ import { installWWHost } from './plugin/host'
 Object.assign(globalThis, { React, ReactDOM })
 installWWHost()
 
+/* 尽早标记平台，避免 mac 顶栏红绿灯占位闪一下；bootstrap 会用 Wails Environment 复核 */
+if (/Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent || '')) {
+  document.documentElement.setAttribute('data-platform', 'darwin')
+}
+
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>

@@ -102,7 +102,6 @@ export function BrowserWorkbench() {
   const [nbGroups, setNbGroups] = useState<NotebookGroup[]>([])
   const [nbSummaries, setNbSummaries] = useState<NoteSummary[]>([])
   const [nbSearch, setNbSearch] = useState('')
-  const [nbRoleFilter, setNbRoleFilter] = useState<'' | NoteRole>('')
   const [selectedFolderId, setSelectedFolderId] = useState(WORKFLOW_ROOT)
   const [nbRefreshing, setNbRefreshing] = useState(false)
   const notebookIdeRef = useRef<NotebookIDEHandle>(null)
@@ -300,12 +299,17 @@ export function BrowserWorkbench() {
         syncedScope = (synced.scopeRoot || '').trim() || scope
         logPath = (synced.noteId || '').trim() || logPath
       }
+      // 任务区收口：skill 目录固定在 工作流/{任务}；短名仅用于展示
+      const skillDir =
+        workflowSkillDir(syncedScope) ||
+        (syncedScope.startsWith(`${WORKFLOW_ROOT}/`) ? syncedScope.split('/').slice(0, 2).join('/') : '')
       const skillName =
         (activeSkill?.name || '').trim() ||
+        skillDir.split('/').filter(Boolean).pop() ||
         syncedScope.split('/').filter(Boolean).pop() ||
         ''
       const title = skillName || syncedScope
-      const skillNoteId = skillName ? `${WORKFLOW_ROOT}/${skillName}/SKILL.md` : skillEntryNoteId(syncedScope)
+      const skillNoteId = skillDir ? `${skillDir}/SKILL.md` : skillEntryNoteId(syncedScope)
       setLogScopeRoot(syncedScope)
       setSelectedFolderId(syncedScope)
       if (skillNoteId) await notebookIdeRef.current?.openNote(skillNoteId)
@@ -315,7 +319,7 @@ export function BrowserWorkbench() {
         noteId: skillNoteId || logPath,
         tabTitle: title,
         selectionBrief: [
-          skillName ? `skill=${skillName}` : '',
+          skillDir ? `skillDir=${skillDir}` : '',
           skillNoteId ? `skillNote=${skillNoteId}` : '',
           logPath ? `log=${logPath}` : '',
           activeRunId ? `runId=${activeRunId}` : '',
@@ -326,13 +330,19 @@ export function BrowserWorkbench() {
       })
       const prompt = t('browser.updateSkillAgentPrompt', {
         name: skillName || title,
-        log: logPath || '工作流/{任务}/log.md',
+        log: logPath || `${WORKFLOW_ROOT}/{任务}/log.md`,
         runId: activeRunId || '',
         title,
       })
-      openAgentDraft({ mentions: [], message: prompt, autoSend: true, mode: 'agent' })
+      openAgentDraft({
+        mentions: [],
+        skillIds: skillDir ? [skillDir] : undefined,
+        message: prompt,
+        autoSend: true,
+        mode: 'agent',
+      })
       setStatusMessage(t('browser.updateSkillAgentReady', { name: skillName || title }))
-      pushLog(`update_skill → agent · ${skillName || title} · focus=${skillNoteId || logPath}`)
+      pushLog(`update_skill → agent · ${skillDir || skillName || title} · focus=${skillNoteId || logPath}`)
       await refreshNotebookTree()
     } catch (e) {
       setStatusMessage((e as Error).message)
@@ -1066,8 +1076,6 @@ export function BrowserWorkbench() {
                 search={nbSearch}
                 activeTabId={logNoteId || null}
                 selectedFolderId={selectedFolderId || WORKFLOW_ROOT}
-                roleFilter={nbRoleFilter}
-                onRoleFilterChange={setNbRoleFilter}
                 onSelectFolder={onSelectWorkflowFolder}
                 onSearchChange={setNbSearch}
                 onOpenNote={onOpenWorkflowNote}

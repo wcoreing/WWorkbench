@@ -1,9 +1,10 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
-import { bindSelectionGuard, zoomCompensatedPx } from '../../components/compat'
+import { bindSelectionGuard } from '../../components/compat'
 import { useContainerHeight } from '../../hooks/useContainerHeight'
 import { useAppStore } from '../../stores/appStore'
+import { isDarkTheme } from '../../theme/appTheme'
 
 const BASE_FONT_PX = 12
 const BASE_LINE_PX = 18
@@ -26,12 +27,11 @@ export const SqlEditor = forwardRef<SqlEditorHandle, Props>(function SqlEditor(
   ref
 ) {
   const theme = useAppStore((s) => s.theme)
-  const uiFontSize = useAppStore((s) => s.uiFontSize)
   const editorHostRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
   const editorHeight = useContainerHeight(editorHostRef, 120)
-  const fontSize = zoomCompensatedPx(BASE_FONT_PX, uiFontSize)
-  const lineHeight = zoomCompensatedPx(BASE_LINE_PX, uiFontSize)
+  const fontSize = BASE_FONT_PX
+  const lineHeight = BASE_LINE_PX
 
   useImperativeHandle(ref, () => ({
     getRunSQL: () => {
@@ -82,12 +82,12 @@ export const SqlEditor = forwardRef<SqlEditorHandle, Props>(function SqlEditor(
 
   return (
     <div className="sql-editor-wrap" data-ww-focus-hog="">
-      <div ref={editorHostRef} className="sql-editor-host ww-zoom-content">
+      <div ref={editorHostRef} className="sql-editor-host">
         <Editor
           key={tabId}
           height={editorHeight}
           defaultLanguage="sql"
-          theme={theme === 'dark' ? 'vs-dark' : 'vs'}
+          theme={isDarkTheme(theme) ? 'vs-dark' : 'vs'}
           value={sql}
           onChange={(v) => onChange(v || '')}
           loading={<div className="empty-hint">加载编辑器…</div>}
@@ -98,6 +98,7 @@ export const SqlEditor = forwardRef<SqlEditorHandle, Props>(function SqlEditor(
             fontFamily: 'var(--font-mono)',
             wordWrap: 'on',
             automaticLayout: true,
+            fixedOverflowWidgets: false,
             scrollBeyondLastLine: false,
             padding: { top: 6, bottom: 6 },
             renderLineHighlight: 'line',

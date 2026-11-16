@@ -31,7 +31,7 @@ interface Props {
   onDismiss?: () => void
 }
 
-/** ContextMenu 挂到 body，避开壳层 zoom 与 client 坐标错位。 */
+/** ContextMenu 挂到 body，用 viewport client 坐标定位。 */
 export function ContextMenu({
   x,
   y,

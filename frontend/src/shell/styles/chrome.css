@@ -1,6 +1,7 @@
 /* 壳层：顶栏、产品轨与工作区通用布局。 */
 
 .workbench-shell {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -8,9 +9,16 @@
   background: var(--color-bg);
 }
 
-/* 仅非默认界面字号时启用 CSS zoom，避免 Monaco 在 zoom:1 下也折行错位。 */
-html[data-ui-zoomed='1'] .workbench-shell {
-  zoom: var(--ui-zoom, 1);
+/* 确认门/通知挂壳内，与壳层同坐标系（密度走 --ui-scale token，不再 CSS zoom）。 */
+.workbench-overlay-root {
+  position: absolute;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.workbench-overlay-root > * {
+  pointer-events: auto;
 }
 
 /* 终端产品：仅终端画布可透桌面；顶栏 / 产品轨 / 侧栏强制实底。 */
@@ -39,23 +47,29 @@ html[data-ui-zoomed='1'] .workbench-shell {
 .workbench-shell.is-terminal-glass .terminal-workbench .product-toolbar,
 .workbench-shell.is-terminal-glass .terminal-workbench .app-sidebar,
 .workbench-shell.is-terminal-glass .terminal-workbench .editor-chrome {
-  background: var(--color-chrome);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
 
+.workbench-shell.is-terminal-glass .shell-chrome {
+  background: var(--fill-chrome);
+}
+
+.workbench-shell.is-terminal-glass .product-rail {
+  background: var(--fill-rail);
+}
+
+.workbench-shell.is-terminal-glass .agent-panel {
+  background: var(--fill-sidebar);
+}
+
 .workbench-shell.is-terminal-glass .terminal-workbench .product-toolbar,
-.workbench-shell.is-terminal-glass .terminal-workbench .app-sidebar,
 .workbench-shell.is-terminal-glass .terminal-workbench .editor-chrome {
-  background: var(--color-toolbar);
+  background: var(--fill-toolbar);
 }
 
 .workbench-shell.is-terminal-glass .terminal-workbench .app-sidebar {
-  background: var(--color-sidebar);
-}
-
-.workbench-shell.is-terminal-glass .terminal-workbench .editor-chrome {
-  background: var(--color-tab-bar);
+  background: var(--fill-sidebar);
 }
 
 /* 侧栏|主区拖拽缝：默认 handle 透明，glass 下会透桌面；铺实底并改用暗色分隔线 */
@@ -86,18 +100,33 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   flex: 1;
 }
 
-/* 顶栏 */
+/* 顶栏：铝壳 + 天光发丝（mac 隐藏系统标题栏后，本栏即窗口顶） */
 .shell-chrome {
   display: flex;
   align-items: center;
   height: var(--chrome-height);
   padding: 0 var(--chrome-pad-x);
-  background: var(--color-chrome);
-  border-bottom: 1px solid var(--color-divider);
+  background: var(--fill-chrome);
+  border-bottom: 1px solid var(--hairline-shade);
+  box-shadow: inset 0 1px 0 var(--hairline-shine);
   gap: var(--chrome-gap);
   flex-shrink: 0;
   position: relative;
   z-index: 5;
+  --wails-draggable: drag;
+}
+
+.shell-chrome button,
+.shell-chrome a,
+.shell-chrome input,
+.shell-chrome .shell-locale-menu {
+  --wails-draggable: no-drag;
+}
+
+/* macOS 红绿灯占位（TitleBarHidden） */
+[data-platform='darwin'] .shell-chrome {
+  padding-left: calc(72 * var(--ui-scale) * 1px);
+  min-height: var(--chrome-height);
 }
 
 .shell-chrome .chrome-brand {
@@ -108,8 +137,8 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 }
 
 .shell-chrome .logo-mark-img {
-  width: 20px;
-  height: 20px;
+  width: var(--icon-chrome);
+  height: var(--icon-chrome);
   border-radius: var(--radius);
   object-fit: contain;
   flex-shrink: 0;
@@ -136,11 +165,11 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 
 .shell-chrome .chrome-ai-btn {
   min-width: var(--control-height-chrome);
-  padding: 0 8px;
+  padding: 0 var(--space-2);
 }
 
 .shell-chrome .chrome-ai-label {
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1;
@@ -153,10 +182,10 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 
 .shell-locale-dropdown {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + var(--space-1));
   right: 0;
-  min-width: 132px;
-  padding: 4px;
+  min-width: calc(132 * var(--ui-scale) * 1px);
+  padding: var(--space-1);
   border-radius: var(--radius-xl);
   border: 1px solid var(--color-border-strong);
   background: var(--color-surface-raised);
@@ -167,12 +196,12 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 .shell-locale-item {
   display: block;
   width: 100%;
-  padding: 6px 10px;
+  padding: calc(6 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text);
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   text-align: left;
   cursor: default;
 }
@@ -187,46 +216,46 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 }
 
 .shell-fontsize-dropdown {
-  min-width: 148px;
+  min-width: calc(148 * var(--ui-scale) * 1px);
 }
 
 .shell-fontsize-dropdown .shell-locale-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: calc(10 * var(--ui-scale) * 1px);
 }
 
 .shell-settings-dropdown {
-  min-width: 168px;
-  max-height: min(72vh, 420px);
+  min-width: calc(168 * var(--ui-scale) * 1px);
+  max-height: min(72vh, calc(420 * var(--ui-scale) * 1px));
   overflow: auto;
-  padding: 6px;
+  padding: calc(6 * var(--ui-scale) * 1px);
 }
 
 .shell-account-modal-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: calc(10 * var(--ui-scale) * 1px);
 }
 
 .shell-account-current {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--font-size-title);
   color: var(--color-text);
 }
 
 .shell-account-error {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   color: var(--color-danger, #c0392b);
 }
 
 .shell-account-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 12px;
+  gap: var(--space-1);
+  font-size: var(--font-size-ui);
   color: var(--color-text-muted);
 }
 
@@ -237,12 +266,12 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 .shell-account-progress {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 4px;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  margin-top: var(--space-1);
 }
 
 .shell-account-progress-bar {
-  height: 6px;
+  height: calc(6 * var(--ui-scale) * 1px);
   border-radius: 999px;
   background: var(--color-border);
   overflow: hidden;
@@ -257,14 +286,48 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 
 .shell-account-progress-text {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   color: var(--color-text);
 }
 
 .shell-account-progress-meta {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
+}
+
+.shell-account-sync-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) calc(10 * var(--ui-scale) * 1px);
+  border-radius: var(--radius);
+  background: var(--color-selection);
+}
+
+.shell-account-hint,
+.shell-account-last,
+.shell-account-last-note {
+  margin: 0;
+  font-size: var(--font-size-ui-sm);
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.shell-account-last {
+  color: var(--color-text);
+}
+
+.shell-account-footer {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.shell-account-sync-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  margin-left: auto;
 }
 
 .shell-settings-section {
@@ -274,16 +337,23 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 }
 
 .shell-settings-label {
-  padding: 4px 10px 2px;
-  font-size: 10px;
+  padding: var(--space-1) calc(10 * var(--ui-scale) * 1px) calc(2 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-caption);
   font-weight: 600;
   letter-spacing: 0.03em;
   color: var(--color-text-muted);
 }
 
+.shell-settings-hint {
+  margin: var(--space-1) calc(10 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui-sm);
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
 .shell-settings-sep {
   height: 1px;
-  margin: 6px 4px;
+  margin: calc(6 * var(--ui-scale) * 1px) var(--space-1);
   background: var(--color-divider);
 }
 
@@ -291,7 +361,7 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: calc(10 * var(--ui-scale) * 1px);
 }
 
 .shell-fontsize-label {
@@ -300,13 +370,13 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 }
 
 .shell-fontsize-tag {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
 }
 
 .chrome-spacer {
   flex: 1;
-  min-width: 8px;
+  min-width: var(--space-2);
 }
 
 .chrome-product-name {
@@ -323,24 +393,38 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   white-space: nowrap;
 }
 
-/* 产品线轨 */
+/* 产品线轨：侧脊铝材 */
 .product-rail {
-  width: var(--product-rail-width, 52px);
-  flex-shrink: 0;
+  width: var(--product-rail-width);
+  min-width: var(--product-rail-width);
+  max-width: var(--product-rail-width);
+  flex: 0 0 var(--product-rail-width);
   display: flex;
   flex-direction: column;
-  background: var(--color-chrome);
-  border-right: 1px solid var(--color-divider);
-  padding: 4px 0;
+  min-height: 0;
+  align-self: stretch;
+  background: var(--fill-rail);
+  border-right: 1px solid var(--hairline-shade);
+  box-shadow: inset 1px 0 0 var(--hairline-shine);
+  padding: var(--space-1) 0;
   position: relative;
   z-index: 3;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .product-rail-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 0 6px;
+  gap: calc(2 * var(--ui-scale) * 1px);
+  padding: 0 var(--space-1);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .product-rail-btn {
@@ -349,9 +433,10 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: calc(2 * var(--ui-scale) * 1px);
   width: 100%;
-  height: 44px;
+  min-width: 0;
+  height: var(--rail-item-height);
   margin: 0;
   padding: var(--space-1) 0;
   border: 1px solid transparent;
@@ -359,6 +444,7 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
+  overflow: hidden;
   transition:
     background var(--motion-ui) var(--ease-ui),
     color var(--motion-ui) var(--ease-ui),
@@ -378,23 +464,23 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   color: var(--accent);
 }
 
-.product-rail-btn.active::before {
-  display: none;
-}
-
 .product-rail-label {
-  font-size: 9px;
+  max-width: 100%;
+  font-size: var(--font-size-rail);
   font-weight: 550;
   letter-spacing: 0;
   line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .product-rail-badge {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 5px;
-  height: 5px;
+  top: calc(6 * var(--ui-scale) * 1px);
+  right: calc(6 * var(--ui-scale) * 1px);
+  width: calc(5 * var(--ui-scale) * 1px);
+  height: calc(5 * var(--ui-scale) * 1px);
   border-radius: 50%;
   background: var(--color-warning);
 }
@@ -415,8 +501,9 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   gap: var(--chrome-gap);
   height: var(--toolbar-height);
   padding: 0 var(--chrome-pad-x);
-  background: var(--color-toolbar);
-  border-bottom: 1px solid var(--color-divider);
+  background: var(--fill-toolbar);
+  border-bottom: 1px solid var(--hairline-shade);
+  box-shadow: inset 0 1px 0 var(--hairline-shine);
   flex-shrink: 0;
   position: relative;
   z-index: 4;
@@ -425,16 +512,16 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 .product-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: calc(2 * var(--ui-scale) * 1px);
 }
 
 .product-toolbar-status {
   display: flex;
   align-items: center;
   gap: var(--chrome-gap);
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
-  max-width: 240px;
+  max-width: calc(240 * var(--ui-scale) * 1px);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -443,15 +530,15 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 .db-export-progress {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
-  max-width: 360px;
-  margin-right: 8px;
+  max-width: calc(360 * var(--ui-scale) * 1px);
+  margin-right: var(--space-2);
 }
 
 .db-export-progress-track {
-  width: 72px;
-  height: 4px;
+  width: calc(72 * var(--ui-scale) * 1px);
+  height: calc(4 * var(--ui-scale) * 1px);
   border-radius: 999px;
   background: var(--color-border);
   overflow: hidden;
@@ -470,13 +557,13 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
 }
 
 .product-toolbar-status .status-dot {
-  width: 6px;
-  height: 6px;
+  width: calc(6 * var(--ui-scale) * 1px);
+  height: calc(6 * var(--ui-scale) * 1px);
   border-radius: 50%;
   background: var(--color-text-muted);
   flex-shrink: 0;
@@ -510,9 +597,9 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
 }
 
 .product-coming-tag {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   font-weight: 500;
-  padding: 2px 8px;
+  padding: calc(2 * var(--ui-scale) * 1px) var(--space-2);
   border-radius: var(--radius-lg);
   background: var(--color-warning-muted);
   color: var(--color-warning);

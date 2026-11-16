@@ -467,6 +467,20 @@ export function useAgentSession(opts: {
     }
   }
 
+  /** clearThreadMentions 一键清空本对话绑定的资源引用。 */
+  const clearThreadMentions = async () => {
+    if (!threadMentions.length) return
+    const prev = threadMentions
+    setThreadMentions([])
+    if (!threadId) return
+    try {
+      await api.setAgentThreadBindings(threadId, [])
+    } catch (e) {
+      setThreadMentions(prev)
+      setStatusMessage((e as Error).message)
+    }
+  }
+
   const unbindThreadSkill = (id: string) => {
     const next = threadSkillIds.filter((s) => s !== id)
     setThreadSkillIds(next)
@@ -504,6 +518,7 @@ export function useAgentSession(opts: {
     submitChoice,
     handleModeChange,
     unbindThreadMention,
+    clearThreadMentions,
     unbindThreadSkill,
   }
 }

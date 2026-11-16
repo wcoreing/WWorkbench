@@ -42,6 +42,7 @@ interface Props {
   ) => void | Promise<void>
   onStop: () => void
   onUnbindThreadMention: (id: string, kind: AgentMentionKind) => void
+  onClearThreadMentions: () => void
   onUnbindThreadSkill: (id: string) => void
   onSuggest?: (item: AgentStarterItem) => void
 }
@@ -91,6 +92,7 @@ export function AgentChatPane({
   onSend,
   onStop,
   onUnbindThreadMention,
+  onClearThreadMentions,
   onUnbindThreadSkill,
   onSuggest,
 }: Props) {
@@ -206,6 +208,7 @@ export function AgentChatPane({
         onSend={onSend}
         onStop={onStop}
         onUnbindThreadMention={onUnbindThreadMention}
+        onClearThreadMentions={onClearThreadMentions}
         threadSkillIds={threadSkillIds}
         onUnbindThreadSkill={onUnbindThreadSkill}
       />

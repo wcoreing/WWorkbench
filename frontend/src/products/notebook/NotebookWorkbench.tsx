@@ -70,8 +70,6 @@ export function NotebookWorkbench() {
   const notebookFocusFolderId = useAppStore((s) => s.notebookFocusFolderId)
   const setNotebookFocusFolderId = useAppStore((s) => s.setNotebookFocusFolderId)
   const setNotebookActiveNoteId = useAppStore((s) => s.setNotebookActiveNoteId)
-  const notebookRoleFilter = useAppStore((s) => s.notebookRoleFilter)
-  const setNotebookRoleFilter = useAppStore((s) => s.setNotebookRoleFilter)
   const setAgentSurface = useAppStore((s) => s.setAgentSurface)
   const languages: { id: NoteLanguage; label: string }[] = NOTE_FILE_TYPE_PRESETS.map((p) => ({
     id: p.id,
@@ -402,6 +400,12 @@ export function NotebookWorkbench() {
         .catch((e) => notify.error((e as Error).message))
       return
     }
+    const folderId = payloadStr(cmd.payload, 'folderId')
+    if (folderId) {
+      setSelectedFolderId(folderId)
+      setNotebookFocusFolderId(folderId)
+      return
+    }
     const hostId = payloadStr(cmd.payload, 'hostId')
     const connectionId = payloadStr(cmd.payload, 'connectionId')
     const initialCommand = payloadStr(cmd.payload, 'initialCommand')
@@ -562,8 +566,6 @@ export function NotebookWorkbench() {
             search={search}
             activeTabId={activeTabId}
             selectedFolderId={selectedFolderId || opsRoot}
-            roleFilter={notebookRoleFilter}
-            onRoleFilterChange={(role) => setNotebookRoleFilter(role as '' | 'memory' | 'skill')}
             onSelectFolder={setSelectedFolderId}
             onSearchChange={setSearch}
             onOpenNote={(id) => {

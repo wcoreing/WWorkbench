@@ -14,11 +14,19 @@ import { ModalPortal, backdropDismissProps, pressProps } from '../../components/
 import { useI18n } from '../../i18n'
 import { notify } from '../../notify'
 
-export type ProjectAssetKind = 'ssh' | 'database' | 'docker' | 'log' | 'http' | 'note' | 'backup'
+export type ProjectAssetKind =
+  | 'ssh'
+  | 'database'
+  | 'docker'
+  | 'log'
+  | 'http'
+  | 'note'
+  | 'skill'
+  | 'backup'
 
 type PickRow = { id: string; label: string; sublabel?: string; pinKind?: WorkbenchProjectLink['kind'] }
 
-const KINDS: ProjectAssetKind[] = ['ssh', 'database', 'docker', 'log', 'http', 'note', 'backup']
+const KINDS: ProjectAssetKind[] = ['ssh', 'database', 'docker', 'log', 'http', 'note', 'skill', 'backup']
 
 function kindLabelKey(kind: ProjectAssetKind): string {
   switch (kind) {
@@ -34,6 +42,8 @@ function kindLabelKey(kind: ProjectAssetKind): string {
       return 'project.kindHttp'
     case 'note':
       return 'project.kindNote'
+    case 'skill':
+      return 'project.kindSkill'
     case 'backup':
       return 'project.kindBackup'
   }
@@ -120,12 +130,22 @@ export function ProjectAssetPicker({ open, linked, onPick, onClose }: Props) {
           sublabel: `${r.method} ${r.url}`,
         }))
       case 'note':
-        return notes.map((n) => ({
-          id: n.id,
-          label: n.title || n.id,
-          sublabel: [n.role, n.language].filter(Boolean).join(' · '),
-          pinKind: n.role === 'skill' ? 'skill' : 'note',
-        }))
+        return notes
+          .filter((n) => n.role !== 'skill')
+          .map((n) => ({
+            id: n.id,
+            label: n.title || n.id,
+            sublabel: [n.role, n.language].filter(Boolean).join(' · '),
+          }))
+      case 'skill':
+        return notes
+          .filter((n) => n.role === 'skill')
+          .map((n) => ({
+            id: n.id,
+            label: n.title || n.id,
+            sublabel: n.id,
+            pinKind: 'skill',
+          }))
       case 'backup':
         return backups.map((p) => ({
           id: p.id,

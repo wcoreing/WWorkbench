@@ -875,7 +875,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name: workbench.CapListSkills,
-		Description: "列出 Skill（任意业务根下 SKILL.md / role=skill，含 工作流/ 与 记忆区/…/项目/；不含 log.md；含内置 cms_new_article）。返回 id/name/noteId/diskPath/hasSteps。",
+		Description: "列出 Skill（任意业务根下 SKILL.md / role=skill：项目/、记忆区/…/项目/、工作流/、运维/；不含 log.md；含内置 cms_new_article）。Skill 跟资源走，不是任务子类。返回 id/name/noteId/diskPath/hasSteps。",
 		Parameters: map[string]interface{}{
 			"type":       "object",
 			"properties": map[string]interface{}{},
@@ -884,11 +884,11 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name: workbench.CapGetSkill,
-		Description: "读取笔记本工作流/Skill 正文（任意业务根下 **/SKILL.md，含 工作流/ 与 记忆区/{主机}/项目/…；永不返回 log.md）。返回 content + diskPath/skillDir/assetsDir；优先读后自己用工具执行。参数 skill=完整目录路径|短名。",
+		Description: "读取 Skill 正文（任意业务根 **/SKILL.md：项目/{名}、记忆区/…/项目/…、工作流/{任务}；永不返回 log.md）。返回 content + diskPath/skillDir/assetsDir。优先传完整目录路径；短名查找优先已有项目册，短名新建默认任务区。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"skill": map[string]interface{}{"type": "string", "description": "skill id 或 name"},
+				"skill": map[string]interface{}{"type": "string", "description": "完整目录路径（推荐）或短名"},
 				"id":    map[string]interface{}{"type": "string"},
 				"name":  map[string]interface{}{"type": "string"},
 			},

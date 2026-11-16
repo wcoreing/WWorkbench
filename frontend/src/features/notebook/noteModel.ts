@@ -31,6 +31,35 @@ export function toNoteDO(note: Note): model.NoteDO {
   })
 }
 
+/** formatNoteUpdatedAt 侧栏用短时间（updatedAt 为秒）；0 返回空。 */
+export function formatNoteUpdatedAt(updatedAt: number, nowMs = Date.now()): string {
+  const sec = Number(updatedAt) || 0
+  if (sec <= 0) return ''
+  const d = new Date(sec * 1000)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const now = new Date(nowMs)
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  if (sameDay) return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  if (d.getFullYear() === now.getFullYear()) {
+    return `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+  }
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** formatNoteUpdatedAtFull 悬停完整时间。 */
+export function formatNoteUpdatedAtFull(updatedAt: number): string {
+  const sec = Number(updatedAt) || 0
+  if (sec <= 0) return ''
+  const d = new Date(sec * 1000)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 /** toSummary Note → 侧栏摘要。 */
 export function toSummary(note: Note): NoteSummary {
   return {

@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { api } from '../../api/client'
 import { onTerminalClosed, onTerminalOutput } from '../../api/terminalEvents'
-import { bindSelectionGuard, pressProps, zoomCompensatedPx } from '../../components/compat'
+import { bindSelectionGuard, pressProps } from '../../components/compat'
 import { ContextMenu } from '../../components/ContextMenu'
 import { IconRefresh } from '../../components/Icons'
 import { openAgentDraft } from '../agent/openAgentDraft'
@@ -53,7 +53,6 @@ export function terminalBackground(opacity: number): string {
 }
 
 const XTERM_CLEAR_BG = '#00000000'
-const BASE_TERM_FONT_PX = 12
 
 /** 在容器可见且有尺寸时调整 xterm，避免 hidden/销毁后报错。 */
 function safeFit(fit: FitAddon, term: Terminal, el: HTMLElement): boolean {
@@ -66,9 +65,9 @@ function safeFit(fit: FitAddon, term: Terminal, el: HTMLElement): boolean {
   }
 }
 
-/** termFontSizeForUi 按壳层字号档位缩放终端字号（配合 host 反 zoom）。 */
-function termFontSizeForUi(uiFontSize: number): number {
-  return Math.max(11, zoomCompensatedPx(BASE_TERM_FONT_PX, uiFontSize))
+/** termFontSize 终端正文跟设置「字体大小」（去掉整壳 zoom 后需显式同步）。 */
+function termFontSize(uiPx: number): number {
+  return Math.max(11, Math.round(uiPx))
 }
 
 /** normalizeTerminalPathToken 取选区首行首段路径 token；拒绝 shell 提示符等噪音。 */
@@ -91,13 +90,13 @@ export function TerminalPane({ sessionId, hostId = '', active, focused = false, 
   const tRef = useRef(t)
   tRef.current = t
   const setStatusMessage = useAppStore((s) => s.setStatusMessage)
+  const uiFontSize = useAppStore((s) => s.uiFontSize)
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<Terminal | null>(null)
   const fitRef = useRef<FitAddon | null>(null)
   const sessionIdRef = useRef(sessionId)
   sessionIdRef.current = sessionId
   const boundSessionRef = useRef<string | null>(null)
-  const uiFontSize = useAppStore((s) => s.uiFontSize)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
   const [sessionEnded, setSessionEnded] = useState(false)
   const [frequentPaths, setFrequentPaths] = useState<FrequentPathEntry[]>([])
@@ -111,7 +110,7 @@ export function TerminalPane({ sessionId, hostId = '', active, focused = false, 
 
     let disposed = false
     setSessionEnded(false)
-    const fontSize = termFontSizeForUi(useAppStore.getState().uiFontSize)
+    const fontSize = termFontSize(useAppStore.getState().uiFontSize)
 
     const term = new Terminal({
       cursorBlink: true,
@@ -195,6 +194,19 @@ export function TerminalPane({ sessionId, hostId = '', active, focused = false, 
     }
   }, [])
 
+  // 设置字号变更时同步 xterm 并重新 fit
+  useEffect(() => {
+    const term = termRef.current
+    const fit = fitRef.current
+    const el = containerRef.current
+    if (!term || !fit || !el) return
+    const fontSize = termFontSize(uiFontSize)
+    if (term.options.fontSize === fontSize) return
+    term.options.fontSize = fontSize
+    if (!safeFit(fit, term, el)) return
+    api.resizeTerminal(sessionIdRef.current, term.cols, term.rows).catch(() => {})
+  }, [uiFontSize])
+
   // 会话热绑定：换 sessionId 时不销毁 xterm，续写历史
   useEffect(() => {
     const term = termRef.current
@@ -272,20 +284,6 @@ export function TerminalPane({ sessionId, hostId = '', active, focused = false, 
       offClosed()
     }
   }, [sessionId])
-
-  useEffect(() => {
-    const el = containerRef.current
-    const term = termRef.current
-    const fit = fitRef.current
-    if (!el || !term || !fit) return
-    const next = termFontSizeForUi(uiFontSize)
-    if (term.options.fontSize === next) return
-    term.options.fontSize = next
-    requestAnimationFrame(() => {
-      if (!safeFit(fit, term, el)) return
-      api.resizeTerminal(sessionIdRef.current, term.cols, term.rows).catch(() => {})
-    })
-  }, [uiFontSize])
 
   useEffect(() => {
     const el = containerRef.current
@@ -476,7 +474,7 @@ export function TerminalPane({ sessionId, hostId = '', active, focused = false, 
     <div className="terminal-pane-stack">
       <div
         ref={containerRef}
-        className="terminal-xterm-host ww-zoom-content"
+        className="terminal-xterm-host"
         data-ww-focus-hog=""
         style={{ backgroundColor: terminalBackground(opacity) }}
       />

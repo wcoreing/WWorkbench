@@ -5,14 +5,14 @@
 
 .httpapi-toolbar {
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   justify-content: space-between;
 }
 
 .httpapi-toolbar-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
   min-width: 0;
 }
@@ -20,8 +20,8 @@
 .httpapi-env-select {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui-sm);
 }
 
 .httpapi-env-select-label {
@@ -30,8 +30,8 @@
 }
 
 .httpapi-env-badge {
-  font-size: 10px;
-  padding: 2px 8px;
+  font-size: var(--font-size-caption);
+  padding: calc(2 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
   border-radius: var(--radius-lg);
   background: rgba(0, 122, 255, 0.15);
   color: var(--accent, #007aff);
@@ -47,7 +47,7 @@
 }
 
 .httpapi-sidebar-search {
-  padding: 6px 8px;
+  padding: calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
 }
@@ -61,11 +61,11 @@
 .httpapi-method-tag {
   display: inline-block;
   min-width: 34px;
-  font-size: 9px;
+  font-size: var(--font-size-rail);
   font-weight: 700;
   padding: 0;
   border-radius: 0;
-  margin-right: 6px;
+  margin-right: calc(6 * var(--ui-scale) * 1px);
   font-family: var(--font-mono);
 }
 
@@ -85,8 +85,8 @@
 }
 
 .httpapi-history-head {
-  min-height: 28px;
-  padding: 7px 10px 5px;
+  min-height: var(--control-height-sm);
+  padding: calc(7 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px) calc(5 * var(--ui-scale) * 1px);
   font-size: var(--font-size-caption);
   font-weight: 600;
   text-transform: uppercase;
@@ -96,16 +96,16 @@
 .httpapi-history-list {
   list-style: none;
   margin: 0;
-  padding: 0 0 6px;
+  padding: 0 0 calc(6 * var(--ui-scale) * 1px);
   overflow-y: auto;
 }
 
 .httpapi-history-item {
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  padding: 5px 10px;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  min-height: var(--control-height-sm);
+  padding: calc(5 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   border-radius: 0;
   cursor: pointer;
   font-size: var(--font-size-ui-sm);
@@ -124,7 +124,7 @@
 }
 
 .httpapi-history-time {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-text-muted);
   flex-shrink: 0;
 }
@@ -149,13 +149,13 @@
 
 .httpapi-request-line {
   display: flex;
-  gap: 8px;
-  padding: 10px 12px 6px;
+  gap: var(--space-2);
+  padding: calc(10 * var(--ui-scale) * 1px) calc(12 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px);
   flex-shrink: 0;
 }
 
 .httpapi-method {
-  width: 96px;
+  width: calc(96 * var(--ui-scale) * 1px);
   flex-shrink: 0;
   font-weight: 600;
   font-family: var(--font-mono);
@@ -165,39 +165,39 @@
   flex: 1;
   min-width: 0;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--font-size-ui);
 }
 
 .httpapi-timeout {
-  width: 72px;
+  width: calc(72 * var(--ui-scale) * 1px);
   flex-shrink: 0;
 }
 
 .httpapi-meta-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 0 12px 8px;
+  gap: var(--space-2);
+  padding: 0 calc(12 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
   flex-shrink: 0;
 }
 
 .httpapi-notes-input {
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
 }
 
 .httpapi-tabs {
   display: flex;
   gap: 0;
-  padding: 0 10px;
+  padding: 0 calc(10 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-toolbar);
   flex-shrink: 0;
 }
 
 .httpapi-tab {
-  min-height: 29px;
-  padding: 5px 10px;
+  min-height: var(--control-height-sm);
+  padding: calc(5 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
   font-size: var(--font-size-ui-sm);
   border: none;
   border-bottom: 1px solid transparent;
@@ -223,27 +223,27 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 10px;
+  padding: calc(10 * var(--ui-scale) * 1px);
 }
 
 .httpapi-kv-table {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: calc(3 * var(--ui-scale) * 1px);
 }
 
 .httpapi-kv-head,
 .httpapi-kv-row {
   display: grid;
   grid-template-columns: 28px 1fr 1fr 28px;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   align-items: center;
 }
 
 .httpapi-kv-head {
   font-size: var(--font-size-caption);
   color: var(--color-text-muted);
-  padding-bottom: 4px;
+  padding-bottom: calc(4 * var(--ui-scale) * 1px);
 }
 
 .httpapi-kv-input {
@@ -253,20 +253,20 @@
 
 .httpapi-kv-add {
   align-self: flex-start;
-  margin-top: 4px;
+  margin-top: calc(4 * var(--ui-scale) * 1px);
 }
 
 .httpapi-body-pane,
 .httpapi-auth-pane {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 120px;
 }
 
 .httpapi-body-mode {
   display: flex;
-  gap: 6px;
+  gap: calc(6 * var(--ui-scale) * 1px);
   flex-shrink: 0;
 }
 
@@ -274,7 +274,7 @@
   flex: 1;
   min-height: 140px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   resize: vertical;
 }
 
@@ -291,8 +291,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: var(--space-2);
+  padding: calc(6 * var(--ui-scale) * 1px) calc(12 * var(--ui-scale) * 1px);
   border-bottom: 1px solid var(--color-border-subtle);
   flex-shrink: 0;
   flex-wrap: wrap;
@@ -300,20 +300,20 @@
 
 .httpapi-response-tabs {
   display: flex;
-  gap: 2px;
+  gap: calc(2 * var(--ui-scale) * 1px);
 }
 
 .httpapi-response-meta {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .httpapi-status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: calc(5 * var(--ui-scale) * 1px);
   font-size: var(--font-size-ui-sm);
   font-weight: 600;
   padding: 0;
@@ -343,12 +343,12 @@
 }
 
 .httpapi-status {
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
 }
 
 .httpapi-truncated {
-  font-size: 10px;
+  font-size: var(--font-size-caption);
   color: var(--color-warning);
 }
 
@@ -357,16 +357,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   color: var(--color-text-muted);
-  padding: 16px;
+  padding: var(--space-4);
 }
 
 .httpapi-pre,
 .httpapi-response-pre {
   flex: 1;
   margin: 0;
-  padding: 10px 12px;
+  padding: calc(10 * var(--ui-scale) * 1px) calc(12 * var(--ui-scale) * 1px);
   overflow: auto;
   font-family: var(--font-mono);
   font-size: var(--font-size-ui-sm);
@@ -384,13 +384,13 @@
 .httpapi-env-modal-body {
   display: grid;
   grid-template-columns: 180px 1fr;
-  gap: 16px;
+  gap: var(--space-4);
   min-height: 280px;
 }
 
 .httpapi-env-list {
   border-right: 1px solid var(--color-border-subtle);
-  padding-right: 12px;
+  padding-right: calc(12 * var(--ui-scale) * 1px);
   min-height: 0;
   overflow-y: auto;
 }
@@ -399,27 +399,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 12px;
+  margin-bottom: calc(8 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui);
   font-weight: 600;
 }
 
 .httpapi-env-editor-pane {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   min-width: 0;
 }
 
 .httpapi-env-vars-area {
   min-height: 120px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   resize: vertical;
 }
 
 .httpapi-env-hint {
-  font-size: 11px;
+  font-size: var(--font-size-ui-sm);
   color: var(--color-text-muted);
   margin: 0;
 }
@@ -428,8 +428,8 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
+  gap: var(--space-3);
+  margin-top: calc(8 * var(--ui-scale) * 1px);
 }
 
 .httpapi-env-use-label {
@@ -444,12 +444,12 @@
 .httpapi-curl-input {
   min-height: 120px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--font-size-ui);
   width: 100%;
 }
 
 .httpapi-curl-actions {
-  margin-top: 10px;
+  margin-top: calc(10 * var(--ui-scale) * 1px);
   display: flex;
   justify-content: flex-end;
 }

@@ -47,7 +47,6 @@ func toolUpdateSkill(_ context.Context, d *Deps, raw json.RawMessage) ToolResult
 	if !updateSkillHasPayload(in) {
 		return Fail("请至少提供 lessons / script / resourcePaths / steps / description / title 之一")
 	}
-	stageBrowser(d, "沉淀 Skill · "+name)
 	return UpdateSkillNow(d, in)
 }
 
@@ -92,6 +91,19 @@ func updateSkillWantResources(in UpdateSkillArgs) bool {
 	return false
 }
 
+// updateSkillAllowsStepless 无浏览器步骤也可写盘（项目方法 / 纯经验沉淀）。
+func updateSkillAllowsStepless(in UpdateSkillArgs) bool {
+	if strings.TrimSpace(in.Lessons) != "" || strings.TrimSpace(in.Script) != "" {
+		return true
+	}
+	if updateSkillWantResources(in) {
+		return true
+	}
+	return strings.TrimSpace(in.Title) != "" ||
+		strings.TrimSpace(in.Description) != "" ||
+		strings.Contains(strings.ReplaceAll(strings.TrimSpace(in.Name), "\\", "/"), "/")
+}
+
 // textAlreadyInSection 经验/脚本去重：正文已出现则不再追加（避免时间戳导致假变更）。
 func textAlreadyInSection(section, piece string) bool {
 	piece = strings.TrimSpace(piece)
@@ -118,19 +130,27 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	cur, err := resolveWorkflowSSOT(d, name)
 	created := false
 	if err != nil {
-		if len(in.Steps) == 0 {
-			return Fail(err.Error() + "；若要新建当前任务 Skill，请传入 steps")
+		// 项目/运维等方法 Skill 允许无浏览器步骤，仅 lessons/脚本/说明即可首创。
+		if len(in.Steps) == 0 && !updateSkillAllowsStepless(in) {
+			return Fail(err.Error() + "；新建 Skill：传完整目录路径 + lessons/description/script，或传入 steps（任务区浏览器步骤）")
 		}
 		title := strings.TrimSpace(in.Title)
 		if title == "" {
-			title = name
+			title = notebook.SkillBasename(name)
+			if title == "" {
+				title = name
+			}
+		}
+		steps := in.Steps
+		if steps == nil {
+			steps = []model.WorkflowStepDO{}
 		}
 		cur = model.WorkflowDO{
 			Name:        name,
 			Title:       title,
 			Description: strings.TrimSpace(in.Description),
 			Intent:      strings.TrimSpace(in.Intent),
-			Steps:       in.Steps,
+			Steps:       steps,
 			SourceRunID: strings.TrimSpace(in.SourceRunID),
 			Source:      "note",
 		}
@@ -155,8 +175,12 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	if updateSkillReplaceSteps(in) {
 		cur.Steps = in.Steps
 	}
-	if len(cur.Steps) == 0 {
-		return Fail("工作流步骤不能为空（请先 distill 或传入 steps）")
+	if cur.Steps == nil {
+		cur.Steps = []model.WorkflowStepDO{}
+	}
+	// 仅「覆盖步骤却给空数组」时拒绝；经验/脚本收口允许 steps=[]。
+	if updateSkillReplaceSteps(in) && len(in.Steps) == 0 {
+		return Fail("replaceSteps 时 steps 不能为空")
 	}
 
 	stamp := time.Now().Format("2006-01-02 15:04")
@@ -204,7 +228,6 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	contentSame := !created && existing != nil &&
 		normalizeSkillContent(existing.Content) == normalizeSkillContent(previewContent)
 	if contentSame && !wantResources && !lessonsAdded && !scriptAdded {
-		stageBrowser(d, "Skill 无变更 · "+name)
 		out := map[string]interface{}{
 			"ok": true, "updated": false, "skipped": true,
 			"noteId": noteID, "workflow": cur,
@@ -267,11 +290,10 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	if err != nil {
 		return Fail(err.Error())
 	}
+	// Skill 跟资源走：项目收口勿切浏览器/工作流产品线，也不自动 reveal 抢走当前页。
 	if d.Radar != nil && saved.NoteID != "" {
-		d.Radar.EmitNotebookNote(workbench.RadarOpUpdate, saved.NoteID, "workflow-"+saved.Name, saved.Title, true)
+		d.Radar.EmitNotebookNote(workbench.RadarOpUpdate, saved.NoteID, "skill-"+saved.Name, saved.Title, false)
 	}
-	revealNotebook(d, saved.NoteID, true)
-	stageBrowser(d, "已沉淀 Skill "+saved.Name)
 	out := map[string]interface{}{
 		"ok": true, "updated": true, "skipped": false,
 		"workflow": saved, "noteId": saved.NoteID,

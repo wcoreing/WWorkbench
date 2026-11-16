@@ -161,12 +161,14 @@ func ProductForTool(toolName string) string {
 		workbench.CapBrowserCloseSession, workbench.CapBrowserRun, workbench.CapBrowserEvaluate,
 		workbench.CapBrowserNetwork, workbench.CapListTaskRuns, workbench.CapGetTaskRun,
 		workbench.CapListMCPLogs, workbench.CapGetMCPLog,
-		workbench.CapReplayTaskStep, workbench.CapDistillSkill,
-		workbench.CapUpdateSkill, workbench.CapRunSkill,
-		workbench.CapListSkills, workbench.CapGetSkill,
+		workbench.CapReplayTaskStep, workbench.CapRunSkill:
+		return "browser"
+	// Skill 跟资源走：确认时亮笔记本，勿切任务页（项目收口 update_skill 尤甚）。
+	case workbench.CapDistillSkill, workbench.CapUpdateSkill,
+		workbench.CapListSkills, workbench.CapGetSkill, workbench.CapPublishAgentSkill,
 		workbench.CapListDirVersions, workbench.CapEnableDirVersion, workbench.CapPinDirVersion, workbench.CapRestoreDirVersion,
 		workbench.CapListSkillVersions, workbench.CapPinSkillVersion, workbench.CapRestoreSkillVersion:
-		return "browser"
+		return "notebook"
 	default:
 		return "terminal"
 	}

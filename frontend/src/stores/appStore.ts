@@ -13,6 +13,7 @@ import { applyDocumentLocale, READY_MESSAGES, translate } from '../i18n'
 import { applyUiFontSize, DEFAULT_UI_FONT_SIZE, type UiFontSize } from '../shell/uiFontSize'
 import { emptyAgentSurface, type AgentSurface } from './agentSurface'
 import { dismissOverlays } from '../components/compat/dismissOverlays'
+import type { AppTheme } from '../theme/appTheme'
 
 export type { WorkTab } from './workTab'
 export type { AgentSurface } from './agentSurface'
@@ -43,7 +44,7 @@ export interface McpStage {
 interface AppState {
   version: string
   preferencesReady: boolean
-  theme: 'light' | 'dark'
+  theme: AppTheme
   locale: AppLocale
   activeProduct: ProductId
   connections: Connection[]
@@ -62,10 +63,8 @@ interface AppState {
   /** 侧栏聚焦目录（如主机记忆册 记忆区/{主机}） */
   notebookFocusFolderId: string | null
   notebookActiveNoteId: string | null
-  /** 笔记本角色过滤（工作流入口跳转时置为 skill） */
-  notebookRoleFilter: '' | 'memory' | 'skill'
   setVersion: (v: string) => void
-  setTheme: (t: 'light' | 'dark') => void
+  setTheme: (t: AppTheme) => void
   setLocale: (locale: AppLocale) => void
   setActiveProduct: (id: ProductId) => void
   setConnections: (c: Connection[]) => void
@@ -82,7 +81,6 @@ interface AppState {
   setNotebookFocusNoteId: (id: string | null) => void
   setNotebookFocusFolderId: (id: string | null) => void
   setNotebookActiveNoteId: (id: string | null) => void
-  setNotebookRoleFilter: (role: '' | 'memory' | 'skill') => void
   addTab: (tab: WorkTab) => void
   replaceTab: (oldId: string, tab: WorkTab) => void
   updateSqlTab: (id: string, sql: string) => void
@@ -114,7 +112,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   notebookFocusNoteId: null,
   notebookFocusFolderId: null,
   notebookActiveNoteId: null,
-  notebookRoleFilter: '',
   setVersion: (version) => set({ version }),
   setTheme: (theme) => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -174,7 +171,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setNotebookFocusNoteId: (notebookFocusNoteId) => set({ notebookFocusNoteId }),
   setNotebookFocusFolderId: (notebookFocusFolderId) => set({ notebookFocusFolderId }),
   setNotebookActiveNoteId: (notebookActiveNoteId) => set({ notebookActiveNoteId }),
-  setNotebookRoleFilter: (notebookRoleFilter) => set({ notebookRoleFilter }),
   addTab: (tab) => {
     const tabs = [...get().tabs, tab]
     set({ tabs, activeTabId: tab.id })

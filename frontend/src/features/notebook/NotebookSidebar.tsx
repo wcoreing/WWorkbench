@@ -48,8 +48,6 @@ interface Props {
   search: string
   activeTabId: string | null
   selectedFolderId: string
-  roleFilter: '' | NoteRole
-  onRoleFilterChange: (role: '' | NoteRole) => void
   onSelectFolder: (folderId: string) => void
   onSearchChange: (q: string) => void
   onOpenNote: (id: string) => void
@@ -70,7 +68,7 @@ interface Props {
   scopeRootId?: string
   /** 并列展示多个业务工作根（如运维壳：记忆区 + 运维）。 */
   scopeRootIds?: readonly string[]
-  /** 紧凑：藏搜索/角色筛选，适合嵌在 NotebookIDE。 */
+  /** 紧凑：藏搜索栏，适合嵌在 NotebookIDE。 */
   compact?: boolean
   /** 记忆区项目绑定（dirRel → 本地/远端路径）。 */
   projectByDir?: Record<string, HostProject>
@@ -86,8 +84,6 @@ export function NotebookSidebar({
   search,
   activeTabId,
   selectedFolderId,
-  roleFilter,
-  onRoleFilterChange,
   onSelectFolder,
   onSearchChange,
   onOpenNote,
@@ -165,14 +161,7 @@ export function NotebookSidebar({
     t,
   })
 
-  const roleSummaries = useMemo(() => {
-    if (!roleFilter) return summaries
-    return summaries.filter((n) => {
-      const role = n.role || 'note'
-      return role === roleFilter
-    })
-  }, [summaries, roleFilter])
-  const fullTree = useMemo(() => buildNotebookTree(groups, roleSummaries), [groups, roleSummaries])
+  const fullTree = useMemo(() => buildNotebookTree(groups, summaries), [groups, summaries])
   const scopedTree = useMemo(() => {
     if (!scopeRoots.length) return fullTree
     const out: NotebookTreeNode[] = []
@@ -183,7 +172,7 @@ export function NotebookSidebar({
     return out
   }, [fullTree, scopeRoots])
   const tree = useMemo(() => filterNotebookTree(scopedTree, search), [scopedTree, search])
-  const filterActive = search.trim().length > 0 || Boolean(roleFilter)
+  const filterActive = search.trim().length > 0
 
   const refreshVersionFlags = useCallback(async () => {
     const ids = groups.map((g) => g.id).filter(Boolean)
@@ -578,26 +567,6 @@ export function NotebookSidebar({
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
           />
-          <div className="notebook-role-filters" role="tablist" aria-label={t('notebook.roleFilter')}>
-            {(
-              [
-                ['', t('notebook.roleFilterAll')],
-                ['memory', t('notebook.roleBadgeMemory')],
-                ['skill', t('notebook.roleBadgeSkill')],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id || 'all'}
-                type="button"
-                role="tab"
-                aria-selected={roleFilter === id}
-                className={`notebook-role-filter${roleFilter === id ? ' is-on' : ''}`}
-                {...pressProps(() => onRoleFilterChange(id))}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
         </div>
       ) : null}
 

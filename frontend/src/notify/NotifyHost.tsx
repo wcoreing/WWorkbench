@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { pressProps } from '../components/compat'
+import { getWorkbenchOverlayRoot } from '../components/compat/overlayRoot'
 import { useI18n } from '../i18n'
 import { notify } from './notify'
 import { useNotifyStore } from './notifyStore'
@@ -43,16 +45,20 @@ function NotifyCard({ item }: { item: NotifyItem }) {
   )
 }
 
-/** NotifyHost 壳层通知栈（右下，避开底栏与 Agent）。 */
+/** NotifyHost 壳层通知栈（右下，避开底栏与 Agent；挂壳内叠加层，与 --ui-scale 同坐标系）。 */
 export function NotifyHost() {
   const items = useNotifyStore((s) => s.items)
-  if (items.length === 0 || typeof document === 'undefined') return null
+  const [root, setRoot] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setRoot(getWorkbenchOverlayRoot())
+  }, [])
+  if (!root || items.length === 0) return null
   return createPortal(
     <div className="wwb-notify-host" aria-live="polite" aria-relevant="additions">
       {items.map((item) => (
         <NotifyCard key={item.id} item={item} />
       ))}
     </div>,
-    document.body,
+    root,
   )
 }

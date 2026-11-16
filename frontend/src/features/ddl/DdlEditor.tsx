@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
 import Editor, { type OnMount } from '@monaco-editor/react'
 import type { editor } from 'monaco-editor'
-import { bindSelectionGuard, zoomCompensatedPx } from '../../components/compat'
+import { bindSelectionGuard } from '../../components/compat'
 import { useAppStore } from '../../stores/appStore'
+import { isDarkTheme } from '../../theme/appTheme'
 import '../../components/ui.css'
 
 const BASE_FONT_PX = 12
@@ -19,10 +20,9 @@ interface Props {
 /** DdlEditor DDL 编辑区（可编辑模式下支持执行）。 */
 export function DdlEditor({ tabId, content, editable, onChange, onExecute }: Props) {
   const theme = useAppStore((s) => s.theme)
-  const uiFontSize = useAppStore((s) => s.uiFontSize)
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
-  const fontSize = zoomCompensatedPx(BASE_FONT_PX, uiFontSize)
-  const lineHeight = zoomCompensatedPx(BASE_LINE_PX, uiFontSize)
+  const fontSize = BASE_FONT_PX
+  const lineHeight = BASE_LINE_PX
 
   useEffect(() => {
     editorRef.current?.updateOptions({ fontSize, lineHeight })
@@ -56,12 +56,12 @@ export function DdlEditor({ tabId, content, editable, onChange, onExecute }: Pro
           </button>
         </div>
       </div>
-      <div className="ddl-editor-host ww-zoom-content">
+      <div className="ddl-editor-host">
         <Editor
           key={tabId}
           height="100%"
           defaultLanguage="sql"
-          theme={theme === 'dark' ? 'vs-dark' : 'vs'}
+          theme={isDarkTheme(theme) ? 'vs-dark' : 'vs'}
           value={content}
           onChange={(v) => onChange(v || '')}
           options={{
@@ -71,6 +71,7 @@ export function DdlEditor({ tabId, content, editable, onChange, onExecute }: Pro
             fontFamily: 'var(--font-mono)',
             wordWrap: 'on',
             automaticLayout: true,
+            fixedOverflowWidgets: false,
             scrollBeyondLastLine: false,
             padding: { top: 8, bottom: 8 },
           }}
