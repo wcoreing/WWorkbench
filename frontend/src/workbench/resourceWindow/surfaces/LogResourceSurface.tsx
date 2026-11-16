@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../../../api/client'
-import type { LogSource } from '../../../api/types'
+import type { LogSource, LogSourceType } from '../../../api/types'
 import { EmptyState } from '../../../components/EmptyState'
 import { pressProps } from '../../../components/compat'
 import { useI18n } from '../../../i18n'
@@ -27,7 +27,8 @@ export function LogResourceSurface({ window: win }: Props) {
       const list = await api.listLogSources()
       const hit = list.find((s) => s.id === win.resourceId)
       if (!hit) throw new Error(t('resourceWindow.logMissing'))
-      setSource(hit)
+      // Wails DO 的 sourceType 为 string，收窄为业务联合类型
+      setSource({ ...hit, sourceType: hit.sourceType as LogSourceType })
       const n = Math.max(50, hit.tailLines || 200)
       const res = await api.fetchLogSource(hit.id, n, 0)
       setContent(res.content || '')
