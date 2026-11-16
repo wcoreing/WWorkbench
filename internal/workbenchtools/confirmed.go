@@ -68,18 +68,22 @@ func ExecuteConfirmed(ctx context.Context, d *Deps, toolName, argsJSON string) T
 		return RestoreSkillVersionConfirmed(ctx, d, argsJSON)
 	case workbench.CapRunSkill:
 		return RunWorkflowConfirmed(ctx, d, argsJSON)
+	case workbench.CapDesktopAct:
+		return DesktopActConfirmed(ctx, d, argsJSON)
 	default:
 		return Fail("未知待确认工具: " + toolName)
 	}
 }
 
-// browserStepConfirmTool 浏览器「执行过程」逐步类写工具（询问开关关闭时免弹窗）。
-func browserStepConfirmTool(toolName string) bool {
+// stepConfirmTool 「执行过程」逐步类写工具（浏览器 / 桌面；询问开关关闭时免弹窗）。
+// 桌面操作的前提是该应用已获「操作」授权，授权本身不受此开关影响。
+func stepConfirmTool(toolName string) bool {
 	switch toolName {
 	case workbench.CapBrowserClick, workbench.CapBrowserKeys, workbench.CapBrowserFill,
 		workbench.CapBrowserUpload, workbench.CapBrowserSelectOption, workbench.CapBrowserDrag,
 		workbench.CapBrowserNavigate, workbench.CapBrowserRun, workbench.CapBrowserOpenFrame,
-		workbench.CapReplayTaskStep, workbench.CapRunSkill:
+		workbench.CapReplayTaskStep, workbench.CapRunSkill,
+		workbench.CapDesktopAct:
 		return true
 	default:
 		return false
@@ -104,7 +108,7 @@ func browserAskConfirmEnabled(d *Deps) bool {
 }
 
 // AwaitConfirmAndExecute 外置 MCP：工作台拍板通过后执行；拒绝/超时返回错误结果。
-// 浏览器逐步写操作：舞台「询问」默认关 → 免每步弹窗直接执行；打开后才阻塞确认。
+// 浏览器 / 桌面逐步写操作：舞台「询问」默认关 → 免每步弹窗直接执行；打开后才阻塞确认。
 func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args json.RawMessage, res ToolResult) ToolResult {
 	if !res.NeedsConfirm {
 		return res
@@ -118,7 +122,7 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 		recordMCPCall(ctx, d, toolName, args, out, started)
 	}()
 
-	if browserStepConfirmTool(toolName) && !browserAskConfirmEnabled(d) {
+	if stepConfirmTool(toolName) && !browserAskConfirmEnabled(d) {
 		MarkLatestIntentApproved(ctx, toolName, intent, true)
 		out = ExecuteConfirmed(ctx, d, toolName, string(args))
 		return out

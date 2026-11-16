@@ -7,7 +7,7 @@ import (
 	"WWorkbench/internal/model"
 )
 
-// extractMCPResources 从工具参数抽取全产品资源引用（ssh/db/docker/log/http/note/backup/skill/browser）。
+// extractMCPResources 从工具参数抽取全产品资源引用（ssh/db/docker/log/http/note/backup/skill/browser/desktop）。
 func extractMCPResources(tool string, args json.RawMessage) []model.MCPAssetRef {
 	var m map[string]interface{}
 	if len(args) == 0 || json.Unmarshal(args, &m) != nil || m == nil {
@@ -112,6 +112,11 @@ func extractMCPResources(tool string, args json.RawMessage) []model.MCPAssetRef 
 		add(model.MCPAssetBrowser, session, session)
 	}
 
+	// 桌面应用（只给 ref 的调用不带 app，资源归属见任务账本的 locator）
+	if app := str("app"); app != "" && isDesktopTool(tool) {
+		add(model.MCPAssetDesktop, app, app)
+	}
+
 	return out
 }
 
@@ -189,6 +194,7 @@ func mcpArgsSummary(args json.RawMessage) string {
 		"noteId", "policyId", "skill", "name", "workflow", "session",
 		"runId", "workDir", "path", "role", "findingIds", "mode", "allowWrite",
 		"method", "containerId", "fields",
+		"app", "ref", "keys", // 桌面：记操作对象与按键，不记输入的文本
 	}
 	out := map[string]interface{}{}
 	for _, k := range keepKeys {

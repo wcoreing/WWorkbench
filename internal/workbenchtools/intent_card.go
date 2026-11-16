@@ -153,11 +153,11 @@ func intentProp() map[string]interface{} {
 	}
 }
 
-// executorProp Schema 片段：浏览器执行器（wwb 扩展 / kimi）。
+// executorProp Schema 片段：浏览器执行器（wwb 扩展 / kimi / agent-browser）。
 func executorProp() map[string]interface{} {
 	return map[string]interface{}{
 		"type":        "string",
-		"description": "执行器 wwb|kimi|auto；auto/默认：指针类(drag等)→wwb，其余→kimi（快照更全）。禁止直连插件端口。",
+		"description": "执行器 wwb|kimi|agent-browser|auto；auto/默认：wwb → kimi → agent-browser 取第一个可用。agent-browser 是独立浏览器（免装扩展、登录态独立）。同一任务固定一个执行器。禁止直连插件端口。",
 	}
 }
 

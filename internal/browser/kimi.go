@@ -59,6 +59,14 @@ func (e *KimiExecutor) Available(ctx context.Context) bool {
 	return true
 }
 
+func (e *KimiExecutor) Info(_ context.Context) map[string]interface{} {
+	return map[string]interface{}{
+		"addr":         e.addr(),
+		"capabilities": KimiCapabilities,
+		"note":         "经 browser_*(executor=kimi|auto) 调用；入参/截图/wait 已做适配，效果对齐直连 10086",
+	}
+}
+
 func (e *KimiExecutor) Call(ctx context.Context, action string, args json.RawMessage, session string) (json.RawMessage, error) {
 	if e == nil {
 		return nil, errno.New(errno.CodeConnFailed, "kimi 执行器未就绪", "")

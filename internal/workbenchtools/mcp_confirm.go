@@ -21,6 +21,8 @@ type MCPConfirmRequest struct {
 	Summary   string          `json:"summary"`
 	Preview   json.RawMessage `json:"preview,omitempty"`
 	Product   string          `json:"product,omitempty"`
+	// ConfirmLabel 确认按钮文案；空则用默认「执行」。
+	ConfirmLabel string `json:"confirmLabel,omitempty"`
 }
 
 type mcpPending struct {
@@ -75,6 +77,9 @@ func (g *MCPConfirmGate) Await(ctx context.Context, req MCPConfirmRequest) (appr
 	}
 	if len(req.Preview) > 0 {
 		payload["preview"] = json.RawMessage(req.Preview)
+	}
+	if req.ConfirmLabel != "" {
+		payload["confirmLabel"] = req.ConfirmLabel
 	}
 	if g.emit != nil {
 		g.emit("mcp:confirm", payload)
@@ -133,6 +138,9 @@ func (e failErr) Error() string { return string(e) }
 
 // ProductForTool 危险操作对应的工作台产品线（便于亮舞台）。
 func ProductForTool(toolName string) string {
+	if isDesktopTool(toolName) {
+		return "" // 桌面应用在工作台之外，确认时不切舞台
+	}
 	switch toolName {
 	case "execute_sql":
 		return "database"

@@ -60,6 +60,7 @@ type Service struct {
 	sqlExportCancels map[string]context.CancelFunc
 	pluginPacks   *pluginpack.Manager
 	browserBridge *browser.Bridge
+	agentBrowser  *browser.AgentBrowserExecutor
 }
 
 // NewService 创建应用服务。
@@ -123,6 +124,7 @@ func (s *Service) Shutdown(ctx context.Context) {
 	if s.browserBridge != nil {
 		s.browserBridge.Stop()
 	}
+	s.stopAgentBrowser()
 	tunnel.CloseSSHPool()
 	s.mcpMu.Lock()
 	_ = s.stopMCPLocked()

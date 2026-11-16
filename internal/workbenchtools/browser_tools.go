@@ -7,7 +7,7 @@ import (
 func registerBrowserTools(r *Registry) {
 	r.add(ToolDef{
 		Name:        workbench.CapBrowserStatus,
-		Description: "浏览器/执行器状态：executors.wwb / executors.kimi、扩展目录。动手前先调；任务操作走 browser_*，勿直连端口。",
+		Description: "浏览器/执行器状态：executors.wwb / executors.kimi / executors.agent-browser、扩展目录。动手前先调；任务操作走 browser_*，勿直连端口。",
 		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
 		Handler:     toolBrowserStatus,
 	})
@@ -409,7 +409,7 @@ func registerBrowserTools(r *Registry) {
 				"intent":   map[string]interface{}{"type": "string"},
 				"action":   map[string]interface{}{"type": "string"},
 				"tool":     map[string]interface{}{"type": "string"},
-				"provider": map[string]interface{}{"type": "string", "description": "agent|mcp|wwb|kimi|ui|record"},
+				"provider": map[string]interface{}{"type": "string", "description": "agent|mcp|wwb|kimi|agent-browser|ui|record"},
 				"title":    map[string]interface{}{"type": "string", "description": "开新 run 时标题"},
 				"ok":       map[string]interface{}{"type": "boolean"},
 				"error":    map[string]interface{}{"type": "string"},

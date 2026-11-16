@@ -549,7 +549,7 @@ export interface TaskStep {
   seq: number
   /** thought | op */
   kind?: string
-  /** wwb | kimi | agent | ui | record | mcp */
+  /** wwb | kimi | agent-browser | agent | ui | record | mcp */
   provider?: string
   tool: string
   action: string
@@ -574,6 +574,14 @@ export interface MCPAssetRef {
   kind: string
   id: string
   label?: string
+}
+
+/** 允许 AI 读取 / 操作的桌面应用（level：read | act，act 含 read）。 */
+export interface DesktopAppGrant {
+  key: string
+  name: string
+  level: string
+  at: number
 }
 
 /** 一次 MCP/工具调用流水。 */

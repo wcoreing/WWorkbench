@@ -14,7 +14,7 @@ import (
 func toolBrowserStatus(ctx context.Context, d *Deps, _ json.RawMessage) ToolResult {
 	out := map[string]interface{}{
 		"executors": executorsSnapshot(ctx, d),
-		"note":      "任务浏览器操作请走 browser_*（可传 executor=wwb|kimi）；禁止任务场景直连 10086/18765",
+		"note":      "任务浏览器操作请走 browser_*（可传 executor=wwb|kimi|agent-browser）；禁止任务场景直连 10086/18765",
 	}
 	if d != nil && d.Browser != nil {
 		st := d.Browser.Status()

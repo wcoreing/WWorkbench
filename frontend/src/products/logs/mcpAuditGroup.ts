@@ -37,6 +37,7 @@ export const MCP_ASSET_KINDS = [
   'backup',
   'skill',
   'browser',
+  'desktop',
 ] as const
 
 export function resourceKey(kind: string, id: string): string {

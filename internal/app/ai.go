@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"WWorkbench/internal/agent"
+	"WWorkbench/internal/desktop"
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/harness"
 	"WWorkbench/internal/model"
@@ -33,31 +34,39 @@ func (s *Service) wireAgentRunner() {
 	s.radar = radar
 	mcpConfirm := workbenchtools.NewMCPConfirmGate(emit)
 	writeAllows := workbenchtools.NewMCPWriteAllowBook(s.store)
+	dataDir, dataDirErr := store.DataDir()
+	var desk *desktop.Driver
+	if dataDirErr == nil {
+		desk = desktop.New(dataDir)
+	}
 	deps := &workbenchtools.Deps{
-		Conns:       s.conns,
-		SSHHosts:    s.sshHosts,
-		Sessions:    s.sessions,
-		Meta:        s.meta,
-		Queries:     s.queries,
-		Store:       s.store,
-		Notebook:    s.notebook,
-		Docker:      s.docker,
-		UIActions:   workbenchtools.NewUIActionBus(emit),
-		Radar:       radar,
-		MCPConfirm:  mcpConfirm,
-		WriteAllows: writeAllows,
-		Terminals:   s.terminals,
-		Browser:     s.browserBridge,
-		PluginPacks: s.pluginPacks,
+		Conns:         s.conns,
+		SSHHosts:      s.sshHosts,
+		Sessions:      s.sessions,
+		Meta:          s.meta,
+		Queries:       s.queries,
+		Store:         s.store,
+		Notebook:      s.notebook,
+		Docker:        s.docker,
+		UIActions:     workbenchtools.NewUIActionBus(emit),
+		Radar:         radar,
+		MCPConfirm:    mcpConfirm,
+		WriteAllows:   writeAllows,
+		Terminals:     s.terminals,
+		Browser:       s.browserBridge,
+		AgentBrowser:  s.agentBrowser,
+		Desktop:       desk,
+		DesktopGrants: workbenchtools.NewDesktopGrantBook(s.store),
+		PluginPacks:   s.pluginPacks,
 	}
 	reg := workbenchtools.NewRegistry(deps)
 	s.toolsRegistry = reg
 
 	var host *harness.Host
-	dataDir, err := store.DataDir()
-	if err != nil {
-		log.Printf("harness: data dir: %v", err)
+	if dataDirErr != nil {
+		log.Printf("harness: data dir: %v", dataDirErr)
 	} else {
+		var err error
 		host, err = harness.Open(dataDir, func(gw *toolgateway.Gateway) {
 			harness.RegisterWorkbenchTools(gw, reg, func() map[string]bool {
 				return reg.Deps().EffectivePermissions()

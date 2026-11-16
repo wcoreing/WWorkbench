@@ -360,6 +360,14 @@ type MCPWriteAllowDO struct {
 	Kind    string `json:"kind,omitempty"`
 }
 
+// DesktopAppGrantDO 允许 AI 读取 / 操作的桌面应用。
+type DesktopAppGrantDO struct {
+	Key   string `json:"key"`   // bundle id（缺失时为应用名）
+	Name  string `json:"name"`  // 显示名
+	Level string `json:"level"` // read | act（act 含 read）
+	At    int64  `json:"at"`
+}
+
 // SFTPSessionInfoDO SFTP 会话信息。
 type SFTPSessionInfoDO struct {
 	SessionID string `json:"sessionId"`
@@ -711,12 +719,14 @@ const (
 	TaskStepKindOp      = "op"
 	TaskStepKindThought = "thought"
 
-	TaskProviderWWB    = "wwb"
-	TaskProviderKimi   = "kimi"
-	TaskProviderAgent  = "agent"
-	TaskProviderUI     = "ui"
-	TaskProviderRecord = "record"
-	TaskProviderMCP    = "mcp"
+	TaskProviderWWB          = "wwb"
+	TaskProviderKimi         = "kimi"
+	TaskProviderAgentBrowser = "agent-browser" // 值同 browser.ExecutorNameAgentBrowser
+	TaskProviderAgentDesktop = "agent-desktop" // 值同 desktop.ProviderName
+	TaskProviderAgent        = "agent"
+	TaskProviderUI           = "ui"
+	TaskProviderRecord       = "record"
+	TaskProviderMCP          = "mcp"
 )
 
 // TaskStepDO 任务中的一步（存定位策略摘要，少依赖脆弱 @eN）。
@@ -725,7 +735,7 @@ type TaskStepDO struct {
 	RunID     string `json:"runId"`
 	Seq       int    `json:"seq"`
 	Kind      string `json:"kind,omitempty"`     // thought | op（默认 op）
-	Provider  string `json:"provider,omitempty"` // wwb | kimi | agent | ui | record | mcp
+	Provider  string `json:"provider,omitempty"` // wwb | kimi | agent-browser | agent | ui | record | mcp
 	Tool      string `json:"tool"`
 	Action    string `json:"action"`
 	Intent    string `json:"intent"`
@@ -756,6 +766,7 @@ const (
 	MCPAssetBackup   = "backup"
 	MCPAssetSkill    = "skill"
 	MCPAssetBrowser  = "browser"
+	MCPAssetDesktop  = "desktop" // 桌面应用，id 为 bundle id / 应用名
 )
 
 // MCPAssetRef 一次 MCP/工具调用触及的产品资源（kind:id）。

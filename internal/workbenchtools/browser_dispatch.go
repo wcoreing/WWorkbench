@@ -9,14 +9,22 @@ import (
 	"WWorkbench/internal/model"
 )
 
-// browserCall 经执行器网关调用浏览器动作；返回 data 与实际 provider（wwb|kimi）。
-func browserCall(ctx context.Context, d *Deps, session, executorHint, action string, args interface{}) (json.RawMessage, string, error) {
+// browserExecutors 浏览器执行器有序列表；顺序即 auto 的优先级（wwb → kimi → agent-browser）。
+func browserExecutors(d *Deps) []browser.Executor {
 	wwb := &browser.WWBExecutor{}
 	if d != nil {
 		wwb.Bridge = d.Browser
 	}
-	kimi := browser.NewKimiExecutor("")
-	ex, provider, err := browser.ResolveExecutorForAction(ctx, executorHint, action, wwb, kimi)
+	execs := []browser.Executor{wwb, browser.NewKimiExecutor("")}
+	if d != nil && d.AgentBrowser != nil {
+		execs = append(execs, d.AgentBrowser)
+	}
+	return execs
+}
+
+// browserCall 经执行器网关调用浏览器动作；返回 data 与实际 provider（wwb|kimi|agent-browser）。
+func browserCall(ctx context.Context, d *Deps, session, executorHint, action string, args interface{}) (json.RawMessage, string, error) {
+	ex, provider, err := browser.ResolveExecutorForAction(ctx, executorHint, action, browserExecutors(d)...)
 	if err != nil {
 		return nil, "", err
 	}
@@ -61,9 +69,5 @@ func providerOrWWB(p string) string {
 }
 
 func executorsSnapshot(ctx context.Context, d *Deps) map[string]interface{} {
-	wwb := &browser.WWBExecutor{}
-	if d != nil {
-		wwb.Bridge = d.Browser
-	}
-	return browser.ExecutorsStatus(ctx, wwb, browser.NewKimiExecutor(""))
+	return browser.ExecutorsStatus(ctx, browserExecutors(d)...)
 }

@@ -15,10 +15,10 @@ import (
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
 // ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.54.633"
+const ServerVersion = "0.54.649"
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明（前馈；不因未读规则拒绝工具）。
-const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本 / 浏览器舞台 / 备份 / 插件等）。
+const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本 / 浏览器舞台 / 桌面应用 / 备份 / 插件等）。
 - 【前馈】本段即系统约束摘要；可选 get_agent_rules(domain?) 复核全文。不会因未调用 get_agent_rules 而拒绝工具。
 - 【意图】动手类请传 intent（人话：要干什么、影响谁）；缺省时系统会合成「未声明意图」卡片，仍继续执行，确认弹窗与舞台可见。审计：list_mcp_logs 看意图→产品资源(ssh/db/docker/log/http/note/backup/skill)→工具。
 - 【项目】list/get/save_project；detect_project_git；智能配置：suggest/configure_project_resources。Cursor 跨机：sync/list/get_project_cursor_transcripts（仓库 .wworkbench/cursor-transcripts；非 requestId）。
@@ -30,6 +30,7 @@ const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据�
 - 容器启停删用 start/stop/remove_container，勿用 shell_probe 跑 docker rm。
 - 词典：任务=目标；账本=thought+op→log.md；Skill=任意目录 SKILL.md。对外只认 list/get/update/run/distill_skill（旧 *workflow / update_agent_skill 已别名转发）。闭环：接目标→task_record/browser_*→update_skill。禁止任务场景直连 10086/18765。样板 get_skill(wwb-skill-standard)。
 - 浏览器：browser_*；等壳；fill(fields)；可写宏 browser_run(mode=macro)。自学习：探索记 log → update_skill（无变更跳过；有变更写前 pin 再落盘，免确认）→ get_skill/run_skill。
+- 桌面应用：desktop_*（原生应用的界面读取与操作）。默认一个应用都读不了：首次读取 / 操作某应用时工作台弹窗请用户按应用授权，被拒后勿重复请求。先 desktop_status；ref 原样使用；细则 get_agent_rules(domain=desktop)。
 - 笔记本：list_notes / get_note / get_skill；动手前读主机 memory。插件 UI：先 get_plugin_protocol。
 - 工具受「AI 能力权限」开关约束。Cursor 配置本端点 /mcp/workbench（非 /mcp）。`
 

@@ -305,6 +305,8 @@ export function ListContainers(arg1:string):Promise<app.ApiResult___WWorkbench_i
 
 export function ListDatabaseObjects(arg1:string,arg2:string):Promise<app.ApiResult___WWorkbench_internal_model_ObjectTreeNodeDO_>;
 
+export function ListDesktopAppGrants():Promise<app.ApiResult___WWorkbench_internal_model_DesktopAppGrantDO_>;
+
 export function ListDirVersions(arg1:string,arg2:number):Promise<app.ApiResult_map_string_interface____>;
 
 export function ListDockerContexts():Promise<app.ApiResult___WWorkbench_internal_model_DockerContextDO_>;
@@ -474,6 +476,8 @@ export function RevealNotebookPath(arg1:string):Promise<app.ApiResult_bool_>;
 export function RevealNotebookWorkspace():Promise<app.ApiResult_bool_>;
 
 export function RevealPluginPackPath(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function RevokeDesktopAppGrant(arg1:string):Promise<app.ApiResult_int_>;
 
 export function RevokeMCPWriteDir(arg1:string,arg2:string):Promise<app.ApiResult_int_>;
 

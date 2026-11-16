@@ -51,7 +51,7 @@ func saveBrowserShot(dataURL, preferFormat string) (path string, size int, forma
 	return path, len(raw), format, nil
 }
 
-// browserClient 经任务网关调用执行器（wwb/kimi）；替代直连 Bridge。
+// browserClient 经任务网关调用执行器（wwb/kimi/agent-browser）；替代直连 Bridge。
 type browserClient struct {
 	d            *Deps
 	executorHint string
@@ -93,7 +93,7 @@ func requireBrowserExec(d *Deps, executorHint, session string) (*browserClient, 
 		return nil, errBrowserMissing
 	}
 	ctx := context.Background()
-	if _, _, err := browser.ResolveExecutorForAction(ctx, executorHint, "", &browser.WWBExecutor{Bridge: d.Browser}, browser.NewKimiExecutor("")); err != nil {
+	if _, _, err := browser.ResolveExecutorForAction(ctx, executorHint, "", browserExecutors(d)...); err != nil {
 		return nil, err
 	}
 	return &browserClient{d: d, executorHint: executorHint, session: session}, nil
@@ -133,7 +133,7 @@ func requireBrowserRaw(d *Deps, raw json.RawMessage) (*browserClient, error) {
 	return requireBrowserExec(d, peekExecutor(raw), peekSession(raw))
 }
 
-var errBrowserMissing = errStr("浏览器执行器未就绪（连接 WWorkbench 扩展或启动 Kimi WebBridge）")
+var errBrowserMissing = errStr("浏览器执行器未就绪（连接 WWorkbench 扩展、启动 Kimi WebBridge，或安装 agent-browser）")
 
 type errStr string
 

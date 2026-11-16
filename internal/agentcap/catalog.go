@@ -330,7 +330,7 @@ func Catalog() []Item {
 		},
 		{
 			Name: "browser_status", Label: "浏览器舞台状态", Risk: RiskRead,
-			Description:    "执行器状态（wwb/kimi）、桥监听/扩展目录；动手前先查",
+			Description:    "执行器状态（wwb/kimi/agent-browser）、桥监听/扩展目录；动手前先查",
 			DefaultEnabled: true,
 		},
 		{
@@ -446,6 +446,46 @@ func Catalog() []Item {
 		{
 			Name: "browser_open", Label: "打开浏览器舞台", Risk: RiskSession,
 			Description:    "切换到浏览器产品线",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "desktop_status", Label: "桌面应用状态", Risk: RiskRead,
+			Description:    "agent-desktop 是否就绪、系统权限、已授权应用；不读任何应用内容",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "desktop_apps", Label: "列出桌面应用", Risk: RiskRead,
+			Description:    "运行中的应用及其对 AI 的授权；带 app 时列窗口（需该应用的读取授权）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "desktop_snapshot", Label: "桌面应用界面快照", Risk: RiskRead,
+			Description:    "读取应用界面的无障碍树；仅限已授权的应用，首次读取弹窗授权",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "desktop_find", Label: "桌面应用查找元素", Risk: RiskRead,
+			Description:    "按角色 / 名称 / 文本查找元素，或读取单个元素的完整文本与值",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "desktop_wait", Label: "桌面应用等待", Risk: RiskRead,
+			Description:    "等文本 / 元素 / 窗口出现，或纯延时",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "desktop_screenshot", Label: "桌面应用截图", Risk: RiskRead,
+			Description:    "截取已授权应用的窗口，保存在本机数据目录",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "desktop_act", Label: "操作桌面应用", Risk: RiskWrite,
+			Description:    "点击 / 输入 / 按键等；仅限已授予「操作」的应用，每步记入任务账本",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "desktop_launch", Label: "启动桌面应用", Risk: RiskWrite,
+			Description:    "启动应用并带到前台；需该应用的「操作」授权",
 			DefaultEnabled: true,
 		},
 		{

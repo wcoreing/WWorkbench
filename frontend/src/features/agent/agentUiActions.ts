@@ -200,9 +200,18 @@ function formatMcpConfirmBody(
     const codeRaw = [obj.command, obj.sql, obj.initialCommand, obj.commandPreview]
       .map((v) => (v != null ? String(v) : ''))
       .find((s) => s.trim())
-    const code = codeRaw ? formatConfirmCode(codeRaw) : undefined
+    // 桌面应用：要输入的文本原样展示，不按 shell 命令拆行
+    const desktopApp = toolName.startsWith('desktop_') && obj.app != null ? String(obj.app).trim() : ''
+    const desktopText = desktopApp && obj.text != null ? String(obj.text) : ''
+    const code = codeRaw ? formatConfirmCode(codeRaw) : desktopText.trim() ? desktopText : undefined
 
     const meta: string[] = []
+    if (desktopApp) {
+      const bundle = obj.bundleId != null ? String(obj.bundleId).trim() : ''
+      meta.push(`应用 · ${desktopApp}${bundle && bundle !== desktopApp ? `（${bundle}）` : ''}`)
+      if (obj.scope != null && String(obj.scope).trim()) meta.push(`范围 · ${String(obj.scope).trim()}`)
+      if (obj.note != null && String(obj.note).trim()) meta.push(String(obj.note).trim())
+    }
     if (obj.intent != null && String(obj.intent).trim()) {
       meta.push(`意图 · ${String(obj.intent).trim()}`)
     }
@@ -308,7 +317,7 @@ async function handleMcpConfirm(raw: Record<string, unknown>) {
     title: summary,
     message: body.message,
     code: body.code,
-    confirmLabel: '执行',
+    confirmLabel: String(raw.confirmLabel ?? '').trim() || '执行',
     danger: true,
   })
   try {

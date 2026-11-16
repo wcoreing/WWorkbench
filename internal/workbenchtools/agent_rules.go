@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.16b"
+const AgentRulesVersion = "2026.11.16c"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -19,14 +19,14 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 
 ## 0. 前馈优先（不再事后拒）
 - MCP initialize.instructions 与本文件已说明约束；**不会**因未调用 get_agent_rules 而拒绝工具。
-- get_agent_rules 可选：按 domain 复核分片（terminal/database/browser/notebook/backup/plugin/all）。
+- get_agent_rules 可选：按 domain 复核分片（terminal/database/browser/desktop/notebook/backup/plugin/all）。
 - 内置侧栏 Agent 开跑仍会 Mark 已读，供遥测。
 
 ## 0b. 意图声明卡（intent）
 - 动手类请传 intent：人话说明「要干什么、影响谁/哪台机/哪个库」。
 - 缺省或占位词时系统合成「未声明意图 · …」卡片，**不阻断**；确认弹窗与舞台仍可见。
 - 浏览器/任务写操作写入**任务账本**（TaskRun；list_task_runs / get_task_run / task_record；session 对齐标签组）；同步 log.md。日志≠待办。
-- **MCP 审计日志**（全产品资源）：每次工具终态写入 mcp_call_logs（意图 + 触及资源 kind:id + 工具）。复盘用 list_mcp_logs（默认 byIntent）/ get_mcp_log；get_workbench_context.mcpLogs 也有近期摘要。资源含 ssh/database/docker/log/http/note/backup/skill/browser，不只任务。
+- **MCP 审计日志**（全产品资源）：每次工具终态写入 mcp_call_logs（意图 + 触及资源 kind:id + 工具）。复盘用 list_mcp_logs（默认 byIntent）/ get_mcp_log；get_workbench_context.mcpLogs 也有近期摘要。资源含 ssh/database/docker/log/http/note/backup/skill/browser/desktop，不只任务。
 - 空命令仅开终端时可不填。
 
 ## 0c. 词典与自学习闭环（先探索，再确定）
@@ -38,7 +38,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
   - **主机部署/巡检** → 记忆区/{主机}/项目/{名}/SKILL.md（传完整路径）。
   - **浏览器任务探索** → 仅此时默认 工作流/{任务名}/（与 log.md 同目录）。
   - 短名新建默认仍映射任务区；项目/运维收口**禁止用短名新建**，以免误进 工作流/。
-- **插件解耦**：浏览器扩展（wwb）与 Kimi WebBridge（kimi）只是执行器；任务场景**禁止直连** 127.0.0.1:10086 / 18765，一律经 browser_*（executor=wwb|kimi|auto），由工作台记 op。
+- **插件解耦**：浏览器扩展（wwb）、Kimi WebBridge（kimi）、agent-browser 只是执行器；任务场景**禁止直连** 127.0.0.1:10086 / 18765，也**禁止**自己在终端跑 agent-browser 命令，一律经 browser_*（executor=wwb|kimi|agent-browser|auto），由工作台记 op。
 - **自学习两阶段（必须遵守）**：
   1. **探索**：接受目标后动手完成；过程经验写入账本/log.md（browser_* 自动记 op；关键决策用 task_record(kind=thought)）。此阶段以达成目标为主，Skill 可先粗糙或不存在。
   2. **收口**：目标完成后，**推理总结**再 update_skill（归纳稳定路径/经验/脚本/资源）；**name=归属目录**（任务=工作流/{任务}；项目=项目/{名}；与 log.md 同目录），禁止沉淀到错误业务根；禁止机械把 log 逐步贴进 Skill，禁止只口头总结不落盘。**项目收口**用 update_skill(lessons=…) 即可，**不必 steps**，**禁止** distill_skill / 切任务页。**update_skill 免确认**：无实质变更则 skipped；有变更则**写前 pin 目录版本**再落盘（仍须 intent）。
@@ -130,9 +130,10 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 数据硬风险（同步/库文件/导入）永远不可免。
 
 ## 10. 浏览器舞台与任务账本（执行器可换）
-- 先 browser_status：看 executors.wwb / executors.kimi / recommended / capabilities；wwb 未连接时可按 extDir 加载扩展。
-- **禁止**任务场景直连插件端口（10086/18765）；一律 browser_*（executor=wwb|kimi|auto），工作台自动记 op。
-- **auto/默认**：优先 wwb（已含 CDP Accessibility AX 快照 + DOM 补充，效果对齐直连 Kimi）；executor=kimi 作显式对比/回退。同一任务尽量固定 executor，勿中途混用导致附着错位。
+- 先 browser_status：看 executors.wwb / executors.kimi / executors.agent-browser / recommended / capabilities；wwb 未连接时可按 extDir 加载扩展。
+- **禁止**任务场景直连插件端口（10086/18765）；一律 browser_*（executor=wwb|kimi|agent-browser|auto），工作台自动记 op。
+- **auto/默认**：优先 wwb（已含 CDP Accessibility AX 快照 + DOM 补充，效果对齐直连 Kimi）；其次 kimi；两者都不可用时落到 agent-browser。同一任务尽量固定 executor，勿中途混用导致附着错位（各执行器的 @eN 互不通用）。
+- **executor=agent-browser**（免装扩展）：工作台专用的独立 Chrome，**登录态与用户日常浏览器不通**——首次访问需登录的站点，navigate 后请用户在弹出的窗口里登录，之后保留。ref 取快照里的 [ref=eN]，传 ref=@eN；iframe 内元素已内联进快照，直接用 ref，不要传 frame / open_frame；没有用户标签可借，不要 group_session / find_tab 找用户页，直接 navigate；close_session 会关掉这个浏览器（登录态仍在）。
 - snapshot 默认 source=ax（getFullAXTree→@eN）；source=dom 强制旧 DOM 扫描；frame 非 #f0 时回退 DOM。
 - 思考/决策：task_record(kind=thought, summary=…)；换策略、踩坑结论、收口前必记。
 - 【标签组】一任务=一 session=一 Chrome 标签组。首次 navigate 带 session+group_title。结束 close_session；borrowed 不关。
@@ -158,6 +159,19 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **推荐闭环**：接目标 → task_record(thought) + browser_* 探索 → 完成后 update_skill。run_skill 仅为可选捷径。
 - distill_skill 仅草稿；正式技能以 Agent 总结后的 update_skill 为准。
 - 录制：source=record 写入账本；list_task_runs / get_task_run / SyncTaskRunLog→log.md。
+
+## 11. 桌面应用（desktop_*，执行器 agent-desktop）
+- 用途：浏览器之外的原生应用（访达、备忘录、微信、Excel、各类客户端）。网页任务仍走 browser_*，不要用桌面工具去点浏览器里的网页。
+- **默认一个应用都读不了**。首次 desktop_snapshot / desktop_find / desktop_screenshot 某应用 → 工作台弹窗请用户授权「读取」；首次 desktop_act / desktop_launch → 请用户授权「操作」（含读取）。授权按应用长期有效，用户可在「AI 权限」里撤销。被拒绝后**不要重复请求**，先向用户说明为什么需要。
+- 工作台自身不可被读取或操作（授权与确认弹窗在这里）。**禁止**自己在终端跑 agent-desktop 命令绕过授权；一律经 desktop_*。
+- 先 desktop_status（是否安装、系统辅助功能 / 屏幕录制权限）；权限缺失时请用户到「系统设置 → 隐私与安全性」允许 WWorkbench，不要反复重试。
+- 标准闭环：desktop_apps（拿 bundle id）→ desktop_snapshot（大界面 skeleton=true，再把容器的 ref 传给 root 下钻；读正文 all=true）或 desktop_find → desktop_act（带 waitFor="role:text" 直接拿下一态快照）→ 下一步。
+- ref 形如 @<快照id>:eN，**原样使用**，只对取到它时的界面有效；报 STALE_REF / SNAPSHOT_NOT_FOUND 就重新快照。禁止编造 ref。
+- 动作经无障碍接口送达：不移动鼠标、不抢用户焦点，用户可以同时做别的事。拖拽、悬停、双击等物理鼠标动作**不支持**；元素不支持某动作（ACTION_NOT_SUPPORTED）时看快照行尾的 actions=…（没标的元素只能点击 / 聚焦），换目标或改用 press 键盘操作。
+- type = 在光标处插入；set_value = 整体替换；清空用 clear。结果里 delivery=delivered_unverified 表示已送达但未回读验证——关键步骤后用 waitFor 或 desktop_find 核对，**不要因为不放心就重复执行**。
+- 危险快捷键（如 cmd+q）默认被拦；确有必要用 press + force=true，每次都由用户单独确认。
+- 账本：desktop_act / desktop_launch 自动记 op（locator = 应用 + role + name，不存易变的 ref）。完成后照常 update_skill 沉淀路径，下次 get_skill 后用 desktop_* 重走；桌面步骤暂不支持 replay_task_step / run_skill 机械重放。
+- 隐私：快照、截图里是用户桌面上的真实内容；只取完成任务所需的部分，不要把无关内容写进笔记或回复。
 `
 
 // MarkAgentRulesAck 标记当前调用方「已读系统规则」（内置 Agent 开跑 / get_agent_rules）。
@@ -172,7 +186,7 @@ func AgentRulesAcked(ctx context.Context) bool {
 
 // AgentRulesDomains 可分片领域。
 func AgentRulesDomains() []string {
-	return []string{"all", "terminal", "database", "browser", "notebook", "backup", "plugin"}
+	return []string{"all", "terminal", "database", "browser", "desktop", "notebook", "backup", "plugin"}
 }
 
 // AgentRulesForDomain 按领域返回约束分片（all=全文）。
@@ -185,6 +199,7 @@ func AgentRulesForDomain(domain string) string {
 		"terminal": {"## 3. 终端与舞台", "## 9. 软写护照"},
 		"database": {"## 5. 数据库", "## 4. 数据文件三层防护", "## 4b. 统一备份策略"},
 		"browser":  {"## 10. 浏览器舞台与任务账本", "## 0c. 词典与自学习闭环"},
+		"desktop":  {"## 11. 桌面应用", "## 0c. 词典与自学习闭环"},
 		"notebook": {"## 7. 笔记本 = 底座", "## 0c. 词典与自学习闭环"},
 		"backup":   {"## 4. 数据文件三层防护", "## 4b. 统一备份策略", "## 4c. 服务发现"},
 		"plugin":   {"## 8. 插件包"},
@@ -283,6 +298,8 @@ func requiresAgentRulesAck(name string) bool {
 		workbench.CapBrowserWait,
 		workbench.CapBrowserScreenshot,
 		workbench.CapBrowserAttach,
+		workbench.CapDesktopAct,
+		workbench.CapDesktopLaunch,
 		workbench.CapSyncProjectCursorTranscripts:
 		return true
 	default:

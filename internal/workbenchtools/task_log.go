@@ -35,7 +35,7 @@ type BrowserStepInput struct {
 	Title    string // 开新 run 时可选标题
 	Source   string // mcp | ui | browser | agent
 	Kind     string // thought | op（默认 op）
-	Provider string // wwb | kimi | agent | ui | record | mcp
+	Provider string // wwb | kimi | agent-browser | agent | ui | record | mcp
 }
 
 // TaskStepInput 与 BrowserStepInput 同构（账本通用入口名）。

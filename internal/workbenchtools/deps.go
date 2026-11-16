@@ -5,6 +5,7 @@ import (
 
 	"WWorkbench/internal/browser"
 	"WWorkbench/internal/conn"
+	"WWorkbench/internal/desktop"
 	dockersvc "WWorkbench/internal/docker"
 	"WWorkbench/internal/meta"
 	"WWorkbench/internal/model"
@@ -38,9 +39,14 @@ type Deps struct {
 	WriteAllows *MCPWriteAllowBook
 	Terminals   *terminal.Manager
 	Browser     *browser.Bridge
-	HarnessRoot func() string
-	Agent       AgentSync
-	PluginPacks *pluginpack.Manager
+	// AgentBrowser 第三执行器（agent-browser CLI）；nil 表示不启用。
+	AgentBrowser *browser.AgentBrowserExecutor
+	// Desktop 桌面应用驱动（agent-desktop CLI）；DesktopGrants 决定 AI 能读 / 操作哪些应用。
+	Desktop       *desktop.Driver
+	DesktopGrants *DesktopGrantBook
+	HarnessRoot   func() string
+	Agent         AgentSync
+	PluginPacks   *pluginpack.Manager
 }
 
 // EffectivePermissions 用户权限 ∩ pack 启用门控（pack 声明的能力需对应 pack 启用）。

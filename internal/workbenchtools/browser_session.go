@@ -11,11 +11,13 @@ import (
 )
 
 type browserNavigateArgs struct {
-	URL        string `json:"url"`
-	NewTab     bool   `json:"newTab"`
-	Session    string `json:"session"`
-	GroupTitle string `json:"group_title"`
-	Intent     string `json:"intent"`
+	URL             string      `json:"url"`
+	NewTab          bool        `json:"newTab"`
+	Session         string      `json:"session"`
+	GroupTitle      string      `json:"group_title"`
+	Intent          string      `json:"intent"`
+	IncludeSnapshot interface{} `json:"includeSnapshot"` // true|false|"ax"|"probe"
+	Observation     string      `json:"observation"`     // ax|probe|false
 }
 
 func toolBrowserNavigate(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
@@ -58,6 +60,12 @@ func BrowserNavigateConfirmed(ctx context.Context, d *Deps, argsJSON string) Too
 	}
 	if strings.TrimSpace(in.GroupTitle) != "" {
 		args["group_title"] = strings.TrimSpace(in.GroupTitle)
+	}
+	if in.IncludeSnapshot != nil {
+		args["includeSnapshot"] = in.IncludeSnapshot
+	}
+	if strings.TrimSpace(in.Observation) != "" {
+		args["observation"] = strings.TrimSpace(in.Observation)
 	}
 	copyWaitForArgs(argsJSON, args)
 	session := strings.TrimSpace(in.Session)

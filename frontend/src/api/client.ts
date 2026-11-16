@@ -306,6 +306,8 @@ import {
   GrantMCPWriteDir,
   RevokeMCPWriteDir,
   ListMCPWriteDirs,
+  ListDesktopAppGrants,
+  RevokeDesktopAppGrant,
   ProbeTerminalCwd,
   GetBrowserStatus,
   ListBrowserTabs,
@@ -1201,6 +1203,9 @@ export const api = {
       at: number
       kind?: string
     }>,
+  listDesktopAppGrants: async () =>
+    asArray(await unwrap(() => ListDesktopAppGrants())) as import('./types').DesktopAppGrant[],
+  revokeDesktopAppGrant: async (key: string) => unwrap(() => RevokeDesktopAppGrant(key)),
   getBrowserStatus: () => unwrap(() => GetBrowserStatus()),
   listBrowserTabs: () => unwrap(() => ListBrowserTabs()),
   attachBrowserTab: (tabId: number) => unwrap(() => AttachBrowserTab(tabId)),

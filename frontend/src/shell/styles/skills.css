@@ -391,6 +391,10 @@
   cursor: pointer;
 }
 
+.agent-cap-label-static {
+  cursor: default;
+}
+
 .agent-cap-name {
   font-weight: 500;
   flex: 1;

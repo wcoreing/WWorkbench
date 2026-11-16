@@ -602,6 +602,10 @@ export function ListDatabaseObjects(arg1, arg2) {
   return window['go']['app']['Service']['ListDatabaseObjects'](arg1, arg2);
 }
 
+export function ListDesktopAppGrants() {
+  return window['go']['app']['Service']['ListDesktopAppGrants']();
+}
+
 export function ListDirVersions(arg1, arg2) {
   return window['go']['app']['Service']['ListDirVersions'](arg1, arg2);
 }
@@ -940,6 +944,10 @@ export function RevealNotebookWorkspace() {
 
 export function RevealPluginPackPath(arg1) {
   return window['go']['app']['Service']['RevealPluginPackPath'](arg1);
+}
+
+export function RevokeDesktopAppGrant(arg1) {
+  return window['go']['app']['Service']['RevokeDesktopAppGrant'](arg1);
 }
 
 export function RevokeMCPWriteDir(arg1, arg2) {

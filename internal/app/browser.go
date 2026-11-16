@@ -29,6 +29,8 @@ func (s *Service) startBrowserBridge() {
 		log.Printf("browser: data dir: %v", err)
 		return
 	}
+	// agent-browser 执行器不依赖扩展桥，先建好：桥起不来时浏览器工具仍可用
+	s.agentBrowser = browser.NewAgentBrowserExecutor(dataDir)
 	extDir, err := browser.SeedExtDir(dataDir)
 	if err != nil {
 		log.Printf("browser: seed ext: %v", err)
@@ -52,6 +54,18 @@ func (s *Service) startBrowserBridge() {
 	b.SetEventHandler(s.handleBrowserExtEvent)
 	s.browserBridge = b
 	log.Printf("browser: bridge on %s · ext %s (token auth)", browser.DefaultAddr, extDir)
+}
+
+// stopAgentBrowser 退出时关掉 agent-browser 的浏览器：有头模式的守护进程不会空闲自退（登录态留在 profile）。
+func (s *Service) stopAgentBrowser() {
+	if s.agentBrowser == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := s.agentBrowser.Close(ctx); err != nil {
+		log.Printf("browser: close agent-browser: %v", err)
+	}
 }
 
 // GetBrowserStatus 浏览器舞台状态（桥 + 扩展）。

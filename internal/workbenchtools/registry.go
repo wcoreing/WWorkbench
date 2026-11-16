@@ -144,14 +144,14 @@ func (r *Registry) add(def ToolDef) {
 func (r *Registry) registerBuiltins() {
 	r.add(ToolDef{
 		Name: workbench.CapGetAgentRules,
-		Description: "可选：按 domain 复核系统约束分片（terminal/database/browser/notebook/backup/plugin/all）。" +
+		Description: "可选：按 domain 复核系统约束分片（terminal/database/browser/desktop/notebook/backup/plugin/all）。" +
 			"MCP initialize 已注入摘要；不会因未调用而拒绝工具。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
 				"domain": map[string]interface{}{
 					"type":        "string",
-					"description": "分片：all|terminal|database|browser|notebook|backup|plugin",
+					"description": "分片：all|terminal|database|browser|desktop|notebook|backup|plugin",
 				},
 			},
 		},
@@ -1182,4 +1182,5 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolAgentConfirm,
 	})
 	registerBrowserTools(r)
+	registerDesktopTools(r)
 }
