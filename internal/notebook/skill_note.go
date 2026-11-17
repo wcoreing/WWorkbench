@@ -235,3 +235,63 @@ func (s *Service) FindNoteIDBySkillID(skillID string) string {
 	}
 	return titleHit
 }
+
+// ListAgentSlashSkills 笔记本工作流，供对话 / 菜单。
+// 对外 id 与 list_skills / get_skill 一致；description 含 intent，便于按「微信发送」这类说法检索。
+func (s *Service) ListAgentSlashSkills(limit int) []model.AgentSkillDO {
+	if s == nil {
+		return nil
+	}
+	notes, err := s.ListSkillNotes(limit)
+	if err != nil || len(notes) == 0 {
+		return nil
+	}
+	out := make([]model.AgentSkillDO, 0, len(notes))
+	seen := map[string]struct{}{}
+	for _, sum := range notes {
+		n, err := s.GetNote(sum.ID)
+		if err != nil || n == nil {
+			continue
+		}
+		id := SkillNameFromNoteID(n.ID)
+		if id == "" {
+			id = ReadLinkedSkillID(n.Content)
+		}
+		name := ""
+		desc := ""
+		if wf, ok := ParseWorkflowNote(*n); ok {
+			if wf.Name != "" && !strings.Contains(id, "/") {
+				id = wf.Name
+			}
+			if id == "" {
+				id = strings.TrimSpace(wf.Name)
+			}
+			name = firstNonEmpty(strings.TrimSpace(wf.Name), strings.TrimSpace(wf.Title))
+			desc = strings.TrimSpace(wf.Description)
+			if intent := strings.TrimSpace(wf.Intent); intent != "" && !strings.Contains(desc, intent) {
+				desc = strings.TrimSpace(desc + " " + intent)
+			}
+		}
+		if id == "" {
+			id = SuggestSkillID(n.Title, n.ID)
+		}
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		if name == "" || name == "SKILL" {
+			name = id
+		}
+		out = append(out, model.AgentSkillDO{
+			ID:          id,
+			Name:        name,
+			Description: desc,
+			Enabled:     true,
+		})
+	}
+	return out
+}

@@ -309,6 +309,18 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_docker_shell_hosts_ctx_ctr
 	if err := s.ensureColumn("ssh_hosts", "cloud_instance_id", "TEXT NOT NULL DEFAULT ''"); err != nil {
 		return err
 	}
+	if err := s.ensureColumn("ssh_hosts", "sg_sync", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if err := s.ensureColumn("ssh_hosts", "sg_id", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := s.ensureColumn("ssh_hosts", "sg_last_cidr", "TEXT NOT NULL DEFAULT ''"); err != nil {
+		return err
+	}
+	if err := s.ensureColumn("ssh_hosts", "sg_synced_at", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
 	_, err = s.db.Exec(`
 CREATE TABLE IF NOT EXISTS cloud_accounts (
   id TEXT PRIMARY KEY,

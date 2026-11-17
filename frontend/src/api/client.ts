@@ -8,6 +8,7 @@ import type {
   LocalPortProcess,
   SSHHost,
   CloudAccount,
+  SecurityGroupSyncResult,
   ECSInstance,
   ECSMonitor,
   ShellHost,
@@ -59,6 +60,7 @@ import {
   ListCloudAccounts,
   SaveCloudAccount,
   GetECSMonitor,
+  SyncSSHHostSecurityGroup,
   ListECSInstances,
   DeleteSSHHost,
   TestSSHHost,
@@ -425,6 +427,10 @@ export function toSSHHostDO(h: SSHHost): model.SSHHostDO {
     cloudRegion: h.cloudRegion || '',
     cloudInstanceId: h.cloudInstanceId || '',
     touchCloud: Boolean(h.touchCloud),
+    sgSync: Boolean(h.sgSync),
+    sgId: h.sgId || '',
+    sgLastCidr: h.sgLastCidr || '',
+    sgSyncedAt: h.sgSyncedAt || 0,
     createdAt: h.createdAt,
     updatedAt: h.updatedAt,
   })
@@ -629,7 +635,10 @@ export const api = {
   saveSSHHost: (h: SSHHost) => unwrap(() => SaveSSHHost(toSSHHostDO(h))),
   listCloudAccounts: async () => asArray(await unwrap(() => ListCloudAccounts())) as CloudAccount[],
   saveCloudAccount: (a: CloudAccount) => unwrap(() => SaveCloudAccount(toCloudAccountDO(a))),
-  getECSMonitor: (hostId: string) => unwrap(() => GetECSMonitor(hostId)) as Promise<ECSMonitor>,
+  getECSMonitor: (hostId: string, windowHours = 1) =>
+    unwrap(() => GetECSMonitor(hostId, windowHours)) as Promise<ECSMonitor>,
+  syncSSHHostSecurityGroup: (hostId: string) =>
+    unwrap(() => SyncSSHHostSecurityGroup(hostId)) as Promise<SecurityGroupSyncResult>,
   listECSInstances: async (accountId: string, region: string) =>
     asArray(await unwrap(() => ListECSInstances(accountId, region))) as ECSInstance[],
   deleteSSHHost: (id: string) => unwrap(() => DeleteSSHHost(id)),

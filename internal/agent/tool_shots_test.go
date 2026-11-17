@@ -21,6 +21,11 @@ func TestShotPathFromResult(t *testing.T) {
 	if path != "/tmp/a.png" || mime != "image/png" {
 		t.Fatalf("got %q %q", path, mime)
 	}
+	wrapped, _ := json.Marshal(string(data))
+	path, mime = shotPathFromResult(workbenchtools.ToolResult{OK: true, Data: wrapped})
+	if path != "/tmp/a.png" || mime != "image/png" {
+		t.Fatalf("wrapped got %q %q", path, mime)
+	}
 }
 
 func TestEncodeShotForModelResizes(t *testing.T) {

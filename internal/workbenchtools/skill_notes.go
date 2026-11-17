@@ -103,7 +103,7 @@ func toolListSkills(_ context.Context, d *Deps, raw json.RawMessage) ToolResult 
 }
 
 // toolGetSkill 读取笔记本工作流正文；返回 diskPath / skillDir / assetsDir。
-func toolGetSkill(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
+func toolGetSkill(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	var in struct {
 		Skill string `json:"skill"`
 		ID    string `json:"id"`
@@ -163,6 +163,9 @@ func toolGetSkill(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	diskFile := ""
 	if p, err := d.Notebook.NoteDiskPath(noteID); err == nil {
 		diskFile = p
+	}
+	if assetsDir != "" {
+		SetCallerSkillAssets(ctx, assetsDir)
 	}
 	b, _ := json.Marshal(map[string]any{
 		"ok": true, "id": runName, "name": firstNonEmpty(n.Title, runName),

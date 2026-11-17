@@ -471,6 +471,9 @@ export function TerminalWorkbench() {
   }
 
   const openRemoteSession = async (host: ShellHost) => {
+    if (host.kind !== 'docker' && host.sgSync) {
+      setStatusMessage(t('sshHost.sgSyncing'))
+    }
     const open = () => api.openTerminal(host.id, 120, 32)
     return host.kind === 'docker'
       ? open()
@@ -1240,7 +1243,13 @@ export function TerminalWorkbench() {
                 {(() => {
                   const bound = hosts.find((h) => h.id === t.hostId)
                   if (bound?.kind !== 'ssh' || !bound.cloudInstanceId) return null
-                  return <ECSMonitorBar hostId={bound.id} active={t.id === activeTabId} />
+                  return (
+                    <ECSMonitorBar
+                      hostId={bound.id}
+                      active={t.id === activeTabId}
+                      opacity={terminalOpacity}
+                    />
+                  )
                 })()}
                 {t.connectState === 'ready' ? (
                   <TerminalSplitView

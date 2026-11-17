@@ -19,6 +19,7 @@ import { NotebookSidebar } from './NotebookSidebar'
 import { NotebookStatusBar } from './NotebookStatusBar'
 import { applyNoteRoleFields } from './noteFrontmatter'
 import { isMarkdownLikeLanguage } from './noteFileTypes'
+import { skillImageSrc } from './notebookAssetLinks'
 import { adoptNoteLanguage, skillEntryNoteId, toNoteDO, toSummary } from './noteModel'
 import { findNotebookSubtree, buildNotebookTree } from './notebookTree'
 import { askConfirm } from '../../utils/askConfirm'
@@ -337,15 +338,23 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
   }, [t])
 
   const mdLike = Boolean(note && isMarkdownLikeLanguage(note.language))
-  const showEditor = Boolean(note) && (!mdLike || mdViewMode !== 'preview')
-  const showPreview = Boolean(note) && mdLike && mdViewMode !== 'source'
+  const isImage = note?.language === 'image'
+  const showEditor = Boolean(note) && !isImage && (!mdLike || mdViewMode !== 'preview')
+  const showPreview = Boolean(note) && !isImage && mdLike && mdViewMode !== 'source'
   const splitClass =
     showEditor && showPreview ? ' with-preview' : !showEditor && showPreview ? ' preview-only' : ''
 
   const editorPane = note ? (
     <>
       <div className={`notebook-editor-split${splitClass}`}>
-        {showEditor ? (
+        {isImage && note ? (
+          <div className="notebook-image-pane">
+            <img
+              src={note.content.startsWith('data:') ? note.content : skillImageSrc(note.id)}
+              alt={note.title}
+            />
+          </div>
+        ) : showEditor ? (
           <div className="note-editor-wrap">
             <NoteEditor
               noteId={note.id}

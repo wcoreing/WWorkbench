@@ -39,21 +39,7 @@ const BailianDefaultModel = "qwen-plus"
 const DeepSeekAPIBase = "https://api.deepseek.com/v1"
 
 // DeepSeekDefaultModel DeepSeek 默认模型。
-const DeepSeekDefaultModel = "deepseek-v4-pro"
-
-// DeepSeekModels DeepSeek 可选模型。
-var DeepSeekModels = []string{"deepseek-v4-pro", "deepseek-v4-flash"}
-
-// NormalizeDeepSeekModel 将 DeepSeek 模型规范为可选列表中的值。
-func NormalizeDeepSeekModel(model string) string {
-	m := strings.TrimSpace(model)
-	for _, id := range DeepSeekModels {
-		if m == id {
-			return m
-		}
-	}
-	return DeepSeekDefaultModel
-}
+const DeepSeekDefaultModel = "deepseek-flash"
 
 // MiniMaxAPIBase MiniMax 国内站 OpenAI 兼容地址。
 const MiniMaxAPIBase = "https://api.minimaxi.com/v1"
@@ -67,18 +53,17 @@ const CursorAPIBase = "cursor-sdk-bridge://local"
 // CursorDefaultModel Cursor 默认模型。
 const CursorDefaultModel = "composer-2.5"
 
-// CursorModels Cursor 可选模型。
-var CursorModels = []string{"composer-2.5", "composer-2"}
-
-// NormalizeCursorModel 将 Cursor 模型规范为可选列表中的值。
-func NormalizeCursorModel(model string) string {
-	m := strings.TrimSpace(model)
-	for _, id := range CursorModels {
-		if m == id {
-			return m
-		}
+func defaultModelFor(provider string) string {
+	switch provider {
+	case AgentProviderDeepSeek:
+		return DeepSeekDefaultModel
+	case AgentProviderMiniMax:
+		return MiniMaxDefaultModel
+	case AgentProviderCursor:
+		return CursorDefaultModel
+	default:
+		return BailianDefaultModel
 	}
-	return CursorDefaultModel
 }
 
 // AgentProviderPreset 服务商预设（端点 + 默认模型）。

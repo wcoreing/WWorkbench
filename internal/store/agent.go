@@ -24,18 +24,12 @@ func (s *Store) GetAgentSettings() model.AgentSettingsDO {
 	provider, _ := s.GetAppSetting(AgentKeyProvider)
 	if base == "" {
 		base = BailianAPIBase
-		modelName = BailianDefaultModel
 		provider = AgentProviderBailian
 	}
-	if modelName == "" {
-		modelName = BailianDefaultModel
-	}
 	provider = detectProvider(base, provider)
-	if provider == AgentProviderDeepSeek {
-		modelName = NormalizeDeepSeekModel(modelName)
-	}
-	if provider == AgentProviderCursor {
-		modelName = NormalizeCursorModel(modelName)
+	modelName = strings.TrimSpace(modelName)
+	if modelName == "" {
+		modelName = defaultModelFor(provider)
 	}
 	masked := ""
 	if key != "" {
@@ -110,12 +104,6 @@ func (s *Store) SaveAgentAPIConfig(in model.AgentAPIConfigSaveDO) error {
 		provider = detectProvider(base, "")
 	}
 	modelName := strings.TrimSpace(in.Model)
-	if provider == AgentProviderDeepSeek {
-		modelName = NormalizeDeepSeekModel(modelName)
-	}
-	if provider == AgentProviderCursor {
-		modelName = NormalizeCursorModel(modelName)
-	}
 	if err := s.SetAppSetting(AgentKeyAPIBase, base); err != nil {
 		return err
 	}

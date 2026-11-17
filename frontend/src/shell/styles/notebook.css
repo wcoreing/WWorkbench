@@ -1192,6 +1192,24 @@
   flex-direction: column;
 }
 
+.notebook-image-pane {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  background: var(--bg, #111);
+  padding: 12px;
+}
+
+.notebook-image-pane img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+}
+
 .notebook-editor-split.with-preview {
   flex-direction: row;
 }

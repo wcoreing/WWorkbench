@@ -4,11 +4,21 @@ import { api } from '../../api/client'
 import { IconRefresh } from '../../components/Icons'
 import { pressProps } from '../../components/compat'
 import { useI18n } from '../../i18n'
+import { terminalBackground } from './TerminalPane'
 
 interface Props {
   hostId: string
   active: boolean
+  /** 与终端区同一套不透明度。 */
+  opacity: number
 }
+
+const WINDOW_OPTIONS = [
+  { hours: 1, labelKey: 'ecs.range1h' },
+  { hours: 6, labelKey: 'ecs.range6h' },
+  { hours: 24, labelKey: 'ecs.range24h' },
+  { hours: 168, labelKey: 'ecs.range7d' },
+] as const
 
 const METRIC_LABEL: Record<string, string> = {
   CPUUtilization: 'ecs.cpu',
@@ -16,6 +26,10 @@ const METRIC_LABEL: Record<string, string> = {
   diskusage_utilization: 'ecs.disk',
   InternetInRate: 'ecs.netIn',
   InternetOutRate: 'ecs.netOut',
+  VPC_PublicIP_InternetInRate: 'ecs.netIn',
+  VPC_PublicIP_InternetOutRate: 'ecs.netOut',
+  IntranetInRate: 'ecs.netInLan',
+  IntranetOutRate: 'ecs.netOutLan',
 }
 
 /** formatMetric 把云监控原始值收成终端条上的短数字。 */
@@ -30,7 +44,28 @@ function formatMetric(value: number, unit: string): string {
   return `${Math.round(value)}`
 }
 
-/** Sparkline 用最近一小时的点画一条细线。 */
+/** peakPoint 时间段里的最高点。 */
+function peakPoint(points: { timestamp: number; value: number }[]) {
+  let best = points[0]
+  for (const p of points) {
+    if (p.value > best.value) best = p
+  }
+  return best
+}
+
+function formatPeakTime(timestamp: number, windowHours: number): string {
+  const ms = timestamp > 1e12 ? timestamp : timestamp * 1000
+  const d = new Date(ms)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+  if (windowHours > 24) {
+    return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${hm}`
+  }
+  return hm
+}
+
+/** Sparkline 画时间段曲线，并标出峰值。 */
 function Sparkline({ points }: { points: { value: number }[] }) {
   if (points.length < 2) return null
   const values = points.map((p) => p.value)
@@ -39,23 +74,27 @@ function Sparkline({ points }: { points: { value: number }[] }) {
   const span = max - min || 1
   const w = 72
   const h = 16
-  const d = values
-    .map((v, i) => {
-      const x = (i / (values.length - 1)) * w
-      const y = h - ((v - min) / span) * (h - 2) - 1
-      return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`
-    })
-    .join(' ')
+  let peakI = 0
+  const coords = values.map((v, i) => {
+    if (v > values[peakI]) peakI = i
+    const x = (i / (values.length - 1)) * w
+    const y = h - ((v - min) / span) * (h - 2) - 1
+    return { x, y }
+  })
+  const d = coords.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+  const peak = coords[peakI]
   return (
     <svg className="ecs-monitor-spark" viewBox={`0 0 ${w} ${h}`} aria-hidden>
       <path d={d} />
+      <circle className="ecs-monitor-peak-dot" cx={peak.x} cy={peak.y} r="1.6" />
     </svg>
   )
 }
 
 /** ECSMonitorBar 终端上方的阿里云 ECS 监控条。SSH 断开时仍然可读。 */
-export function ECSMonitorBar({ hostId, active }: Props) {
+export function ECSMonitorBar({ hostId, active, opacity }: Props) {
   const { t } = useI18n()
+  const [windowHours, setWindowHours] = useState(1)
   const [mon, setMon] = useState<ECSMonitor | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -66,7 +105,7 @@ export function ECSMonitorBar({ hostId, active }: Props) {
     const load = () => {
       setLoading(true)
       api
-        .getECSMonitor(hostId)
+        .getECSMonitor(hostId, windowHours)
         .then((next) => {
           if (cancelled) return
           setMon(next)
@@ -85,17 +124,41 @@ export function ECSMonitorBar({ hostId, active }: Props) {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [hostId, active, t])
+  }, [hostId, active, windowHours, t])
 
   const series = mon?.series ?? []
+  const peakWindow = mon?.windowHours || windowHours
 
   return (
-    <div className="ecs-monitor-bar" title={mon?.hint || undefined}>
+    <div
+      className="ecs-monitor-bar"
+      style={{ backgroundColor: terminalBackground(opacity) }}
+      title={mon?.hint || undefined}
+    >
+      <select
+        className="ecs-monitor-range"
+        value={windowHours}
+        aria-label={t('ecs.range')}
+        title={t('ecs.range')}
+        onChange={(e) => setWindowHours(Number(e.target.value) || 1)}
+      >
+        {WINDOW_OPTIONS.map((opt) => (
+          <option key={opt.hours} value={opt.hours}>
+            {t(opt.labelKey)}
+          </option>
+        ))}
+      </select>
       {error && !series.length ? (
         <span className="ecs-monitor-error">{error}</span>
       ) : (
         series.map((item) => (
-          <MetricCell key={item.metric} item={item} label={t(METRIC_LABEL[item.metric] || item.metric)} />
+          <MetricCell
+            key={item.metric}
+            item={item}
+            label={t(METRIC_LABEL[item.metric] || item.metric)}
+            peakLabel={t('ecs.peak')}
+            windowHours={peakWindow}
+          />
         ))
       )}
       {mon?.hint && <span className="ecs-monitor-hint">{mon.hint}</span>}
@@ -105,7 +168,7 @@ export function ECSMonitorBar({ hostId, active }: Props) {
         {...pressProps(() => {
           setLoading(true)
           api
-            .getECSMonitor(hostId)
+            .getECSMonitor(hostId, windowHours)
             .then((next) => {
               setMon(next)
               setError('')
@@ -121,13 +184,31 @@ export function ECSMonitorBar({ hostId, active }: Props) {
   )
 }
 
-function MetricCell({ item, label }: { item: ECSMetricSeries; label: string }) {
+function MetricCell({
+  item,
+  label,
+  peakLabel,
+  windowHours,
+}: {
+  item: ECSMetricSeries
+  label: string
+  peakLabel: string
+  windowHours: number
+}) {
   const points = item.points ?? []
   const text = item.error ? '—' : points.length ? formatMetric(item.latest, item.unit) : '—'
+  const peak = points.length ? peakPoint(points) : null
+  const peakText = peak ? formatMetric(peak.value, item.unit) : ''
+  const peakAt = peak ? formatPeakTime(peak.timestamp, windowHours) : ''
   return (
     <span className="ecs-monitor-cell" title={item.error || undefined}>
       <span className="ecs-monitor-label">{label}</span>
       <span className="ecs-monitor-value">{text}</span>
+      {peak ? (
+        <span className="ecs-monitor-peak" title={peakAt ? `${peakLabel} ${peakText} · ${peakAt}` : undefined}>
+          {peakLabel} {peakText}
+        </span>
+      ) : null}
       <Sparkline points={points} />
     </span>
   )

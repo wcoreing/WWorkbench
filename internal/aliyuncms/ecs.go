@@ -16,10 +16,8 @@ import (
 	"github.com/google/uuid"
 )
 
-const metricWindow = time.Hour
-
-// ecsMetrics 终端条上展示的指标。agg=max 取同一时刻多盘/多核里的高值，agg=sum 把多网卡带宽相加。
-var ecsMetrics = []struct {
+// hostMetrics 主机自身指标。流量另在 netPairs 里选有数据的一对。
+var hostMetrics = []struct {
 	name string
 	unit string
 	agg  string
@@ -27,8 +25,13 @@ var ecsMetrics = []struct {
 	{"CPUUtilization", "%", "max"},
 	{"memory_usedutilization", "%", "max"},
 	{"diskusage_utilization", "%", "max"},
-	{"InternetInRate", "bit/s", "sum"},
-	{"InternetOutRate", "bit/s", "sum"},
+}
+
+// netPairs 按优先级尝试：VPC 公网、经典公网、内网。有流量的那一对显示在条上。
+var netPairs = [][2]string{
+	{"VPC_PublicIP_InternetInRate", "VPC_PublicIP_InternetOutRate"},
+	{"InternetInRate", "InternetOutRate"},
+	{"IntranetInRate", "IntranetOutRate"},
 }
 
 var httpClient = &http.Client{Timeout: 12 * time.Second}
@@ -36,6 +39,18 @@ var httpClient = &http.Client{Timeout: 12 * time.Second}
 type rawPoint struct {
 	Timestamp int64   `json:"timestamp"`
 	Average   float64 `json:"Average"`
+	Maximum   float64 `json:"Maximum"`
+	Value     float64 `json:"Value"`
+}
+
+func (p rawPoint) sample() float64 {
+	if p.Average != 0 {
+		return p.Average
+	}
+	if p.Value != 0 {
+		return p.Value
+	}
+	return p.Maximum
 }
 
 type cmsEnvelope struct {
@@ -50,8 +65,36 @@ func (e cmsEnvelope) code() string {
 	return strings.Trim(strings.TrimSpace(string(e.Code)), `"`)
 }
 
-// QueryECS 拉取一台 ECS 最近一小时的云监控。单条指标失败不影响其余指标。
-func QueryECS(ctx context.Context, accessKeyID, accessKeySecret, region, instanceID string) (model.ECSMonitorDO, error) {
+// NormalizeWindowHours 监控时间段：1 / 6 / 24 / 168（7 天）。
+func NormalizeWindowHours(hours int) int {
+	switch {
+	case hours <= 1:
+		return 1
+	case hours <= 6:
+		return 6
+	case hours <= 24:
+		return 24
+	default:
+		return 168
+	}
+}
+
+func windowAndPeriod(hours int) (time.Duration, string) {
+	hours = NormalizeWindowHours(hours)
+	switch hours {
+	case 6:
+		return 6 * time.Hour, "60"
+	case 24:
+		return 24 * time.Hour, "300"
+	case 168:
+		return 7 * 24 * time.Hour, "900"
+	default:
+		return time.Hour, "60"
+	}
+}
+
+// QueryECS 拉取一台 ECS 指定时间段的云监控。单条指标失败不影响其余指标。
+func QueryECS(ctx context.Context, accessKeyID, accessKeySecret, region, instanceID string, windowHours int) (model.ECSMonitorDO, error) {
 	accessKeyID = strings.TrimSpace(accessKeyID)
 	accessKeySecret = strings.TrimSpace(accessKeySecret)
 	region = strings.TrimSpace(region)
@@ -59,45 +102,77 @@ func QueryECS(ctx context.Context, accessKeyID, accessKeySecret, region, instanc
 	if accessKeyID == "" || accessKeySecret == "" || region == "" || instanceID == "" {
 		return model.ECSMonitorDO{}, errno.New(errno.CodeInvalidArg, "缺少云账号、地域或实例 ID", "")
 	}
+	windowHours = NormalizeWindowHours(windowHours)
+	window, period := windowAndPeriod(windowHours)
 	end := time.Now()
-	start := end.Add(-metricWindow)
+	start := end.Add(-window)
 	dims, err := json.Marshal([]map[string]string{{"instanceId": instanceID}})
 	if err != nil {
 		return model.ECSMonitorDO{}, errno.Wrap(errno.CodeInvalidArg, "组装监控维度失败", err)
 	}
+	names := make([]string, 0, len(hostMetrics)+len(netPairs)*2)
+	for _, m := range hostMetrics {
+		names = append(names, m.name)
+	}
+	for _, pair := range netPairs {
+		names = append(names, pair[0], pair[1])
+	}
 	out := model.ECSMonitorDO{
-		InstanceID: instanceID,
-		Region:     region,
-		FetchedAt:  end.Unix(),
-		Series:     make([]model.ECSMetricSeriesDO, len(ecsMetrics)),
+		InstanceID:  instanceID,
+		Region:      region,
+		FetchedAt:   end.Unix(),
+		WindowHours: windowHours,
 	}
 	type result struct {
-		idx    int
+		name   string
 		series model.ECSMetricSeriesDO
 	}
-	ch := make(chan result, len(ecsMetrics))
-	for i, m := range ecsMetrics {
-		go func(i int, name, unit, agg string) {
-			series := model.ECSMetricSeriesDO{Metric: name, Unit: unit}
-			points, qerr := describeMetric(ctx, accessKeyID, accessKeySecret, region, name, string(dims), start, end)
+	ch := make(chan result, len(names))
+	unitOf := func(name string) string {
+		for _, m := range hostMetrics {
+			if m.name == name {
+				return m.unit
+			}
+		}
+		return "bit/s"
+	}
+	aggOf := func(name string) string {
+		for _, m := range hostMetrics {
+			if m.name == name {
+				return m.agg
+			}
+		}
+		return "sum"
+	}
+	for _, name := range names {
+		go func(name string) {
+			series := model.ECSMetricSeriesDO{Metric: name, Unit: unitOf(name)}
+			points, qerr := describeMetric(ctx, accessKeyID, accessKeySecret, region, name, string(dims), start, end, period)
 			if qerr != nil {
 				series.Error = metricErr(qerr)
 			} else {
-				series.Points = aggregate(points, agg)
+				series.Points = aggregate(points, aggOf(name))
 				if n := len(series.Points); n > 0 {
 					series.Latest = series.Points[n-1].Value
 				}
 			}
-			ch <- result{idx: i, series: series}
-		}(i, m.name, m.unit, m.agg)
+			ch <- result{name: name, series: series}
+		}(name)
 	}
+	got := map[string]model.ECSMetricSeriesDO{}
+	for range names {
+		r := <-ch
+		got[r.name] = r.series
+	}
+	out.Series = make([]model.ECSMetricSeriesDO, 0, len(hostMetrics)+2)
+	for _, m := range hostMetrics {
+		out.Series = append(out.Series, got[m.name])
+	}
+	in, outNet := pickNetPair(got)
+	out.Series = append(out.Series, in, outNet)
 	cpuOK := false
 	memEmpty := false
 	diskEmpty := false
-	for range ecsMetrics {
-		r := <-ch
-		out.Series[r.idx] = r.series
-	}
 	for _, s := range out.Series {
 		switch s.Metric {
 		case "CPUUtilization":
@@ -115,6 +190,38 @@ func QueryECS(ctx context.Context, accessKeyID, accessKeySecret, region, instanc
 		return out, errno.New(errno.CodeConnFailed, msg, "")
 	}
 	return out, nil
+}
+
+// pickNetPair 选最近一小时里有流量的那一对。都是 0 时仍用 VPC 公网。
+func pickNetPair(got map[string]model.ECSMetricSeriesDO) (model.ECSMetricSeriesDO, model.ECSMetricSeriesDO) {
+	bestIn, bestOut := got[netPairs[0][0]], got[netPairs[0][1]]
+	bestScore, bestN := pairRank(bestIn, bestOut)
+	for _, pair := range netPairs[1:] {
+		in, out := got[pair[0]], got[pair[1]]
+		score, n := pairRank(in, out)
+		if score > bestScore || (score == bestScore && n > bestN) {
+			bestIn, bestOut = in, out
+			bestScore, bestN = score, n
+		}
+	}
+	return bestIn, bestOut
+}
+
+func pairRank(in, out model.ECSMetricSeriesDO) (float64, int) {
+	return seriesPeak(in) + seriesPeak(out), len(in.Points) + len(out.Points)
+}
+
+func seriesPeak(s model.ECSMetricSeriesDO) float64 {
+	peak := s.Latest
+	for _, p := range s.Points {
+		if p.Value > peak {
+			peak = p.Value
+		}
+	}
+	if peak < 0 {
+		return 0
+	}
+	return peak
 }
 
 func metricErr(err error) string {
@@ -140,10 +247,13 @@ func allFailed(series []model.ECSMetricSeriesDO) (bool, string) {
 	return true, msg
 }
 
-func describeMetric(ctx context.Context, ak, secret, region, metric, dimensions string, start, end time.Time) ([]rawPoint, error) {
+func describeMetric(ctx context.Context, ak, secret, region, metric, dimensions string, start, end time.Time, period string) ([]rawPoint, error) {
 	loc := time.UTC
 	if strings.HasPrefix(region, "cn-") {
 		loc = time.FixedZone("CST", 8*3600)
+	}
+	if strings.TrimSpace(period) == "" {
+		period = "60"
 	}
 	params := map[string]string{
 		"Format":           "JSON",
@@ -159,7 +269,7 @@ func describeMetric(ctx context.Context, ak, secret, region, metric, dimensions 
 		"Dimensions":       dimensions,
 		"StartTime":        start.In(loc).Format("2006-01-02 15:04:05"),
 		"EndTime":          end.In(loc).Format("2006-01-02 15:04:05"),
-		"Period":           "60",
+		"Period":           period,
 	}
 	endpoint := "https://metrics." + region + ".aliyuncs.com/?" + signedQuery(params, secret)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
@@ -206,7 +316,7 @@ func aggregate(points []rawPoint, mode string) []model.ECSMetricPointDO {
 	for _, p := range points {
 		prev, ok := byTS[p.Timestamp]
 		if !ok {
-			byTS[p.Timestamp] = p.Average
+			byTS[p.Timestamp] = p.sample()
 			if _, dup := seen[p.Timestamp]; !dup {
 				order = append(order, p.Timestamp)
 				seen[p.Timestamp] = struct{}{}
@@ -214,9 +324,9 @@ func aggregate(points []rawPoint, mode string) []model.ECSMetricPointDO {
 			continue
 		}
 		if mode == "sum" {
-			byTS[p.Timestamp] = prev + p.Average
-		} else if p.Average > prev {
-			byTS[p.Timestamp] = p.Average
+			byTS[p.Timestamp] = prev + p.sample()
+		} else if p.sample() > prev {
+			byTS[p.Timestamp] = p.sample()
 		}
 	}
 	sort.Slice(order, func(i, j int) bool { return order[i] < order[j] })

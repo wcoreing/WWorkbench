@@ -209,7 +209,7 @@ button {
 .sidebar-body {
   flex: 1;
   overflow: auto;
-  padding: 0 0 var(--space-2);
+  padding: var(--space-2) 0;
 }
 
 .sidebar-body.connections-body {

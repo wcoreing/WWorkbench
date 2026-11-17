@@ -16,10 +16,14 @@ interface ModeProps {
 }
 
 /** 贴触发器上方弹出（Cursor 同款）：bottom 锚定，左对齐。 */
-type MenuPos = { left: number; bottom: number; minWidth: number; maxHeight: number }
+type MenuPos = { left: number; bottom: number; minWidth: number; width?: number; maxHeight: number }
 
 /** useAnchoredMenu 将下拉挂到 body；底边贴触发器顶边，左边对齐触发器。 */
-function useAnchoredMenu(open: boolean, triggerRef: RefObject<HTMLElement | null>) {
+export function useAnchoredMenu(
+  open: boolean,
+  triggerRef: RefObject<HTMLElement | null>,
+  matchWidth = false,
+) {
   const [pos, setPos] = useState<MenuPos | null>(null)
 
   useLayoutEffect(() => {
@@ -44,6 +48,7 @@ function useAnchoredMenu(open: boolean, triggerRef: RefObject<HTMLElement | null
         left,
         bottom: Math.max(pad, window.innerHeight - r.top + gap),
         minWidth,
+        width: matchWidth ? r.width : undefined,
         maxHeight,
       })
     }
@@ -54,17 +59,17 @@ function useAnchoredMenu(open: boolean, triggerRef: RefObject<HTMLElement | null
       window.removeEventListener('resize', update)
       window.removeEventListener('scroll', update, true)
     }
-  }, [open, triggerRef])
+  }, [open, triggerRef, matchWidth])
 
   return pos
 }
 
-function menuStyle(pos: MenuPos): CSSProperties {
+export function menuStyle(pos: MenuPos): CSSProperties {
   return {
     left: pos.left,
     bottom: pos.bottom,
     top: 'auto',
-    minWidth: pos.minWidth,
+    width: pos.width,
     maxHeight: pos.maxHeight,
     overflowY: 'auto',
   }

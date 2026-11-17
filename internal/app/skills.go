@@ -32,20 +32,60 @@ func (s *Service) ListAgentSkills() ApiResult[[]model.AgentSkillDO] {
 	return OkResult(list)
 }
 
-/** ListEnabledAgentSkills 列出已启用技能（供 / 菜单）。 */
+/** ListEnabledAgentSkills 列出已启用技能（供 / 菜单）。笔记本工作流在前，ningharness system/skills 在后。 */
 func (s *Service) ListEnabledAgentSkills() ApiResult[[]model.AgentSkillDO] {
-	root := s.harnessRoot()
-	if root == "" {
-		return ErrResult[[]model.AgentSkillDO](fmt.Errorf("ningharness 未就绪"))
+	var list []model.AgentSkillDO
+	var herr error
+	if root := s.harnessRoot(); root != "" {
+		list, herr = skillstore.ListEnabledSkills(root)
+	} else {
+		herr = fmt.Errorf("ningharness 未就绪")
 	}
-	list, err := skillstore.ListEnabledSkills(root)
-	if err != nil {
-		return ErrResult[[]model.AgentSkillDO](err)
+	var notes []model.AgentSkillDO
+	if s != nil && s.notebook != nil {
+		notes = s.notebook.ListAgentSlashSkills(80)
 	}
-	if list == nil {
-		list = []model.AgentSkillDO{}
+	merged := mergeSlashSkills(notes, list)
+	if len(merged) == 0 && herr != nil {
+		return ErrResult[[]model.AgentSkillDO](herr)
 	}
-	return OkResult(list)
+	if merged == nil {
+		merged = []model.AgentSkillDO{}
+	}
+	return OkResult(merged)
+}
+
+// mergeSlashSkills 笔记本技能优先；同 id 不重复。
+func mergeSlashSkills(notes, harness []model.AgentSkillDO) []model.AgentSkillDO {
+	if len(notes) == 0 {
+		return harness
+	}
+	seen := map[string]struct{}{}
+	out := make([]model.AgentSkillDO, 0, len(notes)+len(harness))
+	for _, n := range notes {
+		id := strings.TrimSpace(n.ID)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		n.ID = id
+		out = append(out, n)
+	}
+	for _, h := range harness {
+		id := strings.TrimSpace(h.ID)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, h)
+	}
+	return out
 }
 
 /** GetAgentSkill 读取技能正文。 */

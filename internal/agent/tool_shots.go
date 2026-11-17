@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"WWorkbench/internal/desktop"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/workbench"
 	"WWorkbench/internal/workbenchtools"
@@ -22,9 +23,9 @@ import (
 )
 
 const (
-	toolShotMaxEdge   = 1280
 	toolShotJPEGQual  = 72
-	toolShotCaption   = "【工具截图】请据图理解界面并定位（坐标为屏幕逻辑点，与 path / bounds 一致）。"
+	toolShotCaption   = "【工具截图】请据图理解界面并定位。"
+	windowShotCaption = "【窗口截图】这是窗口图，不是全屏。左上角是窗口左上角 (0,0)。mouse_click 的 x,y 用这张图上的像素，并带上结果里的 windowId。不要把图上的点当成屏幕绝对坐标。"
 	maxToolShotPerMsg = 2
 )
 
@@ -41,11 +42,17 @@ func isVisionScreenshotTool(name string) bool {
 // decorateToolMessage 工具正文 + 截图外置引用（进模时由 historyToSchema 挂多模态）。
 func decorateToolMessage(root, sessionID, taskID, toolName string, result workbenchtools.ToolResult, resourceID int64) (content string, preview []model.AgentChatImageDO) {
 	content = formatToolMessage(result, resourceID)
+	if toolName == workbench.CapDesktopScreenshot && result.OK {
+		content = windowShotCaption + "\n" + content
+	}
 	if root == "" || !result.OK || !isVisionScreenshotTool(toolName) {
 		return content, nil
 	}
 	refs, preview, err := attachToolScreenshots(root, sessionID, taskID, toolName, result)
 	if err != nil || len(refs) == 0 {
+		if err != nil {
+			content += "\n【截图未附图】" + err.Error()
+		}
 		return content, nil
 	}
 	return history.EncodeImageHead(refs) + content, preview
@@ -80,11 +87,12 @@ func attachToolScreenshots(root, sessionID, taskID, toolName string, result work
 }
 
 func shotPathFromResult(result workbenchtools.ToolResult) (path, mimeHint string) {
-	if len(result.Data) == 0 {
+	raw := unwrapShotData(result.Data)
+	if len(raw) == 0 {
 		return "", ""
 	}
 	var m map[string]interface{}
-	if json.Unmarshal(result.Data, &m) != nil {
+	if json.Unmarshal(raw, &m) != nil {
 		return "", ""
 	}
 	path, _ = m["path"].(string)
@@ -121,6 +129,22 @@ func shotPathFromResult(result workbenchtools.ToolResult) (path, mimeHint string
 	return path, mimeHint
 }
 
+// unwrapShotData Gateway 把工具 JSON 再包成字符串；先剥一层才能读到 path。
+func unwrapShotData(raw json.RawMessage) json.RawMessage {
+	raw = json.RawMessage(strings.TrimSpace(string(raw)))
+	if len(raw) == 0 {
+		return nil
+	}
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		s = strings.TrimSpace(s)
+		if strings.HasPrefix(s, "{") {
+			return json.RawMessage(s)
+		}
+	}
+	return raw
+}
+
 // encodeShotForModel 读盘压缩到可进模体积（最长边 toolShotMaxEdge，JPEG）。
 func encodeShotForModel(path, mimeHint string) (b64, mime string, err error) {
 	raw, err := os.ReadFile(path)
@@ -147,26 +171,9 @@ func encodeShotForModel(path, mimeHint string) (b64, mime string, err error) {
 	if w <= 0 || h <= 0 {
 		return "", "", fmt.Errorf("invalid image size")
 	}
-	maxEdge := w
-	if h > maxEdge {
-		maxEdge = h
-	}
 	outImg := img
-	if maxEdge > toolShotMaxEdge {
-		nw, nh := w, h
-		if w >= h {
-			nw = toolShotMaxEdge
-			nh = h * toolShotMaxEdge / w
-		} else {
-			nh = toolShotMaxEdge
-			nw = w * toolShotMaxEdge / h
-		}
-		if nw < 1 {
-			nw = 1
-		}
-		if nh < 1 {
-			nh = 1
-		}
+	nw, nh := desktop.ModelImageSize(w, h)
+	if nw != w || nh != h {
 		outImg = resizeImage(img, nw, nh)
 	}
 	var buf bytes.Buffer

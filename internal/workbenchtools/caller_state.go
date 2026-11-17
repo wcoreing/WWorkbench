@@ -56,6 +56,7 @@ func normalizeCallerID(id string) string {
 type callerState struct {
 	mu              sync.Mutex
 	currentTaskSess string
+	skillAssetsDir  string
 	intentLog       []IntentCard
 	rulesAckUntil   int64
 }
@@ -177,6 +178,22 @@ func (st *callerState) rulesAcked() bool {
 	until := st.rulesAckUntil
 	st.mu.Unlock()
 	return until > 0 && time.Now().Unix() <= until
+}
+
+// SetCallerSkillAssets 本轮绑定技能的附件目录。空字符串表示清除。
+func SetCallerSkillAssets(ctx context.Context, dir string) {
+	st := stateOf(ctx)
+	st.mu.Lock()
+	st.skillAssetsDir = strings.TrimSpace(dir)
+	st.mu.Unlock()
+}
+
+// CallerSkillAssets 本轮技能附件目录；未绑定技能时为空。
+func CallerSkillAssets(ctx context.Context) string {
+	st := stateOf(ctx)
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	return st.skillAssetsDir
 }
 
 // resetCallerStateForTest 单测重置某调用方态。

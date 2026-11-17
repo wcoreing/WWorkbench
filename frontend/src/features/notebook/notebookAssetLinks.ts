@@ -14,3 +14,15 @@ export function rewriteNotebookAssetLinks(content: string, noteId: string): stri
   })
   return out
 }
+
+/** skillImageSrc 技能 assets 下的图片笔记 → AssetServer URL。 */
+export function skillImageSrc(noteId: string): string {
+  const id = (noteId || '').replace(/\\/g, '/')
+  const slash = id.lastIndexOf('/')
+  const file = slash >= 0 ? id.slice(slash + 1) : id
+  const dir = slash >= 0 ? id.slice(0, slash) : ''
+  const skillDir = dir.endsWith('/assets') ? dir.slice(0, -'/assets'.length) : dir
+  const skillNote = `${skillDir}/SKILL.md`
+  const prefix = `/notebook-assets/${skillNote.split('/').map(encodeURIComponent).join('/')}/`
+  return prefix + encodeURIComponent(file)
+}

@@ -91,8 +91,8 @@ func (s *Service) ListECSInstances(accountID, region string) ApiResult[[]model.E
 	return OkResult(list)
 }
 
-// GetECSMonitor 读取 SSH 主机绑定的 ECS 最近一小时云监控。
-func (s *Service) GetECSMonitor(hostID string) ApiResult[model.ECSMonitorDO] {
+// GetECSMonitor 读取 SSH 主机绑定的 ECS 云监控。windowHours：1 / 6 / 24 / 168。
+func (s *Service) GetECSMonitor(hostID string, windowHours int) ApiResult[model.ECSMonitorDO] {
 	hostID = strings.TrimSpace(hostID)
 	if hostID == "" {
 		return ErrResult[model.ECSMonitorDO](errno.New(errno.CodeInvalidArg, "缺少 SSH 主机", ""))
@@ -112,9 +112,9 @@ func (s *Service) GetECSMonitor(hostID string) ApiResult[model.ECSMonitorDO] {
 	if parent == nil {
 		parent = context.Background()
 	}
-	ctx, cancel := session.WithTimeout(parent, 12)
+	ctx, cancel := session.WithTimeout(parent, 20)
 	defer cancel()
-	mon, err := aliyuncms.QueryECS(ctx, account.AccessKeyID, account.AccessKeySecret, host.CloudRegion, host.CloudInstanceID)
+	mon, err := aliyuncms.QueryECS(ctx, account.AccessKeyID, account.AccessKeySecret, host.CloudRegion, host.CloudInstanceID, windowHours)
 	if err != nil {
 		return ErrResult[model.ECSMonitorDO](err)
 	}
@@ -125,6 +125,70 @@ func (s *Service) GetECSMonitor(hostID string) ApiResult[model.ECSMonitorDO] {
 		mon.FetchedAt = time.Now().Unix()
 	}
 	return OkResult(mon)
+}
+
+// SyncSSHHostSecurityGroup 把本机公网 IP 写入主机绑定 ECS 的安全组（SSH 端口）。
+// 需要 AccessKey 具备 AuthorizeSecurityGroup / RevokeSecurityGroup。
+func (s *Service) SyncSSHHostSecurityGroup(hostID string) ApiResult[model.SecurityGroupSyncResultDO] {
+	out, err := s.syncSSHHostSecurityGroup(strings.TrimSpace(hostID))
+	if err != nil {
+		return ErrResult[model.SecurityGroupSyncResultDO](err)
+	}
+	return OkResult(out)
+}
+
+// syncSSHHostSGIfEnabled 主机勾了 sgSync 时，连接前尽力同步本机 IP；失败不阻断连接。
+func (s *Service) syncSSHHostSGIfEnabled(hostID string) {
+	hostID = strings.TrimSpace(hostID)
+	if hostID == "" {
+		return
+	}
+	host, err := s.sshHosts.Get(hostID)
+	if err != nil || host == nil || !host.SgSync {
+		return
+	}
+	_, _ = s.syncSSHHostSecurityGroup(hostID)
+}
+
+func (s *Service) syncSSHHostSecurityGroup(hostID string) (model.SecurityGroupSyncResultDO, error) {
+	var zero model.SecurityGroupSyncResultDO
+	if hostID == "" {
+		return zero, errno.New(errno.CodeInvalidArg, "缺少 SSH 主机", "")
+	}
+	host, err := s.sshHosts.Get(hostID)
+	if err != nil {
+		return zero, err
+	}
+	if strings.TrimSpace(host.CloudInstanceID) == "" || strings.TrimSpace(host.CloudAccountID) == "" {
+		return zero, errno.New(errno.CodeInvalidArg, "先绑定阿里云 ECS，才能同步安全组", "")
+	}
+	account, err := s.store.GetCloudAccount(host.CloudAccountID)
+	if err != nil {
+		return zero, err
+	}
+	parent := s.ctx
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := session.WithTimeout(parent, 20)
+	defer cancel()
+	res, err := aliyuncms.SyncHomeIPToSecurityGroup(
+		ctx,
+		account.AccessKeyID, account.AccessKeySecret,
+		host.CloudRegion, host.CloudInstanceID, host.SgID,
+		host.Port, host.SgLastCIDR,
+	)
+	if err != nil {
+		return zero, err
+	}
+	out := model.SecurityGroupSyncResultDO{
+		PublicIP: res.PublicIP, CIDR: res.CIDR, SecurityGroup: res.SecurityGroup,
+		Port: res.Port, Skipped: res.Skipped, RevokedOldCIDR: res.RevokedOldCIDR, Message: res.Message,
+	}
+	if res.CIDR != "" {
+		_ = s.store.UpdateSSHHostSGSyncState(host.ID, res.SecurityGroup, res.CIDR, time.Now().Unix())
+	}
+	return out, nil
 }
 
 func stripCloudSecret(a *model.CloudAccountDO) {

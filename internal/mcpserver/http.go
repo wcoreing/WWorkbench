@@ -15,7 +15,7 @@ import (
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
 // ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.54.649"
+const ServerVersion = "0.54.671"
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明（前馈；不因未读规则拒绝工具）。
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本 / 浏览器舞台 / 桌面应用 / 备份 / 插件等）。

@@ -1,19 +1,23 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { useI18n } from '../../i18n'
+import { menuStyle, useAnchoredMenu } from './AgentComposerMenus'
 import type { AgentMentionMenuItem } from './agentMention'
 
 interface Props {
   open: boolean
   items: AgentMentionMenuItem[]
   activeIndex: number
+  anchorRef: RefObject<HTMLElement | null>
   onPick: (item: AgentMentionMenuItem) => void
   onHoverIndex: (index: number) => void
 }
 
 /** AgentMentionPicker @ 资源选择弹出层。 */
-export function AgentMentionPicker({ open, items, activeIndex, onPick, onHoverIndex }: Props) {
+export function AgentMentionPicker({ open, items, activeIndex, anchorRef, onPick, onHoverIndex }: Props) {
   const { t } = useI18n()
   const listRef = useRef<HTMLDivElement>(null)
+  const pos = useAnchoredMenu(open, anchorRef, true)
 
   const grouped = useMemo(() => {
     const ssh = items.filter((i) => i.kind === 'ssh')
@@ -27,9 +31,9 @@ export function AgentMentionPicker({ open, items, activeIndex, onPick, onHoverIn
     if (!open || !listRef.current) return
     const el = listRef.current.querySelector('.agent-mention-item.is-active')
     el?.scrollIntoView({ block: 'nearest' })
-  }, [open, activeIndex])
+  }, [open, activeIndex, pos])
 
-  if (!open) return null
+  if (!open || !pos) return null
 
   let idx = 0
 
@@ -66,8 +70,8 @@ export function AgentMentionPicker({ open, items, activeIndex, onPick, onHoverIn
     )
   }
 
-  return (
-    <div className="agent-mention-picker" ref={listRef} role="listbox">
+  return createPortal(
+    <div className="agent-mention-picker agent-mention-picker-portal" ref={listRef} role="listbox" style={menuStyle(pos)}>
       {items.length === 0 ? (
         <div className="agent-mention-empty">{t('agent.mentionEmpty')}</div>
       ) : (
@@ -78,6 +82,7 @@ export function AgentMentionPicker({ open, items, activeIndex, onPick, onHoverIn
           {renderSection(t('agent.mentionDocker'), grouped.docker)}
         </>
       )}
-    </div>
+    </div>,
+    document.body,
   )
 }

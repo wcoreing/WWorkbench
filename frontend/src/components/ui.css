@@ -1474,14 +1474,14 @@ body > .wn-modal-backdrop {
   border-bottom: 1px solid transparent;
 }
 
-/* 连接列表 */
+/* 连接列表（与 project-list 同套：顶距靠 sidebar-body，行间距 + 圆角选中） */
 .conn-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: calc(6 * var(--ui-scale) * 1px);
 }
 
 .conn-item {

@@ -435,16 +435,16 @@ type ActOpts struct {
 	Force     bool   // press：放行危险快捷键
 	Headed    bool   // 抢焦点 / 物理送达；pointer 类动作自动为 true
 	// 屏幕绝对坐标（逻辑点，与 screencapture -R 一致）
-	X, Y   *float64
-	X2, Y2 *float64 // drag 终点
-	Button string   // mouse_click：left | right | middle
-	Dx, Dy *int     // mouse_wheel
-	Modifiers []string
-	ImagePath string // clipboard_set --image
-	FileURL   string // clipboard_set --file-url
-	Format    string // clipboard_get：text | auto | image | file-urls
-	WindowID  string // focus_window
-	WindowTitle string
+	X, Y          *float64
+	X2, Y2        *float64 // drag 终点
+	Button        string   // mouse_click：left | right | middle
+	Dx, Dy        *int     // mouse_wheel
+	Modifiers     []string
+	ImagePath     string // clipboard_set --image
+	FileURL       string // clipboard_set --file-url
+	Format        string // clipboard_get：text | auto | image | file-urls
+	WindowID      string // focus_window
+	WindowTitle   string
 	WaitFor       string
 	WaitGone      string
 	WaitTimeoutMs int
@@ -460,6 +460,9 @@ func hasXY(x, y *float64) bool { return x != nil && y != nil }
 // Headed / 坐标类动作会抢焦点并移动系统光标。
 func (d *Driver) Act(ctx context.Context, app App, o ActOpts) (map[string]interface{}, error) {
 	o.Action = strings.ToLower(strings.TrimSpace(o.Action))
+	if err := d.mapWindowPoints(ctx, app, &o); err != nil {
+		return nil, err
+	}
 	headed := o.Headed || NeedsHeaded(o.Action)
 	var args []string
 	stdin := ""
@@ -490,7 +493,7 @@ func (d *Driver) Act(ctx context.Context, app App, o ActOpts) (map[string]interf
 		}
 	case ActionMouseClick:
 		if !hasXY(o.X, o.Y) {
-			return nil, &Error{Code: CodeInvalidArgs, Message: "mouse_click 需要 x,y（屏幕绝对坐标）"}
+			return nil, &Error{Code: CodeInvalidArgs, Message: "mouse_click 需要 x,y（带 windowId 时为窗口图像素，否则为屏幕绝对坐标）"}
 		}
 		args = []string{"mouse-click", "--xy=" + fmtXY(*o.X, *o.Y)}
 		if o.Button != "" {
@@ -802,6 +805,14 @@ func (d *Driver) Wait(ctx context.Context, app App, o WaitOpts) (map[string]inte
 	return out, nil
 }
 
+// Bounds 窗口在屏幕上的逻辑点矩形（左上角 + 宽高）。
+type Bounds struct {
+	X      float64 `json:"x"`
+	Y      float64 `json:"y"`
+	Width  float64 `json:"width"`
+	Height float64 `json:"height"`
+}
+
 // Window 应用的一个窗口。
 type Window struct {
 	ID        string `json:"id"`
@@ -809,6 +820,7 @@ type Window struct {
 	Focused   bool   `json:"focused,omitempty"`
 	Minimized bool   `json:"minimized,omitempty"`
 	Visible   bool   `json:"visible"`
+	Bounds    Bounds `json:"bounds,omitempty"`
 }
 
 // Windows 应用的窗口列表（标题可能含文档名，属于界面内容）。
@@ -823,20 +835,72 @@ func (d *Driver) Windows(ctx context.Context, app App) ([]Window, error) {
 		Focused   bool   `json:"is_focused"`
 		Minimized bool   `json:"minimized"`
 		Visible   bool   `json:"visible"`
+		Bounds    Bounds `json:"bounds"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, err
 	}
 	out := make([]Window, 0, len(raw))
 	for _, w := range raw {
-		out = append(out, Window{ID: w.ID, Title: clean(w.Title), Focused: w.Focused, Minimized: w.Minimized, Visible: w.Visible})
+		out = append(out, Window{
+			ID: w.ID, Title: clean(w.Title), Focused: w.Focused,
+			Minimized: w.Minimized, Visible: w.Visible, Bounds: w.Bounds,
+		})
 	}
 	return out, nil
 }
 
-// Screenshot 截取应用窗口为 PNG，落在工作台数据目录下（仅本人可读）。
+// pickShotWindow 选要截的窗口：指定 id，否则取当前焦点窗，再退到最大可见窗。
+func (d *Driver) pickShotWindow(ctx context.Context, app App, windowID string) (Window, error) {
+	wins, err := d.Windows(ctx, app)
+	if err != nil {
+		return Window{}, err
+	}
+	windowID = strings.TrimSpace(windowID)
+	if windowID != "" {
+		for _, w := range wins {
+			if w.ID == windowID {
+				if w.Bounds.Width < 1 || w.Bounds.Height < 1 {
+					return Window{}, &Error{Code: CodeInvalidArgs, Message: "窗口没有可用尺寸：" + windowID}
+				}
+				return w, nil
+			}
+		}
+		return Window{}, &Error{Code: CodeInvalidArgs, Message: "找不到窗口 " + windowID + "，请 desktop_apps 重新取 windowId"}
+	}
+	var focused *Window
+	var largest *Window
+	var largestArea float64
+	for i := range wins {
+		w := &wins[i]
+		if !w.Visible || w.Minimized || w.Bounds.Width < 80 || w.Bounds.Height < 80 {
+			continue
+		}
+		if w.Focused {
+			focused = w
+		}
+		area := w.Bounds.Width * w.Bounds.Height
+		if area > largestArea {
+			largest = w
+			largestArea = area
+		}
+	}
+	if focused != nil {
+		return *focused, nil
+	}
+	if largest != nil {
+		return *largest, nil
+	}
+	return Window{}, &Error{Code: CodeInvalidArgs, Message: "没有可截图的可见窗口"}
+}
+
+// Screenshot 截取一个窗口（裁掉阴影），坐标空间是进模后的窗口图像素。
 func (d *Driver) Screenshot(ctx context.Context, app App, windowID string) (map[string]interface{}, error) {
-	scope, err := scopeArgs("", windowID, "")
+	win, err := d.pickShotWindow(ctx, app, windowID)
+	if err != nil {
+		return nil, err
+	}
+	scope, err := scopeArgs("", win.ID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -846,20 +910,23 @@ func (d *Driver) Screenshot(ctx context.Context, app App, windowID string) (map[
 	}
 	path := filepath.Join(dir, "shot-"+time.Now().Format("20060102-150405.000")+".png")
 	args := append([]string{"screenshot", path, "--app=" + app.Key()}, scope...)
-	data, err := d.run(ctx, "", args...)
+	if _, err := d.run(ctx, "", args...); err != nil {
+		return nil, err
+	}
+	pixW, pixH, err := cropWindowPNG(path)
 	if err != nil {
 		return nil, err
 	}
-	var res struct {
-		Path   string `json:"path"`
-		Width  int    `json:"width"`
-		Height int    `json:"height"`
-	}
-	_ = json.Unmarshal(data, &res)
-	if res.Path == "" {
-		res.Path = path
-	}
-	return map[string]interface{}{"path": res.Path, "width": res.Width, "height": res.Height, "format": "png"}, nil
+	d.noteShot(win.ID, pixW, pixH)
+	imgW, imgH := ModelImageSize(pixW, pixH)
+	return map[string]interface{}{
+		"path": path, "format": "png",
+		"windowId": win.ID,
+		"bounds":   win.Bounds,
+		"width":    imgW, "height": imgH,
+		"imageWidth": imgW, "imageHeight": imgH,
+		"coordSpace": "window",
+	}, nil
 }
 
 // Launch 启动应用（已在运行则附着）并等它呈现窗口；会把该应用带到前台。

@@ -96,6 +96,7 @@ export function AgentInputBar({
   const [pendingSkills, setPendingSkills] = useState<SkillRef[]>([])
   const skillLabelMap = useMemo(() => buildSkillLabelMap(skills), [skills])
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const composerRef = useRef<HTMLDivElement>(null)
   const onSendRef = useRef(onSend)
   onSendRef.current = onSend
   const threadMentionsRef = useRef(threadMentions)
@@ -457,7 +458,7 @@ export function AgentInputBar({
         onClearAll={clearMentions}
         clearAllLabel={t('agent.mentionClearAll')}
       />
-      <div className="agent-composer">
+      <div className="agent-composer" ref={composerRef}>
       {images.length > 0 && (
         <div className="agent-image-drafts">
           {images.map((img, i) => (
@@ -515,6 +516,7 @@ export function AgentInputBar({
           open={menuOpen}
           items={menuItems}
           activeIndex={menuIndex}
+          anchorRef={composerRef}
           onPick={pickItem}
           onHoverIndex={setMenuIndex}
         />
@@ -522,6 +524,7 @@ export function AgentInputBar({
           open={skillMenuOpen && !menuOpen}
           items={skillMenuItems}
           activeIndex={skillMenuIndex}
+          anchorRef={composerRef}
           onPick={pickSkill}
           onHoverIndex={setSkillMenuIndex}
         />

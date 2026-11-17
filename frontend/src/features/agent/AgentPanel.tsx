@@ -6,7 +6,7 @@ import { useLoading, withLoading } from '../../stores/loadingStore'
 import { useAgentStore } from '../../stores/agentStore'
 import type { AgentPanelView, CapabilityRow } from './agentTypes'
 import { AgentConfigView, saveAgentAPIConfig } from './AgentConfigView'
-import { rememberRecentModel } from './agentChatMode'
+import { rememberSavedModel } from './agentChatMode'
 import { AgentPermissionsView, saveAgentPermissions } from './AgentPermissionsView'
 import { useAgentPanelResize } from './useAgentPanelResize'
 import { ResizeHandle } from '../../components/layout'
@@ -110,7 +110,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     const s = await api.getAgentSettings()
     setApiBase(s.apiBase || 'https://dashscope.aliyuncs.com/compatible-mode/v1')
     setModelName(s.model || 'qwen-plus')
-    if (s.model) rememberRecentModel(s.model)
+    if (s.model) rememberSavedModel(s.provider || 'bailian', s.model)
     setHasKey(s.hasApiKey)
     setAllowWrite(s.allowWrite)
     setProvider(s.provider || 'bailian')
@@ -244,6 +244,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       setApiBase(s.apiBase)
       setModelName(s.model)
       setProvider(s.provider || id)
+      if (s.model) rememberSavedModel(s.provider || id, s.model)
       const msgKey =
         id === 'deepseek'
           ? 'agent.deepseekPresetApplied'
@@ -264,7 +265,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     try {
       await saveAgentAPIConfig(apiBase, '', next, provider)
       setModelName(next)
-      rememberRecentModel(next)
+      rememberSavedModel(provider, next)
     } catch (e) {
       setStatusMessage((e as Error).message)
     }
@@ -423,7 +424,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
                   item.message,
                   mergeMentions(session.threadMentions, session.autoMentions),
                   [],
-                  [],
+                  item.skillIds ?? [],
                   item.mode,
                 )
               }}

@@ -30,7 +30,7 @@ func isNotebookContentFile(name string) bool {
 	case ".md", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx",
 		".py", ".sh", ".bash", ".zsh", ".json", ".yaml", ".yml",
 		".sql", ".html", ".htm", ".css", ".txt", ".toml", ".ini",
-		".dockerfile":
+		".dockerfile", ".png", ".jpg", ".jpeg", ".webp", ".gif":
 		return true
 	default:
 		return false
@@ -43,7 +43,17 @@ func knownNotebookExt(ext string) bool {
 	case ".md", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx",
 		".py", ".sh", ".bash", ".zsh", ".json", ".yaml", ".yml",
 		".sql", ".html", ".htm", ".css", ".txt", ".toml", ".ini",
-		".dockerfile":
+		".dockerfile", ".png", ".jpg", ".jpeg", ".webp", ".gif":
+		return true
+	default:
+		return false
+	}
+}
+
+// isImageNotebookFile 截图等图片附件。树里可见，但不能当文本笔记覆盖。
+func isImageNotebookFile(name string) bool {
+	switch strings.ToLower(filepath.Ext(strings.TrimSpace(name))) {
+	case ".png", ".jpg", ".jpeg", ".webp", ".gif":
 		return true
 	default:
 		return false
@@ -90,6 +100,8 @@ func languageFromFilename(name string) string {
 		return "html"
 	case ".css":
 		return "css"
+	case ".png", ".jpg", ".jpeg", ".webp", ".gif":
+		return "image"
 	case ".txt":
 		return "plaintext"
 	case ".dockerfile":

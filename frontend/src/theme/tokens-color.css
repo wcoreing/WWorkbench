@@ -411,3 +411,137 @@
   --shadow: 0 8px 28px rgba(80, 110, 0, 0.08), 0 2px 6px rgba(80, 110, 0, 0.05);
   --shadow-lg: 0 20px 56px rgba(80, 110, 0, 0.1), 0 4px 12px rgba(80, 110, 0, 0.06);
 }
+
+/* 浅草：YingDao 薄荷浅绿纸面 + 翠绿 accent（编排同 cream/grass） */
+[data-theme='mint'] {
+  color-scheme: light;
+
+  --accent: #10b981;
+  --accent-hover: #059669;
+  --accent-pressed: #047857;
+  --accent-muted: rgba(16, 185, 129, 0.12);
+  --accent-ring: rgba(16, 185, 129, 0.28);
+
+  --color-bg: #eef8f2;
+  --color-canvas: #f6ffed;
+  --color-surface: #f6ffed;
+  --color-surface-raised: #fbfff6;
+  --color-surface-2: #e6f4ec;
+  --color-surface-3: #d4ebd9;
+  --color-editor: #f6ffed;
+  --color-sidebar: #eaf6ef;
+  --color-toolbar: #eaf6ef;
+  --color-chrome: #e6f4ec;
+  --color-tab-bar: #dcefe4;
+  --color-tab-active: #f6ffed;
+  --color-overlay: rgba(16, 48, 36, 0.24);
+
+  --fill-chrome: linear-gradient(180deg, #f4fcf6 0%, #e6f4ec 100%);
+  --fill-rail: linear-gradient(90deg, #d4ebd9 0%, #eaf6ef 50%, #f0faf4 100%);
+  --fill-sidebar: linear-gradient(180deg, #f0faf4 0%, #e6f4ec 100%);
+  --fill-toolbar: linear-gradient(180deg, #f4fcf6 0%, #e0f0e8 100%);
+  --fill-btn-chrome: linear-gradient(180deg, #fbfff6 0%, #e6f4ec 100%);
+  --fill-btn-chrome-hover: linear-gradient(180deg, #ffffff 0%, #d4ebd9 100%);
+  --fill-btn-chrome-pressed: linear-gradient(180deg, #d4ebd9 0%, #eaf6ef 100%);
+  --hairline-shine: rgba(255, 255, 255, 0.8);
+  --hairline-shade: rgba(16, 80, 56, 0.08);
+  --hairline-edge: rgba(16, 80, 56, 0.06);
+
+  --color-border-strong: #b7eb8f;
+  --color-border: #cce8d4;
+  --color-border-subtle: #dcefe4;
+  --color-divider: rgba(16, 80, 56, 0.09);
+
+  --color-text: #0f2e22;
+  --color-text-secondary: #3d6b56;
+  --color-text-muted: #6b8a7e;
+  --color-text-disabled: #9bb5a8;
+
+  --color-hover: rgba(16, 185, 129, 0.08);
+  --color-active: rgba(16, 185, 129, 0.12);
+  --color-selection: rgba(16, 185, 129, 0.12);
+  --color-sidebar-selected: rgba(16, 185, 129, 0.14);
+  --color-row-selected: rgba(16, 185, 129, 0.14);
+  --color-row-selected-fg: var(--color-text);
+  --color-row-selected-hover: rgba(16, 185, 129, 0.18);
+  --color-tree-hover: var(--color-hover);
+  --color-tree-active: var(--color-sidebar-selected);
+
+  --color-danger: #c83d4a;
+  --color-danger-muted: rgba(200, 61, 74, 0.09);
+  --color-success: #10b981;
+  --color-success-muted: rgba(16, 185, 129, 0.12);
+  --color-warning: #a96814;
+  --color-warning-muted: rgba(169, 104, 20, 0.1);
+
+  --shadow-sm: 0 1px 3px rgba(16, 80, 56, 0.05), 0 1px 2px rgba(16, 80, 56, 0.03);
+  --shadow: 0 8px 28px rgba(16, 80, 56, 0.08), 0 2px 6px rgba(16, 80, 56, 0.05);
+  --shadow-lg: 0 20px 56px rgba(16, 80, 56, 0.1), 0 4px 12px rgba(16, 80, 56, 0.06);
+}
+
+/* 粉色：YingDao 玫粉 accent + 紫粉底机壳（编排同 olive/dark） */
+[data-theme='pink'] {
+  color-scheme: dark;
+
+  --accent: #ff8cc8;
+  --accent-hover: #ffc4e4;
+  --accent-pressed: #f256a8;
+  --accent-muted: rgba(255, 140, 200, 0.18);
+  --accent-ring: rgba(255, 110, 185, 0.36);
+
+  --color-bg: #1a0e20;
+  --color-canvas: #221428;
+  --color-surface: #2a1a36;
+  --color-surface-raised: #342242;
+  --color-surface-2: #241430;
+  --color-surface-3: #3c2a4a;
+  --color-editor: #1e1228;
+  --color-sidebar: #241430;
+  --color-toolbar: #2a1a36;
+  --color-chrome: #1e1228;
+  --color-tab-bar: #241430;
+  --color-tab-active: #32203e;
+  --color-overlay: rgba(18, 10, 24, 0.55);
+
+  --fill-chrome: linear-gradient(180deg, #32203e 0%, #1e1228 100%);
+  --fill-rail: linear-gradient(90deg, #140a18 0%, #241430 55%, #2c1838 100%);
+  --fill-sidebar: linear-gradient(180deg, #2c1838 0%, #241430 45%, #1e1228 100%);
+  --fill-toolbar: linear-gradient(180deg, #32203e 0%, #2a1a36 100%);
+  --fill-btn-chrome: linear-gradient(180deg, #3c2a4a 0%, #2a1a36 100%);
+  --fill-btn-chrome-hover: linear-gradient(180deg, #463254 0%, #32203e 100%);
+  --fill-btn-chrome-pressed: linear-gradient(180deg, #1e1228 0%, #32203e 100%);
+  --hairline-shine: rgba(255, 196, 228, 0.14);
+  --hairline-shade: rgba(0, 0, 0, 0.36);
+  --hairline-edge: rgba(255, 150, 210, 0.14);
+
+  --color-border-strong: rgba(255, 130, 200, 0.3);
+  --color-border: rgba(255, 150, 210, 0.18);
+  --color-border-subtle: rgba(255, 150, 210, 0.12);
+  --color-divider: rgba(255, 140, 200, 0.12);
+
+  --color-text: #fff5fa;
+  --color-text-secondary: #e8c8dc;
+  --color-text-muted: #b894a8;
+  --color-text-disabled: #7a5c6c;
+
+  --color-hover: rgba(255, 140, 200, 0.1);
+  --color-active: rgba(255, 140, 200, 0.16);
+  --color-selection: rgba(255, 140, 200, 0.16);
+  --color-sidebar-selected: rgba(255, 140, 200, 0.18);
+  --color-row-selected: rgba(255, 140, 200, 0.18);
+  --color-row-selected-fg: var(--color-text);
+  --color-row-selected-hover: rgba(255, 140, 200, 0.26);
+  --color-tree-hover: var(--color-hover);
+  --color-tree-active: var(--color-sidebar-selected);
+
+  --color-danger: #ff8fa3;
+  --color-danger-muted: rgba(255, 143, 163, 0.14);
+  --color-success: #86efac;
+  --color-success-muted: rgba(134, 239, 172, 0.14);
+  --color-warning: #fde68a;
+  --color-warning-muted: rgba(253, 230, 138, 0.14);
+
+  --shadow-sm: 0 1px 3px rgba(12, 6, 16, 0.28), 0 1px 2px rgba(12, 6, 16, 0.2);
+  --shadow: 0 10px 32px rgba(12, 6, 16, 0.36), 0 2px 8px rgba(12, 6, 16, 0.22);
+  --shadow-lg: 0 22px 60px rgba(12, 6, 16, 0.42), 0 4px 14px rgba(12, 6, 16, 0.24);
+}

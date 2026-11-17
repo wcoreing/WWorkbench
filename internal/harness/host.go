@@ -70,13 +70,31 @@ func (h *Host) NewChatModel(ctx context.Context, provider, apiKey, baseURL, mode
 	if h == nil {
 		return nil, fmt.Errorf("harness: not open")
 	}
+	prov, base, model := visionProvider(provider, baseURL, modelName)
 	cm, _, err := guestmodel.NewChatModel(ctx, guestmodel.Config{
-		Provider: guestmodel.ParseProvider(mapProviderForGuest(provider)),
+		Provider: guestmodel.ParseProvider(prov),
 		APIKey:   apiKey,
-		BaseURL:  baseURL,
-		Model:    modelName,
+		BaseURL:  base,
+		Model:    model,
 	})
 	return cm, err
+}
+
+// visionProvider DeepSeek 的 eino 适配器会丢掉 image_url。截图要进上下文，走 OpenAI 兼容协议。
+func visionProvider(provider, baseURL, modelName string) (prov, base, model string) {
+	prov = mapProviderForGuest(provider)
+	base = strings.TrimSpace(baseURL)
+	model = strings.TrimSpace(modelName)
+	if strings.EqualFold(strings.TrimSpace(provider), "deepseek") {
+		prov = "openai"
+		if base == "" {
+			base = "https://api.deepseek.com/v1"
+		}
+		if model == "" {
+			model = "deepseek-flash"
+		}
+	}
+	return prov, base, model
 }
 
 // mapProviderForGuest 将产品侧服务商 id 映射为 ningharness Provider。

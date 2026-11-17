@@ -76,5 +76,13 @@ export function parseLeadingSkillCommand(text: string, skills: SkillRef[]): { me
 
 /** defaultSkillPrompt 无附加正文时的默认调用语。 */
 export function defaultSkillPrompt(skill: SkillRef): string {
-  return `请按技能「${skill.name}」执行。`
+  const id = skill.id || ''
+  const label = skill.name && skill.name !== 'SKILL' ? skill.name : id
+  if (id === '微信文件传输助手' || id.includes('微信')) {
+    return (
+      `请按技能「${label}」执行：先 get_skill，用 offer_choices 确认会话与要发送的正文` +
+      `（默认文件传输助手），再 desktop_* headed 发送并用 desktop_screenshot 验收；不要改用 browser_*。`
+    )
+  }
+  return `请按技能「${label}」执行。`
 }

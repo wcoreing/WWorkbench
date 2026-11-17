@@ -162,7 +162,11 @@ func (r *Runner) prepareChat(req model.AgentChatRequestDO, resolveLeading bool) 
 
 	skillIDs := trimSkillIDs(req.SkillIDs)
 	if resolveLeading && len(skillIDs) == 0 {
-		if list, err := nhskill.ListEnabled(r.harness.Root); err == nil {
+		list := notebookSkillInfos(r.notebook)
+		if harnessList, err := nhskill.ListEnabled(r.harness.Root); err == nil {
+			list = append(list, harnessList...)
+		}
+		if len(list) > 0 {
 			rest, ids := nhskill.ResolveLeadingCommand(msg, list)
 			if len(ids) > 0 {
 				skillIDs = ids
@@ -781,6 +785,8 @@ func (r *Runner) runTurn(threadID, prompt, feedforward string, skipUser bool, sk
 		th.skillIDs = trimSkillIDs(skillIDs)
 		th.mu.Unlock()
 	}
+	r.bindSkillAssets(ctx, skillIDs)
+	defer workbenchtools.SetCallerSkillAssets(ctx, "")
 
 	taskID := fmt.Sprintf("chat:%d", time.Now().UnixMilli())
 	th.mu.Lock()
@@ -913,6 +919,39 @@ func trimSkillIDs(in []string) []string {
 	return out
 }
 
+// bindSkillAssets 本轮绑了技能时，截图写入该技能的 assets/。
+func (r *Runner) bindSkillAssets(ctx context.Context, skillIDs []string) {
+	if r == nil || r.notebook == nil || len(skillIDs) == 0 {
+		return
+	}
+	_, _, assets, err := r.notebook.ResolveSkillPaths(skillIDs[0])
+	if err != nil || assets == "" {
+		return
+	}
+	workbenchtools.SetCallerSkillAssets(ctx, assets)
+}
+
+// notebookSkillInfos 笔记本工作流转成 / 命令可解析的技能项（排在 harness 技能之前）。
+func notebookSkillInfos(nb *notebook.Service) []nhskill.Info {
+	if nb == nil {
+		return nil
+	}
+	skills := nb.ListAgentSlashSkills(80)
+	if len(skills) == 0 {
+		return nil
+	}
+	out := make([]nhskill.Info, 0, len(skills))
+	for _, sk := range skills {
+		out = append(out, nhskill.Info{
+			ID:          sk.ID,
+			Name:        sk.Name,
+			Description: sk.Description,
+			Enabled:     true,
+		})
+	}
+	return out
+}
+
 func (r *Runner) getOrCreateThread(id string, ctx model.AgentContextDO, firstMsg string) *threadState {
 	if th := r.ensureThread(id); th != nil {
 		th.mu.Lock()
@@ -951,9 +990,9 @@ func (r *Runner) ensureThread(id string) *threadState {
 		return nil
 	}
 	th := &threadState{
-		id:      info.ID,
-		title:   info.Title,
-		context: model.AgentContextDO{Mentions: mentions},
+		id:       info.ID,
+		title:    info.Title,
+		context:  model.AgentContextDO{Mentions: mentions},
 		skillIDs: append([]string(nil), skillIDs...),
 	}
 	r.mu.Lock()
@@ -1036,7 +1075,11 @@ func (r *Runner) systemPrompt(mode string) string {
 3. Shell 合同：人看得见的工作（pip、下载、训练、写脚本、管道）必须 shell_run 注入可见 PTY，本轮不返回 stdout，禁止编造输出；注入后用 get_shell_output(waitMs, afterUpdatedAt=shell_run.updatedAt) 看新输出（短命令 3～8s）。有 initialCommand 时必须填 intent（人话：要干什么、影响谁），确认弹窗与状态栏会展示。shell_probe 只做只读短探针（uptime / free / df / nvidia-smi / pip show / python -c print / ls / cat），另开会话、等结果、默认 30s；装包/下载/训练/跑脚本会被拒绝。看磁盘文件用 cat，不要 sed/awk。用户 PTY 正忙时不要用探针抢同一台的交互。问「跑完了吗」用 get_shell_output，不要为了看屏幕再跑一遍。会话断开或面板出现「会话已结束」时先 terminal_reconnect（sessionId 或 hostId），再继续 shell_run。
 3c. 意图声明卡：写入 SQL、容器启停删、插件写、save_*、写 HTTP、run_backup、browser_click/fill/navigate 等动手工具同样必须传 intent；禁止占位词。
 3e. 浏览器舞台：一任务一 session 一标签组；find_tab→snapshot/read_page/find/click/wait/upload；browser_run 批读；结束 close_session。同域 frame=#fN。只用真实 ref；写操作需确认。
-3f. 桌面应用（原生 App，非网页）：desktop_status → desktop_apps → desktop_snapshot / desktop_find → desktop_act（可带 waitFor 直接拿下一态）。默认一个应用都读不了，首次读取 / 操作某应用时工作台弹窗请用户授权；被拒后不要重复请求，先说明用途。ref 原样使用、禁止编造；不支持拖拽 / 悬停。
+3f. 桌面应用（原生 App，非网页）：desktop_status → desktop_apps → 再动手。默认一个应用都读不了，首次读取 / 操作时工作台弹窗请用户授权；被拒后不要重复请求，先说明用途。
+   - 语义（有 AX）：desktop_snapshot / desktop_find → desktop_act(click/type/press…，可带 waitFor)；ref 原样使用、禁止编造。
+   - 物理 headed（微信等自绘、无障碍树空）：desktop_screenshot 只截窗口。图的左上角是窗口左上角，x,y 是这张图上的像素，mouse_click / hover / drag 必须带同一个 windowId。不要用屏幕绝对坐标，也不要用方向键选搜索结果。输入用 clipboard_set + press(keys, headed=true)。
+   - 发消息类：先 get_skill，再用 offer_choices 让用户确认会话与正文，默认「文件传输助手」作沙箱；勿静默群发。搜一搜索引（AI搜索/全部/文章）不是会话。在窗口图上点功能行的「前往」或绿色图标行。索引消失且标题对上之后才发送。
+   - 桌面 Skill 若走脚本：只用 shell_run（本机终端 + intent），禁止 shell_probe 跑 .py；微信禁 focus_window，多窗必须带 windowId（取最大主窗）。
 3d. 备份策略（云盘快照式）：save_backup_policy（files/sqlite 绑 path+sshHostId，或 db 绑 connectionId；可选 cronExpr；retainDays 按天默认 7，或 retainCount 按份数配额）；run_backup 无头执行。服务发现后须探测 *.db/data/.env 并自动建策略；写 SQL 若 beforeWrite 会先备份。
 3b. 长任务（大文件下载、pip、训练）：shell_run 注入后最多用 get_shell_output 查 1～2 次进度；若仍在进行，向用户汇报当前进度并结束本轮，请用户到终端看进度、完成后说「继续」或「查进度」。禁止在同一轮里反复「继续等待」空转轮询，否则会打满工具步数。
 4. 容器启停/删除必须用 start_container / stop_container / remove_container（会弹确认），禁止 docker rm/start/stop 走 shell_probe。
@@ -1046,7 +1089,7 @@ func (r *Runner) systemPrompt(mode string) string {
 8. 巡检/报告：收集数据后可用 notebook_append_content 存档。当前打开的笔记常是无关草稿，禁止把前馈 noteId 当成默认写入目标；list_notes 按标题定位或新建明确 title，再 appendToNoteId。禁止把工作流正文、报表模板占位、ECharts option 模板原样 append 进笔记本；只写入填好真实数字与合法 echarts JSON 的报告。执行报表类工作流时优先**新建**笔记（标题含日期），勿向已关联 wwb-skill 的来源笔记追加草稿。
 8b. 读笔记：正文在工作台库里。list_notes 浏览，search_notes(query) 按标题/正文搜，get_note(noteId) 取全文。用户说「这篇」才用前馈 noteId 去读。禁止 cat 文件路径，禁止用 recall_resource 当笔记（那是工具结果 resource#N）。
 8c. 记忆区：前馈或 get_workbench_context.memoryNotes 列出与当前 SSH/库绑定的 role=memory 笔记。动手改机/改库前先 get_note 读匹配记忆；新坑用 notebook_append_content 或新建记忆笔记（role: memory + 关联主机/连接）。
-8d. Skill（人话可叫工作流）：对外只认 list_skills / get_skill / update_skill / run_skill / distill_skill。get_skill 后用 browser_* 完成目标；distill_skill 只出草稿；**跑通/踩坑后必须 update_skill**。run_skill 仅为可选机械捷径。笔记 role=skill / SKILL.md。
+8d. Skill（人话可叫工作流）：对外只认 list_skills / get_skill / update_skill / run_skill / distill_skill。get_skill 后**按 Skill 正文选通道**：网页任务用 browser_*；原生桌面（微信等）用 desktop_*（多为 headed），不要把桌面 Skill 改成 browser_*。distill_skill 只出草稿；**跑通/踩坑后必须 update_skill**。run_skill 仅为可选机械捷径（桌面步骤通常是提纲，勿指望机械重放）。笔记 role=skill / SKILL.md。
 9. Docker：远端先 save_docker_context(sshHostId)，再 list_containers；变更用 start/stop/remove_container；日志：新源先 save_log_source，再用 fetch_logs(logSourceId) 或 get_container_logs。本轮已绑定 SSH 时，远程 Docker 优先用该 hostId；若用户意图是本地或其它机器，再确认。
 9b. 工作台是资产容器——凡要可复现的配置必须落盘：HTTP→save_http_request + save_http_environment；SSH→save_ssh_host / save_ssh_forward；数据库→save_connection；日志→save_log_source；Docker→save_docker_context。禁止只临时候参数打完就结束；笔记本是报告旁路，主资产在各产品树。
 10. 本轮工具返回已在上下文中，直接基于其内容作答；不要为本轮结果调用 recall_resource。跨轮或历史被挤出窗口后，用 recall_resource（resource#N / resource_id）取回全文；可用 search_session / get_task_summary 定位。

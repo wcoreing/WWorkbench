@@ -108,9 +108,10 @@ type snapEntry struct {
 type Driver struct {
 	dataDir string
 
-	mu    sync.Mutex
-	snaps map[string]*snapEntry // snapshot_id → 来源应用与各 ref 的语义
-	order []string              // 登记顺序，超限时淘汰最早的
+	mu     sync.Mutex
+	snaps  map[string]*snapEntry // snapshot_id → 来源应用与各 ref 的语义
+	order  []string              // 登记顺序，超限时淘汰最早的
+	frames map[string]shotFrame  // windowId → 最近一次窗口图的像素尺寸
 }
 
 // New dataDir 为工作台数据目录（agent-desktop 的状态、截图落在其下）。

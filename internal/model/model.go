@@ -247,8 +247,24 @@ type SSHHostDO struct {
 	CloudRegion     string `json:"cloudRegion"`
 	CloudInstanceID string `json:"cloudInstanceId"`
 	TouchCloud      bool   `json:"touchCloud"`
-	CreatedAt       int64  `json:"createdAt"`
-	UpdatedAt       int64  `json:"updatedAt"`
+	// 连接前把本机公网 IP 写入 ECS 安全组（规则 Description=wwb-dynamic-ip）。
+	SgSync     bool   `json:"sgSync"`
+	SgID       string `json:"sgId"` // 空则用实例第一个安全组
+	SgLastCIDR string `json:"sgLastCidr"`
+	SgSyncedAt int64  `json:"sgSyncedAt"`
+	CreatedAt  int64  `json:"createdAt"`
+	UpdatedAt  int64  `json:"updatedAt"`
+}
+
+// SecurityGroupSyncResultDO 本机 IP 同步到安全组的结果。
+type SecurityGroupSyncResultDO struct {
+	PublicIP       string `json:"publicIp"`
+	CIDR           string `json:"cidr"`
+	SecurityGroup  string `json:"securityGroupId"`
+	Port           int    `json:"port"`
+	Skipped        bool   `json:"skipped"`
+	RevokedOldCIDR string `json:"revokedOldCidr,omitempty"`
+	Message        string `json:"message"`
 }
 
 // CloudAccountDO 云账号。AccessKeySecret 只在写入时出现，读出时清空并用 HasSecret 表示已存。
@@ -289,11 +305,12 @@ type ECSInstanceDO struct {
 
 // ECSMonitorDO 一台 ECS 的云监控快照。
 type ECSMonitorDO struct {
-	InstanceID string              `json:"instanceId"`
-	Region     string              `json:"region"`
-	FetchedAt  int64               `json:"fetchedAt"`
-	Series     []ECSMetricSeriesDO `json:"series"`
-	Hint       string              `json:"hint"`
+	InstanceID  string              `json:"instanceId"`
+	Region      string              `json:"region"`
+	FetchedAt   int64               `json:"fetchedAt"`
+	WindowHours int                 `json:"windowHours"`
+	Series      []ECSMetricSeriesDO `json:"series"`
+	Hint        string              `json:"hint"`
 }
 
 const (
@@ -319,6 +336,10 @@ type ShellHostDO struct {
 	CloudAccountID  string `json:"cloudAccountId"`
 	CloudRegion     string `json:"cloudRegion"`
 	CloudInstanceID string `json:"cloudInstanceId"`
+	SgSync          bool   `json:"sgSync"`
+	SgID            string `json:"sgId"`
+	SgLastCIDR      string `json:"sgLastCidr"`
+	SgSyncedAt      int64  `json:"sgSyncedAt"`
 	CreatedAt       int64  `json:"createdAt"`
 	UpdatedAt       int64  `json:"updatedAt"`
 }
@@ -339,7 +360,7 @@ type TerminalSessionInfoDO struct {
 	SessionID string `json:"sessionId"`
 	HostID    string `json:"hostId"`
 	Title     string `json:"title"`
-	Kind      string `json:"kind"` // local | ssh | docker
+	Kind      string `json:"kind"`             // local | ssh | docker
 	Reused    bool   `json:"reused,omitempty"` // 命中主机级 SSH 热连接
 	DialMs    int64  `json:"dialMs,omitempty"` // 取得连接耗时（毫秒）
 }
@@ -814,17 +835,17 @@ type WorkflowStepDO struct {
 
 // WorkflowDO 从日志蒸馏的可复用工作流（SSOT=role=skill 笔记）。
 type WorkflowDO struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"` // 稳定短名，如 xhs-draft
-	Title       string            `json:"title"`
-	Description string            `json:"description,omitempty"`
-	Intent      string            `json:"intent,omitempty"`
-	Steps       []WorkflowStepDO  `json:"steps"`
-	SourceRunID string            `json:"sourceRunId,omitempty"`
-	NoteID      string            `json:"noteId,omitempty"`
-	Source      string            `json:"source,omitempty"` // note | builtin
-	CreatedAt   int64             `json:"createdAt"`
-	UpdatedAt   int64             `json:"updatedAt"`
+	ID          string           `json:"id"`
+	Name        string           `json:"name"` // 稳定短名，如 xhs-draft
+	Title       string           `json:"title"`
+	Description string           `json:"description,omitempty"`
+	Intent      string           `json:"intent,omitempty"`
+	Steps       []WorkflowStepDO `json:"steps"`
+	SourceRunID string           `json:"sourceRunId,omitempty"`
+	NoteID      string           `json:"noteId,omitempty"`
+	Source      string           `json:"source,omitempty"` // note | builtin
+	CreatedAt   int64            `json:"createdAt"`
+	UpdatedAt   int64            `json:"updatedAt"`
 }
 
 // HostHealthFindingDO 工作目录扫描出的可备份项。
@@ -912,14 +933,14 @@ type ProjectResourceSuggestionDO struct {
 
 // SuggestProjectResourcesResultDO 智能配置建议结果。
 type SuggestProjectResourcesResultDO struct {
-	Project     WorkbenchProjectDO           `json:"project"`
+	Project     WorkbenchProjectDO            `json:"project"`
 	Suggestions []ProjectResourceSuggestionDO `json:"suggestions"`
-	Tokens      []string                     `json:"tokens,omitempty"`
+	Tokens      []string                      `json:"tokens,omitempty"`
 }
 
 // ConfigureProjectResourcesResultDO 智能配置应用结果。
 type ConfigureProjectResourcesResultDO struct {
-	Project   WorkbenchProjectDO           `json:"project"`
+	Project   WorkbenchProjectDO            `json:"project"`
 	Added     []ProjectResourceSuggestionDO `json:"added"`
 	Skipped   []ProjectResourceSuggestionDO `json:"skipped,omitempty"`
 	Suggested []ProjectResourceSuggestionDO `json:"suggested,omitempty"`

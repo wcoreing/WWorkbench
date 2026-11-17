@@ -71,9 +71,15 @@ func (s *HostService) Save(h model.SSHHostDO) (*model.SSHHostDO, error) {
 	if err != nil {
 		return nil, err
 	}
+	h = s.mergeSGState(h)
 	h.CloudAccountID = strings.TrimSpace(h.CloudAccountID)
 	h.CloudRegion = strings.TrimSpace(h.CloudRegion)
 	h.CloudInstanceID = strings.TrimSpace(h.CloudInstanceID)
+	h.SgID = strings.TrimSpace(h.SgID)
+	if h.CloudAccountID == "" {
+		h.SgSync = false
+		h.SgID = ""
+	}
 	if err := s.validateCloud(h); err != nil {
 		return nil, err
 	}
@@ -131,6 +137,24 @@ func (s *HostService) mergeCloud(h model.SSHHostDO) (model.SSHHostDO, error) {
 	h.CloudRegion = existing.CloudRegion
 	h.CloudInstanceID = existing.CloudInstanceID
 	return h, nil
+}
+
+// mergeSGState 前端不回传上次同步 IP；保存时保留库里的记录。
+func (s *HostService) mergeSGState(h model.SSHHostDO) model.SSHHostDO {
+	if h.ID == "" {
+		return h
+	}
+	existing, err := s.store.GetSSHHost(h.ID)
+	if err != nil || existing == nil {
+		return h
+	}
+	if strings.TrimSpace(h.SgLastCIDR) == "" {
+		h.SgLastCIDR = existing.SgLastCIDR
+	}
+	if h.SgSyncedAt == 0 {
+		h.SgSyncedAt = existing.SgSyncedAt
+	}
+	return h
 }
 
 // validateCloud 绑定了任一项时，账号、地域、实例必须同时有效。

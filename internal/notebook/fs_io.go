@@ -1,7 +1,9 @@
 package notebook
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"mime"
 	"os"
 	"path/filepath"
 	"sort"
@@ -232,13 +234,13 @@ func (s *Service) getNoteFS(id string) (*model.NoteDO, error) {
 			canonicalID = filepath.ToSlash(id)
 		}
 		groupID := groupIDFromRelDir(filepath.ToSlash(filepath.Dir(rel)))
-		return s.readNoteFile(canonicalID, contentPath, groupID)
+		return s.withImageData(s.readNoteFile(canonicalID, contentPath, groupID))
 	}
 	if strings.Contains(id, "/") || strings.HasSuffix(strings.ToLower(id), ".md") {
 		abs := filepath.Join(s.workspaceRoot(), filepath.FromSlash(id))
 		if st, e := os.Stat(abs); e == nil && !st.IsDir() {
 			relDir := filepath.ToSlash(filepath.Dir(id))
-			return s.readNoteFile(filepath.ToSlash(id), abs, groupIDFromRelDir(relDir))
+			return s.withImageData(s.readNoteFile(filepath.ToSlash(id), abs, groupIDFromRelDir(relDir)))
 		}
 		// 路径型 ID 已明确却读不到文件：直接失败，禁止再整库扫描（避免同 ID 递归卡死）
 		if strings.Contains(id, "/") {
@@ -360,6 +362,19 @@ func isCursorTranscriptContent(raw string) bool {
 }
 
 func (s *Service) readNoteFile(id, path, groupID string) (*model.NoteDO, error) {
+	base := filepath.Base(path)
+	if isImageNotebookFile(base) {
+		info, err := os.Stat(path)
+		if err != nil {
+			return nil, errno.Wrap(errno.CodeStoreFailed, "读取图片失败", err)
+		}
+		mt := info.ModTime().Unix()
+		n := &model.NoteDO{
+			ID: id, GroupID: groupID, Language: "image",
+			Title: titleFromFilename(base), CreatedAt: mt, UpdatedAt: mt,
+		}
+		return n, nil
+	}
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, errno.Wrap(errno.CodeStoreFailed, "读取笔记失败", err)
@@ -371,7 +386,6 @@ func (s *Service) readNoteFile(id, path, groupID string) (*model.NoteDO, error) 
 		mt = info.ModTime().Unix()
 		ct = mt
 	}
-	base := filepath.Base(path)
 	n := &model.NoteDO{
 		ID:        id,
 		GroupID:   groupID,
@@ -393,7 +407,31 @@ func (s *Service) readNoteFile(id, path, groupID string) (*model.NoteDO, error) 
 	return n, nil
 }
 
+// withImageData 打开图片时把内容做成 data URL，预览不依赖 AssetServer 路径。
+func (s *Service) withImageData(n *model.NoteDO, err error) (*model.NoteDO, error) {
+	if err != nil || n == nil || n.Language != "image" || strings.TrimSpace(n.Content) != "" {
+		return n, err
+	}
+	abs := filepath.Join(s.workspaceRoot(), filepath.FromSlash(n.ID))
+	raw, readErr := os.ReadFile(abs)
+	if readErr != nil || len(raw) == 0 || len(raw) > maxImageBytes {
+		return n, err
+	}
+	mimeType := mime.TypeByExtension(filepath.Ext(abs))
+	if mimeType == "" {
+		mimeType = "image/png"
+	}
+	n.Content = "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(raw)
+	return n, nil
+}
+
 func (s *Service) saveNoteFS(n model.NoteDO) (*model.NoteDO, error) {
+	if isImageNotebookFile(filepath.Base(n.ID)) {
+		if cur, err := s.getNoteFS(n.ID); err == nil && cur != nil {
+			return cur, nil
+		}
+		return nil, errno.New(errno.CodeInvalidArg, "图片附件不能当笔记覆盖", n.ID)
+	}
 	if strings.TrimSpace(n.Title) == "" {
 		return nil, errno.New(errno.CodeInvalidArg, "笔记标题不能为空", "")
 	}

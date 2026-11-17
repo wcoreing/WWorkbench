@@ -1818,6 +1818,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_SecurityGroupSyncResultDO_ {
+	    ok: boolean;
+	    data: model.SecurityGroupSyncResultDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_SecurityGroupSyncResultDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.SecurityGroupSyncResultDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_SessionInfoDO_ {
 	    ok: boolean;
 	    data: model.SessionInfoDO;
@@ -5648,6 +5682,7 @@ export namespace model {
 	    instanceId: string;
 	    region: string;
 	    fetchedAt: number;
+	    windowHours: number;
 	    series: ECSMetricSeriesDO[];
 	    hint: string;
 	
@@ -5660,6 +5695,7 @@ export namespace model {
 	        this.instanceId = source["instanceId"];
 	        this.region = source["region"];
 	        this.fetchedAt = source["fetchedAt"];
+	        this.windowHours = source["windowHours"];
 	        this.series = this.convertValues(source["series"], ECSMetricSeriesDO);
 	        this.hint = source["hint"];
 	    }
@@ -7097,6 +7133,10 @@ export namespace model {
 	    cloudRegion: string;
 	    cloudInstanceId: string;
 	    touchCloud: boolean;
+	    sgSync: boolean;
+	    sgId: string;
+	    sgLastCidr: string;
+	    sgSyncedAt: number;
 	    createdAt: number;
 	    updatedAt: number;
 	
@@ -7119,8 +7159,36 @@ export namespace model {
 	        this.cloudRegion = source["cloudRegion"];
 	        this.cloudInstanceId = source["cloudInstanceId"];
 	        this.touchCloud = source["touchCloud"];
+	        this.sgSync = source["sgSync"];
+	        this.sgId = source["sgId"];
+	        this.sgLastCidr = source["sgLastCidr"];
+	        this.sgSyncedAt = source["sgSyncedAt"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
+	    }
+	}
+	export class SecurityGroupSyncResultDO {
+	    publicIp: string;
+	    cidr: string;
+	    securityGroupId: string;
+	    port: number;
+	    skipped: boolean;
+	    revokedOldCidr?: string;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SecurityGroupSyncResultDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.publicIp = source["publicIp"];
+	        this.cidr = source["cidr"];
+	        this.securityGroupId = source["securityGroupId"];
+	        this.port = source["port"];
+	        this.skipped = source["skipped"];
+	        this.revokedOldCidr = source["revokedOldCidr"];
+	        this.message = source["message"];
 	    }
 	}
 	export class SessionInfoDO {
@@ -7178,6 +7246,10 @@ export namespace model {
 	    cloudAccountId: string;
 	    cloudRegion: string;
 	    cloudInstanceId: string;
+	    sgSync: boolean;
+	    sgId: string;
+	    sgLastCidr: string;
+	    sgSyncedAt: number;
 	    createdAt: number;
 	    updatedAt: number;
 	
@@ -7203,6 +7275,10 @@ export namespace model {
 	        this.cloudAccountId = source["cloudAccountId"];
 	        this.cloudRegion = source["cloudRegion"];
 	        this.cloudInstanceId = source["cloudInstanceId"];
+	        this.sgSync = source["sgSync"];
+	        this.sgId = source["sgId"];
+	        this.sgLastCidr = source["sgLastCidr"];
+	        this.sgSyncedAt = source["sgSyncedAt"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	    }

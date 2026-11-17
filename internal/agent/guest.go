@@ -437,16 +437,54 @@ func historyToSchema(root, system string, bounded []history.Msg, lastUser *histo
 		case "tool":
 			wired := history.WireTool(m)
 			text, refs := history.SplitImageRefs(wired)
-			out = append(out, schema.ToolMessage(text, m.ToolCallID))
-			if len(refs) > 0 {
-				if len(refs) > maxToolShotPerMsg {
-					refs = refs[len(refs)-maxToolShotPerMsg:]
-				}
-				out = append(out, guest.UserMessage(toolShotCaption, loadUserImages(root, refs)))
+			if len(refs) > maxToolShotPerMsg {
+				refs = refs[len(refs)-maxToolShotPerMsg:]
 			}
+			// DeepSeek 视觉：图片放在 tool 消息的 content 数组里（image_url data URL），不要另起一条 user。
+			out = append(out, toolMessage(text, m.ToolCallID, loadUserImages(root, refs)))
 		}
 	}
 	return out
+}
+
+// toolMessage 工具结果。有图时 content 为 text + image_url（data URL），detail=high 保留原图。
+func toolMessage(text, toolCallID string, images []guest.UserImage) *schema.Message {
+	text = strings.TrimSpace(text)
+	parts := make([]schema.MessageInputPart, 0, len(images)+1)
+	if text != "" {
+		parts = append(parts, schema.MessageInputPart{
+			Type: schema.ChatMessagePartTypeText,
+			Text: text,
+		})
+	}
+	for _, img := range images {
+		mime := strings.TrimSpace(img.MIME)
+		data := strings.TrimSpace(img.Data)
+		if mime == "" || data == "" {
+			continue
+		}
+		m, d := mime, data
+		parts = append(parts, schema.MessageInputPart{
+			Type: schema.ChatMessagePartTypeImageURL,
+			Image: &schema.MessageInputImage{
+				MessagePartCommon: schema.MessagePartCommon{
+					Base64Data: &d,
+					MIMEType:   m,
+				},
+				Detail: schema.ImageURLDetailHigh,
+			},
+		})
+	}
+	for _, p := range parts {
+		if p.Type == schema.ChatMessagePartTypeImageURL {
+			return &schema.Message{
+				Role:                  schema.Tool,
+				ToolCallID:            toolCallID,
+				UserInputMultiContent: parts,
+			}
+		}
+	}
+	return schema.ToolMessage(text, toolCallID)
 }
 
 func toolDeniedByMode(mode, name string) string {

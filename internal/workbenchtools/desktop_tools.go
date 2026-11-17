@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
@@ -111,8 +114,8 @@ func registerDesktopTools(r *Registry) {
 	})
 	r.add(ToolDef{
 		Name: workbench.CapDesktopScreenshot,
-		Description: "截取应用窗口为 PNG，返回本机 path；侧栏会自动压缩附图进多模态供视觉定位。" +
-			"无障碍树读不到的自绘界面才需要；能用 desktop_snapshot 就不要截图。",
+		Description: "截取一个窗口为 PNG（裁掉阴影，不是全屏）。返回 windowId、bounds，以及进模图的 imageWidth/imageHeight。" +
+			"本轮绑了 Skill 时，文件写入该 Skill 的 assets/，path 即这个文件。随后 mouse_click 的 x,y 是这张图上的像素（左上角 0,0），必须带同一个 windowId。无障碍树读不到的自绘界面才需要。",
 		Parameters: object([]string{"app"}, map[string]interface{}{"app": appProp, "windowId": windowProp}),
 		Handler:    toolDesktopScreenshot,
 	})
@@ -134,10 +137,10 @@ func registerDesktopTools(r *Registry) {
 			"amount":        integer("scroll 单位数默认 3；mouse_click 的连点次数"),
 			"force":         boolean("危险快捷键须 true，且每次单独确认"),
 			"headed":        boolean("物理送达：抢焦点、允许移光标；mouse_* / hover / drag / double_click 自动开启"),
-			"x":             map[string]interface{}{"type": "number", "description": "屏幕绝对 X（逻辑点）"},
-			"y":             map[string]interface{}{"type": "number", "description": "屏幕绝对 Y"},
-			"x2":            map[string]interface{}{"type": "number", "description": "drag 终点 X"},
-			"y2":            map[string]interface{}{"type": "number", "description": "drag 终点 Y"},
+			"x":             map[string]interface{}{"type": "number", "description": "带 windowId：窗口图像素 X（左上角 0）；不带：屏幕绝对 X"},
+			"y":             map[string]interface{}{"type": "number", "description": "带 windowId：窗口图像素 Y；不带：屏幕绝对 Y"},
+			"x2":            map[string]interface{}{"type": "number", "description": "drag 终点 X，坐标系同 x"},
+			"y2":            map[string]interface{}{"type": "number", "description": "drag 终点 Y，坐标系同 y"},
 			"button":        str("mouse_click：left|right|middle，默认 left"),
 			"dx":            integer("mouse_wheel 水平增量"),
 			"dy":            integer("mouse_wheel 垂直增量（负=向下）"),
@@ -409,38 +412,87 @@ func toolDesktopScreenshot(ctx context.Context, d *Deps, raw json.RawMessage) To
 		return Fail(err.Error())
 	}
 	shot["app"] = app.Name
+	if dir := CallerSkillAssets(ctx); dir != "" {
+		if p, _ := shot["path"].(string); p != "" {
+			if np, err := fileShotIntoAssets(dir, p); err == nil {
+				shot["path"] = np
+				shot["assetsDir"] = dir
+				if d.Notebook != nil && d.Radar != nil {
+					if rel, ok := d.Notebook.WorkspaceRel(np); ok {
+						d.Radar.EmitNotebookNote(workbench.RadarOpCreate, rel, "desktop-shot", filepath.Base(np), false)
+					}
+				}
+			}
+		}
+	}
 	return OKData(shot)
 }
 
+// fileShotIntoAssets 把窗口图挪进当前 Skill 的 assets/，返回新路径。
+func fileShotIntoAssets(dir, src string) (string, error) {
+	src = filepath.Clean(strings.TrimSpace(src))
+	dir = filepath.Clean(strings.TrimSpace(dir))
+	if src == "" || dir == "" {
+		return "", fmt.Errorf("empty shot path")
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", err
+	}
+	dst := filepath.Join(dir, filepath.Base(src))
+	if src == dst {
+		return dst, nil
+	}
+	in, err := os.Open(src)
+	if err != nil {
+		return "", err
+	}
+	defer in.Close()
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	if err != nil {
+		return "", err
+	}
+	_, copyErr := io.Copy(out, in)
+	closeErr := out.Close()
+	if copyErr != nil || closeErr != nil {
+		_ = os.Remove(dst)
+		if copyErr != nil {
+			return "", copyErr
+		}
+		return "", closeErr
+	}
+	_ = os.Remove(src)
+	return dst, nil
+}
+
 type desktopActArgs struct {
-	Action        string    `json:"action"`
-	Ref           string    `json:"ref"`
-	ToRef         string    `json:"toRef"`
-	App           string    `json:"app"`
-	Text          string    `json:"text"`
-	Keys          string    `json:"keys"`
-	Direction     string    `json:"direction"`
-	Amount        int       `json:"amount"`
-	Force         bool      `json:"force"`
-	Headed        bool      `json:"headed"`
-	X             *float64  `json:"x"`
-	Y             *float64  `json:"y"`
-	X2            *float64  `json:"x2"`
-	Y2            *float64  `json:"y2"`
-	Button        string    `json:"button"`
-	Dx            *int      `json:"dx"`
-	Dy            *int      `json:"dy"`
-	Modifiers     []string  `json:"modifiers"`
-	ImagePath     string    `json:"imagePath"`
-	FileURL       string    `json:"fileUrl"`
-	Format        string    `json:"format"`
-	WindowID      string    `json:"windowId"`
-	WindowTitle   string    `json:"windowTitle"`
-	WaitFor       string    `json:"waitFor"`
-	WaitGone      string    `json:"waitGone"`
-	WaitTimeoutMs int       `json:"waitTimeoutMs"`
-	Session       string    `json:"session"`
-	Intent        string    `json:"intent"`
+	Action        string   `json:"action"`
+	Ref           string   `json:"ref"`
+	ToRef         string   `json:"toRef"`
+	App           string   `json:"app"`
+	Text          string   `json:"text"`
+	Keys          string   `json:"keys"`
+	Direction     string   `json:"direction"`
+	Amount        int      `json:"amount"`
+	Force         bool     `json:"force"`
+	Headed        bool     `json:"headed"`
+	X             *float64 `json:"x"`
+	Y             *float64 `json:"y"`
+	X2            *float64 `json:"x2"`
+	Y2            *float64 `json:"y2"`
+	Button        string   `json:"button"`
+	Dx            *int     `json:"dx"`
+	Dy            *int     `json:"dy"`
+	Modifiers     []string `json:"modifiers"`
+	ImagePath     string   `json:"imagePath"`
+	FileURL       string   `json:"fileUrl"`
+	Format        string   `json:"format"`
+	WindowID      string   `json:"windowId"`
+	WindowTitle   string   `json:"windowTitle"`
+	WaitFor       string   `json:"waitFor"`
+	WaitGone      string   `json:"waitGone"`
+	WaitTimeoutMs int      `json:"waitTimeoutMs"`
+	Session       string   `json:"session"`
+	Intent        string   `json:"intent"`
 }
 
 // desktopActTarget 校验动作参数并定位目标应用与元素语义。

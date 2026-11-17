@@ -30,6 +30,8 @@ const emptyHost = (): SSHHost => ({
   cloudRegion: '',
   cloudInstanceId: '',
   touchCloud: true,
+  sgSync: false,
+  sgId: '',
   createdAt: 0,
   updatedAt: 0,
 })
@@ -142,6 +144,10 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
             cloudRegion: host.cloudRegion || '',
             cloudInstanceId: host.cloudInstanceId || '',
             touchCloud: true,
+            sgSync: Boolean(host.sgSync),
+            sgId: host.sgId || '',
+            sgLastCidr: host.sgLastCidr || '',
+            sgSyncedAt: host.sgSyncedAt || 0,
           })
           setCloudMode(host.cloudAccountId || '')
         }
@@ -321,6 +327,8 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
       payload.cloudAccountId = cloudAccountId
       payload.cloudRegion = cloudAccountId ? (form.cloudRegion || '').trim() : ''
       payload.cloudInstanceId = cloudAccountId ? (form.cloudInstanceId || '').trim() : ''
+      payload.sgSync = Boolean(cloudAccountId && form.sgSync)
+      payload.sgId = payload.sgSync ? (form.sgId || '').trim() : ''
       await api.saveSSHHost(payload)
       onSaved()
       onClose()
@@ -611,6 +619,26 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
                         )}
                       </div>
                     )}
+                  </div>
+                )}
+                {cloudMode && cloudMode !== 'new' && form.cloudInstanceId && (
+                  <div className="wn-form-row">
+                    <div className="wn-field" style={{ flex: 1 }}>
+                      <label className="wn-check">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(form.sgSync)}
+                          onChange={(e) => update({ sgSync: e.target.checked })}
+                        />
+                        <span>{t('sshHost.sgSync')}</span>
+                      </label>
+                      <p className="conn-ssh-hint">{t('sshHost.sgSyncHint')}</p>
+                      {form.sgLastCidr ? (
+                        <p className="conn-ssh-hint">
+                          {t('sshHost.sgLastCidr', { cidr: form.sgLastCidr })}
+                        </p>
+                      ) : null}
+                    </div>
                   </div>
                 )}
               </div>

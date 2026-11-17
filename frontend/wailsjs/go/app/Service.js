@@ -402,8 +402,8 @@ export function GetDockerComposeDirectory(arg1) {
   return window['go']['app']['Service']['GetDockerComposeDirectory'](arg1);
 }
 
-export function GetECSMonitor(arg1) {
-  return window['go']['app']['Service']['GetECSMonitor'](arg1);
+export function GetECSMonitor(arg1, arg2) {
+  return window['go']['app']['Service']['GetECSMonitor'](arg1, arg2);
 }
 
 export function GetEnvScanPath() {
@@ -1152,6 +1152,10 @@ export function StopSSHForward(arg1) {
 
 export function SuggestWorkbenchProjectResources(arg1) {
   return window['go']['app']['Service']['SuggestWorkbenchProjectResources'](arg1);
+}
+
+export function SyncSSHHostSecurityGroup(arg1) {
+  return window['go']['app']['Service']['SyncSSHHostSecurityGroup'](arg1);
 }
 
 export function SyncTaskRunLog(arg1) {

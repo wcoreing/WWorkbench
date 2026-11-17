@@ -1,7 +1,16 @@
 /** 应用外观主题（data-theme）。 */
-export type AppTheme = 'light' | 'cream' | 'gold' | 'grass' | 'olive' | 'dark'
+export type AppTheme = 'light' | 'cream' | 'gold' | 'grass' | 'mint' | 'olive' | 'pink' | 'dark'
 
-export const APP_THEMES: readonly AppTheme[] = ['light', 'cream', 'gold', 'grass', 'olive', 'dark'] as const
+export const APP_THEMES: readonly AppTheme[] = [
+  'light',
+  'cream',
+  'gold',
+  'grass',
+  'mint',
+  'olive',
+  'pink',
+  'dark',
+] as const
 
 const THEMES = new Set<string>(APP_THEMES)
 
@@ -9,11 +18,15 @@ const THEMES = new Set<string>(APP_THEMES)
 export function parseAppTheme(raw: string | null | undefined): AppTheme {
   if (raw === 'ink') return 'olive'
   if (raw === 'khaki' || raw === 'maize') return 'gold'
+  // YingDao 临时主题回迁
+  if (raw === 'classic') return 'light'
+  if (raw === 'cyan' || raw === 'crimson' || raw === 'orange') return 'dark'
+  if (raw === 'green') return 'mint'
   if (raw && THEMES.has(raw)) return raw as AppTheme
   return 'light'
 }
 
-/** isDarkTheme 深色系（深色 / 军绿），供编辑器 / 对比度分支使用。 */
+/** isDarkTheme 深色系，供编辑器 / 对比度分支使用。 */
 export function isDarkTheme(theme: AppTheme): boolean {
-  return theme === 'dark' || theme === 'olive'
+  return theme === 'dark' || theme === 'olive' || theme === 'pink'
 }

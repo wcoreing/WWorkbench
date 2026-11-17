@@ -47,6 +47,10 @@ func (s *Service) ListShellHosts() ApiResult[[]model.ShellHostDO] {
 			CloudAccountID:  h.CloudAccountID,
 			CloudRegion:     h.CloudRegion,
 			CloudInstanceID: h.CloudInstanceID,
+			SgSync:          h.SgSync,
+			SgID:            h.SgID,
+			SgLastCIDR:      h.SgLastCIDR,
+			SgSyncedAt:      h.SgSyncedAt,
 			CreatedAt:       h.CreatedAt,
 			UpdatedAt:       h.UpdatedAt,
 		})
@@ -117,6 +121,10 @@ func (s *Service) GetShellHost(id string) ApiResult[model.ShellHostDO] {
 		CloudAccountID:  h.CloudAccountID,
 		CloudRegion:     h.CloudRegion,
 		CloudInstanceID: h.CloudInstanceID,
+		SgSync:          h.SgSync,
+		SgID:            h.SgID,
+		SgLastCIDR:      h.SgLastCIDR,
+		SgSyncedAt:      h.SgSyncedAt,
 		CreatedAt:       h.CreatedAt,
 		UpdatedAt:       h.UpdatedAt,
 	})
@@ -162,6 +170,9 @@ func (s *Service) DeleteSSHHost(id string) ApiResult[bool] {
 
 // TestSSHHost 测试 SSH 连接。
 func (s *Service) TestSSHHost(h model.SSHHostDO) ApiResult[bool] {
+	if h.ID != "" {
+		s.syncSSHHostSGIfEnabled(h.ID)
+	}
 	ctx, cancel := session.WithTimeout(s.ctx, 15)
 	defer cancel()
 	if err := s.sshHosts.Test(ctx, h); err != nil {
@@ -180,6 +191,9 @@ func (s *Service) TrustSSHHost(host string, port int) ApiResult[bool] {
 
 // OpenTerminal 打开终端会话（SSH 或 Docker 容器）。
 func (s *Service) OpenTerminal(hostID string, cols, rows int) ApiResult[model.TerminalSessionInfoDO] {
+	if !dockersvc.IsDockerHostID(hostID) {
+		s.syncSSHHostSGIfEnabled(hostID)
+	}
 	ctx, cancel := session.WithTimeout(s.ctx, 12)
 	defer cancel()
 	var (

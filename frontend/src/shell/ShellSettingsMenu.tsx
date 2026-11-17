@@ -12,7 +12,9 @@ const THEME_LABEL_KEYS: Record<AppTheme, string> = {
   cream: 'shell.themeCream',
   gold: 'shell.themeGold',
   grass: 'shell.themeGrass',
+  mint: 'shell.themeMint',
   olive: 'shell.themeOlive',
+  pink: 'shell.themePink',
   dark: 'shell.themeDark',
 }
 

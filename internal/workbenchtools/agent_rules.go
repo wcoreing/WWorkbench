@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.17a"
+const AgentRulesVersion = "2026.11.17c"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -169,6 +169,9 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **截图视觉**：desktop_screenshot / browser_screenshot 成功后，侧栏会把图压缩附图进下一轮模型（多模态）；据此估逻辑点坐标再 mouse_click。须使用支持视觉的模型；失败时接口会提示换模型。path 仍返回，可本机打开。隐私：只截任务所需。
 - 无 AX 窗口上 focus_window / press --app 会失败；headed 的 press 改为系统级投递，**务必先点中目标窗口**。坐标与 screencapture -R 同为逻辑点。
 - **微信搜人（无 AX）**：勿依赖 OCR。先 ⌘F+粘贴（或 skill `open-to`/`search-prep`），再**只截微信窗**；有网格刻度时读相对坐标 `(rx,ry)`（0..w,0..h）。多模态先标行类型（focus_search/chat_history/web/section 跳过；只点 contact/group），再 `mouse_click(origin.x+rx, origin.y+ry)` headed。详见技能「微信文件传输助手」。
+- **桌面 Skill**：get_skill 后走 desktop_*（不是 browser_*）。发送类先 offer_choices 确认会话与正文；「发给我」默认文件传输助手。步骤多为 Agent 提纲，勿依赖 run_skill 机械重放。
+- **脚本备路**：Skill 目录 scripts/*.py 用 shell_run（本机可见终端 + intent），再 get_shell_output；禁止 shell_probe 跑 python 脚本。微信禁止 focus_window；多窗先 desktop_apps 取最大窗 windowId。
+
 - ref 形如 @<快照id>:eN，**原样使用**；报 STALE_REF 就重新快照。禁止编造 ref。
 - type = 光标插入；set_value = 整体替换；clear 清空。delivery=delivered_unverified 时用 waitFor / find 核对，**不要重复同一动作**。
 - 危险快捷键（cmd+q）默认拦；press + force=true 每次单独确认。
@@ -308,4 +311,3 @@ func requiresAgentRulesAck(name string) bool {
 		return false
 	}
 }
-

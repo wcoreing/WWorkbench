@@ -2,8 +2,8 @@
 export type AgentChatMode = 'ask' | 'agent' | 'plan'
 
 const STORAGE_MODE = 'agent_chat_mode'
-const STORAGE_MODELS = 'agent_recent_models'
-const MAX_RECENT = 6
+const STORAGE_SAVED_MODELS = 'agent_saved_models'
+const MAX_SAVED = 8
 
 /** AGENT_CHAT_MODES 模式顺序。 */
 export const AGENT_CHAT_MODES: AgentChatMode[] = ['agent', 'ask', 'plan']
@@ -33,52 +33,50 @@ export function persistChatMode(mode: AgentChatMode) {
   }
 }
 
-/** suggestedModels 当前服务商的快捷模型（不作为能力白名单）。 */
-export function suggestedModels(provider: string): string[] {
-  switch (provider) {
-    case 'deepseek':
-      return ['deepseek-v4-pro', 'deepseek-v4-flash']
-    case 'minimax':
-      return ['MiniMax-M2.5', 'MiniMax-M3']
-    case 'bailian':
-      return ['qwen-plus', 'qwen-turbo', 'qwen-max', 'qwen-vl-plus']
-    case 'cursor':
-      return ['composer-2.5', 'composer-2']
-    default:
-      return []
-  }
-}
+type SavedModelMap = Record<string, string[]>
 
-/** loadRecentModels 最近用过的模型 id。 */
-export function loadRecentModels(): string[] {
+function readSavedModels(): SavedModelMap {
   try {
-    const raw = localStorage.getItem(STORAGE_MODELS)
-    if (!raw) return []
+    const raw = localStorage.getItem(STORAGE_SAVED_MODELS)
+    if (!raw) return {}
     const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.map((x) => String(x).trim()).filter(Boolean).slice(0, MAX_RECENT)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const out: SavedModelMap = {}
+    for (const [provider, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (!Array.isArray(value)) continue
+      const ids = value.map((x) => String(x).trim()).filter(Boolean).slice(0, MAX_SAVED)
+      if (ids.length) out[provider] = ids
+    }
+    return out
   } catch {
-    return []
+    return {}
   }
 }
 
-/** rememberRecentModel 把模型记到最近使用。 */
-export function rememberRecentModel(id: string) {
+/** loadSavedModels 该服务商保存过的模型，新的在前。 */
+export function loadSavedModels(provider: string): string[] {
+  return readSavedModels()[provider.trim() || 'other'] || []
+}
+
+/** rememberSavedModel 把已保存的模型记到该服务商下。 */
+export function rememberSavedModel(provider: string, id: string) {
   const model = id.trim()
+  const key = provider.trim() || 'other'
   if (!model) return
-  const next = [model, ...loadRecentModels().filter((x) => x !== model)].slice(0, MAX_RECENT)
+  const map = readSavedModels()
+  map[key] = [model, ...(map[key] || []).filter((x) => x !== model)].slice(0, MAX_SAVED)
   try {
-    localStorage.setItem(STORAGE_MODELS, JSON.stringify(next))
+    localStorage.setItem(STORAGE_SAVED_MODELS, JSON.stringify(map))
   } catch {
     /* ignore */
   }
 }
 
-/** composeModelOptions 当前 + 最近 + 预设，去重。 */
+/** composeModelOptions 当前模型 + 该服务商保存过的，去重。 */
 export function composeModelOptions(current: string, provider: string): string[] {
   const seen = new Set<string>()
   const out: string[] = []
-  for (const id of [current, ...loadRecentModels(), ...suggestedModels(provider)]) {
+  for (const id of [current, ...loadSavedModels(provider)]) {
     const v = id.trim()
     if (!v || seen.has(v)) continue
     seen.add(v)

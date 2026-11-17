@@ -291,6 +291,12 @@
   box-shadow: var(--shadow);
 }
 
+.agent-mention-picker.agent-mention-picker-portal {
+  position: fixed;
+  right: auto;
+  z-index: 1200;
+}
+
 .agent-mention-section-title {
   padding: calc(6 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px) calc(4 * var(--ui-scale) * 1px);
   font-size: var(--font-size-caption);

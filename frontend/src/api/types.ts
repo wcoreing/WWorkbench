@@ -186,8 +186,24 @@ export interface SSHHost {
   cloudInstanceId?: string
   /** 保存时覆盖云监控绑定；不传则后端保留原绑定 */
   touchCloud?: boolean
+  /** 连接前把本机公网 IP 写入 ECS 安全组 */
+  sgSync?: boolean
+  sgId?: string
+  sgLastCidr?: string
+  sgSyncedAt?: number
   createdAt: number
   updatedAt: number
+}
+
+/** SecurityGroupSyncResult 本机 IP 同步到安全组的结果。 */
+export interface SecurityGroupSyncResult {
+  publicIp: string
+  cidr: string
+  securityGroupId: string
+  port: number
+  skipped: boolean
+  revokedOldCidr?: string
+  message: string
 }
 
 /** CloudAccount 阿里云账号。密钥只在写入时提交。 */
@@ -226,11 +242,12 @@ export interface ECSInstance {
   privateIp: string
 }
 
-/** ECSMonitor 一台 ECS 最近一小时的云监控。 */
+/** ECSMonitor 一台 ECS 指定时间段的云监控。 */
 export interface ECSMonitor {
   instanceId: string
   region: string
   fetchedAt: number
+  windowHours?: number
   series?: ECSMetricSeries[]
   hint?: string
 }
@@ -254,6 +271,10 @@ export interface ShellHost {
   cloudAccountId?: string
   cloudRegion?: string
   cloudInstanceId?: string
+  sgSync?: boolean
+  sgId?: string
+  sgLastCidr?: string
+  sgSyncedAt?: number
   createdAt: number
   updatedAt: number
 }
@@ -272,6 +293,10 @@ export function shellHostAsSSH(h: ShellHost): SSHHost | null {
     cloudAccountId: h.cloudAccountId || '',
     cloudRegion: h.cloudRegion || '',
     cloudInstanceId: h.cloudInstanceId || '',
+    sgSync: Boolean(h.sgSync),
+    sgId: h.sgId || '',
+    sgLastCidr: h.sgLastCidr || '',
+    sgSyncedAt: h.sgSyncedAt || 0,
     createdAt: h.createdAt,
     updatedAt: h.updatedAt,
   }

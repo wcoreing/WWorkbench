@@ -1,30 +1,39 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import { useI18n } from '../../i18n'
+import { menuStyle, useAnchoredMenu } from './AgentComposerMenus'
 import type { SkillRef } from './agentSkillSlash'
 
 interface Props {
   open: boolean
   items: SkillRef[]
   activeIndex: number
+  anchorRef: RefObject<HTMLElement | null>
   onPick: (item: SkillRef) => void
   onHoverIndex: (index: number) => void
 }
 
 /** AgentSkillPicker / 方法包选择弹出层。 */
-export function AgentSkillPicker({ open, items, activeIndex, onPick, onHoverIndex }: Props) {
+export function AgentSkillPicker({ open, items, activeIndex, anchorRef, onPick, onHoverIndex }: Props) {
   const { t } = useI18n()
   const listRef = useRef<HTMLDivElement>(null)
+  const pos = useAnchoredMenu(open, anchorRef, true)
 
   useEffect(() => {
     if (!open || !listRef.current) return
     const el = listRef.current.querySelector('.agent-mention-item.is-active')
     el?.scrollIntoView({ block: 'nearest' })
-  }, [open, activeIndex])
+  }, [open, activeIndex, pos])
 
-  if (!open) return null
+  if (!open || !pos) return null
 
-  return (
-    <div className="agent-mention-picker agent-skill-picker" ref={listRef} role="listbox">
+  return createPortal(
+    <div
+      className="agent-mention-picker agent-mention-picker-portal agent-skill-picker"
+      ref={listRef}
+      role="listbox"
+      style={menuStyle(pos)}
+    >
       <div className="agent-mention-section-title">{t('agent.skillPickerTitle')}</div>
       {items.length === 0 ? (
         <div className="agent-mention-empty">{t('agent.skillEmpty')}</div>
@@ -51,6 +60,7 @@ export function AgentSkillPicker({ open, items, activeIndex, onPick, onHoverInde
           </button>
         ))
       )}
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -79,6 +79,20 @@ func (s *Service) NoteDiskPath(noteID string) (string, error) {
 	return contentPath, nil
 }
 
+// WorkspaceRel 把工作区内绝对路径换成笔记 id（相对路径）。
+func (s *Service) WorkspaceRel(abs string) (string, bool) {
+	if s == nil {
+		return "", false
+	}
+	abs = filepath.Clean(strings.TrimSpace(abs))
+	root := filepath.Clean(s.workspaceRoot())
+	rel, err := filepath.Rel(root, abs)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
+		return "", false
+	}
+	return filepath.ToSlash(rel), true
+}
+
 // NoteDirPath 返回笔记所在目录（Skill 为 Skill 根目录；普通笔记为 .md 所在目录）。
 func (s *Service) NoteDirPath(noteID string) (string, error) {
 	if dir, _, ok := s.skillDirAbs(strings.TrimSpace(noteID)); ok {

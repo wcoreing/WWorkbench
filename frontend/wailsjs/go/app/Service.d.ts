@@ -205,7 +205,7 @@ export function GetContainerShell(arg1:string,arg2:string):Promise<app.ApiResult
 
 export function GetDockerComposeDirectory(arg1:string):Promise<app.ApiResult_string_>;
 
-export function GetECSMonitor(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_ECSMonitorDO_>;
+export function GetECSMonitor(arg1:string,arg2:number):Promise<app.ApiResult_WWorkbench_internal_model_ECSMonitorDO_>;
 
 export function GetEnvScanPath():Promise<app.ApiResult_string_>;
 
@@ -580,6 +580,8 @@ export function StopLogFollow(arg1:string):Promise<app.ApiResult_bool_>;
 export function StopSSHForward(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function SuggestWorkbenchProjectResources(arg1:model.WorkbenchProjectDO):Promise<app.ApiResult_WWorkbench_internal_model_SuggestProjectResourcesResultDO_>;
+
+export function SyncSSHHostSecurityGroup(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_SecurityGroupSyncResultDO_>;
 
 export function SyncTaskRunLog(arg1:string):Promise<app.ApiResult_map_string_interface____>;
 
