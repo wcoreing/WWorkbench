@@ -4492,6 +4492,7 @@ export namespace model {
 	    args?: string;
 	    status?: string;
 	    summary?: string;
+	    images?: AgentChatImageDO[];
 	
 	    static createFrom(source: any = {}) {
 	        return new AgentMessageToolDO(source);
@@ -4504,7 +4505,26 @@ export namespace model {
 	        this.args = source["args"];
 	        this.status = source["status"];
 	        this.summary = source["summary"];
+	        this.images = this.convertValues(source["images"], AgentChatImageDO);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class AgentMessageDO {
 	    role: string;

@@ -113,7 +113,7 @@ func NormalizeResultFromKimi(action string, data json.RawMessage) json.RawMessag
 			}
 		}
 		if note, _ := m["note"].(string); note == "" {
-			m["note"] = "用系统看图打开 path 核对页面；不要把整张图 base64 回灌对话"
+			m["note"] = "侧栏 Agent 会自动附图进多模态；path 仍可本机打开核对"
 			changed = true
 		}
 	case "snapshot":

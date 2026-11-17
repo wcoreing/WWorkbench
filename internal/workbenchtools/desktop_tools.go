@@ -111,30 +111,46 @@ func registerDesktopTools(r *Registry) {
 	})
 	r.add(ToolDef{
 		Name: workbench.CapDesktopScreenshot,
-		Description: "截取应用窗口为 PNG，返回本机文件路径。无障碍树读不到的自绘界面（画布、游戏、部分 Electron）才需要；" +
-			"能用 desktop_snapshot 就不要截图。",
+		Description: "截取应用窗口为 PNG，返回本机 path；侧栏会自动压缩附图进多模态供视觉定位。" +
+			"无障碍树读不到的自绘界面才需要；能用 desktop_snapshot 就不要截图。",
 		Parameters: object([]string{"app"}, map[string]interface{}{"app": appProp, "windowId": windowProp}),
 		Handler:    toolDesktopScreenshot,
 	})
 	r.add(ToolDef{
 		Name: workbench.CapDesktopAct,
-		Description: "操作桌面应用。对元素：action=click | right_click | type | set_value | clear | select | toggle | check | uncheck | expand | collapse | scroll | scroll_to | focus（须 ref）；" +
-			"对应用：action=press（须 app + keys）。经无障碍接口送达，不移动鼠标、不抢焦点；拖拽 / 悬停等物理鼠标动作不支持。" +
-			"type 是在光标处插入，set_value 是整体替换。waitFor=\"role:text\" 可等下一态并直接带回新快照。" +
-			"需要该应用的「操作」授权；每步写入任务账本。",
+		Description: "操作桌面应用（agent-desktop 全量）。" +
+			"语义（不抢焦点）：click | right_click | type | set_value | clear | select | toggle | check | uncheck | expand | collapse | scroll | scroll_to | focus（须 ref）；press（须 app+keys）。" +
+			"物理 headed（抢焦点/移鼠标，自绘 App 如微信用这个）：headed=true 可加在 press/click 上；或 action=mouse_click|mouse_move|mouse_wheel（须 x,y）| hover（ref 或 x,y）| drag（ref/toRef 或 x,y→x2,y2）| double_click|triple_click（须 ref）| focus_window。" +
+			"剪贴板：clipboard_set（text / imagePath / fileUrl）| clipboard_get。" +
+			"type=光标插入，set_value=整体替换。waitFor=\"role:text\" 可带回新快照。须「操作」授权；每步入账本。",
 		Parameters: object([]string{"action"}, map[string]interface{}{
 			"action":        str("见描述"),
-			"ref":           str("目标元素（快照 / 查找返回的完整 ref）"),
+			"ref":           str("目标元素 ref；drag 时为起点"),
+			"toRef":         str("drag 终点 ref"),
 			"app":           appProp,
-			"text":          str("type / set_value 的文本；select 的选项名"),
-			"keys":          str("press 的组合键：return、escape、tab、cmd+c、shift+tab …"),
-			"direction":     str("scroll 方向：up | down | left | right，默认 down"),
-			"amount":        integer("scroll 单位数，默认 3"),
-			"force":         boolean("press 被标为危险的快捷键（如 cmd+q）时设 true：每次都由用户单独确认"),
-			"waitFor":       str("动作后等「role:text」出现，如 button:保存、statictext:完成"),
-			"waitGone":      str("动作后等「role:text」消失"),
+			"text":          str("type / set_value / clipboard_set 文本；select 选项名"),
+			"keys":          str("press：return、escape、tab、cmd+c、cmd+v、cmd+f …"),
+			"direction":     str("scroll：up|down|left|right，默认 down"),
+			"amount":        integer("scroll 单位数默认 3；mouse_click 的连点次数"),
+			"force":         boolean("危险快捷键须 true，且每次单独确认"),
+			"headed":        boolean("物理送达：抢焦点、允许移光标；mouse_* / hover / drag / double_click 自动开启"),
+			"x":             map[string]interface{}{"type": "number", "description": "屏幕绝对 X（逻辑点）"},
+			"y":             map[string]interface{}{"type": "number", "description": "屏幕绝对 Y"},
+			"x2":            map[string]interface{}{"type": "number", "description": "drag 终点 X"},
+			"y2":            map[string]interface{}{"type": "number", "description": "drag 终点 Y"},
+			"button":        str("mouse_click：left|right|middle，默认 left"),
+			"dx":            integer("mouse_wheel 水平增量"),
+			"dy":            integer("mouse_wheel 垂直增量（负=向下）"),
+			"modifiers":     map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "description": "shift|meta|ctrl|alt"},
+			"imagePath":     str("clipboard_set：本机 PNG 路径"),
+			"fileUrl":       str("clipboard_set：文件引用路径"),
+			"format":        str("clipboard_get：text|auto|image|file-urls"),
+			"windowId":      windowProp,
+			"windowTitle":   str("focus_window 按标题（可部分匹配）"),
+			"waitFor":       str("动作后等 role:text"),
+			"waitGone":      str("动作后等 role:text 消失"),
 			"waitTimeoutMs": integer("等待上限，默认 3000，最多 15000"),
-			"session":       str("任务名（记入哪本任务账本），默认当前任务"),
+			"session":       str("任务名，默认当前任务"),
 			"intent":        intentProp(),
 		}),
 		Handler: toolDesktopAct,
@@ -397,32 +413,62 @@ func toolDesktopScreenshot(ctx context.Context, d *Deps, raw json.RawMessage) To
 }
 
 type desktopActArgs struct {
-	Action        string `json:"action"`
-	Ref           string `json:"ref"`
-	App           string `json:"app"`
-	Text          string `json:"text"`
-	Keys          string `json:"keys"`
-	Direction     string `json:"direction"`
-	Amount        int    `json:"amount"`
-	Force         bool   `json:"force"`
-	WaitFor       string `json:"waitFor"`
-	WaitGone      string `json:"waitGone"`
-	WaitTimeoutMs int    `json:"waitTimeoutMs"`
-	Session       string `json:"session"`
-	Intent        string `json:"intent"`
+	Action        string    `json:"action"`
+	Ref           string    `json:"ref"`
+	ToRef         string    `json:"toRef"`
+	App           string    `json:"app"`
+	Text          string    `json:"text"`
+	Keys          string    `json:"keys"`
+	Direction     string    `json:"direction"`
+	Amount        int       `json:"amount"`
+	Force         bool      `json:"force"`
+	Headed        bool      `json:"headed"`
+	X             *float64  `json:"x"`
+	Y             *float64  `json:"y"`
+	X2            *float64  `json:"x2"`
+	Y2            *float64  `json:"y2"`
+	Button        string    `json:"button"`
+	Dx            *int      `json:"dx"`
+	Dy            *int      `json:"dy"`
+	Modifiers     []string  `json:"modifiers"`
+	ImagePath     string    `json:"imagePath"`
+	FileURL       string    `json:"fileUrl"`
+	Format        string    `json:"format"`
+	WindowID      string    `json:"windowId"`
+	WindowTitle   string    `json:"windowTitle"`
+	WaitFor       string    `json:"waitFor"`
+	WaitGone      string    `json:"waitGone"`
+	WaitTimeoutMs int       `json:"waitTimeoutMs"`
+	Session       string    `json:"session"`
+	Intent        string    `json:"intent"`
 }
 
 // desktopActTarget 校验动作参数并定位目标应用与元素语义。
 func desktopActTarget(ctx context.Context, drv *desktop.Driver, in *desktopActArgs) (desktop.App, desktop.RefMeta, error) {
 	in.Action = strings.ToLower(strings.TrimSpace(in.Action))
 	in.Ref = strings.TrimSpace(in.Ref)
+	in.ToRef = strings.TrimSpace(in.ToRef)
 	var meta desktop.RefMeta
 	switch {
-	case in.Action == desktop.ActionPress:
-		if strings.TrimSpace(in.App) == "" {
-			return desktop.App{}, meta, errStr("press 需要 app：按键发给哪个应用")
+	case desktop.IsAppAction(in.Action) && !desktop.IsRefAction(in.Action):
+		// press / mouse_* / clipboard_* / focus_window / hover(可仅坐标) / drag
+		if strings.TrimSpace(in.App) == "" && in.Ref == "" && in.ToRef == "" {
+			return desktop.App{}, meta, errStr(in.Action + " 需要 app（授权归属的应用）")
 		}
-		in.Ref = ""
+		if in.Action == desktop.ActionHover && in.Ref != "" {
+			_, m, err := drv.RefInfo(in.Ref)
+			if err != nil {
+				return desktop.App{}, meta, err
+			}
+			meta = m
+		}
+		if in.Action == desktop.ActionDrag && in.Ref != "" {
+			_, m, err := drv.RefInfo(in.Ref)
+			if err != nil {
+				return desktop.App{}, meta, err
+			}
+			meta = m
+		}
 	case desktop.IsRefAction(in.Action):
 		if in.Ref == "" {
 			return desktop.App{}, meta, errStr(in.Action + " 需要 ref（来自 desktop_snapshot / desktop_find）")
@@ -435,7 +481,7 @@ func desktopActTarget(ctx context.Context, drv *desktop.Driver, in *desktopActAr
 	default:
 		return desktop.App{}, meta, errStr("不支持的 action: " + in.Action)
 	}
-	app, err := desktopTarget(ctx, drv, in.App, in.Ref)
+	app, err := desktopTarget(ctx, drv, in.App, in.Ref, in.ToRef)
 	return app, meta, err
 }
 
@@ -463,6 +509,10 @@ func toolDesktopAct(ctx context.Context, d *Deps, raw json.RawMessage) ToolResul
 	}
 	if in.Intent != "" {
 		preview["intent"] = in.Intent
+	}
+	if in.Headed || desktop.NeedsHeaded(in.Action) {
+		preview["headed"] = true
+		preview["note"] = "物理输入：会抢应用焦点并可能移动鼠标"
 	}
 	if in.Action == desktop.ActionPress && in.Force {
 		// 危险快捷键不随「询问」开关豁免，也不走侧栏的免确认路径：每次都单独拍板
@@ -509,7 +559,9 @@ func runDesktopAct(ctx context.Context, d *Deps, drv *desktop.Driver, in desktop
 	args := map[string]interface{}{"action": in.Action}
 	for k, v := range map[string]string{
 		"text": in.Text, "keys": in.Keys, "direction": in.Direction,
-		"waitFor": in.WaitFor, "waitGone": in.WaitGone,
+		"waitFor": in.WaitFor, "waitGone": in.WaitGone, "button": in.Button,
+		"imagePath": in.ImagePath, "fileUrl": in.FileURL, "format": in.Format,
+		"windowId": in.WindowID, "windowTitle": in.WindowTitle, "toRef": in.ToRef,
 	} {
 		if v != "" {
 			args[k] = v
@@ -517,6 +569,15 @@ func runDesktopAct(ctx context.Context, d *Deps, drv *desktop.Driver, in desktop
 	}
 	if in.Amount > 0 {
 		args["amount"] = in.Amount
+	}
+	if in.Headed || desktop.NeedsHeaded(in.Action) {
+		args["headed"] = true
+	}
+	if in.X != nil && in.Y != nil {
+		args["x"], args["y"] = *in.X, *in.Y
+	}
+	if in.X2 != nil && in.Y2 != nil {
+		args["x2"], args["y2"] = *in.X2, *in.Y2
 	}
 	locator := map[string]interface{}{"app": app.Key(), "appName": app.Name}
 	if meta.Role != "" {
@@ -531,8 +592,11 @@ func runDesktopAct(ctx context.Context, d *Deps, drv *desktop.Driver, in desktop
 		Args: args, Locator: locator, Approved: true, Provider: model.TaskProviderAgentDesktop,
 	}
 	res, err := drv.Act(ctx, app, desktop.ActOpts{
-		Action: in.Action, Ref: in.Ref, Text: in.Text, Keys: in.Keys,
-		Direction: in.Direction, Amount: in.Amount, Force: in.Force,
+		Action: in.Action, Ref: in.Ref, ToRef: in.ToRef, Text: in.Text, Keys: in.Keys,
+		Direction: in.Direction, Amount: in.Amount, Force: in.Force, Headed: in.Headed,
+		X: in.X, Y: in.Y, X2: in.X2, Y2: in.Y2, Button: in.Button, Dx: in.Dx, Dy: in.Dy,
+		Modifiers: in.Modifiers, ImagePath: in.ImagePath, FileURL: in.FileURL, Format: in.Format,
+		WindowID: in.WindowID, WindowTitle: in.WindowTitle,
 		WaitFor: in.WaitFor, WaitGone: in.WaitGone, WaitTimeoutMs: in.WaitTimeoutMs,
 	})
 	if err != nil {
@@ -552,10 +616,43 @@ func desktopStepSummary(in desktopActArgs, app desktop.App, meta desktop.RefMeta
 	if target == "" {
 		target = in.Ref
 	}
+	coord := ""
+	if in.X != nil && in.Y != nil {
+		coord = fmt.Sprintf("(%.0f,%.0f)", *in.X, *in.Y)
+	}
 	var s string
 	switch in.Action {
 	case desktop.ActionPress:
 		s = "按键 " + in.Keys
+		if in.Headed {
+			s += "（headed）"
+		}
+	case desktop.ActionFocusWindow:
+		s = "前置窗口"
+	case desktop.ActionMouseClick:
+		s = "鼠标点击 " + coord
+	case desktop.ActionMouseMove:
+		s = "移动光标 " + coord
+	case desktop.ActionMouseWheel:
+		s = "滚轮 " + coord
+	case desktop.ActionHover:
+		if coord != "" {
+			s = "悬停 " + coord
+		} else {
+			s = "悬停 " + target
+		}
+	case desktop.ActionDrag:
+		s = "拖拽"
+		if coord != "" {
+			s += " " + coord
+		}
+	case desktop.ActionClipboardSet:
+		s = "写入剪贴板"
+		if in.ImagePath != "" {
+			s += "（图片）"
+		}
+	case desktop.ActionClipboardGet:
+		s = "读取剪贴板"
 	case "type":
 		s = fmt.Sprintf("输入 %d 字 → %s", utf8.RuneCountInString(in.Text), target)
 	case "set_value":
@@ -573,9 +670,9 @@ func desktopStepSummary(in desktopActArgs, app desktop.App, meta desktop.RefMeta
 }
 
 var desktopVerbs = map[string]string{
-	"click": "点击", "right_click": "右键", "clear": "清空", "toggle": "切换",
-	"check": "勾选", "uncheck": "取消勾选", "expand": "展开", "collapse": "收起",
-	"scroll": "滚动", "scroll_to": "滚动到", "focus": "聚焦",
+	"click": "点击", "right_click": "右键", "double_click": "双击", "triple_click": "三击",
+	"clear": "清空", "toggle": "切换", "check": "勾选", "uncheck": "取消勾选",
+	"expand": "展开", "collapse": "收起", "scroll": "滚动", "scroll_to": "滚动到", "focus": "聚焦",
 }
 
 func toolDesktopLaunch(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {

@@ -79,7 +79,9 @@ function ToolRow({
   const status = normalizeStatus(step.status)
   const hint = previewToolArgs(step.argsPreview)
   const summary = step.summary
-  const hasDetail = Boolean(step.argsPreview?.trim()) || Boolean(summary?.trim())
+  const shotImages = step.images?.filter((img) => img.data) ?? []
+  const hasDetail =
+    Boolean(step.argsPreview?.trim()) || Boolean(summary?.trim()) || shotImages.length > 0
   const showBody = open && hasDetail
 
   return (
@@ -115,6 +117,15 @@ function ToolRow({
           ) : null}
           {summary && summary !== step.argsPreview ? (
             <pre className="agent-turn-tool-pre">{summary}</pre>
+          ) : null}
+          {shotImages.length > 0 ? (
+            <div className="agent-msg-images agent-tool-shot-images">
+              {shotImages.map((img, i) => (
+                <span key={`${img.mime}-${i}`} className="agent-image-draft">
+                  <img src={img.data.startsWith('data:') ? img.data : `data:${img.mime};base64,${img.data}`} alt="" />
+                </span>
+              ))}
+            </div>
           ) : null}
         </div>
       )}

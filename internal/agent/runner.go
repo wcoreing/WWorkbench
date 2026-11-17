@@ -299,9 +299,10 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 		if rid > 0 {
 			summary = fmt.Sprintf("%s · #%d", summary, rid)
 		}
+		content, preview := decorateToolMessage(root, p.ThreadID, taskID, p.ToolName, result, rid)
 		_ = history.Append(root, p.ThreadID, history.Msg{
 			Role: "tool", ToolCallID: p.ID, TaskID: taskID,
-			Content:         formatToolMessage(result, rid),
+			Content:         content,
 			ResourceIDsJSON: history.EncodeResourceIDs([]int64{rid}),
 		})
 		end := map[string]interface{}{
@@ -310,6 +311,9 @@ func (r *Runner) Confirm(pendingID string, approved bool) error {
 		}
 		if rid > 0 {
 			end["resourceId"] = rid
+		}
+		if len(preview) > 0 {
+			end["images"] = previewImages(preview)
 		}
 		r.emit("agent:tool_end", end)
 	}
@@ -431,9 +435,10 @@ func (r *Runner) Choose(answers []ChoiceAnswer) error {
 		if rid > 0 {
 			summary = fmt.Sprintf("%s · #%d", summary, rid)
 		}
+		content, preview := decorateToolMessage(root, p.ThreadID, taskID, p.ToolName, result, rid)
 		_ = history.Append(root, p.ThreadID, history.Msg{
 			Role: "tool", ToolCallID: p.ID, TaskID: taskID,
-			Content:         formatToolMessage(result, rid),
+			Content:         content,
 			ResourceIDsJSON: history.EncodeResourceIDs([]int64{rid}),
 		})
 		end := map[string]interface{}{
@@ -442,6 +447,9 @@ func (r *Runner) Choose(answers []ChoiceAnswer) error {
 		}
 		if rid > 0 {
 			end["resourceId"] = rid
+		}
+		if len(preview) > 0 {
+			end["images"] = previewImages(preview)
 		}
 		r.emit("agent:tool_end", end)
 	}
@@ -591,7 +599,7 @@ func (r *Runner) ListMessages(threadID string) []model.AgentMessageDO {
 			}
 		}
 		if m.Role == "assistant" {
-			item.Tools = toolsForAssistant(msgs, i)
+			item.Tools = toolsForAssistant(r.harness.Root, msgs, i)
 		}
 		if len(images) > 0 {
 			item.Images = images
@@ -602,7 +610,7 @@ func (r *Runner) ListMessages(threadID string) []model.AgentMessageDO {
 }
 
 // toolsForAssistant 解析 assistant.tool_calls，并配上紧随其后的 tool 结果。
-func toolsForAssistant(msgs []history.Msg, asstIdx int) []model.AgentMessageToolDO {
+func toolsForAssistant(root string, msgs []history.Msg, asstIdx int) []model.AgentMessageToolDO {
 	raw := strings.TrimSpace(msgs[asstIdx].ToolCallsJSON)
 	if raw == "" {
 		return nil
@@ -639,6 +647,9 @@ func toolsForAssistant(msgs []history.Msg, asstIdx int) []model.AgentMessageTool
 				st, sum := toolStatusFromHistoryContent(name, res.Content)
 				t.Status = st
 				t.Summary = trimToolPreview(sum, 160)
+				if imgs := imagesFromToolContent(root, res.Content); len(imgs) > 0 {
+					t.Images = imgs
+				}
 			} else {
 				t.Status = ""
 			}
@@ -659,6 +670,7 @@ func trimToolPreview(s string, max int) string {
 
 func toolStatusFromHistoryContent(toolName, content string) (status, summary string) {
 	content = strings.TrimSpace(content)
+	content, _ = history.SplitImageRefs(content)
 	summary = content
 	if content == "" {
 		return StatusOK, toolName

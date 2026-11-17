@@ -405,7 +405,7 @@ func Catalog() []Item {
 		},
 		{
 			Name: "browser_screenshot", Label: "浏览器截图", Risk: RiskRead,
-			Description:    "截取附着标签可视区，返回本机 path",
+			Description:    "截取附着标签可视区；侧栏自动附图进多模态，并返回本机 path",
 			DefaultEnabled: true,
 		},
 		{
@@ -475,12 +475,12 @@ func Catalog() []Item {
 		},
 		{
 			Name: "desktop_screenshot", Label: "桌面应用截图", Risk: RiskRead,
-			Description:    "截取已授权应用的窗口，保存在本机数据目录",
+			Description:    "截取已授权应用窗口；侧栏自动附图进多模态，path 落本机数据目录",
 			DefaultEnabled: true,
 		},
 		{
 			Name: "desktop_act", Label: "操作桌面应用", Risk: RiskWrite,
-			Description:    "点击 / 输入 / 按键等；仅限已授予「操作」的应用，每步记入任务账本",
+			Description:    "语义点击输入 + headed 鼠标坐标/抢焦点按键/拖拽/剪贴板；须「操作」授权，每步入账本",
 			DefaultEnabled: true,
 		},
 		{

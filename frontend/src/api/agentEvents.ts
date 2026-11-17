@@ -15,6 +15,7 @@ export interface AgentToolEvent {
   result?: unknown
   status?: string
   summary?: string
+  images?: { mime: string; data: string }[]
 }
 
 export interface AgentDoneEvent {
@@ -166,6 +167,7 @@ export function subscribeAgentEvents(handlers: {
             result: raw.result,
             status: raw.status ? String(raw.status) : undefined,
             summary: raw.summary ? String(raw.summary) : undefined,
+            images: parseEventImages(raw.images),
           }),
         )
       }),

@@ -116,6 +116,11 @@ export function useAgentSession(opts: {
                     status: mapToolStatus(String(tool.status || '')),
                     argsPreview: tool.args ? String(tool.args) : undefined,
                     summary: tool.summary ? String(tool.summary) : undefined,
+                    images: Array.isArray((tool as { images?: { mime?: string; data?: string }[] }).images)
+                      ? (tool as { images: { mime?: string; data?: string }[] }).images
+                          .map((img) => ({ mime: img.mime ?? '', data: img.data ?? '' }))
+                          .filter((img) => img.data)
+                      : undefined,
                   }))
                   .filter((tool) => tool.tool)
               : undefined,
@@ -226,6 +231,7 @@ export function useAgentSession(opts: {
           { callId: evt.callId, tool: evt.tool },
           mapToolStatus(evt.status || 'ok'),
           evt.summary,
+          evt.images,
         )
       },
       onOfferChoices: (evt) => {

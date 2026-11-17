@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.16c"
+const AgentRulesVersion = "2026.11.17a"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -165,13 +165,14 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **默认一个应用都读不了**。首次 desktop_snapshot / desktop_find / desktop_screenshot 某应用 → 工作台弹窗请用户授权「读取」；首次 desktop_act / desktop_launch → 请用户授权「操作」（含读取）。授权按应用长期有效，用户可在「AI 权限」里撤销。被拒绝后**不要重复请求**，先向用户说明为什么需要。
 - 工作台自身不可被读取或操作（授权与确认弹窗在这里）。**禁止**自己在终端跑 agent-desktop 命令绕过授权；一律经 desktop_*。
 - 先 desktop_status（是否安装、系统辅助功能 / 屏幕录制权限）；权限缺失时请用户到「系统设置 → 隐私与安全性」允许 WWorkbench，不要反复重试。
-- 标准闭环：desktop_apps（拿 bundle id）→ desktop_snapshot（大界面 skeleton=true，再把容器的 ref 传给 root 下钻；读正文 all=true）或 desktop_find → desktop_act（带 waitFor="role:text" 直接拿下一态快照）→ 下一步。
-- ref 形如 @<快照id>:eN，**原样使用**，只对取到它时的界面有效；报 STALE_REF / SNAPSHOT_NOT_FOUND 就重新快照。禁止编造 ref。
-- 动作经无障碍接口送达：不移动鼠标、不抢用户焦点，用户可以同时做别的事。拖拽、悬停、双击等物理鼠标动作**不支持**；元素不支持某动作（ACTION_NOT_SUPPORTED）时看快照行尾的 actions=…（没标的元素只能点击 / 聚焦），换目标或改用 press 键盘操作。
-- type = 在光标处插入；set_value = 整体替换；清空用 clear。结果里 delivery=delivered_unverified 表示已送达但未回读验证——关键步骤后用 waitFor 或 desktop_find 核对，**不要因为不放心就重复执行**。
-- 危险快捷键（如 cmd+q）默认被拦；确有必要用 press + force=true，每次都由用户单独确认。
-- 账本：desktop_act / desktop_launch 自动记 op（locator = 应用 + role + name，不存易变的 ref）。完成后照常 update_skill 沉淀路径，下次 get_skill 后用 desktop_* 重走；桌面步骤暂不支持 replay_task_step / run_skill 机械重放。
-- 隐私：快照、截图里是用户桌面上的真实内容；只取完成任务所需的部分，不要把无关内容写进笔记或回复。
+- **两套路**：① 语义（默认）：desktop_apps → desktop_snapshot / desktop_find → desktop_act(click/type/press…)；不抢焦点。② 物理 headed：无障碍树空（微信等自绘）时用 mouse_click/mouse_move/mouse_wheel（屏幕绝对坐标 x,y）、hover、drag、double_click；press 请加 headed=true（物理按键，先 mouse_click 点进输入区再按）。发图：clipboard_set(imagePath=…) → mouse_click 输入区 → press keys=cmd+v headed=true → press keys=return headed=true。
+- **截图视觉**：desktop_screenshot / browser_screenshot 成功后，侧栏会把图压缩附图进下一轮模型（多模态）；据此估逻辑点坐标再 mouse_click。须使用支持视觉的模型；失败时接口会提示换模型。path 仍返回，可本机打开。隐私：只截任务所需。
+- 无 AX 窗口上 focus_window / press --app 会失败；headed 的 press 改为系统级投递，**务必先点中目标窗口**。坐标与 screencapture -R 同为逻辑点。搜人：mouse_click 搜索框 → press cmd+f 或直接点搜 → clipboard_set → cmd+v headed → mouse_click 结果 → 发送。
+- ref 形如 @<快照id>:eN，**原样使用**；报 STALE_REF 就重新快照。禁止编造 ref。
+- type = 光标插入；set_value = 整体替换；clear 清空。delivery=delivered_unverified 时用 waitFor / find 核对，**不要重复同一动作**。
+- 危险快捷键（cmd+q）默认拦；press + force=true 每次单独确认。
+- 账本：desktop_act / desktop_launch 自动记 op。完成后 update_skill；桌面步骤暂不支持 run_skill 机械重放。
+- 隐私：快照/截图是真实桌面内容；只取任务所需。
 `
 
 // MarkAgentRulesAck 标记当前调用方「已读系统规则」（内置 Agent 开跑 / get_agent_rules）。

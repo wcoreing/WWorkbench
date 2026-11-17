@@ -186,7 +186,7 @@ func (r *Runner) persistExternalTurn(root, threadID, taskID, final string, buf [
 			ToolCallsJSON: history.EncodeToolCalls(specs), TaskID: taskID,
 		})
 		for _, t := range buf {
-			content := formatToolMessage(t.Result, t.RID)
+			content, _ := decorateToolMessage(root, threadID, taskID, t.Name, t.Result, t.RID)
 			ids := ""
 			if t.RID > 0 {
 				ids = history.EncodeResourceIDs([]int64{t.RID})

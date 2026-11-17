@@ -84,6 +84,8 @@ export interface AgentToolStep {
   status: 'running' | 'ok' | 'error' | 'denied' | 'need_confirm' | 'need_choice' | ''
   argsPreview?: string
   summary?: string
+  /** 截图类工具自动附图（进模 + 侧栏预览） */
+  images?: { mime: string; data: string }[]
 }
 
 interface AgentStore {
@@ -135,6 +137,7 @@ interface AgentStore {
     match: { callId?: string; tool: string },
     status?: AgentToolStep['status'],
     summary?: string,
+    images?: AgentToolStep['images'],
   ) => void
   setThreadMentions: (mentions: AgentMention[]) => void
   setThreadSkillIds: (ids: string[]) => void
@@ -341,7 +344,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     })
     return id
   },
-  finishToolStep: (match, status = 'ok', summary) =>
+  finishToolStep: (match, status = 'ok', summary, images) =>
     set((s) => {
       const lines = s.lines.map((ln) => ({ ...ln, tools: ln.tools ? [...ln.tools] : undefined }))
       const callId = match.callId?.trim()
@@ -368,6 +371,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
           status,
           summary,
           callId: callId || tools[ti].callId,
+          images: images?.length ? images : tools[ti].images,
         }
         lines[i] = { ...lines[i], tools }
         break outer

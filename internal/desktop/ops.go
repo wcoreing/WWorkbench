@@ -351,8 +351,7 @@ func (d *Driver) Read(ctx context.Context, ref string) (map[string]interface{}, 
 	return out, nil
 }
 
-// refCommands 针对某个 ref 的动作 → agent-desktop 子命令。
-// 只收语义（无障碍 API）可送达的动作；需要物理鼠标的 hover / drag / double-click 不在其列。
+// refCommands 针对某个 ref 的语义动作 → agent-desktop 子命令。
 var refCommands = map[string]string{
 	"click":       "click",
 	"right_click": "right-click",
@@ -370,45 +369,219 @@ var refCommands = map[string]string{
 	"focus":       "focus",
 }
 
+// headedRefCommands 必须走物理输入（--headed）的 ref 动作。
+var headedRefCommands = map[string]string{
+	"double_click": "double-click",
+	"triple_click": "triple-click",
+}
+
 // ActionPress 按键动作：作用于应用而非某个 ref。
 const ActionPress = "press"
 
-// IsRefAction action 是否作用于某个 ref。
+// ActionFocusWindow 把应用窗口带到前台。
+const ActionFocusWindow = "focus_window"
+
+// 物理指针 / 剪贴板动作（多数强制 --headed）。
+const (
+	ActionMouseClick   = "mouse_click"
+	ActionMouseMove    = "mouse_move"
+	ActionMouseWheel   = "mouse_wheel"
+	ActionHover        = "hover"
+	ActionDrag         = "drag"
+	ActionClipboardGet = "clipboard_get"
+	ActionClipboardSet = "clipboard_set"
+)
+
+// IsRefAction action 是否作用于某个 ref（语义或 headed ref）。
 func IsRefAction(action string) bool {
-	_, ok := refCommands[action]
+	if _, ok := refCommands[action]; ok {
+		return true
+	}
+	_, ok := headedRefCommands[action]
 	return ok
+}
+
+// NeedsHeaded action 是否必须物理输入（抢焦点 / 移鼠标）。
+func NeedsHeaded(action string) bool {
+	switch action {
+	case ActionMouseClick, ActionMouseMove, ActionMouseWheel, ActionHover, ActionDrag,
+		"double_click", "triple_click":
+		return true
+	default:
+		return false
+	}
+}
+
+// IsAppAction 只需要 app、不强制 ref 的动作。
+func IsAppAction(action string) bool {
+	switch action {
+	case ActionPress, ActionFocusWindow, ActionMouseClick, ActionMouseMove, ActionMouseWheel,
+		ActionHover, ActionDrag, ActionClipboardGet, ActionClipboardSet:
+		return true
+	default:
+		return false
+	}
 }
 
 // ActOpts 一次操作。
 type ActOpts struct {
 	Action    string
-	Ref       string // 除 press 外必填
-	Text      string // type / set_value 的文本，select 的选项
-	Keys      string // press 的组合键
+	Ref       string // 语义 / headed-ref 动作
+	ToRef     string // drag 终点 ref
+	Text      string // type / set_value / clipboard_set 文本；select 选项
+	Keys      string // press 组合键
 	Direction string // scroll：up / down / left / right
-	Amount    int    // scroll 的单位数
-	Force     bool   // press：放行被标为危险的快捷键
-	// 动作之后等待「role:text」出现 / 消失，并随结果带回新快照（省一次往返）
+	Amount    int    // scroll 单位数；mouse_click 的 count
+	Force     bool   // press：放行危险快捷键
+	Headed    bool   // 抢焦点 / 物理送达；pointer 类动作自动为 true
+	// 屏幕绝对坐标（逻辑点，与 screencapture -R 一致）
+	X, Y   *float64
+	X2, Y2 *float64 // drag 终点
+	Button string   // mouse_click：left | right | middle
+	Dx, Dy *int     // mouse_wheel
+	Modifiers []string
+	ImagePath string // clipboard_set --image
+	FileURL   string // clipboard_set --file-url
+	Format    string // clipboard_get：text | auto | image | file-urls
+	WindowID  string // focus_window
+	WindowTitle string
 	WaitFor       string
 	WaitGone      string
 	WaitTimeoutMs int
 }
 
-// Act 执行一次操作；app 为目标应用（ref 动作取 ref 所属应用）。
-// 返回 delivery（是否送达 / 是否已验证）；带等待时附 matched 与新快照。
+func fmtXY(x, y float64) string {
+	return strconv.FormatFloat(x, 'f', -1, 64) + "," + strconv.FormatFloat(y, 'f', -1, 64)
+}
+
+func hasXY(x, y *float64) bool { return x != nil && y != nil }
+
+// Act 执行一次操作；app 为目标应用（授权与账本归属）。
+// Headed / 坐标类动作会抢焦点并移动系统光标。
 func (d *Driver) Act(ctx context.Context, app App, o ActOpts) (map[string]interface{}, error) {
+	o.Action = strings.ToLower(strings.TrimSpace(o.Action))
+	headed := o.Headed || NeedsHeaded(o.Action)
 	var args []string
 	stdin := ""
 	timeout := defaultCallTimeout
-	if o.Action == ActionPress {
+
+	switch o.Action {
+	case ActionPress:
 		if !comboRe.MatchString(o.Keys) {
 			return nil, &Error{Code: CodeInvalidArgs, Message: "请提供 keys（如 return、escape、cmd+c、shift+tab）"}
 		}
-		args = []string{"press", "--app=" + app.Key()}
+		// headed：系统级物理按键（不带 --app）。带 --app 会走无障碍投递，微信等无 AX 窗口会 ACTION_NOT_SUPPORTED。
+		// 语义模式：--app 投到目标进程且不抢焦点。
+		if headed {
+			args = []string{"press"}
+		} else {
+			args = []string{"press", "--app=" + app.Key()}
+		}
 		if o.Force {
 			args = append(args, "--force")
 		}
-	} else {
+	case ActionFocusWindow:
+		args = []string{"focus-window", "--app=" + app.Key()}
+		if o.WindowID != "" {
+			args = append(args, "--window-id="+o.WindowID)
+		}
+		if o.WindowTitle != "" {
+			args = append(args, "--title="+o.WindowTitle)
+		}
+	case ActionMouseClick:
+		if !hasXY(o.X, o.Y) {
+			return nil, &Error{Code: CodeInvalidArgs, Message: "mouse_click 需要 x,y（屏幕绝对坐标）"}
+		}
+		args = []string{"mouse-click", "--xy=" + fmtXY(*o.X, *o.Y)}
+		if o.Button != "" {
+			args = append(args, "--button="+o.Button)
+		}
+		count := o.Amount
+		if count <= 0 {
+			count = 1
+		}
+		args = append(args, "--count="+strconv.Itoa(clamp(count, 1, 10)))
+		for _, m := range o.Modifiers {
+			args = append(args, "--modifiers="+m)
+		}
+	case ActionMouseMove:
+		if !hasXY(o.X, o.Y) {
+			return nil, &Error{Code: CodeInvalidArgs, Message: "mouse_move 需要 x,y"}
+		}
+		args = []string{"mouse-move", "--xy=" + fmtXY(*o.X, *o.Y)}
+	case ActionMouseWheel:
+		if !hasXY(o.X, o.Y) {
+			return nil, &Error{Code: CodeInvalidArgs, Message: "mouse_wheel 需要 x,y"}
+		}
+		args = []string{"mouse-wheel", "--x=" + strconv.FormatFloat(*o.X, 'f', -1, 64), "--y=" + strconv.FormatFloat(*o.Y, 'f', -1, 64)}
+		if o.Dy != nil {
+			args = append(args, "--dy="+strconv.Itoa(*o.Dy))
+		}
+		if o.Dx != nil {
+			args = append(args, "--dx="+strconv.Itoa(*o.Dx))
+		}
+		for _, m := range o.Modifiers {
+			args = append(args, "--modifiers="+m)
+		}
+	case ActionHover:
+		args = []string{"hover"}
+		switch {
+		case o.Ref != "" && snapshotOf(o.Ref) != "":
+			args = append(args, o.Ref)
+		case hasXY(o.X, o.Y):
+			args = append(args, "--xy="+fmtXY(*o.X, *o.Y))
+		default:
+			return nil, &Error{Code: CodeInvalidArgs, Message: "hover 需要 ref 或 x,y"}
+		}
+	case ActionDrag:
+		args = []string{"drag"}
+		fromOK, toOK := false, false
+		if o.Ref != "" && snapshotOf(o.Ref) != "" {
+			args = append(args, "--from="+o.Ref)
+			fromOK = true
+		} else if hasXY(o.X, o.Y) {
+			args = append(args, "--from-xy="+fmtXY(*o.X, *o.Y))
+			fromOK = true
+		}
+		if o.ToRef != "" && snapshotOf(o.ToRef) != "" {
+			args = append(args, "--to="+o.ToRef)
+			toOK = true
+		} else if hasXY(o.X2, o.Y2) {
+			args = append(args, "--to-xy="+fmtXY(*o.X2, *o.Y2))
+			toOK = true
+		}
+		if !fromOK || !toOK {
+			return nil, &Error{Code: CodeInvalidArgs, Message: "drag 需要起点（ref 或 x,y）与终点（toRef 或 x2,y2）"}
+		}
+	case ActionClipboardGet:
+		args = []string{"clipboard-get"}
+		if o.Format != "" {
+			args = append(args, "--format="+o.Format)
+		}
+	case ActionClipboardSet:
+		args = []string{"clipboard-set"}
+		switch {
+		case o.ImagePath != "":
+			args = append(args, "--image="+o.ImagePath)
+		case o.FileURL != "":
+			args = append(args, "--file-url="+o.FileURL)
+		case o.Text != "":
+			if len(o.Text) > maxTypeBytes {
+				return nil, &Error{Code: CodeInvalidArgs, Message: "clipboard_set 文本过长"}
+			}
+			args, stdin = append(args, "--stdin"), o.Text
+		default:
+			return nil, &Error{Code: CodeInvalidArgs, Message: "clipboard_set 需要 text / imagePath / fileUrl"}
+		}
+	default:
+		if cmd, ok := headedRefCommands[o.Action]; ok {
+			if snapshotOf(o.Ref) == "" {
+				return nil, &Error{Code: CodeInvalidArgs, Message: o.Action + " 需要 ref"}
+			}
+			args = []string{cmd, o.Ref}
+			headed = true
+			break
+		}
 		cmd, ok := refCommands[o.Action]
 		if !ok {
 			return nil, &Error{Code: CodeInvalidArgs, Message: "不支持的 action: " + o.Action}
@@ -426,7 +599,7 @@ func (d *Driver) Act(ctx context.Context, app App, o ActOpts) (map[string]interf
 				return nil, &Error{Code: CodeInvalidArgs, Message: "type 单次最多 10000 字节；长文本请用 set_value 整体设值"}
 			}
 			args, stdin = append(args, "--stdin"), o.Text
-			timeout += time.Duration(len(o.Text)) * 35 * time.Millisecond // 上游按每字符 30ms 放宽等待
+			timeout += time.Duration(len(o.Text)) * 35 * time.Millisecond
 		case "set_value":
 			if o.Text == "" {
 				return nil, &Error{Code: CodeInvalidArgs, Message: "set_value 需要 text；清空请用 action=clear"}
@@ -451,6 +624,10 @@ func (d *Driver) Act(ctx context.Context, app App, o ActOpts) (map[string]interf
 			args = append(args, "--direction="+dir, "--amount="+strconv.Itoa(clamp(amount, 1, 50)))
 		}
 	}
+
+	if headed {
+		args = append(args, "--headed")
+	}
 	waiting := o.WaitFor != "" || o.WaitGone != ""
 	if waiting {
 		ms := o.WaitTimeoutMs
@@ -467,7 +644,6 @@ func (d *Driver) Act(ctx context.Context, app App, o ActOpts) (map[string]interf
 		args = append(args, "--wait-timeout="+strconv.Itoa(ms))
 		timeout += time.Duration(ms) * time.Millisecond
 	}
-	// 位置参数里可能以「-」开头的值放在 -- 之后，避免被当成 flag
 	switch o.Action {
 	case ActionPress:
 		args = append(args, "--", o.Keys)
@@ -477,7 +653,7 @@ func (d *Driver) Act(ctx context.Context, app App, o ActOpts) (map[string]interf
 
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	out := map[string]interface{}{"action": o.Action}
+	out := map[string]interface{}{"action": o.Action, "headed": headed}
 	data, err := d.run(ctx, stdin, args...)
 	if err != nil {
 		if e, ok := err.(*Error); ok && waiting && e.Code == CodeTimeout && e.Delivered {
@@ -488,6 +664,17 @@ func (d *Driver) Act(ctx context.Context, app App, o ActOpts) (map[string]interf
 		}
 		return nil, err
 	}
+	// clipboard_get 等可能直接返回业务 data，不一定是 actionResult 信封
+	if o.Action == ActionClipboardGet || o.Action == ActionClipboardSet {
+		var raw interface{}
+		if json.Unmarshal(data, &raw) == nil {
+			out["result"] = raw
+		} else {
+			out["raw"] = string(data)
+		}
+		out["delivery"] = "delivered"
+		return out, nil
+	}
 	var res struct {
 		rawSnapshot
 		actionResult
@@ -495,13 +682,24 @@ func (d *Driver) Act(ctx context.Context, app App, o ActOpts) (map[string]interf
 		Matched string        `json:"matched_selector"`
 	}
 	if err := json.Unmarshal(data, &res); err != nil {
+		// 部分 headed 命令只回简单对象
+		var raw interface{}
+		if json.Unmarshal(data, &raw) == nil {
+			out["result"] = raw
+			out["delivery"] = "delivered"
+			return out, nil
+		}
 		return nil, err
 	}
 	act := res.actionResult
 	if res.After != nil {
 		act = *res.After
 	}
-	out["delivery"] = act.Disposition.Delivery
+	if act.Disposition.Delivery != "" {
+		out["delivery"] = act.Disposition.Delivery
+	} else {
+		out["delivery"] = "delivered"
+	}
 	if len(act.PostState) > 0 {
 		out["postState"] = act.PostState
 	}

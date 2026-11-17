@@ -165,13 +165,13 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 
 			if perms != nil && !harness.IsMemoryTool(name) && !workbenchtools.IsToolEnabled(perms, name) {
 				fail := workbenchtools.Fail("该能力已在 AI 权限设置中关闭: " + name)
-				_ = g.appendToolResult(root, callID, fail, 0)
+				_ = g.appendToolResult(root, callID, name, fail, 0)
 				appendToolErrorNote(ctx, name+": "+fail.Error)
 				continue
 			}
 			if deny := toolDeniedByMode(g.mode, name); deny != "" {
 				fail := workbenchtools.Fail(deny)
-				_ = g.appendToolResult(root, callID, fail, 0)
+				_ = g.appendToolResult(root, callID, name, fail, 0)
 				appendToolErrorNote(ctx, name+": "+fail.Error)
 				continue
 			}
@@ -218,7 +218,7 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			if rid > 0 {
 				summary = fmt.Sprintf("%s · #%d", summary, rid)
 			}
-			_ = g.appendToolResult(root, callID, result, rid)
+			preview := g.appendToolResult(root, callID, name, result, rid)
 			if !result.OK && !result.NeedsConfirm && !result.NeedsChoice {
 				note := name + ": " + strings.TrimSpace(result.Error)
 				if note == name+": " {
@@ -232,6 +232,9 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			}
 			if rid > 0 {
 				payload["resourceId"] = rid
+			}
+			if len(preview) > 0 {
+				payload["images"] = previewImages(preview)
 			}
 			g.r.emit("agent:tool_end", payload)
 
@@ -281,16 +284,17 @@ type confirmAwaitItem struct {
 	preview               json.RawMessage
 }
 
-func (g *workbenchGuest) appendToolResult(root, callID string, result workbenchtools.ToolResult, rid int64) error {
-	content := formatToolMessage(result, rid)
+func (g *workbenchGuest) appendToolResult(root, callID, toolName string, result workbenchtools.ToolResult, rid int64) []model.AgentChatImageDO {
+	content, preview := decorateToolMessage(root, g.threadID, g.taskID, toolName, result, rid)
 	ids := ""
 	if rid > 0 {
 		ids = history.EncodeResourceIDs([]int64{rid})
 	}
-	return history.Append(root, g.threadID, history.Msg{
+	_ = history.Append(root, g.threadID, history.Msg{
 		Role: "tool", ToolCallID: callID, TaskID: g.taskID,
 		Content: content, ResourceIDsJSON: ids,
 	})
+	return preview
 }
 
 func appendToolErrorNote(ctx context.Context, note string) {
@@ -431,7 +435,15 @@ func historyToSchema(root, system string, bounded []history.Msg, lastUser *histo
 			msg := schema.AssistantMessage(m.Content, tcs)
 			out = append(out, msg)
 		case "tool":
-			out = append(out, schema.ToolMessage(history.WireTool(m), m.ToolCallID))
+			wired := history.WireTool(m)
+			text, refs := history.SplitImageRefs(wired)
+			out = append(out, schema.ToolMessage(text, m.ToolCallID))
+			if len(refs) > 0 {
+				if len(refs) > maxToolShotPerMsg {
+					refs = refs[len(refs)-maxToolShotPerMsg:]
+				}
+				out = append(out, guest.UserMessage(toolShotCaption, loadUserImages(root, refs)))
+			}
 		}
 	}
 	return out

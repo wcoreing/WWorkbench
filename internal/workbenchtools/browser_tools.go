@@ -267,7 +267,7 @@ func registerBrowserTools(r *Registry) {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapBrowserScreenshot,
-		Description: "截取当前附着标签可视区域，保存到本机并返回 path（jpeg 默认）。用于核对弹层/表单是否出现。",
+		Description: "截取当前附着标签可视区域，返回 path（jpeg 默认）；侧栏会自动附图进多模态。用于核对弹层/表单与视觉定位。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
