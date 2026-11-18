@@ -167,7 +167,8 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 先 desktop_status（是否安装、系统辅助功能 / 屏幕录制权限）；权限缺失时请用户到「系统设置 → 隐私与安全性」允许 WWorkbench，不要反复重试。
 - **两套路**：① 语义（默认）：desktop_apps → desktop_snapshot / desktop_find → desktop_act(click/type/press…)；不抢焦点。② 物理 headed：无障碍树空（微信等自绘）时用 mouse_click/mouse_move/mouse_wheel（屏幕绝对坐标 x,y）、hover、drag、double_click；press 请加 headed=true（物理按键，先 mouse_click 点进输入区再按）。发图：clipboard_set(imagePath=…) → mouse_click 输入区 → press keys=cmd+v headed=true → press keys=return headed=true。
 - **截图视觉**：desktop_screenshot / browser_screenshot 成功后，侧栏会把图压缩附图进下一轮模型（多模态）；据此估逻辑点坐标再 mouse_click。须使用支持视觉的模型；失败时接口会提示换模型。path 仍返回，可本机打开。隐私：只截任务所需。
-- 无 AX 窗口上 focus_window / press --app 会失败；headed 的 press 改为系统级投递，**务必先点中目标窗口**。坐标与 screencapture -R 同为逻辑点。搜人：mouse_click 搜索框 → press cmd+f 或直接点搜 → clipboard_set → cmd+v headed → mouse_click 结果 → 发送。
+- 无 AX 窗口上 focus_window / press --app 会失败；headed 的 press 改为系统级投递，**务必先点中目标窗口**。坐标与 screencapture -R 同为逻辑点。
+- **微信搜人（无 AX）**：勿依赖 OCR。先 ⌘F+粘贴（或 skill `open-to`/`search-prep`），再**只截微信窗**；有网格刻度时读相对坐标 `(rx,ry)`（0..w,0..h）。多模态先标行类型（focus_search/chat_history/web/section 跳过；只点 contact/group），再 `mouse_click(origin.x+rx, origin.y+ry)` headed。详见技能「微信文件传输助手」。
 - ref 形如 @<快照id>:eN，**原样使用**；报 STALE_REF 就重新快照。禁止编造 ref。
 - type = 光标插入；set_value = 整体替换；clear 清空。delivery=delivered_unverified 时用 waitFor / find 核对，**不要重复同一动作**。
 - 危险快捷键（cmd+q）默认拦；press + force=true 每次单独确认。
