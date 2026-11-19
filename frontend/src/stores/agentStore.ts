@@ -86,6 +86,20 @@ export interface AgentToolStep {
   summary?: string
   /** 截图类工具自动附图（进模 + 侧栏预览） */
   images?: { mime: string; data: string }[]
+  /** 教人信封（工具终态） */
+  teach?: {
+    summary?: string
+    nextSteps?: string[]
+    highlights?: string[]
+    raw?: string
+  }
+  suggestedSkill?: {
+    name?: string
+    lessons?: string
+    askHuman?: boolean
+    offerPrompt?: string
+    domain?: string
+  }
 }
 
 interface AgentStore {
@@ -138,6 +152,8 @@ interface AgentStore {
     status?: AgentToolStep['status'],
     summary?: string,
     images?: AgentToolStep['images'],
+    teach?: AgentToolStep['teach'],
+    suggestedSkill?: AgentToolStep['suggestedSkill'],
   ) => void
   setThreadMentions: (mentions: AgentMention[]) => void
   setThreadSkillIds: (ids: string[]) => void
@@ -344,7 +360,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     })
     return id
   },
-  finishToolStep: (match, status = 'ok', summary, images) =>
+  finishToolStep: (match, status = 'ok', summary, images, teach, suggestedSkill) =>
     set((s) => {
       const lines = s.lines.map((ln) => ({ ...ln, tools: ln.tools ? [...ln.tools] : undefined }))
       const callId = match.callId?.trim()
@@ -370,6 +386,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
           ...tools[ti],
           status,
           summary,
+          teach: teach ?? tools[ti].teach,
+          suggestedSkill: suggestedSkill ?? tools[ti].suggestedSkill,
           callId: callId || tools[ti].callId,
           images: images?.length ? images : tools[ti].images,
         }

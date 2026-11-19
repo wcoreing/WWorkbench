@@ -112,6 +112,7 @@ func (r *Runner) runExternalBrainTurn(ctx context.Context, kind string, threadID
 			if len(ev.ResultJSON) > 0 {
 				_ = json.Unmarshal(ev.ResultJSON, &result)
 				end["result"] = result
+				attachTeachToEnd(end, result)
 				histMu.Lock()
 				args := argsByCall[ev.CallID]
 				delete(argsByCall, ev.CallID)

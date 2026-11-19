@@ -15,7 +15,7 @@ import (
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
 // ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.54.690"
+const ServerVersion = "0.54.700"
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明（前馈；不因未读规则拒绝工具）。
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本 / 浏览器舞台 / 桌面应用 / 备份 / 插件等）。
@@ -27,7 +27,7 @@ const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据�
 - 参数=schema 顶层字段（勿再包 {"arguments":…}）。
 - 危险写操作在工作台弹窗拍板（工具阻塞至用户确认；与看过程同一视线）。含：SQL/容器/插件/run_backup，以及 shell_run 风险命令。终端右键「允许 MCP 写入当前目录」后软文件写可免确认；数据硬风险（rsync/scp/cp 碰 *.db/data/.env、库导入）不可免。确认后：rsync 自动 exclude；写前备份。勿解析 ww_confirm 文本。
 - 能解析到 SSH 的操作会先打开/聚焦对应终端 + 状态栏。shell_run 返回 updatedAt → 立刻 get_shell_output(waitMs, afterUpdatedAt)。shell_probe=无头只读短探针。断线先 terminal_reconnect。
-- 教人信封（全域）：工具失败/里程碑成功可能带 teach、suggestedSkill；须转述并问人再 update_skill。云：get_ecs_monitor / sync_ssh_security_group / configure_ssh_sg_sync。细则 get_agent_rules(domain=cloud|browser|desktop)。
+- 教人信封（全域）：工具失败/里程碑成功可能带 teach、suggestedSkill；须转述并问人再 update_skill。云：get_ecs_monitor / sync_ssh_security_group / configure_ssh_sg_sync。通知：configure_notify / notify_send（告警企微 Webhook；个人微信走桌面 Skill）。细则 get_agent_rules(domain=cloud|browser|desktop)。
 - 容器启停删用 start/stop/remove_container，勿用 shell_probe 跑 docker rm。
 - 词典：任务=目标；账本=thought+op→log.md；Skill=任意目录 SKILL.md。对外只认 list/get/update/run/distill_skill（旧 *workflow / update_agent_skill 已别名转发）。闭环：接目标→task_record/browser_*→update_skill。禁止任务场景直连 10086/18765。样板 get_skill(wwb-skill-standard)。
 - 浏览器：browser_*；等壳；fill(fields)；可写宏 browser_run(mode=macro)。自学习：探索记 log → update_skill（无变更跳过；有变更写前 pin 再落盘，免确认）→ get_skill/run_skill。

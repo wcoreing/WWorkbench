@@ -55,9 +55,17 @@ export const zh: MessageTree = {
     starterWhatOpen: '工作台现在在看什么？',
     starterWhatOpenMsg: '根据当前工作台焦点，说明我正在看什么，以及接下来最值得做的一步。',
     starterWechatSend: '发一条到文件传输助手',
-    starterWechatSendHint: '挂载微信 Skill · 侧栏 Agent 用 desktop headed',
+    starterWechatSendHint: '挂载微信 Skill · desktop headed 金路径',
     starterWechatSendMsg:
-      '请按技能「微信文件传输助手」：先 get_skill，再用 offer_choices 让我确认要发送的正文（会话默认文件传输助手），然后 desktop_* headed 发送并用截图验收。不要用 browser_*。',
+      '请按技能「微信文件传输助手」金路径：get_skill → offer_choices（会话默认文件传输助手，正文或桌面图片路径由我确认）→ desktop_apps 取最大 windowId → 搜会话并只截微信窗点联系人 → clipboard_set + headed 粘贴发送 → 截图验收。禁止 browser_* 与协议机器人。',
+    teachSuggestedSkill: '可沉淀 Skill',
+    notifyTab: '通知',
+    notifyWecomWebhook: '企微群机器人 Webhook',
+    notifyWecomHint: '告警群推荐通道。个人微信请用「发到文件传输助手」金路径，勿填协议机器人。',
+    notifyWecomPlaceholder: 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=…',
+    notifyWecomSaved: '已保存',
+    notifyWecomSave: '保存 Webhook',
+    notifyWecomClear: '清除',
 
     starterProjectRound: '请助手看当前项目',
     starterProjectRoundMsg:

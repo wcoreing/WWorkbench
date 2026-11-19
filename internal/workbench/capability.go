@@ -21,6 +21,9 @@ const (
 	CapGetECSMonitor          = "get_ecs_monitor"
 	CapSyncSSHSecurityGroup   = "sync_ssh_security_group"
 	CapConfigureSSHSGSync     = "configure_ssh_sg_sync"
+	// 出站通知：企微群机器人 Webhook；个人微信走桌面 Skill（人确认）。
+	CapNotifySend       = "notify_send"
+	CapConfigureNotify  = "configure_notify"
 	CapShellRun             = "shell_run"
 	CapShellProbe           = "shell_probe"
 	CapGetShellOutput       = "get_shell_output"

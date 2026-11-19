@@ -29,6 +29,8 @@ const (
 	SettingLastWorkbenchProjectID = "last_workbench_project_id"
 	SettingHomeLastSyncAt         = "home_last_sync_at"
 	SettingHomeLastSyncNote       = "home_last_sync_note"
+	// SettingNotifyWecomWebhook 企业微信群机器人 Webhook 完整 URL（告警出站）。
+	SettingNotifyWecomWebhook = "notify.wecom_webhook"
 )
 
 // 产品线扩展执行顺序（实现时按 phase 递增，勿跳号）：

@@ -165,6 +165,7 @@ func (r *Registry) registerBuiltins() {
 	registerMCPCallLogTools(r)
 	registerProjectTools(r)
 	registerCloudOpsTools(r)
+	registerNotifyTools(r)
 	r.add(ToolDef{
 		Name:        "get_workbench_context",
 		Description: "工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）；含近期 intentCards、taskRuns、mcpLogs、projects、memoryNotes（焦点绑定的记忆）。问终端输出用 get_shell_output。",

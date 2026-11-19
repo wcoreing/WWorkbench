@@ -124,6 +124,16 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "configure_notify", Label: "配置告警通知通道", Risk: RiskWrite,
+			Description:    "保存企微群机器人 Webhook（本机设置）；需确认",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "notify_send", Label: "发送出站通知", Risk: RiskWrite,
+			Description:    "企微 Webhook 告警推送；desktop_wechat 仅指引桌面 Skill，不代发",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "list_ssh_forward_presets", Label: "列出端口转发预设", Risk: RiskRead,
 			Description:    "已保存的 SSH 本地端口转发",
 			DefaultEnabled: true,

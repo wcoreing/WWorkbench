@@ -32,7 +32,9 @@ const PRESETS: { id: AgentProviderPresetId; labelKey: string }[] = [
   { id: 'cursor', labelKey: 'agent.cursorPreset' },
 ]
 
-type SettingsPane = AgentProviderPresetId | 'mcp'
+type SettingsPane = AgentProviderPresetId | 'mcp' | 'notify'
+
+const NOTIFY_WECOM_KEY = 'notify.wecom_webhook'
 
 function isPreset(id: string): id is AgentProviderPresetId {
   return PRESETS.some((p) => p.id === id)
@@ -80,10 +82,20 @@ export function AgentConfigView({
 }: AgentConfigViewProps) {
   const { t } = useI18n()
   const [showMcp, setShowMcp] = useState(false)
+  const [showNotify, setShowNotify] = useState(false)
   const [mcpStatus, setMcpStatus] = useState<model.MCPStatusDO | null>(null)
   const [mcpError, setMcpError] = useState('')
   const [copied, setCopied] = useState(false)
-  const pane: SettingsPane | '' = showMcp ? 'mcp' : isPreset(provider) ? provider : ''
+  const [wecomWebhook, setWecomWebhook] = useState('')
+  const [notifySaving, setNotifySaving] = useState(false)
+  const [notifyMsg, setNotifyMsg] = useState('')
+  const pane: SettingsPane | '' = showNotify
+    ? 'notify'
+    : showMcp
+      ? 'mcp'
+      : isPreset(provider)
+        ? provider
+        : ''
   const savedModels = loadSavedModels(provider)
 
   const refreshMCP = useCallback(async () => {
@@ -92,9 +104,19 @@ export function AgentConfigView({
     setMcpError(st.error || '')
   }, [])
 
+  const refreshNotify = useCallback(async () => {
+    const all = await api.listAppSettings()
+    setWecomWebhook(String(all[NOTIFY_WECOM_KEY] ?? ''))
+  }, [])
+
   useEffect(() => {
     void refreshMCP().catch((e) => setMcpError((e as Error).message))
   }, [refreshMCP])
+
+  useEffect(() => {
+    if (!showNotify) return
+    void refreshNotify().catch(() => {})
+  }, [showNotify, refreshNotify])
 
   const onCopySnippet = async () => {
     await copyText(mcpStatus?.cursorSnippet || '')
@@ -118,6 +140,7 @@ export function AgentConfigView({
               className={`agent-provider-item${pane === p.id ? ' is-active' : ''}`}
               {...pressProps(() => {
                 setShowMcp(false)
+                setShowNotify(false)
                 if (provider !== p.id) onApplyPreset(p.id)
               })}
             >
@@ -129,9 +152,24 @@ export function AgentConfigView({
             role="tab"
             aria-selected={pane === 'mcp'}
             className={`agent-provider-item agent-provider-item-mcp${pane === 'mcp' ? ' is-active' : ''}`}
-            {...pressProps(() => setShowMcp(true))}
+            {...pressProps(() => {
+              setShowNotify(false)
+              setShowMcp(true)
+            })}
           >
             MCP
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={pane === 'notify'}
+            className={`agent-provider-item${pane === 'notify' ? ' is-active' : ''}`}
+            {...pressProps(() => {
+              setShowMcp(false)
+              setShowNotify(true)
+            })}
+          >
+            {t('agent.notifyTab')}
           </button>
         </div>
 
@@ -150,6 +188,65 @@ export function AgentConfigView({
               </button>
             </div>
             <pre className="agent-mcp-json">{snippet}</pre>
+          </div>
+        ) : pane === 'notify' ? (
+          <div className="agent-config-main" role="tabpanel">
+            <p className="agent-settings-hint">{t('agent.notifyWecomHint')}</p>
+            <div className="agent-field">
+              <label className="wn-label" htmlFor="agent-notify-wecom">
+                {t('agent.notifyWecomWebhook')}
+              </label>
+              <input
+                id="agent-notify-wecom"
+                className="wn-input"
+                value={wecomWebhook}
+                onChange={(e) => setWecomWebhook(e.target.value)}
+                placeholder={t('agent.notifyWecomPlaceholder')}
+                spellCheck={false}
+              />
+            </div>
+            {notifyMsg ? <p className="agent-settings-hint">{notifyMsg}</p> : null}
+            <div className="agent-config-actions">
+              <button
+                type="button"
+                className="wn-btn wn-btn-sm wn-btn-ghost"
+                disabled={notifySaving || !wecomWebhook.trim()}
+                {...pressProps(
+                  () => {
+                    setNotifySaving(true)
+                    void api
+                      .setAppSetting(NOTIFY_WECOM_KEY, '')
+                      .then(() => {
+                        setWecomWebhook('')
+                        setNotifyMsg(t('agent.notifyWecomSaved'))
+                      })
+                      .catch((e) => setNotifyMsg((e as Error).message))
+                      .finally(() => setNotifySaving(false))
+                  },
+                  { disabled: notifySaving || !wecomWebhook.trim() },
+                )}
+              >
+                {t('agent.notifyWecomClear')}
+              </button>
+              <button
+                type="button"
+                className="wn-btn wn-btn-sm wn-btn-primary"
+                disabled={notifySaving || !wecomWebhook.trim()}
+                {...pressProps(
+                  () => {
+                    setNotifySaving(true)
+                    void api
+                      .setAppSetting(NOTIFY_WECOM_KEY, wecomWebhook.trim())
+                      .then(() => setNotifyMsg(t('agent.notifyWecomSaved')))
+                      .catch((e) => setNotifyMsg((e as Error).message))
+                      .finally(() => setNotifySaving(false))
+                  },
+                  { disabled: notifySaving || !wecomWebhook.trim() },
+                )}
+              >
+                {notifySaving ? t('common.saving') : t('agent.notifyWecomSave')}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="agent-config-main" role="tabpanel">

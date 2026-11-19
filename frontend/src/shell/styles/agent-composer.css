@@ -533,6 +533,36 @@
   word-break: break-word;
 }
 
+.agent-turn-teach {
+  margin-top: calc(8 * var(--ui-scale) * 1px);
+  padding: calc(8 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
+  border-left: 2px solid var(--color-accent, var(--color-border));
+  background: color-mix(in srgb, var(--color-editor) 88%, transparent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.agent-turn-teach-summary {
+  margin: 0;
+  font-size: var(--font-size-caption);
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.agent-turn-teach-steps {
+  margin: calc(6 * var(--ui-scale) * 1px) 0 0;
+  padding-left: calc(18 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-caption);
+  line-height: 1.45;
+  color: var(--color-text-muted, var(--color-text));
+}
+
+.agent-turn-skill-hint {
+  margin: calc(6 * var(--ui-scale) * 1px) 0 0;
+  font-size: var(--font-size-caption);
+  line-height: 1.4;
+  color: var(--color-text-muted, var(--color-text));
+}
+
 .agent-turn-actions-loose {
   margin-top: calc(4 * var(--ui-scale) * 1px);
   border-top: none;

@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.17e"
+const AgentRulesVersion = "2026.11.20a"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -72,6 +72,11 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 连不上且怀疑家宽 IP 变了：先 sync_ssh_security_group；成功后再问是否 configure_ssh_sg_sync(enabled=true)。目标地址建议用 EIP（稳地址），与动态源 IP（sgSync）分工。
 - 权限话术：只读够监控；改安全组需要 AuthorizeSecurityGroup / RevokeSecurityGroup。规则只动 Description=wwb-dynamic-ip。
 - 沉淀路径默认 运维/{主机}/家宽IP放行；仍走 0d 人审。
+
+## 2c. 出站通知（告警群）
+- **告警群推荐**：configure_notify(channel=wecom_webhook) 存企微群机器人 URL → notify_send(markdown=…)。限约 20 条/分钟，同文案 60s 去重；正文带 teach 式「人下一步」。
+- **个人微信**：notify_send(channel=desktop_wechat) **不代发**，返回 teach → get_skill(微信文件传输助手) → offer_choices → desktop_* headed。禁止协议/网页扫码机器人。
+- 高频告警禁止打个人微信群；沙箱「发给我」默认文件传输助手。
 
 ## 3. 终端与舞台
 - 凡参数能解析到 SSH（hostId / sshHostId / hostOrName / 远端 Docker / SSH 日志源 / SSH 隧道库）的操作，都会先打开并聚焦对应终端 + 状态栏。
@@ -183,6 +188,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **截图视觉**：desktop_screenshot / browser_screenshot 成功后，侧栏会把图压缩附图进下一轮模型（多模态）；据此估逻辑点坐标再 mouse_click。须使用支持视觉的模型；失败时接口会提示换模型。path 仍返回，可本机打开。隐私：只截任务所需。
 - 无 AX 窗口上 focus_window / press --app 会失败；headed 的 press 改为系统级投递，**务必先点中目标窗口**。坐标与 screencapture -R 同为逻辑点。
 - **微信搜人（无 AX）**：勿依赖 OCR。先 ⌘F+粘贴（或 skill open-to / search-prep），再**只截微信窗**；有网格刻度时读相对坐标 (rx,ry)（0..w,0..h）。多模态先标行类型（focus_search/chat_history/web/section 跳过；只点 contact/group），再 mouse_click(origin.x+rx, origin.y+ry) headed。详见技能「微信文件传输助手」。
+- **微信金路径（文件传输助手）**：get_skill → offer_choices（会话默认传输助手）→ desktop_apps 取最大 windowId → 搜会话 → 截窗点联系人 → clipboard_set(text|imagePath) → press headed 粘贴/回车 → 截图验收。发图禁止用协议机器人。
 - **桌面 Skill**：get_skill 后走 desktop_*（不是 browser_*）。发送类先 offer_choices 确认会话与正文；「发给我」默认文件传输助手。步骤多为 Agent 提纲，勿依赖 run_skill 机械重放。
 - **脚本备路**：Skill 目录 scripts/*.py 用 shell_run（本机可见终端 + intent），再 get_shell_output；禁止 shell_probe 跑 python 脚本。微信禁止 focus_window；多窗先 desktop_apps 取最大窗 windowId。
 
@@ -290,6 +296,8 @@ func requiresAgentRulesAck(name string) bool {
 		"save_ssh_host",
 		workbench.CapSyncSSHSecurityGroup,
 		workbench.CapConfigureSSHSGSync,
+		workbench.CapConfigureNotify,
+		workbench.CapNotifySend,
 		"save_ssh_forward",
 		"save_connection",
 		"save_log_source",

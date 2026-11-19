@@ -24,6 +24,8 @@ func ExecuteConfirmed(ctx context.Context, d *Deps, toolName, argsJSON string) T
 		return SyncSSHSecurityGroupConfirmed(ctx, d, argsJSON)
 	case workbench.CapConfigureSSHSGSync:
 		return ConfigureSSHSGSyncConfirmed(ctx, d, argsJSON)
+	case workbench.CapConfigureNotify:
+		return ExecuteConfigureNotify(d, argsJSON)
 	case workbench.CapEnsureHostBackupPolicies:
 		return EnsureHostBackupPoliciesConfirmed(ctx, d, argsJSON)
 	case "execute_http":
