@@ -1580,6 +1580,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_OSSMonitorDO_ {
+	    ok: boolean;
+	    data: model.OSSMonitorDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_OSSMonitorDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.OSSMonitorDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_QueryPageDO_ {
 	    ok: boolean;
 	    data: model.QueryPageDO;
@@ -6705,6 +6739,46 @@ export namespace model {
 	        this.openTabIds = source["openTabIds"];
 	        this.activeTabId = source["activeTabId"];
 	    }
+	}
+	export class OSSMonitorDO {
+	    region: string;
+	    buckets: string[];
+	    fetchedAt: number;
+	    windowHours: number;
+	    series: ECSMetricSeriesDO[];
+	    hint: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new OSSMonitorDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.region = source["region"];
+	        this.buckets = source["buckets"];
+	        this.fetchedAt = source["fetchedAt"];
+	        this.windowHours = source["windowHours"];
+	        this.series = this.convertValues(source["series"], ECSMetricSeriesDO);
+	        this.hint = source["hint"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class ObjectTreeNodeDO {
 	    id: string;

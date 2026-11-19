@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ECSMetricSeries, ECSMonitor } from '../../api/types'
+import type { ECSMetricSeries, ECSMonitor, OSSMonitor } from '../../api/types'
 import { api } from '../../api/client'
 import { IconRefresh } from '../../components/Icons'
 import { pressProps } from '../../components/compat'
@@ -30,16 +30,20 @@ const METRIC_LABEL: Record<string, string> = {
   VPC_PublicIP_InternetOutRate: 'ecs.netOut',
   IntranetInRate: 'ecs.netInLan',
   IntranetOutRate: 'ecs.netOutLan',
+  OSS_In: 'ecs.ossIn',
+  OSS_Out: 'ecs.ossOut',
+  OSS_InternetRecv: 'ecs.ossIn',
+  OSS_InternetSend: 'ecs.ossOut',
 }
 
-/** formatMetric 把云监控原始值收成终端条上的短数字。 */
+/** formatMetric 把云监控原始值收成终端条上的短数字（M/K/b）。 */
 function formatMetric(value: number, unit: string): string {
   if (!Number.isFinite(value)) return '—'
   if (unit === '%') return `${Math.round(value)}%`
   if (unit === 'bit/s') {
-    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} Mbps`
-    if (value >= 1_000) return `${Math.round(value / 1_000)} Kbps`
-    return `${Math.round(value)} bps`
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`
+    if (value >= 1_000) return `${Math.round(value / 1_000)}K`
+    return `${Math.round(value)}b`
   }
   return `${Math.round(value)}`
 }
@@ -91,11 +95,13 @@ function Sparkline({ points }: { points: { value: number }[] }) {
   )
 }
 
-/** ECSMonitorBar 终端上方的阿里云 ECS 监控条。SSH 断开时仍然可读。 */
+/** ECSMonitorBar 终端上方云监控条：ECS + 同地域 OSS 带宽，过宽自动换行。 */
 export function ECSMonitorBar({ hostId, active, opacity }: Props) {
   const { t } = useI18n()
   const [windowHours, setWindowHours] = useState(1)
   const [mon, setMon] = useState<ECSMonitor | null>(null)
+  const [oss, setOss] = useState<OSSMonitor | null>(null)
+  const [ossError, setOssError] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -104,11 +110,23 @@ export function ECSMonitorBar({ hostId, active, opacity }: Props) {
     let cancelled = false
     const load = () => {
       setLoading(true)
-      api
-        .getECSMonitor(hostId, windowHours)
-        .then((next) => {
+      Promise.all([
+        api.getECSMonitor(hostId, windowHours),
+        api.getOSSMonitor(hostId, windowHours).then(
+          (v) => {
+            if (!cancelled) setOssError('')
+            return v
+          },
+          (e: Error) => {
+            if (!cancelled) setOssError(e.message || t('ecs.loadFailed'))
+            return null
+          },
+        ),
+      ])
+        .then(([ecsNext, ossNext]) => {
           if (cancelled) return
-          setMon(next)
+          setMon(ecsNext)
+          setOss(ossNext)
           setError('')
         })
         .catch((e: Error) => {
@@ -126,14 +144,39 @@ export function ECSMonitorBar({ hostId, active, opacity }: Props) {
     }
   }, [hostId, active, windowHours, t])
 
-  const series = mon?.series ?? []
-  const peakWindow = mon?.windowHours || windowHours
+  const series = [...(mon?.series ?? []), ...(oss?.series ?? [])]
+  const peakWindow = mon?.windowHours || oss?.windowHours || windowHours
+  const hint = [mon?.hint, oss?.hint, ossError ? `OSS: ${ossError}` : ''].filter(Boolean).join(' · ')
+
+  const refresh = () => {
+    setLoading(true)
+    Promise.all([
+      api.getECSMonitor(hostId, windowHours),
+      api.getOSSMonitor(hostId, windowHours).then(
+        (v) => {
+          setOssError('')
+          return v
+        },
+        (e: Error) => {
+          setOssError(e.message || t('ecs.loadFailed'))
+          return null
+        },
+      ),
+    ])
+      .then(([ecsNext, ossNext]) => {
+        setMon(ecsNext)
+        setOss(ossNext)
+        setError('')
+      })
+      .catch((e: Error) => setError(e.message || t('ecs.loadFailed')))
+      .finally(() => setLoading(false))
+  }
 
   return (
     <div
       className="ecs-monitor-bar"
       style={{ backgroundColor: terminalBackground(opacity) }}
-      title={mon?.hint || undefined}
+      title={hint || undefined}
     >
       <select
         className="ecs-monitor-range"
@@ -156,26 +199,15 @@ export function ECSMonitorBar({ hostId, active, opacity }: Props) {
             key={item.metric}
             item={item}
             label={t(METRIC_LABEL[item.metric] || item.metric)}
-            peakLabel={t('ecs.peak')}
             windowHours={peakWindow}
           />
         ))
       )}
-      {mon?.hint && <span className="ecs-monitor-hint">{mon.hint}</span>}
+      {hint ? <span className="ecs-monitor-hint">{hint}</span> : null}
       <button
         type="button"
         className="wn-btn wn-btn-tool ecs-monitor-refresh"
-        {...pressProps(() => {
-          setLoading(true)
-          api
-            .getECSMonitor(hostId, windowHours)
-            .then((next) => {
-              setMon(next)
-              setError('')
-            })
-            .catch((e: Error) => setError(e.message || t('ecs.loadFailed')))
-            .finally(() => setLoading(false))
-        })}
+        {...pressProps(refresh)}
         disabled={loading}
       >
         <IconRefresh size={12} />
@@ -187,12 +219,10 @@ export function ECSMonitorBar({ hostId, active, opacity }: Props) {
 function MetricCell({
   item,
   label,
-  peakLabel,
   windowHours,
 }: {
   item: ECSMetricSeries
   label: string
-  peakLabel: string
   windowHours: number
 }) {
   const points = item.points ?? []
@@ -205,8 +235,8 @@ function MetricCell({
       <span className="ecs-monitor-label">{label}</span>
       <span className="ecs-monitor-value">{text}</span>
       {peak ? (
-        <span className="ecs-monitor-peak" title={peakAt ? `${peakLabel} ${peakText} · ${peakAt}` : undefined}>
-          {peakLabel} {peakText}
+        <span className="ecs-monitor-peak" title={peakAt || undefined}>
+          {peakText}
         </span>
       ) : null}
       <Sparkline points={points} />

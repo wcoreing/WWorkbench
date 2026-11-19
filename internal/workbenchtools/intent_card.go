@@ -16,7 +16,7 @@ const (
 	errNeedIntent      = "动手操作须填写 intent（人话：要干什么、影响谁）。确认弹窗与舞台回放会展示该声明。"
 )
 
-// IntentCard 意图声明卡（可审计共视；get_workbench_context.intentCards 回放）。
+// IntentCard 意图声明卡（可审计；get_workbench_context.intentCards 回放）。
 type IntentCard struct {
 	At       int64  `json:"at"`
 	Tool     string `json:"tool"`

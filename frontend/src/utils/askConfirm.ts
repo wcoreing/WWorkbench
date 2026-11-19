@@ -1,13 +1,21 @@
+import type { ProductId } from '../shell/products'
+
 /** Wails WebView 中 window.confirm 不可靠，统一走应用内 ConfirmDialog。 */
 
 export type ConfirmRequest = {
   title: string
-  /** 普通说明（工具名、主机、风险等） */
+  /** 普通说明（工具名、主机、风险等）；支持多行 */
   message?: string
   /** 命令 / SQL 等，弹窗内以代码块展示 */
   code?: string
+  /** 触及的产品线 */
+  product?: ProductId
   confirmLabel?: string
   danger?: boolean
+  /** 确认经济：硬风险不可免 */
+  hardRisk?: boolean
+  /** center=居中遮罩；corner=右下角面板（MCP 拍板） */
+  placement?: 'center' | 'corner'
 }
 
 type Listener = () => void
@@ -41,8 +49,11 @@ export function askConfirm(req: ConfirmRequest): Promise<boolean> {
     title: req.title,
     message: req.message,
     code: req.code?.trim() ? req.code : undefined,
+    product: req.product,
     confirmLabel: req.confirmLabel,
     danger: !!req.danger,
+    hardRisk: !!req.hardRisk,
+    placement: req.placement === 'corner' ? 'corner' : 'center',
   }
   notify()
   return new Promise((resolve) => {

@@ -313,6 +313,16 @@ type ECSMonitorDO struct {
 	Hint        string              `json:"hint"`
 }
 
+// OSSMonitorDO 某地域 OSS 公网流量云监控（按 Bucket 汇总）。
+type OSSMonitorDO struct {
+	Region      string              `json:"region"`
+	Buckets     []string            `json:"buckets"`
+	FetchedAt   int64               `json:"fetchedAt"`
+	WindowHours int                 `json:"windowHours"`
+	Series      []ECSMetricSeriesDO `json:"series"`
+	Hint        string              `json:"hint"`
+}
+
 const (
 	ShellHostKindSSH    = "ssh"
 	ShellHostKindDocker = "docker"

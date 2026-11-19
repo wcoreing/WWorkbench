@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.17c"
+const AgentRulesVersion = "2026.11.17e"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -19,7 +19,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 
 ## 0. 前馈优先（不再事后拒）
 - MCP initialize.instructions 与本文件已说明约束；**不会**因未调用 get_agent_rules 而拒绝工具。
-- get_agent_rules 可选：按 domain 复核分片（terminal/database/browser/desktop/notebook/backup/plugin/all）。
+- get_agent_rules 可选：按 domain 复核分片（terminal/cloud/database/browser/desktop/notebook/backup/plugin/all）。
 - 内置侧栏 Agent 开跑仍会 Mark 已读，供遥测。
 
 ## 0b. 意图声明卡（intent）
@@ -37,6 +37,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
   - **项目方法**（智能配置、跨机同步、部署清单等）→ 项目/{项目名}/SKILL.md；update_skill / get_skill 必须传完整目录路径（如 name=项目/百度标注），**禁止**落到 工作流/。
   - **主机部署/巡检** → 记忆区/{主机}/项目/{名}/SKILL.md（传完整路径）。
   - **浏览器任务探索** → 仅此时默认 工作流/{任务名}/（与 log.md 同目录）。
+  - **运维方法**（安全组、备份、巡检）→ 运维/{主题}/SKILL.md。
   - 短名新建默认仍映射任务区；项目/运维收口**禁止用短名新建**，以免误进 工作流/。
 - **插件解耦**：浏览器扩展（wwb）、Kimi WebBridge（kimi）、agent-browser 只是执行器；任务场景**禁止直连** 127.0.0.1:10086 / 18765，也**禁止**自己在终端跑 agent-browser 命令，一律经 browser_*（executor=wwb|kimi|agent-browser|auto），由工作台记 op。
 - **自学习两阶段（必须遵守）**：
@@ -49,15 +50,28 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **目录版本（笔记本基础能力）**：任意文件夹可 enable_dir_version；仓在目录内 .git。技能目录默认 ignore log.md。list_dir_versions / pin_dir_version；Skill 兼容 list/pin/restore_skill_version。update_skill：有变更时写前+写后各 pin（可 restore 回更新前）。
 - 关系：分配目标 → 探索记账本（思考+操作）→ 完成后 update_skill(归属目录) → 下次 get_skill 更强。
 
+## 0d. 教人信封（全域，不只云）
+- 工具终态可带 **teach**（summary / nextSteps）与 **suggestedSkill**（name / lessons / askHuman / offerPrompt）。浏览器宏、备份、桌面收口、云安全组等里程碑会自动建议；失败会按域补 teach。
+- **必须转述 teach 给人**；禁止只说「失败了」或吞掉 nextSteps。
+- **suggestedSkill.askHuman=true（默认）**：先 offer_choices 问人，同意后再 update_skill；禁止静默落盘、禁止用 distill_skill 代替人审。
+- 本轮已挂载 Skill 时：动手成功后 teach 会提醒收口 update_skill，不要另开无关目录。
+- 产品目标是引导人成长：讲清「为何失败、人下一步做什么、要不要沉淀」，而不是替人点完就走。
+
 ## 1. 产品定位（勿做成 Cursor 插件叙事）
 - WWorkbench 是舞台：人看得见终端、确认弹窗、状态栏；你是外置协作者，不是取代人完成任务。
-- 危险操作在工作台弹窗拍板（与看过程同一视线）。禁止解析或伪造 ww_confirm 文本；等工具阻塞返回即可。
+- 危险操作只在确认弹窗拍板（产品标签 + 账本 + 命令）；禁止解析或伪造 ww_confirm 文本；等工具阻塞返回即可。
 - 引导人成长：关键步骤说清意图与影响，让人点头，而不是偷偷改生产。
 
 ## 2. 调用约定
 - 参数 = schema 顶层字段（勿再包 {"arguments":…}）。
 - 工具受「AI 能力权限」开关约束；关闭的能力会拒绝调用。
 - Cursor 请配置端点 /mcp/workbench（非 /mcp）。
+
+## 2b. 云运维（ECS / 安全组）——0d 在云上的特化
+- 工具：get_ecs_monitor（读监控）/ sync_ssh_security_group（写安全组，需确认）/ configure_ssh_sg_sync（开关连接前自动同步，需确认）。主机须在 UI 绑好云账号+实例（list_ssh_hosts 看 cloudAccountId / cloudInstanceId / sgSync / cloudOps）。
+- 连不上且怀疑家宽 IP 变了：先 sync_ssh_security_group；成功后再问是否 configure_ssh_sg_sync(enabled=true)。目标地址建议用 EIP（稳地址），与动态源 IP（sgSync）分工。
+- 权限话术：只读够监控；改安全组需要 AuthorizeSecurityGroup / RevokeSecurityGroup。规则只动 Description=wwb-dynamic-ip。
+- 沉淀路径默认 运维/{主机}/家宽IP放行；仍走 0d 人审。
 
 ## 3. 终端与舞台
 - 凡参数能解析到 SSH（hostId / sshHostId / hostOrName / 远端 Docker / SSH 日志源 / SSH 隧道库）的操作，都会先打开并聚焦对应终端 + 状态栏。
@@ -168,7 +182,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **两套路**：① 语义（默认）：desktop_apps → desktop_snapshot / desktop_find → desktop_act(click/type/press…)；不抢焦点。② 物理 headed：无障碍树空（微信等自绘）时用 mouse_click/mouse_move/mouse_wheel（屏幕绝对坐标 x,y）、hover、drag、double_click；press 请加 headed=true（物理按键，先 mouse_click 点进输入区再按）。发图：clipboard_set(imagePath=…) → mouse_click 输入区 → press keys=cmd+v headed=true → press keys=return headed=true。
 - **截图视觉**：desktop_screenshot / browser_screenshot 成功后，侧栏会把图压缩附图进下一轮模型（多模态）；据此估逻辑点坐标再 mouse_click。须使用支持视觉的模型；失败时接口会提示换模型。path 仍返回，可本机打开。隐私：只截任务所需。
 - 无 AX 窗口上 focus_window / press --app 会失败；headed 的 press 改为系统级投递，**务必先点中目标窗口**。坐标与 screencapture -R 同为逻辑点。
-- **微信搜人（无 AX）**：勿依赖 OCR。先 ⌘F+粘贴（或 skill `open-to`/`search-prep`），再**只截微信窗**；有网格刻度时读相对坐标 `(rx,ry)`（0..w,0..h）。多模态先标行类型（focus_search/chat_history/web/section 跳过；只点 contact/group），再 `mouse_click(origin.x+rx, origin.y+ry)` headed。详见技能「微信文件传输助手」。
+- **微信搜人（无 AX）**：勿依赖 OCR。先 ⌘F+粘贴（或 skill open-to / search-prep），再**只截微信窗**；有网格刻度时读相对坐标 (rx,ry)（0..w,0..h）。多模态先标行类型（focus_search/chat_history/web/section 跳过；只点 contact/group），再 mouse_click(origin.x+rx, origin.y+ry) headed。详见技能「微信文件传输助手」。
 - **桌面 Skill**：get_skill 后走 desktop_*（不是 browser_*）。发送类先 offer_choices 确认会话与正文；「发给我」默认文件传输助手。步骤多为 Agent 提纲，勿依赖 run_skill 机械重放。
 - **脚本备路**：Skill 目录 scripts/*.py 用 shell_run（本机可见终端 + intent），再 get_shell_output；禁止 shell_probe 跑 python 脚本。微信禁止 focus_window；多窗先 desktop_apps 取最大窗 windowId。
 
@@ -191,7 +205,7 @@ func AgentRulesAcked(ctx context.Context) bool {
 
 // AgentRulesDomains 可分片领域。
 func AgentRulesDomains() []string {
-	return []string{"all", "terminal", "database", "browser", "desktop", "notebook", "backup", "plugin"}
+	return []string{"all", "terminal", "cloud", "database", "browser", "desktop", "notebook", "backup", "plugin"}
 }
 
 // AgentRulesForDomain 按领域返回约束分片（all=全文）。
@@ -201,12 +215,13 @@ func AgentRulesForDomain(domain string) string {
 		return AgentRulesText
 	}
 	sections := map[string][]string{
-		"terminal": {"## 3. 终端与舞台", "## 9. 软写护照"},
+		"terminal": {"## 3. 终端与舞台", "## 9. 软写护照", "## 0d. 教人信封"},
+		"cloud":    {"## 2b. 云运维（ECS / 安全组）", "## 0d. 教人信封"},
 		"database": {"## 5. 数据库", "## 4. 数据文件三层防护", "## 4b. 统一备份策略"},
-		"browser":  {"## 10. 浏览器舞台与任务账本", "## 0c. 词典与自学习闭环"},
-		"desktop":  {"## 11. 桌面应用", "## 0c. 词典与自学习闭环"},
-		"notebook": {"## 7. 笔记本 = 底座", "## 0c. 词典与自学习闭环"},
-		"backup":   {"## 4. 数据文件三层防护", "## 4b. 统一备份策略", "## 4c. 服务发现"},
+		"browser":  {"## 10. 浏览器舞台与任务账本", "## 0c. 词典与自学习闭环", "## 0d. 教人信封"},
+		"desktop":  {"## 11. 桌面应用", "## 0c. 词典与自学习闭环", "## 0d. 教人信封"},
+		"notebook": {"## 7. 笔记本 = 底座", "## 0c. 词典与自学习闭环", "## 0d. 教人信封"},
+		"backup":   {"## 4. 数据文件三层防护", "## 4b. 统一备份策略", "## 4c. 服务发现", "## 0d. 教人信封"},
 		"plugin":   {"## 8. 插件包"},
 	}
 	heads, ok := sections[domain]
@@ -273,6 +288,8 @@ func requiresAgentRulesAck(name string) bool {
 		"stop_container",
 		"remove_container",
 		"save_ssh_host",
+		workbench.CapSyncSSHSecurityGroup,
+		workbench.CapConfigureSSHSGSync,
 		"save_ssh_forward",
 		"save_connection",
 		"save_log_source",

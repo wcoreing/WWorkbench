@@ -93,6 +93,39 @@ func windowAndPeriod(hours int) (time.Duration, string) {
 	}
 }
 
+// QueryECSMetric 拉取单条 ECS 指标（用于运维分析；UI 仍走 QueryECS）。
+func QueryECSMetric(ctx context.Context, accessKeyID, accessKeySecret, region, instanceID, metric string, windowHours int) (model.ECSMetricSeriesDO, error) {
+	accessKeyID = strings.TrimSpace(accessKeyID)
+	accessKeySecret = strings.TrimSpace(accessKeySecret)
+	region = strings.TrimSpace(region)
+	instanceID = strings.TrimSpace(instanceID)
+	metric = strings.TrimSpace(metric)
+	series := model.ECSMetricSeriesDO{Metric: metric, Unit: "bit/s"}
+	if accessKeyID == "" || accessKeySecret == "" || region == "" || instanceID == "" || metric == "" {
+		series.Error = "缺少参数"
+		return series, errno.New(errno.CodeInvalidArg, "缺少云账号、地域、实例或指标名", "")
+	}
+	windowHours = NormalizeWindowHours(windowHours)
+	window, period := windowAndPeriod(windowHours)
+	end := time.Now()
+	start := end.Add(-window)
+	dims, err := json.Marshal([]map[string]string{{"instanceId": instanceID}})
+	if err != nil {
+		series.Error = err.Error()
+		return series, err
+	}
+	points, qerr := describeMetric(ctx, accessKeyID, accessKeySecret, region, "acs_ecs_dashboard", metric, string(dims), start, end, period)
+	if qerr != nil {
+		series.Error = metricErr(qerr)
+		return series, qerr
+	}
+	series.Points = aggregate(points, "sum")
+	if n := len(series.Points); n > 0 {
+		series.Latest = series.Points[n-1].Value
+	}
+	return series, nil
+}
+
 // QueryECS 拉取一台 ECS 指定时间段的云监控。单条指标失败不影响其余指标。
 func QueryECS(ctx context.Context, accessKeyID, accessKeySecret, region, instanceID string, windowHours int) (model.ECSMonitorDO, error) {
 	accessKeyID = strings.TrimSpace(accessKeyID)
@@ -147,7 +180,7 @@ func QueryECS(ctx context.Context, accessKeyID, accessKeySecret, region, instanc
 	for _, name := range names {
 		go func(name string) {
 			series := model.ECSMetricSeriesDO{Metric: name, Unit: unitOf(name)}
-			points, qerr := describeMetric(ctx, accessKeyID, accessKeySecret, region, name, string(dims), start, end, period)
+			points, qerr := describeMetric(ctx, accessKeyID, accessKeySecret, region, "acs_ecs_dashboard", name, string(dims), start, end, period)
 			if qerr != nil {
 				series.Error = metricErr(qerr)
 			} else {
@@ -192,36 +225,21 @@ func QueryECS(ctx context.Context, accessKeyID, accessKeySecret, region, instanc
 	return out, nil
 }
 
-// pickNetPair 选最近一小时里有流量的那一对。都是 0 时仍用 VPC 公网。
+// pickNetPair 按 netPairs 优先级选：VPC 公网 → 经典公网 → 内网。
+// 只要该对有数据点就用（哪怕当前是 0），避免「内网尖峰更大」时把外网挤掉。
+// 公网都无点时才退内网；全都没有则仍回 VPC 公网占位。
 func pickNetPair(got map[string]model.ECSMetricSeriesDO) (model.ECSMetricSeriesDO, model.ECSMetricSeriesDO) {
-	bestIn, bestOut := got[netPairs[0][0]], got[netPairs[0][1]]
-	bestScore, bestN := pairRank(bestIn, bestOut)
-	for _, pair := range netPairs[1:] {
+	for _, pair := range netPairs {
 		in, out := got[pair[0]], got[pair[1]]
-		score, n := pairRank(in, out)
-		if score > bestScore || (score == bestScore && n > bestN) {
-			bestIn, bestOut = in, out
-			bestScore, bestN = score, n
+		if seriesUsable(in) || seriesUsable(out) {
+			return in, out
 		}
 	}
-	return bestIn, bestOut
+	return got[netPairs[0][0]], got[netPairs[0][1]]
 }
 
-func pairRank(in, out model.ECSMetricSeriesDO) (float64, int) {
-	return seriesPeak(in) + seriesPeak(out), len(in.Points) + len(out.Points)
-}
-
-func seriesPeak(s model.ECSMetricSeriesDO) float64 {
-	peak := s.Latest
-	for _, p := range s.Points {
-		if p.Value > peak {
-			peak = p.Value
-		}
-	}
-	if peak < 0 {
-		return 0
-	}
-	return peak
+func seriesUsable(s model.ECSMetricSeriesDO) bool {
+	return s.Error == "" && len(s.Points) > 0
 }
 
 func metricErr(err error) string {
@@ -247,13 +265,16 @@ func allFailed(series []model.ECSMetricSeriesDO) (bool, string) {
 	return true, msg
 }
 
-func describeMetric(ctx context.Context, ak, secret, region, metric, dimensions string, start, end time.Time, period string) ([]rawPoint, error) {
+func describeMetric(ctx context.Context, ak, secret, region, namespace, metric, dimensions string, start, end time.Time, period string) ([]rawPoint, error) {
 	loc := time.UTC
 	if strings.HasPrefix(region, "cn-") {
 		loc = time.FixedZone("CST", 8*3600)
 	}
 	if strings.TrimSpace(period) == "" {
 		period = "60"
+	}
+	if strings.TrimSpace(namespace) == "" {
+		namespace = "acs_ecs_dashboard"
 	}
 	params := map[string]string{
 		"Format":           "JSON",
@@ -264,7 +285,7 @@ func describeMetric(ctx context.Context, ak, secret, region, metric, dimensions 
 		"SignatureNonce":   uuid.NewString(),
 		"Timestamp":        time.Now().UTC().Format("2006-01-02T15:04:05Z"),
 		"Action":           "DescribeMetricList",
-		"Namespace":        "acs_ecs_dashboard",
+		"Namespace":        namespace,
 		"MetricName":       metric,
 		"Dimensions":       dimensions,
 		"StartTime":        start.In(loc).Format("2006-01-02 15:04:05"),

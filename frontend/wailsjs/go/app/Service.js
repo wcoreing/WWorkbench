@@ -434,6 +434,10 @@ export function GetNotebookUI() {
   return window['go']['app']['Service']['GetNotebookUI']();
 }
 
+export function GetOSSMonitor(arg1, arg2) {
+  return window['go']['app']['Service']['GetOSSMonitor'](arg1, arg2);
+}
+
 export function GetObjectTree(arg1) {
   return window['go']['app']['Service']['GetObjectTree'](arg1);
 }

@@ -221,6 +221,8 @@ export function GetNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_m
 
 export function GetNotebookUI():Promise<app.ApiResult_WWorkbench_internal_model_NotebookUIDO_>;
 
+export function GetOSSMonitor(arg1:string,arg2:number):Promise<app.ApiResult_WWorkbench_internal_model_OSSMonitorDO_>;
+
 export function GetObjectTree(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_ObjectTreeNodeDO_>;
 
 export function GetPluginPack(arg1:string):Promise<app.ApiResult_WWorkbench_internal_pluginpack_PackInfo_>;

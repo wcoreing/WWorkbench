@@ -18,8 +18,11 @@ export function ConfirmHost() {
       title={req?.title ?? ''}
       message={req?.message}
       code={req?.code}
+      product={req?.product}
       confirmLabel={req?.confirmLabel ?? t('common.confirm')}
       danger={req?.danger}
+      hardRisk={req?.hardRisk}
+      placement={req?.placement}
       onConfirm={() => resolveConfirm(true)}
       onCancel={() => resolveConfirm(false)}
     />

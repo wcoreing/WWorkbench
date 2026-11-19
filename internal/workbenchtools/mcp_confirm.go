@@ -106,6 +106,31 @@ func (g *MCPConfirmGate) Await(ctx context.Context, req MCPConfirmRequest) (appr
 	}
 }
 
+// EmitStage 向前端推送阶段短讯（mcp:stage → 状态栏）；拍板细节在 ConfirmDialog。
+func (g *MCPConfirmGate) EmitStage(kind, label, intent, impact, tool string) {
+	if g == nil || g.emit == nil {
+		return
+	}
+	payload := map[string]interface{}{
+		"kind":  kind,
+		"label": label,
+		"at":    time.Now().UnixMilli(),
+	}
+	if intent != "" {
+		payload["intent"] = intent
+	}
+	if impact != "" {
+		payload["impact"] = impact
+	}
+	if tool != "" {
+		payload["tool"] = tool
+	}
+	if product := ProductForTool(tool); product != "" {
+		payload["product"] = product
+	}
+	g.emit("mcp:stage", payload)
+}
+
 // Resolve 用户在工作台拍板。
 func (g *MCPConfirmGate) Resolve(pendingID string, approved bool) bool {
 	if g == nil || pendingID == "" {

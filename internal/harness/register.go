@@ -48,6 +48,12 @@ func RegisterWorkbenchTools(gw *toolgateway.Gateway, reg *workbenchtools.Registr
 				return mcp.NewToolResultText(string(wire)), nil
 			}
 			if !res.OK {
+				// 失败也尽量带回 Data（如 teach.nextSteps），避免 Agent 只看到一句 error。
+				if len(res.Data) > 0 {
+					out := mcp.NewToolResultText(string(res.Data))
+					out.IsError = true
+					return out, nil
+				}
 				return mcp.NewToolResultError(res.Error), nil
 			}
 			if len(res.Data) > 0 {

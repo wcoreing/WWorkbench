@@ -242,6 +242,16 @@ export interface ECSInstance {
   privateIp: string
 }
 
+/** OSSMonitor 某地域 OSS 带宽云监控（内网+公网汇总）。 */
+export interface OSSMonitor {
+  region: string
+  buckets?: string[]
+  fetchedAt?: number
+  windowHours?: number
+  series?: ECSMetricSeries[]
+  hint?: string
+}
+
 /** ECSMonitor 一台 ECS 指定时间段的云监控。 */
 export interface ECSMonitor {
   instanceId: string

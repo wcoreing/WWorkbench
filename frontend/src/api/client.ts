@@ -11,6 +11,7 @@ import type {
   SecurityGroupSyncResult,
   ECSInstance,
   ECSMonitor,
+  OSSMonitor,
   ShellHost,
   SftpBookmark,
   TransferConflict,
@@ -60,6 +61,7 @@ import {
   ListCloudAccounts,
   SaveCloudAccount,
   GetECSMonitor,
+  GetOSSMonitor,
   SyncSSHHostSecurityGroup,
   ListECSInstances,
   DeleteSSHHost,
@@ -637,6 +639,8 @@ export const api = {
   saveCloudAccount: (a: CloudAccount) => unwrap(() => SaveCloudAccount(toCloudAccountDO(a))),
   getECSMonitor: (hostId: string, windowHours = 1) =>
     unwrap(() => GetECSMonitor(hostId, windowHours)) as Promise<ECSMonitor>,
+  getOSSMonitor: (hostId: string, windowHours = 1) =>
+    unwrap(() => GetOSSMonitor(hostId, windowHours)) as Promise<OSSMonitor>,
   syncSSHHostSecurityGroup: (hostId: string) =>
     unwrap(() => SyncSSHHostSecurityGroup(hostId)) as Promise<SecurityGroupSyncResult>,
   listECSInstances: async (accountId: string, region: string) =>

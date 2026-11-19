@@ -20,6 +20,10 @@ func ExecuteConfirmed(ctx context.Context, d *Deps, toolName, argsJSON string) T
 		return ExecuteSQLConfirmed(ctx, d, argsJSON)
 	case workbench.CapRunBackup:
 		return RunBackupConfirmed(ctx, d, argsJSON)
+	case workbench.CapSyncSSHSecurityGroup:
+		return SyncSSHSecurityGroupConfirmed(ctx, d, argsJSON)
+	case workbench.CapConfigureSSHSGSync:
+		return ConfigureSSHSGSyncConfirmed(ctx, d, argsJSON)
 	case workbench.CapEnsureHostBackupPolicies:
 		return EnsureHostBackupPoliciesConfirmed(ctx, d, argsJSON)
 	case "execute_http":
@@ -124,7 +128,7 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 
 	if stepConfirmTool(toolName) && !browserAskConfirmEnabled(d) {
 		MarkLatestIntentApproved(ctx, toolName, intent, true)
-		out = ExecuteConfirmed(ctx, d, toolName, string(args))
+		out = AttachTeachEnvelope(ctx, toolName, args, ExecuteConfirmed(ctx, d, toolName, string(args)))
 		return out
 	}
 
@@ -132,6 +136,8 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 		out = Fail("工作台确认门未就绪，请在 App 内打开 WWorkbench 后重试")
 		return out
 	}
+	impact := confirmImpactHint(toolName, args)
+	d.MCPConfirm.EmitStage("confirm", firstNonEmpty(res.ConfirmSummary, toolName), intent, impact, toolName)
 	approved, err := d.MCPConfirm.Await(ctx, MCPConfirmRequest{
 		PendingID: res.PendingID,
 		ToolName:  toolName,
@@ -140,14 +146,79 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 		Product:   ProductForTool(toolName),
 	})
 	if err != nil {
-		out = Fail(err.Error())
+		d.MCPConfirm.EmitStage("shell", "确认超时或取消", intent, impact, toolName)
+		out = AttachTeachEnvelope(ctx, toolName, args, Fail(err.Error()))
 		return out
 	}
 	MarkLatestIntentApproved(ctx, toolName, intent, approved)
 	if !approved {
-		out = Fail("用户已在工作台拒绝：" + res.ConfirmSummary)
+		d.MCPConfirm.EmitStage("rejected", "已拒绝 · "+firstNonEmpty(res.ConfirmSummary, toolName), intent, impact, toolName)
+		out = AttachTeachEnvelope(ctx, toolName, args, Fail("用户已在工作台拒绝："+res.ConfirmSummary))
 		return out
 	}
-	out = ExecuteConfirmed(ctx, d, toolName, string(args))
+	d.MCPConfirm.EmitStage("done", "已确认 · "+firstNonEmpty(res.ConfirmSummary, toolName), intent, impact, toolName)
+	out = AttachTeachEnvelope(ctx, toolName, args, ExecuteConfirmed(ctx, d, toolName, string(args)))
 	return out
 }
+
+// confirmImpactHint 从工具名与参数抽出确认弹窗用的影响面短句。
+func confirmImpactHint(toolName string, args json.RawMessage) string {
+	var m map[string]interface{}
+	_ = json.Unmarshal(args, &m)
+	pick := func(keys ...string) string {
+		for _, k := range keys {
+			if v, ok := m[k]; ok {
+				s := strings.TrimSpace(fmtString(v))
+				if s != "" {
+					return truncateRunes(s, 56)
+				}
+			}
+		}
+		return ""
+	}
+	switch {
+	case strings.Contains(toolName, "security_group"), toolName == workbench.CapSyncSSHSecurityGroup:
+		if h := pick("hostOrName", "sshHostId", "hostId"); h != "" {
+			return "安全组 · " + h
+		}
+		return "安全组入站规则"
+	case toolName == "execute_sql":
+		if db := pick("database", "connectionId"); db != "" {
+			return "数据库 · " + db
+		}
+		return "数据库写操作"
+	case toolName == "shell_run", toolName == "open_terminal":
+		if v, ok := m["localShell"]; ok {
+			switch x := v.(type) {
+			case bool:
+				if x {
+					return "本机终端"
+				}
+			case string:
+				if strings.EqualFold(strings.TrimSpace(x), "true") {
+					return "本机终端"
+				}
+			}
+		}
+		if h := pick("hostOrName", "name", "hostId"); h != "" {
+			return "SSH · " + h
+		}
+		return "远程终端"
+	case strings.Contains(toolName, "container"):
+		if c := pick("containerId", "name"); c != "" {
+			return "容器 · " + c
+		}
+		return "容器生命周期"
+	case toolName == workbench.CapRunBackup, strings.Contains(toolName, "backup"):
+		if p := pick("path", "policyId"); p != "" {
+			return "备份 · " + p
+		}
+		return "备份写操作"
+	default:
+		if p := pick("path", "url", "packId"); p != "" {
+			return p
+		}
+		return toolName
+	}
+}
+

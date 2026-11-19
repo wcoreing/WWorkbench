@@ -249,10 +249,26 @@ func toolListSSHHosts(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 	if err != nil {
 		return Fail(err.Error())
 	}
+	type hostRow struct {
+		model.SSHHostDO
+		CloudOps map[string]interface{} `json:"cloudOps,omitempty"`
+	}
+	out := make([]hostRow, 0, len(list))
 	for i := range list {
 		terminal.StripSecrets(&list[i])
+		row := hostRow{SSHHostDO: list[i]}
+		bound := strings.TrimSpace(list[i].CloudInstanceID) != "" && strings.TrimSpace(list[i].CloudAccountID) != ""
+		row.CloudOps = map[string]interface{}{
+			"ecsBound":     bound,
+			"sgSync":       list[i].SgSync,
+			"sgLastCidr":   list[i].SgLastCIDR,
+			"canMonitor":   bound,
+			"canSyncSG":    bound,
+			"hint":         "绑了 ECS 可用 get_ecs_monitor / sync_ssh_security_group；连不上先同步家宽 IP",
+		}
+		out = append(out, row)
 	}
-	return OKData(list)
+	return OKData(out)
 }
 
 // toolListConnections 列出连接。

@@ -127,6 +127,42 @@ func (s *Service) GetECSMonitor(hostID string, windowHours int) ApiResult[model.
 	return OkResult(mon)
 }
 
+// GetOSSMonitor 读取 SSH 主机同账号、同地域的 OSS 带宽云监控（内网+公网汇总）。
+func (s *Service) GetOSSMonitor(hostID string, windowHours int) ApiResult[model.OSSMonitorDO] {
+	hostID = strings.TrimSpace(hostID)
+	if hostID == "" {
+		return ErrResult[model.OSSMonitorDO](errno.New(errno.CodeInvalidArg, "缺少 SSH 主机", ""))
+	}
+	host, err := s.sshHosts.Get(hostID)
+	if err != nil {
+		return ErrResult[model.OSSMonitorDO](err)
+	}
+	if strings.TrimSpace(host.CloudAccountID) == "" || strings.TrimSpace(host.CloudRegion) == "" {
+		return ErrResult[model.OSSMonitorDO](errno.New(errno.CodeInvalidArg, "这台主机还没绑定阿里云账号和地域", ""))
+	}
+	account, err := s.store.GetCloudAccount(host.CloudAccountID)
+	if err != nil {
+		return ErrResult[model.OSSMonitorDO](err)
+	}
+	parent := s.ctx
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := session.WithTimeout(parent, 25)
+	defer cancel()
+	mon, err := aliyuncms.QueryOSS(ctx, account.AccessKeyID, account.AccessKeySecret, host.CloudRegion, windowHours)
+	if err != nil {
+		return ErrResult[model.OSSMonitorDO](err)
+	}
+	if mon.Series == nil {
+		mon.Series = []model.ECSMetricSeriesDO{}
+	}
+	if mon.FetchedAt == 0 {
+		mon.FetchedAt = time.Now().Unix()
+	}
+	return OkResult(mon)
+}
+
 // SyncSSHHostSecurityGroup 把本机公网 IP 写入主机绑定 ECS 的安全组（SSH 端口）。
 // 需要 AccessKey 具备 AuthorizeSecurityGroup / RevokeSecurityGroup。
 func (s *Service) SyncSSHHostSecurityGroup(hostID string) ApiResult[model.SecurityGroupSyncResultDO] {

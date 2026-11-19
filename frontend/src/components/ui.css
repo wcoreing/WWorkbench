@@ -1008,19 +1008,113 @@ body > .wn-modal-backdrop {
   max-width: min(680px, calc(100vw - 32px));
 }
 
+/* 确认弹窗标题行：产品标签 + 意图 */
+.wn-confirm-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(8 * var(--ui-scale) * 1px);
+  min-width: 0;
+}
+
+.wn-confirm-title-row .wn-modal-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.wn-confirm-product {
+  flex-shrink: 0;
+  margin-top: calc(2 * var(--ui-scale) * 1px);
+}
+
+/* 确认弹窗：只保留外框一条边；header/footer/代码块不再叠描边 */
+.wn-modal.is-confirm .wn-modal-header {
+  border-bottom: none;
+  padding-bottom: calc(6 * var(--ui-scale) * 1px);
+}
+
+.wn-modal.is-confirm .wn-modal-footer {
+  border-top: none;
+  background: inherit;
+  padding-top: calc(6 * var(--ui-scale) * 1px);
+}
+
+.wn-modal.is-confirm .wn-confirm-code {
+  border: none;
+}
+
+/* MCP 共视确认：右下角，与 toast 共用 --wwb-float-* */
+.wn-confirm-corner-host {
+  position: fixed;
+  right: var(--wwb-float-right, 16px);
+  bottom: var(--wwb-float-bottom, 44px);
+  z-index: 12100;
+  width: min(400px, calc(100vw - 32px));
+  max-height: min(70vh, 560px);
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+}
+
+.wn-confirm-corner-host .wn-modal.is-corner-confirm {
+  pointer-events: auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  max-height: min(70vh, 560px);
+  display: flex;
+  flex-direction: column;
+  border: var(--wwb-float-border, 1px solid var(--color-border, #e5e7eb));
+  border-radius: var(--wwb-float-radius, 10px);
+  box-shadow: var(--wwb-float-shadow, 0 8px 28px rgba(15, 23, 42, 0.12));
+  background: var(--wwb-float-bg, var(--color-surface-raised, #fff));
+  animation: wwb-notify-in 180ms ease-out;
+}
+
+.wn-confirm-corner-host .wn-modal.is-corner-confirm .wn-modal-header {
+  padding: calc(12 * var(--ui-scale) * 1px) calc(14 * var(--ui-scale) * 1px) calc(4 * var(--ui-scale) * 1px);
+}
+
+.wn-confirm-corner-host .wn-modal.is-corner-confirm .wn-modal-title {
+  font-size: var(--font-size-ui);
+  line-height: 1.35;
+  font-weight: 650;
+}
+
+.wn-confirm-corner-host .wn-modal.is-corner-confirm .wn-modal-body {
+  padding: calc(6 * var(--ui-scale) * 1px) calc(14 * var(--ui-scale) * 1px);
+}
+
+.wn-confirm-corner-host .wn-modal.is-corner-confirm .wn-modal-footer {
+  padding: calc(6 * var(--ui-scale) * 1px) calc(14 * var(--ui-scale) * 1px) calc(12 * var(--ui-scale) * 1px);
+}
+
+.wn-confirm-corner-host .wn-modal.is-corner-confirm .wn-confirm-code {
+  max-height: min(200px, 28vh);
+}
+
+.wn-confirm-corner-host .wn-modal.is-corner-confirm .wn-modal-body,
+.wn-confirm-corner-host .wn-modal.is-corner-confirm .wn-confirm-code-wrap {
+  min-height: 0;
+  overflow: auto;
+}
+
 .wn-confirm-code-wrap {
-  padding-top: 0;
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+.wn-confirm-corner-host .wn-confirm-code-wrap {
+  padding: 0;
 }
 
 .wn-confirm-code {
   margin: 0;
   padding: calc(10 * var(--ui-scale) * 1px) calc(12 * var(--ui-scale) * 1px);
   font-family: var(--font-mono);
-  font-size: var(--font-size-ui);
+  font-size: var(--font-size-ui-sm);
   line-height: 1.5;
   color: var(--color-text);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border-subtle);
+  background: color-mix(in srgb, var(--color-text) 4%, var(--color-surface));
+  border: none;
   border-radius: var(--radius-sm);
   max-height: min(360px, 50vh);
   overflow: auto;

@@ -109,6 +109,21 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "get_ecs_monitor", Label: "读取 ECS 云监控", Risk: RiskRead,
+			Description:    "SSH 主机已绑 ECS 时拉 CPU/内存/磁盘/带宽；返回 teach 引导解释",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "sync_ssh_security_group", Label: "同步本机 IP 到安全组", Risk: RiskWrite,
+			Description:    "探测家宽公网 IP 并写入 ECS 安全组 wwb-dynamic-ip；需确认；成功给 Skill 沉淀建议",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "configure_ssh_sg_sync", Label: "开关连接前同步安全组", Risk: RiskWrite,
+			Description:    "开启/关闭 SSH 主机 sgSync；需确认；引导人理解自动放行",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "list_ssh_forward_presets", Label: "列出端口转发预设", Risk: RiskRead,
 			Description:    "已保存的 SSH 本地端口转发",
 			DefaultEnabled: true,

@@ -7,8 +7,6 @@ import { askConfirm } from '../../utils/askConfirm'
 import { api } from '../../api/client'
 import { notify } from '../../notify'
 
-let stageClearTimer: ReturnType<typeof setTimeout> | null = null
-
 function bringWorkbenchForward() {
   try {
     WindowUnminimise()
@@ -18,21 +16,33 @@ function bringWorkbenchForward() {
   }
 }
 
-function scheduleClearStage(at: number, ms = 90_000) {
-  if (stageClearTimer) clearTimeout(stageClearTimer)
-  stageClearTimer = setTimeout(() => {
-    const cur = useAppStore.getState().mcpStage
-    if (cur && cur.at === at) {
-      useAppStore.getState().setMcpStage(null)
-    }
-  }, ms)
+function setStatus(label: string) {
+  useAppStore.getState().setStatusMessage(label)
 }
 
-function setShellStage(label: string, detail?: string) {
-  const at = Date.now()
-  useAppStore.getState().setMcpStage({ kind: 'shell', label, detail, at })
-  useAppStore.getState().setStatusMessage(label)
-  scheduleClearStage(at)
+/** hardRiskTool 确认经济：硬风险不可免确认。 */
+function hardRiskTool(toolName: string): boolean {
+  const n = toolName.toLowerCase()
+  return (
+    n.includes('security_group') ||
+    n === 'execute_sql' ||
+    n.includes('remove_container') ||
+    n.includes('rollback') ||
+    n.includes('restore_') ||
+    n === 'run_backup' ||
+    n.includes('ensure_host_backup')
+  )
+}
+
+function impactFromPreview(obj: Record<string, unknown>, toolName: string): string {
+  if (obj.kind === 'local' || obj.localShell) return '本机终端'
+  const host = [obj.name, obj.host].map((v) => (v != null ? String(v).trim() : '')).filter(Boolean)
+  if (host.length) return `主机 · ${host.join(' · ')}`
+  for (const key of ['database', 'path', 'url', 'containerId', 'packId', 'sshHostId'] as const) {
+    const v = obj[key]
+    if (v != null && String(v).trim()) return `${key} · ${String(v).trim()}`
+  }
+  return toolName || ''
 }
 
 /** dispatchAgentUiAction 执行 Agent 触发的 UI 联动（走 CommandBus）。 */
@@ -61,7 +71,7 @@ export function dispatchAgentUiAction(raw: Record<string, unknown>) {
             ? `MCP · ${name} · ${intent || preview}`
             : `MCP · ${name}`
           : 'MCP · SSH 终端')
-    setShellStage(label, intent || preview || undefined)
+    setStatus(label)
   }
 
   void dispatchWorkbenchCommand({
@@ -71,7 +81,7 @@ export function dispatchAgentUiAction(raw: Record<string, unknown>) {
   }).then((res) => {
     if (res.ok) {
       if (kind === Capability.ShellRun) {
-        /* 状态已由 setShellStage 写入 */
+        /* 状态已由 setStatus 写入 */
       } else if (kind === Capability.TerminalReconnect) {
         notify.info('AI：正在重连终端')
       } else if (kind === Capability.DatabaseOpen) {
@@ -89,7 +99,7 @@ export function dispatchAgentUiAction(raw: Record<string, unknown>) {
         notify.success(label || 'AI：已打开浏览器舞台')
       } else if (kind === Capability.DockerContextOpen) {
         const label = String(payload.stageLabel ?? '')
-        if (label) setShellStage(label)
+        if (label) setStatus(label)
         else notify.success('AI：已打开 Docker 上下文')
       }
     } else if (res.error) {
@@ -206,26 +216,31 @@ function formatMcpConfirmBody(
     const code = codeRaw ? formatConfirmCode(codeRaw) : desktopText.trim() ? desktopText : undefined
 
     const meta: string[] = []
+    const impact = impactFromPreview(obj, toolName)
+    // 标题已是意图，账本不再重复「意图 ·」行
+    if (impact) meta.push(`影响 · ${impact}`)
+    if (hardRiskTool(toolName)) {
+      meta.push('风险 · 硬风险（不可免确认）')
+    } else if (obj.risk != null && String(obj.risk).trim()) {
+      meta.push(`风险 · ${String(obj.risk).trim()}`)
+    }
     if (desktopApp) {
       const bundle = obj.bundleId != null ? String(obj.bundleId).trim() : ''
       meta.push(`应用 · ${desktopApp}${bundle && bundle !== desktopApp ? `（${bundle}）` : ''}`)
       if (obj.scope != null && String(obj.scope).trim()) meta.push(`范围 · ${String(obj.scope).trim()}`)
       if (obj.note != null && String(obj.note).trim()) meta.push(String(obj.note).trim())
     }
-    if (obj.intent != null && String(obj.intent).trim()) {
-      meta.push(`意图 · ${String(obj.intent).trim()}`)
-    }
     if (toolName) meta.push(`工具 · ${toolName}`)
     const hostLabel = [obj.name, obj.host, obj.user]
       .map((v) => (v != null ? String(v).trim() : ''))
       .filter(Boolean)
-    if (obj.kind === 'local' || obj.localShell) {
-      meta.push('目标 · 本机')
-    } else if (hostLabel.length) {
-      meta.push(`主机 · ${hostLabel.join(' · ')}`)
-    }
-    if (obj.risk != null && String(obj.risk).trim()) {
-      meta.push(`风险 · ${String(obj.risk).trim()}`)
+    // 影响行已含主机时不再重复「主机 ·」
+    if (!(impact && (impact.startsWith('主机') || impact.startsWith('SSH') || impact === '本机终端'))) {
+      if (obj.kind === 'local' || obj.localShell) {
+        meta.push('目标 · 本机')
+      } else if (hostLabel.length) {
+        meta.push(`主机 · ${hostLabel.join(' · ')}`)
+      }
     }
     if (obj.dataGuard) {
       meta.push('数据防护 · 已启用')
@@ -303,22 +318,18 @@ async function handleMcpConfirm(raw: Record<string, unknown>) {
   if (product) {
     useAppStore.getState().setActiveProduct(product)
   }
-  const at = Date.now()
-  useAppStore.getState().setMcpStage({
-    kind: 'confirm',
-    label: `待确认 · ${summary}`,
-    detail: toolName || undefined,
-    at,
-  })
-  notify.warning(`待确认 · ${summary}`)
-
+  setStatus(`待确认 · ${summary}`)
+  // 拍板唯一入口：右下角确认弹窗（产品/账本/代码块）
   const body = formatMcpConfirmBody(raw.preview, toolName)
   const ok = await askConfirm({
     title: summary,
     message: body.message,
     code: body.code,
+    product: product ?? undefined,
     confirmLabel: String(raw.confirmLabel ?? '').trim() || '执行',
     danger: true,
+    hardRisk: hardRiskTool(toolName),
+    placement: 'corner',
   })
   try {
     if (pendingId) {
@@ -327,32 +338,31 @@ async function handleMcpConfirm(raw: Record<string, unknown>) {
   } catch (err) {
     notify.error(err instanceof Error ? err.message : String(err))
   } finally {
-    const cur = useAppStore.getState().mcpStage
-    if (cur && cur.at === at) {
-      if (ok) {
-        const nextAt = Date.now()
-        useAppStore.getState().setMcpStage({
-          kind: 'shell',
-          label: `已确认 · ${summary}`,
-          at: nextAt,
-        })
-        scheduleClearStage(nextAt, 30_000)
-        notify.success(`已确认 · ${summary}`)
-      } else {
-        useAppStore.getState().setMcpStage(null)
-        notify.info('已拒绝外置 MCP 操作')
-      }
+    if (ok) {
+      setStatus(`已确认 · ${summary}`)
+      notify.success(`已确认 · ${summary}`)
+    } else {
+      setStatus(`已拒绝 · ${summary}`)
+      notify.info('已拒绝外置 MCP 操作')
     }
   }
 }
 
 /**
- * subscribeMcpConfirm 外置 MCP 危险操作 → 工作台弹窗拍板（与终端同一视线）。
+ * subscribeMcpConfirm 外置 MCP 危险操作 → 工作台弹窗拍板。
  * 多请求串行，避免 askConfirm 互相顶掉。
  */
 export function subscribeMcpConfirm() {
   return EventsOn('mcp:confirm', (raw: Record<string, unknown>) => {
     mcpConfirmQueue = mcpConfirmQueue.then(() => handleMcpConfirm(raw)).catch(() => {})
+  })
+}
+
+/** subscribeMcpStage 后端阶段推送 → 仅状态栏短讯（拍板细节在 ConfirmDialog）。 */
+export function subscribeMcpStage() {
+  return EventsOn('mcp:stage', (raw: Record<string, unknown>) => {
+    const label = String(raw.label ?? '').trim()
+    if (label) setStatus(label)
   })
 }
 

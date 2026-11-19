@@ -538,9 +538,9 @@ func (r *Runner) executeConfirmed(ctx context.Context, toolName, argsJSON string
 	}
 	res := workbenchtools.ExecuteConfirmed(ctx, r.tools.Deps(), toolName, argsJSON)
 	if res.Error != "" && strings.HasPrefix(res.Error, "未知待确认工具:") && r.harness != nil {
-		return r.harness.CallTool(ctx, toolName, json.RawMessage(argsJSON))
+		res = r.harness.CallTool(ctx, toolName, json.RawMessage(argsJSON))
 	}
-	return res
+	return workbenchtools.AttachTeachEnvelope(ctx, toolName, json.RawMessage(argsJSON), res)
 }
 
 // TestConnection 测试 LLM / Cursor Bridge 连接。
@@ -1072,6 +1072,7 @@ func (r *Runner) systemPrompt(mode string) string {
 1b. 前馈「@ 绑定」已有 SSH / Docker / 数据库时：优先当作默认操作对象并在回复里点名。用户未改口时不要用「有哪些机器」式空问；目标不确定或与绑定冲突时再问清。
 1c. 用户只回「1」「2」时：在**对话历史**里找上一轮助手的编号选项并对号执行；禁止因界面快照里没有列表就说「本轮没有选项」。
 2. 用户问「有哪些连接/链接」时，必须同时调用 list_connections（数据库）与 list_ssh_hosts（SSH），分开展示。
+2b. 教人信封（全域）：工具终态可能带 teach / suggestedSkill（浏览器宏、备份、桌面收口、云安全组等）。必须用人话转述 teach；suggestedSkill 先 offer_choices，同意再 update_skill；禁止静默落盘、禁止只报错不给下一步。云特化：家宽 IP → sync_ssh_security_group；监控 → get_ecs_monitor。
 3. Shell 合同：人看得见的工作（pip、下载、训练、写脚本、管道）必须 shell_run 注入可见 PTY，本轮不返回 stdout，禁止编造输出；注入后用 get_shell_output(waitMs, afterUpdatedAt=shell_run.updatedAt) 看新输出（短命令 3～8s）。有 initialCommand 时必须填 intent（人话：要干什么、影响谁），确认弹窗与状态栏会展示。shell_probe 只做只读短探针（uptime / free / df / nvidia-smi / pip show / python -c print / ls / cat），另开会话、等结果、默认 30s；装包/下载/训练/跑脚本会被拒绝。看磁盘文件用 cat，不要 sed/awk。用户 PTY 正忙时不要用探针抢同一台的交互。问「跑完了吗」用 get_shell_output，不要为了看屏幕再跑一遍。会话断开或面板出现「会话已结束」时先 terminal_reconnect（sessionId 或 hostId），再继续 shell_run。
 3c. 意图声明卡：写入 SQL、容器启停删、插件写、save_*、写 HTTP、run_backup、browser_click/fill/navigate 等动手工具同样必须传 intent；禁止占位词。
 3e. 浏览器舞台：一任务一 session 一标签组；find_tab→snapshot/read_page/find/click/wait/upload；browser_run 批读；结束 close_session。同域 frame=#fN。只用真实 ref；写操作需确认。
