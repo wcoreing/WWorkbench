@@ -1,11 +1,12 @@
 import { chromeProps, pressProps } from '../components/compat'
+import { IconUiPin } from '../components/ShellChromeIcons'
 import { useI18n, useLocalizedProduct } from '../i18n'
 import { useAppStore } from '../stores/appStore'
 import { ShellAccountMenu } from './ShellAccountMenu'
 import { ShellSettingsMenu } from './ShellSettingsMenu'
 import appMark from '../assets/brand/mark.png'
 
-/** 应用顶栏：品牌、当前产品、AI；外观类设置收进齿轮菜单。 */
+/** 应用顶栏：品牌、当前产品、置顶、AI；外观类设置收进齿轮菜单。 */
 export function ShellChrome({
   agentOpen,
   onToggleAgent,
@@ -13,7 +14,9 @@ export function ShellChrome({
   agentOpen?: boolean
   onToggleAgent?: () => void
 }) {
-  const { activeProduct } = useAppStore()
+  const activeProduct = useAppStore((s) => s.activeProduct)
+  const alwaysOnTop = useAppStore((s) => s.alwaysOnTop)
+  const setAlwaysOnTop = useAppStore((s) => s.setAlwaysOnTop)
   const { t } = useI18n()
   const product = useLocalizedProduct(activeProduct)
 
@@ -29,6 +32,15 @@ export function ShellChrome({
         <span className="chrome-product-desc">{product.description}</span>
       </div>
       <span className="chrome-spacer" />
+      <button
+        type="button"
+        className={`wn-btn wn-btn-chrome wn-btn-icon-only${alwaysOnTop ? ' active' : ''}`}
+        title={alwaysOnTop ? t('shell.unpinWindow') : t('shell.pinWindow')}
+        aria-pressed={alwaysOnTop}
+        {...pressProps(() => setAlwaysOnTop(!alwaysOnTop))}
+      >
+        <IconUiPin />
+      </button>
       {onToggleAgent && (
         <button
           type="button"

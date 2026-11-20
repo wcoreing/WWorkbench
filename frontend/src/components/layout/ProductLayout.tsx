@@ -57,12 +57,14 @@ export function ProductLayout({
     return (
       <div className="product-body wn-product-layout">
         {sidebarCollapsed && onToggleSidebarCollapse ? (
-          <CollapseRail
-            axis="x"
-            onToggle={onToggleSidebarCollapse}
-            label={sidebarRailLabel}
-            title={sidebarExpandTitle}
-          />
+          <div className="wn-product-collapse-rail-slot" aria-hidden={false}>
+            <CollapseRail
+              axis="x"
+              onToggle={onToggleSidebarCollapse}
+              label={sidebarRailLabel}
+              title={sidebarExpandTitle}
+            />
+          </div>
         ) : null}
         <div className="wn-product-main">{children}</div>
       </div>

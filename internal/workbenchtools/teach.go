@@ -134,6 +134,27 @@ func milestoneSuggestedSkill(tool string, args json.RawMessage, res ToolResult) 
 			"备份已用 run_backup 无头执行。策略用 save_backup_policy；发现资产用 host_health_scan → ensure_host_backup_policies。",
 			"要把这次备份做法写进运维 Skill 吗？",
 		), true
+	case workbench.CapEnsureHostBackupPolicies:
+		return NewSuggestedSkill(
+			"backup",
+			"运维/备份策略",
+			"已按 host_health_scan 发现项 ensure_host_backup_policies。日常：扫描→人勾选→ensure→run_backup；禁止全盘扫、禁止默认全选。",
+			"要把「扫描→勾选→落策略」写进运维 Skill 吗？",
+		), true
+	case workbench.CapShellRun:
+		if !looksLikeGoalClose(intent) && !looksLikeOpsShell(args) {
+			return SuggestedSkill{}, false
+		}
+		lessons := "关键 shell 已在可见终端跑通。危险命令走确认弹窗；软文件写可护照免确认，数据硬风险不可免。断线先 terminal_reconnect。"
+		if intent != "" {
+			lessons = intent + "。\n" + lessons
+		}
+		return NewSuggestedSkill(
+			"shell",
+			"运维/终端操作",
+			lessons,
+			"这次关键 shell 已跑通。要归纳进运维 Skill 吗？",
+		), true
 	case workbench.CapDesktopAct:
 		// 单步点击噪声大；仅在 intent 像「收口/发送/完成」时建议
 		if !looksLikeGoalClose(intent) {
@@ -156,6 +177,26 @@ func milestoneSuggestedSkill(tool string, args json.RawMessage, res ToolResult) 
 		_ = res
 		return SuggestedSkill{}, false
 	}
+}
+
+// looksLikeOpsShell 部署/同步/备份类命令才建议沉淀，避免 ls/cat 噪声。
+func looksLikeOpsShell(args json.RawMessage) bool {
+	var m map[string]interface{}
+	if json.Unmarshal(args, &m) != nil || m == nil {
+		return false
+	}
+	cmd, _ := m["command"].(string)
+	cmd = strings.ToLower(strings.TrimSpace(cmd))
+	if cmd == "" {
+		return false
+	}
+	keys := []string{"rsync", "scp ", "deploy", "backup", "mysqldump", "pg_dump", "systemctl", "docker compose", "kubectl apply", "terraform", "ansible"}
+	for _, k := range keys {
+		if strings.Contains(cmd, k) {
+			return true
+		}
+	}
+	return false
 }
 
 func looksLikeGoalClose(intent string) bool {
@@ -285,7 +326,7 @@ func mergeEnvelope(res ToolResult, teach *Teach, skill *SuggestedSkill) ToolResu
 	if skill != nil {
 		if _, exists := m["suggestedSkill"]; !exists {
 			m["suggestedSkill"] = *skill
-			m["note"] = "沉淀须人点头：offer_choices → update_skill。禁止未问人就落盘。"
+			m["note"] = "沉淀须人点头：工作台会弹 skill_offer；Agent 勿重复追问。禁止未问人就落盘。"
 		}
 	}
 	b, _ := json.Marshal(m)

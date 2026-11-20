@@ -63,7 +63,11 @@ func toolSaveWorkbenchProject(ctx context.Context, d *Deps, raw json.RawMessage)
 		d.Radar.EmitAsset(workbench.RadarDomainProject, "project", op, saved.ID, "mcp-project-save", saved.Name, true)
 	}
 	_ = ctx
-	return OKData(map[string]interface{}{"ok": true, "project": saved})
+	out := map[string]interface{}{"ok": true, "project": saved}
+	if rule := attachCursorStageRule(saved.LocalPath); rule != nil {
+		out["cursorStageRule"] = rule
+	}
+	return OKData(out)
 }
 
 func toolDeleteWorkbenchProject(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
@@ -401,11 +405,15 @@ func toolConfigureProjectResources(_ context.Context, d *Deps, raw json.RawMessa
 	if err != nil {
 		return Fail(err.Error())
 	}
-	return OKData(map[string]interface{}{
+	data := map[string]interface{}{
 		"ok":      true,
 		"project": out.Project,
 		"added":   out.Added,
 		"skipped": out.Skipped,
 		"nAdded":  len(out.Added),
-	})
+	}
+	if out.CursorStageRule != nil {
+		data["cursorStageRule"] = out.CursorStageRule
+	}
+	return OKData(data)
 }

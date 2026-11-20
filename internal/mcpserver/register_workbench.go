@@ -13,21 +13,29 @@ import (
 )
 
 // NewWorkbenchMCPServer 仅注册工作台产品工具（不含 ningharness 核工具）。
-func NewWorkbenchMCPServer(gw *toolgateway.Gateway, reg *workbenchtools.Registry) *server.MCPServer {
+// perms 非空时只把已启用工具挂到 tools/list，从源头缩短 Cursor 工具面。
+func NewWorkbenchMCPServer(gw *toolgateway.Gateway, reg *workbenchtools.Registry, perms func() map[string]bool) *server.MCPServer {
 	opts := []server.ServerOption{server.WithToolCapabilities(true)}
 	opts = append(opts, server.WithInstructions(WorkbenchMCPInstructions))
 	s := server.NewMCPServer("wworkbench-workbench", ServerVersion, opts...)
-	registerWorkbenchTools(s, gw, reg)
+	registerWorkbenchTools(s, gw, reg, perms)
 	return s
 }
 
-func registerWorkbenchTools(s *server.MCPServer, gw *toolgateway.Gateway, reg *workbenchtools.Registry) {
+func registerWorkbenchTools(s *server.MCPServer, gw *toolgateway.Gateway, reg *workbenchtools.Registry, perms func() map[string]bool) {
 	if s == nil || reg == nil {
 		return
+	}
+	enabled := map[string]bool(nil)
+	if perms != nil {
+		enabled = perms()
 	}
 	for _, def := range reg.ListMCPDefs() {
 		name := strings.TrimSpace(def.Name)
 		if name == "" || name == "recall_resource" {
+			continue
+		}
+		if enabled != nil && !workbenchtools.IsToolEnabled(enabled, name) {
 			continue
 		}
 		schema, err := json.Marshal(def.Parameters)
@@ -65,7 +73,11 @@ func invokeRegistryTool(ctx context.Context, reg *workbenchtools.Registry, name 
 	if err != nil {
 		raw = []byte("{}")
 	}
-	res := reg.Invoke(ctx, name, raw, nil)
+	var enabled map[string]bool
+	if reg != nil && reg.Deps() != nil {
+		enabled = reg.Deps().EffectivePermissions()
+	}
+	res := reg.Invoke(ctx, name, raw, enabled)
 	if res.NeedsConfirm {
 		res = workbenchtools.AwaitConfirmAndExecute(ctx, reg.Deps(), name, raw, res)
 	}

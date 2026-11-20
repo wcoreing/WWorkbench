@@ -428,11 +428,72 @@ button {
   text-align: left;
 }
 
+.wn-confirm-ledger-list {
+  list-style: none;
+  margin: calc(6 * var(--ui-scale) * 1px) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(4 * var(--ui-scale) * 1px);
+}
+
+.wn-confirm-ledger-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui-sm);
+  line-height: 1.4;
+}
+
+.wn-confirm-ledger-k {
+  color: var(--color-text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.wn-confirm-ledger-k::after {
+  content: ' ·';
+}
+
+.wn-confirm-ledger-v {
+  color: var(--color-text);
+  word-break: break-word;
+}
+
+.wn-confirm-ledger-row.is-danger .wn-confirm-ledger-v {
+  color: var(--color-danger, #c44);
+  font-weight: 600;
+}
+
+.wn-confirm-ledger-row.is-warn .wn-confirm-ledger-v {
+  color: var(--color-warning, #b45309);
+}
+
+.wn-confirm-ledger-row.is-muted .wn-confirm-ledger-v {
+  color: var(--color-text-secondary);
+}
+
+.wn-confirm-risk-tag.is-hard {
+  background: var(--color-danger-muted, rgba(200, 61, 74, 0.12));
+  color: var(--color-danger, #c44);
+}
+
+.wn-confirm-risk-tag.is-soft {
+  background: var(--color-warning-muted, rgba(169, 104, 20, 0.12));
+  color: var(--color-warning, #b45309);
+}
+
 .wn-confirm-hard-risk {
   margin: 0 0 var(--space-1);
   font-size: var(--font-size-ui-sm);
   font-weight: 600;
   color: var(--color-danger, #c44);
+}
+
+.wn-confirm-soft-risk {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-ui-sm);
+  color: var(--color-warning, #b45309);
 }
 
 

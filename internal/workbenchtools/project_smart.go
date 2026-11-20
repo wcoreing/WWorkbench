@@ -457,5 +457,6 @@ func ConfigureProjectResources(d *Deps, projectID string, keys []string) (model.
 	out.Project = saved
 	out.Added = added
 	out.Skipped = skipped
+	out.CursorStageRule = attachCursorStageRule(saved.LocalPath)
 	return out, nil
 }

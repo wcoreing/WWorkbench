@@ -216,8 +216,10 @@ import {
   SaveAgentSettings,
   SaveAgentAPIConfig,
   SaveAgentPermissions,
+  ResetAgentPermissionsRecommended,
   GetMCPStatus,
   SaveMCPConfig,
+  EnsureCursorStageRules,
   GetHomeStatus,
   HomeLogin,
   HomeRegister,
@@ -1129,8 +1131,11 @@ export const api = {
   saveAgentSettings: (in_: model.AgentSettingsSaveDO) => unwrap(() => SaveAgentSettings(in_)),
   saveAgentAPIConfig: (in_: model.AgentAPIConfigSaveDO) => unwrap(() => SaveAgentAPIConfig(in_)),
   saveAgentPermissions: (in_: model.AgentPermissionsSaveDO) => unwrap(() => SaveAgentPermissions(in_)),
+  resetAgentPermissionsRecommended: () => unwrap(() => ResetAgentPermissionsRecommended()),
   getMCPStatus: async () => unwrap(() => GetMCPStatus()),
   saveMCPConfig: (in_: model.MCPConfigSaveDO) => unwrap(() => SaveMCPConfig(in_)),
+  ensureCursorStageRules: async () =>
+    unwrap(() => EnsureCursorStageRules()) as Promise<model.EnsureCursorStageRulesResultDO>,
   getHomeStatus: async () => unwrap(() => GetHomeStatus()) as Promise<model.HomeStatusDO>,
   homeLogin: (in_: model.HomeAuthDO) => unwrap(() => HomeLogin(in_)) as Promise<model.HomeStatusDO>,
   homeRegister: (in_: model.HomeAuthDO) =>

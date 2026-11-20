@@ -34,6 +34,9 @@ type MCPConfirmGate struct {
 	emit func(event string, payload map[string]interface{})
 	mu   sync.Mutex
 	wait map[string]*mcpPending
+	// skill_offer 去重（同 name+lessons 短时不重复弹）
+	skillOfferMu   sync.Mutex
+	skillOfferLast map[string]time.Time
 }
 
 // NewMCPConfirmGate 创建确认门（经 Wails 事件 mcp:confirm）。
@@ -180,7 +183,8 @@ func ProductForTool(toolName string) string {
 		return "backup"
 	case workbench.CapListProjects, workbench.CapGetProject, workbench.CapSaveProject, workbench.CapDeleteProject,
 		workbench.CapSuggestProjectResources, workbench.CapConfigureProjectResources, workbench.CapDetectProjectGit,
-		workbench.CapSyncProjectCursorTranscripts, workbench.CapListProjectCursorTranscripts, workbench.CapGetProjectCursorTranscript:
+		workbench.CapSyncProjectCursorTranscripts, workbench.CapListProjectCursorTranscripts, workbench.CapGetProjectCursorTranscript,
+		workbench.CapEnsureCursorStageRule:
 		return "project"
 	case "edit_plugin_pack_file", "write_plugin_pack_file", "build_plugin_pack_ui", "rollback_plugin_pack":
 		return "plugins"

@@ -15,6 +15,8 @@ const (
 	SettingLastConnectionID  = "last_connection_id"
 	SettingLastDockerContext = "last_docker_context_id"
 	SettingLocale            = "locale"
+	// SettingAlwaysOnTop 主窗口置顶（MCP 拍板/共视时不易被遮挡）。
+	SettingAlwaysOnTop = "always_on_top"
 	// SettingBrowserAskConfirm 浏览器执行逐步询问（默认关：MCP click/fill 等不弹窗）。
 	SettingBrowserAskConfirm = "browser_ask_confirm"
 	SettingEnvScanPath            = "env_scan_path"

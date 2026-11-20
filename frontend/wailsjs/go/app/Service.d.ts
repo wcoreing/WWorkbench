@@ -143,6 +143,8 @@ export function DuplicateNote(arg1:string):Promise<app.ApiResult_WWorkbench_inte
 
 export function EnableDirVersion(arg1:string):Promise<app.ApiResult_map_string_interface____>;
 
+export function EnsureCursorStageRules():Promise<app.ApiResult_WWorkbench_internal_model_EnsureCursorStageRulesResultDO_>;
+
 export function EnsureDockerHost(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_ShellHostDO_>;
 
 export function EnsureEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
@@ -456,6 +458,8 @@ export function RenameSFTPRemote(arg1:string,arg2:string,arg3:string):Promise<ap
 export function RenameTaskRun(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
 export function ReplayTaskStep(arg1:string,arg2:number,arg3:boolean,arg4:string):Promise<app.ApiResult_map_string_interface____>;
+
+export function ResetAgentPermissionsRecommended():Promise<app.ApiResult_WWorkbench_internal_model_AgentSettingsDO_>;
 
 export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<app.ApiResult_bool_>;
 

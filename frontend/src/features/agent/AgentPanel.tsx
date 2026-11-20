@@ -52,12 +52,12 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
   const [allowWrite, setAllowWrite] = useState(false)
   const [provider, setProvider] = useState('bailian')
   const [capabilities, setCapabilities] = useState<CapabilityRow[]>([])
-  const [unavailableNote, setUnavailableNote] = useState('')
 
   const [configError, setConfigError] = useState('')
   const [permError, setPermError] = useState('')
   const [savingConfig, setSavingConfig] = useState(false)
   const [savingPerm, setSavingPerm] = useState(false)
+  const [resettingPerm, setResettingPerm] = useState(false)
   const testLoading = useLoading('agent.testConnection')
   const { width, onResizeStart } = useAgentPanelResize()
 
@@ -114,13 +114,13 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
     setHasKey(s.hasApiKey)
     setAllowWrite(s.allowWrite)
     setProvider(s.provider || 'bailian')
-    setUnavailableNote(s.unavailableNote || '')
     const caps = s.capabilities ?? []
     if (caps.length > 0) {
       setCapabilities(
         caps.map((c) => ({
           name: c.name,
           label: c.label,
+          domain: c.domain || 'other',
           risk: c.risk,
           description: c.description,
           enabled: c.enabled,
@@ -132,6 +132,7 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
         list.map((c) => ({
           name: c.name,
           label: c.label,
+          domain: c.domain || 'other',
           risk: c.risk,
           description: c.description,
           enabled: c.enabled,
@@ -209,6 +210,22 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
       setStatusMessage(msg)
     } finally {
       setSavingPerm(false)
+    }
+  }
+
+  const handleResetPermissions = async () => {
+    setResettingPerm(true)
+    setPermError('')
+    try {
+      await api.resetAgentPermissionsRecommended()
+      await loadSettings()
+      setStatusMessage(t('agent.permissionsReset'))
+    } catch (e) {
+      const msg = (e as Error).message
+      setPermError(msg)
+      setStatusMessage(msg)
+    } finally {
+      setResettingPerm(false)
     }
   }
 
@@ -375,13 +392,14 @@ export function AgentPanel({ collapsed }: { collapsed: boolean }) {
         {view === 'permissions' && (
           <AgentPermissionsView
             capabilities={capabilities}
-            unavailableNote={unavailableNote}
             allowWrite={allowWrite}
             setAllowWrite={setAllowWrite}
             onToggle={toggleCapability}
             error={permError}
             saving={savingPerm}
+            resetting={resettingPerm}
             onSave={() => void handleSavePermissions()}
+            onResetRecommended={() => void handleResetPermissions()}
           />
         )}
 

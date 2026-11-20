@@ -62,3 +62,46 @@ func TestLooksLikeGoalClose(t *testing.T) {
 		t.Fatal("should not treat click as close")
 	}
 }
+
+func TestAttachTeachEnvelopeShellOps(t *testing.T) {
+	raw, _ := json.Marshal(map[string]interface{}{"ok": true})
+	args, _ := json.Marshal(map[string]interface{}{
+		"intent": "同步配置", "command": "rsync -avz ./a host:/b",
+	})
+	res := AttachTeachEnvelope(context.Background(), workbench.CapShellRun, args, ToolResult{OK: true, Data: raw})
+	if !hasSuggestedSkill(res.Data) {
+		t.Fatalf("want suggestedSkill for rsync: %s", string(res.Data))
+	}
+}
+
+func TestAttachTeachEnvelopeShellNoise(t *testing.T) {
+	raw, _ := json.Marshal(map[string]interface{}{"ok": true})
+	args, _ := json.Marshal(map[string]interface{}{
+		"intent": "看磁盘", "command": "df -h",
+	})
+	res := AttachTeachEnvelope(context.Background(), workbench.CapShellRun, args, ToolResult{OK: true, Data: raw})
+	if hasSuggestedSkill(res.Data) {
+		t.Fatalf("df should not suggest skill: %s", string(res.Data))
+	}
+}
+
+func TestAttachTeachEnvelopeEnsureBackup(t *testing.T) {
+	raw, _ := json.Marshal(map[string]interface{}{"ok": true})
+	res := AttachTeachEnvelope(context.Background(), workbench.CapEnsureHostBackupPolicies, nil, ToolResult{OK: true, Data: raw})
+	if !hasSuggestedSkill(res.Data) {
+		t.Fatalf("want suggestedSkill: %s", string(res.Data))
+	}
+}
+
+func TestExtractSuggestedSkill(t *testing.T) {
+	raw, _ := json.Marshal(map[string]interface{}{
+		"ok": true,
+		"suggestedSkill": SuggestedSkill{
+			Name: "运维/x", Lessons: "l", AskHuman: true, OfferPrompt: "q?",
+		},
+	})
+	sk, ok := extractSuggestedSkill(raw)
+	if !ok || sk.Name != "运维/x" || !sk.AskHuman {
+		t.Fatalf("got %+v ok=%v", sk, ok)
+	}
+}

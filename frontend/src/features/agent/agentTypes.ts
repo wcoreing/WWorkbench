@@ -2,9 +2,29 @@
 export interface CapabilityRow {
   name: string
   label: string
+  domain: string
   risk: string
   description: string
   enabled: boolean
 }
 
 export type AgentPanelView = 'chat' | 'config' | 'permissions'
+
+/** DOMAIN_ORDER 设置页分组顺序。 */
+export const DOMAIN_ORDER = [
+  'core',
+  'terminal',
+  'cloud',
+  'database',
+  'notebook',
+  'project',
+  'browser',
+  'desktop',
+  'docker',
+  'backup',
+  'http',
+  'logs',
+  'environment',
+  'plugin',
+  'other',
+] as const

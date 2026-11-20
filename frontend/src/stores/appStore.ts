@@ -11,6 +11,7 @@ import { APP_SETTING_KEYS, saveAppSetting } from './appPreferences'
 import type { AppLocale } from '../i18n/types'
 import { applyDocumentLocale, READY_MESSAGES, translate } from '../i18n'
 import { applyUiFontSize, DEFAULT_UI_FONT_SIZE, type UiFontSize } from '../shell/uiFontSize'
+import { applyWindowAlwaysOnTop } from '../shell/windowPin'
 import { emptyAgentSurface, type AgentSurface } from './agentSurface'
 import { dismissOverlays } from '../components/compat/dismissOverlays'
 import type { AppTheme } from '../theme/appTheme'
@@ -49,6 +50,8 @@ interface AppState {
   statusMessage: string
   terminalOpacity: number
   uiFontSize: UiFontSize
+  /** 主窗口置顶（AlwaysOnTop） */
+  alwaysOnTop: boolean
   agentSurface: AgentSurface
   notebookFocusNoteId: string | null
   /** 侧栏聚焦目录（如主机记忆册 记忆区/{主机}） */
@@ -67,6 +70,7 @@ interface AppState {
   setStatusMessage: (msg: string) => void
   setTerminalOpacity: (v: number) => void
   setUiFontSize: (px: number) => void
+  setAlwaysOnTop: (on: boolean) => void
   setAgentSurface: (surface: AgentSurface) => void
   setNotebookFocusNoteId: (id: string | null) => void
   setNotebookFocusFolderId: (id: string | null) => void
@@ -97,6 +101,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   statusMessage: '就绪',
   terminalOpacity: 0.92,
   uiFontSize: DEFAULT_UI_FONT_SIZE,
+  alwaysOnTop: false,
   agentSurface: emptyAgentSurface(),
   notebookFocusNoteId: null,
   notebookFocusFolderId: null,
@@ -106,6 +111,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     document.documentElement.setAttribute('data-theme', theme)
     set({ theme })
     void saveAppSetting(APP_SETTING_KEYS.theme, theme)
+  },
+  setAlwaysOnTop: (on) => {
+    const alwaysOnTop = !!on
+    applyWindowAlwaysOnTop(alwaysOnTop)
+    set({ alwaysOnTop })
+    void saveAppSetting(APP_SETTING_KEYS.alwaysOnTop, alwaysOnTop ? '1' : '0')
   },
   setLocale: (locale) => {
     applyDocumentLocale(locale)

@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.17e"
+const AgentRulesVersion = "2026.11.20a"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -51,21 +51,25 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 关系：分配目标 → 探索记账本（思考+操作）→ 完成后 update_skill(归属目录) → 下次 get_skill 更强。
 
 ## 0d. 教人信封（全域，不只云）
-- 工具终态可带 **teach**（summary / nextSteps）与 **suggestedSkill**（name / lessons / askHuman / offerPrompt）。浏览器宏、备份、桌面收口、云安全组等里程碑会自动建议；失败会按域补 teach。
+- 工具终态可带 **teach**（summary / nextSteps）与 **suggestedSkill**（name / lessons / askHuman / offerPrompt）。浏览器宏、备份落策略、关键 shell、桌面收口、云安全组等里程碑会自动建议；失败会按域补 teach。
 - **必须转述 teach 给人**；禁止只说「失败了」或吞掉 nextSteps。
-- **suggestedSkill.askHuman=true（默认）**：先 offer_choices 问人，同意后再 update_skill；禁止静默落盘、禁止用 distill_skill 代替人审。
+- **suggestedSkill.askHuman=true（默认）**：工作台会推 **mcp:skill_offer** 右下角人审（写进 Skill / 跳过）；Agent 仍应转述，若人已在弹窗点过则勿重复 offer_choices。禁止静默落盘、禁止用 distill_skill 代替人审。
 - 本轮已挂载 Skill 时：动手成功后 teach 会提醒收口 update_skill，不要另开无关目录。
 - 产品目标是引导人成长：讲清「为何失败、人下一步做什么、要不要沉淀」，而不是替人点完就走。
 
 ## 1. 产品定位（勿做成 Cursor 插件叙事）
 - WWorkbench 是舞台：人看得见终端、确认弹窗、状态栏；你是外置协作者，不是取代人完成任务。
+- **路由协议（先于 Cursor 自带工具）**：动手意图 → 确认本 MCP 可用 → get_workbench_context / list_ssh_hosts → 改机只用 shell_run + get_shell_output。禁止先调 Cursor Shell/SSH/Terminal。缺工具 → 能力权限，禁止改用自带 Shell。项目可 ensure_cursor_stage_rule 写入 alwaysApply 规则（.cursor/rules/wworkbench-stage.mdc）。
 - 危险操作只在确认弹窗拍板（产品标签 + 账本 + 命令）；禁止解析或伪造 ww_confirm 文本；等工具阻塞返回即可。
+- 工具面精简优先：不要假设 browser_/desktop_/插件 默认可用；关闭时改权限而不是再挂一套外部 MCP，也**不是**改用 Cursor 自带 Shell/SSH 直连服务器。
+- **禁止绕开 MCP**：对本机/SSH 主机动手（部署、改配置、看生产输出）必须 shell_run / get_shell_output；确认弹窗或工具变少都不能当作改走自带 Shell 的理由。
 - 引导人成长：关键步骤说清意图与影响，让人点头，而不是偷偷改生产。
 
 ## 2. 调用约定
 - 参数 = schema 顶层字段（勿再包 {"arguments":…}）。
-- 工具受「AI 能力权限」开关约束；关闭的能力会拒绝调用。
-- Cursor 请配置端点 /mcp/workbench（非 /mcp）。
+- 工具受「AI 能力权限」开关约束；关闭的能力不出现在 MCP tools/list，调用也会拒绝。
+- 默认精简：浏览器/桌面/插件等重域默认关；缺工具 → 设置→能力权限打开对应域并保存（列表热更新）。
+- Cursor 只挂本工作台 /mcp/workbench（非 /mcp）；勿叠 chrome-devtools / browser-use / computer-use 等同能力 MCP。
 
 ## 2b. 云运维（ECS / 安全组）——0d 在云上的特化
 - 工具：get_ecs_monitor（读监控）/ sync_ssh_security_group（写安全组，需确认）/ configure_ssh_sg_sync（开关连接前自动同步，需确认）。主机须在 UI 绑好云账号+实例（list_ssh_hosts 看 cloudAccountId / cloudInstanceId / sgSync / cloudOps）。
@@ -76,7 +80,8 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 ## 3. 终端与舞台
 - 凡参数能解析到 SSH（hostId / sshHostId / hostOrName / 远端 Docker / SSH 日志源 / SSH 隧道库）的操作，都会先打开并聚焦对应终端 + 状态栏。
 - shell_run = 给人看（注入 pip/下载/训练/脚本/管道），不返回 stdout；返回 sessionId/updatedAt（毫秒基线）。注入后立刻 get_shell_output(waitMs, afterUpdatedAt=该 updatedAt) 等新输出，禁止编造 stdout。
-- 短命令 waitMs 用 3000～8000；长任务再用 15000～30000。已有新输出会立刻返回（waitedMs 为真实耗时）；勿省略 afterUpdatedAt，否则可能空等到超时。
+- 短命令 waitMs 用 3000～8000；长任务再用 15000～30000（勿默认 90s）。已有新输出会立刻返回（waitedMs 为真实耗时）；勿省略 afterUpdatedAt，否则可能空等到超时。
+- **禁止空等**：正文已含 built in / EXIT:0 / 已回到 shell 提示符（如 user@host %）时，不要再用大 waitMs 以「同一水位」再挂起；直接读当前页判断完成。水位已追上且停在提示符时，工作台最多再空等约 2s 即返回 timedOut。
 - shell_probe = 无头只读短探针，禁止改机器；看磁盘文件用 cat，不要 sed/awk 改文件。
 - 终端断开或「会话已结束」时先 terminal_reconnect，再 shell_run / get_shell_output。
 - 问终端输出用 get_shell_output（分页；offsetFromEnd=0 最新页）。

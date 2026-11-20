@@ -83,6 +83,8 @@ export function AgentConfigView({
   const [mcpStatus, setMcpStatus] = useState<model.MCPStatusDO | null>(null)
   const [mcpError, setMcpError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [stageBusy, setStageBusy] = useState(false)
+  const [stageMsg, setStageMsg] = useState('')
   const pane: SettingsPane | '' = showMcp ? 'mcp' : isPreset(provider) ? provider : ''
   const savedModels = loadSavedModels(provider)
 
@@ -102,8 +104,28 @@ export function AgentConfigView({
     window.setTimeout(() => setCopied(false), 1500)
   }
 
+  const onEnsureStageRules = async () => {
+    setStageBusy(true)
+    setStageMsg('')
+    try {
+      const out = await api.ensureCursorStageRules()
+      setStageMsg(
+        t('agent.mcpStageRuleDone', {
+          nOk: out.nOk ?? 0,
+          nSkip: out.nSkip ?? 0,
+          nErr: out.nErr ?? 0,
+        }),
+      )
+    } catch (e) {
+      setStageMsg((e as Error).message)
+    } finally {
+      setStageBusy(false)
+    }
+  }
+
   const busy = testing || saving
   const snippet = mcpStatus?.cursorSnippet || ''
+  const mcpListening = Boolean(mcpStatus?.enabled && mcpStatus?.listenAddr)
 
   return (
     <div className="agent-subview agent-config-view">
@@ -138,6 +160,27 @@ export function AgentConfigView({
         {pane === 'mcp' ? (
           <div className="agent-config-main" role="tabpanel">
             {mcpError && <p className="agent-settings-error">{mcpError}</p>}
+            <div className="agent-field">
+              <span className="wn-label">{t('agent.mcpHealth')}</span>
+              <p className="agent-settings-hint">
+                {mcpListening
+                  ? t('agent.mcpHealthOn', { addr: mcpStatus?.listenAddr || '' })
+                  : t('agent.mcpHealthOff')}
+              </p>
+            </div>
+            <div className="agent-field">
+              <span className="wn-label">{t('agent.mcpStageRule')}</span>
+              <p className="agent-settings-hint">{t('agent.mcpStageRuleHint')}</p>
+              <button
+                type="button"
+                className="wn-btn wn-btn-sm"
+                disabled={stageBusy}
+                {...pressProps(() => void onEnsureStageRules(), { disabled: stageBusy })}
+              >
+                {stageBusy ? t('agent.mcpStageRuleWriting') : t('agent.mcpStageRuleWrite')}
+              </button>
+              {stageMsg ? <p className="agent-settings-hint">{stageMsg}</p> : null}
+            </div>
             <div className="agent-mcp-json-head">
               <span className="wn-label">{t('agent.mcpCursorSnippet')}</span>
               <button

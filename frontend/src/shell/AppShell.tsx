@@ -8,7 +8,12 @@ import { ProductRail } from './ProductRail'
 import { ShellChrome } from './ShellChrome'
 import { StatusBar } from './StatusBar'
 import { AgentPanel } from '../features/agent/AgentPanel'
-import { subscribeAgentUiActions, subscribeMcpConfirm, subscribeMcpStage } from '../features/agent/agentUiActions'
+import {
+  subscribeAgentUiActions,
+  subscribeMcpConfirm,
+  subscribeMcpSkillOffer,
+  subscribeMcpStage,
+} from '../features/agent/agentUiActions'
 import { startWorkbenchRadar } from '../workbench/workbenchRadar'
 import { useAgentStore } from '../stores/agentStore'
 import { ConfirmHost } from '../components/ConfirmHost'
@@ -54,6 +59,7 @@ export function AppShell() {
   useEffect(() => subscribeAgentUiActions(), [])
   useEffect(() => subscribeMcpConfirm(), [])
   useEffect(() => subscribeMcpStage(), [])
+  useEffect(() => subscribeMcpSkillOffer(), [])
   useEffect(() => startWorkbenchRadar(), [])
   useEffect(() => installFocusGate(), [])
 

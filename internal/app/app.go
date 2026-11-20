@@ -115,6 +115,11 @@ func (s *Service) Startup(ctx context.Context) {
 
 // Shutdown Wails 退出回调，释放终端等资源。
 func (s *Service) Shutdown(ctx context.Context) {
+	// 先释放 MCP 端口，缩短 wails 热重启时新进程 early listen 的等待窗口
+	s.mcpMu.Lock()
+	_ = s.stopMCPLocked()
+	s.mcpMu.Unlock()
+
 	if s.logFollow != nil {
 		s.logFollow.CloseAll()
 	}
@@ -126,9 +131,6 @@ func (s *Service) Shutdown(ctx context.Context) {
 	}
 	s.stopAgentBrowser()
 	tunnel.CloseSSHPool()
-	s.mcpMu.Lock()
-	_ = s.stopMCPLocked()
-	s.mcpMu.Unlock()
 	if s.agentRunner != nil {
 		s.agentRunner.Close()
 	}

@@ -83,7 +83,7 @@ func (s *Service) stopMCPLocked() error {
 	if s.mcpHTTP == nil {
 		return nil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 	err := s.mcpHTTP.Stop(ctx)
 	s.mcpHTTP = nil

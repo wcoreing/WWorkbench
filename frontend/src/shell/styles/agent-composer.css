@@ -373,12 +373,22 @@
 .agent-turn-tools {
   display: flex;
   flex-direction: column;
-  gap: calc(3 * var(--ui-scale) * 1px);
+  gap: calc(1.5 * var(--ui-scale) * 1px);
   width: 100%;
   max-width: 100%;
-  margin: calc(6 * var(--ui-scale) * 1px) 0 calc(8 * var(--ui-scale) * 1px);
+  margin: calc(3 * var(--ui-scale) * 1px) 0 calc(4 * var(--ui-scale) * 1px);
   min-width: 0;
   box-sizing: border-box;
+}
+
+/* 纯工具回合：去掉工具条外 margin，避免与回合 gap 叠成「命令框间距」 */
+.agent-turn-assistant:not(:has(> .agent-bubble)) > .agent-turn-tools {
+  margin-block: 0;
+}
+
+/* 相邻纯工具回合：回合 gap 收成与块内命令框 gap 一致 */
+.agent-turn-assistant:not(:has(> .agent-bubble)) + .agent-turn-assistant:not(:has(> .agent-bubble)) {
+  margin-top: calc(1.5 * var(--ui-scale) * 1px - var(--agent-turn-gap, 8px));
 }
 
 .agent-turn-tool {

@@ -110,13 +110,27 @@ func (s *Service) SaveAgentAPIConfig(in model.AgentAPIConfigSaveDO) ApiResult[mo
 	return OkResult(s.store.GetAgentSettings())
 }
 
-// SaveAgentPermissions 保存 Agent 能力权限。
+// SaveAgentPermissions 保存 Agent 能力权限；刷新 MCP tools/list（只暴露已开能力）。
 func (s *Service) SaveAgentPermissions(in model.AgentPermissionsSaveDO) ApiResult[model.AgentSettingsDO] {
 	if in.ToolPermissionsJSON == "" {
 		return ErrResult[model.AgentSettingsDO](errno.New(errno.CodeInvalidArg, "权限数据无效", ""))
 	}
 	if err := s.store.SaveAgentPermissions(in); err != nil {
 		return ErrResult[model.AgentSettingsDO](err)
+	}
+	if err := s.applyMCPFromSettings(); err != nil {
+		log.Printf("mcp: refresh after permissions: %v", err)
+	}
+	return OkResult(s.store.GetAgentSettings())
+}
+
+// ResetAgentPermissionsRecommended 恢复精简推荐权限并刷新 MCP。
+func (s *Service) ResetAgentPermissionsRecommended() ApiResult[model.AgentSettingsDO] {
+	if err := s.store.ResetToolPermissionsToRecommended(); err != nil {
+		return ErrResult[model.AgentSettingsDO](err)
+	}
+	if err := s.applyMCPFromSettings(); err != nil {
+		log.Printf("mcp: refresh after reset permissions: %v", err)
 	}
 	return OkResult(s.store.GetAgentSettings())
 }

@@ -15,6 +15,7 @@ export const APP_SETTING_KEYS = {
   lastConnectionId: 'last_connection_id',
   lastDockerContextId: 'last_docker_context_id',
   browserAskConfirm: 'browser_ask_confirm',
+  alwaysOnTop: 'always_on_top',
 } as const
 
 export interface AppPreferences {
@@ -25,6 +26,7 @@ export interface AppPreferences {
   uiFontSize: UiFontSize
   lastConnectionId: string | null
   lastDockerContextId: string | null
+  alwaysOnTop: boolean
 }
 
 const DEFAULT_PREFERENCES: AppPreferences = {
@@ -35,6 +37,7 @@ const DEFAULT_PREFERENCES: AppPreferences = {
   uiFontSize: DEFAULT_UI_FONT_SIZE,
   lastConnectionId: null,
   lastDockerContextId: null,
+  alwaysOnTop: false,
 }
 
 /** parsePreferences 将后端设置映射为偏好对象。 */
@@ -45,6 +48,7 @@ function parsePreferences(settings: Record<string, string>): AppPreferences {
   const activeProduct = normalizeProductId(settings[APP_SETTING_KEYS.activeProduct])
   const opacity = Number(settings[APP_SETTING_KEYS.terminalOpacity])
   const fontRaw = Number(settings[APP_SETTING_KEYS.uiFontSize])
+  const pinRaw = (settings[APP_SETTING_KEYS.alwaysOnTop] || '').trim().toLowerCase()
   return {
     theme,
     locale,
@@ -53,6 +57,7 @@ function parsePreferences(settings: Record<string, string>): AppPreferences {
     uiFontSize: Number.isFinite(fontRaw) ? clampUiFontSize(fontRaw) : DEFAULT_UI_FONT_SIZE,
     lastConnectionId: settings[APP_SETTING_KEYS.lastConnectionId] || null,
     lastDockerContextId: settings[APP_SETTING_KEYS.lastDockerContextId] || null,
+    alwaysOnTop: pinRaw === '1' || pinRaw === 'true' || pinRaw === 'yes',
   }
 }
 

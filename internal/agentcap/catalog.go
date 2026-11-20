@@ -574,6 +574,11 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "ensure_cursor_stage_rule", Label: "写入Cursor舞台规则", Risk: RiskWrite,
+			Description:    "向项目写入 alwaysApply 舞台优先规则，迫使 Agent 优先走 WWorkbench MCP",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "replay_task_step", Label: "试跑日志一步", Risk: RiskWrite,
 			Description:    "教练式：按 locator 重定位后执行/跳过一步，返回 nextSeq",
 			DefaultEnabled: true,
@@ -651,11 +656,11 @@ func Catalog() []Item {
 	}
 }
 
-// DefaultPermissions 默认工具开关。
+// DefaultPermissions 默认工具开关（按 RecommendedDefault 精简；目录 DefaultEnabled 仅作历史字段）。
 func DefaultPermissions() map[string]bool {
 	m := make(map[string]bool, len(Catalog()))
 	for _, c := range Catalog() {
-		m[c.Name] = c.DefaultEnabled
+		m[c.Name] = RecommendedDefault(c.Name)
 	}
 	return m
 }

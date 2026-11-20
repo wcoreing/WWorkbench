@@ -72,6 +72,11 @@
   background: var(--fill-sidebar);
 }
 
+/* 收起轨在 glass 下也必须实底，否则整列透桌面像「终端消失」 */
+.workbench-shell.is-terminal-glass .terminal-workbench .wn-product-collapse-rail-slot {
+  background: var(--fill-sidebar);
+}
+
 /* 侧栏|主区拖拽缝：默认 handle 透明，glass 下会透桌面；铺实底并改用暗色分隔线 */
 .workbench-shell.is-terminal-glass .terminal-workbench .wn-resize-handle {
   background: var(--color-sidebar);

@@ -1,4 +1,6 @@
 package main
 
-// AppVersion 应用版本号，每次发布递增 patch。
-const AppVersion = "0.54.690"
+import "WWorkbench/internal/buildinfo"
+
+// AppVersion 应用版本号（与 buildinfo.Version 同源）。
+const AppVersion = buildinfo.Version

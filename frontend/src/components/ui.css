@@ -1067,7 +1067,19 @@ body > .wn-modal-backdrop {
   border-radius: var(--wwb-float-radius, 10px);
   box-shadow: var(--wwb-float-shadow, 0 8px 28px rgba(15, 23, 42, 0.12));
   background: var(--wwb-float-bg, var(--color-surface-raised, #fff));
-  animation: wwb-notify-in 180ms ease-out;
+  /* 自下方上浮渐出，比 toast 更显眼，避免漏看拍板 */
+  animation: wwb-confirm-rise 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes wwb-confirm-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .wn-confirm-corner-host .wn-modal.is-corner-confirm .wn-modal-header {

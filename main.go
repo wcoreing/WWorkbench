@@ -31,6 +31,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
@@ -94,8 +95,8 @@ func main() {
 		Title:     "WWorkbench",
 		Width:     1400,
 		Height:    900,
-		MinWidth:  1024,
-		MinHeight: 640,
+		MinWidth:  0, // 0 = 不限制最小宽高
+		MinHeight: 0,
 		AssetServer: &assetserver.Options{
 			Assets:  assets,
 			Handler: notebook.AssetHandler(dataDir),
@@ -115,6 +116,8 @@ func main() {
 		OnStartup: api.Startup,
 		OnDomReady: func(ctx context.Context) {
 			makeWindowTransparent()
+			// 运行时再清一次，避免平台默认最小尺寸卡住
+			runtime.WindowSetMinSize(ctx, 0, 0)
 		},
 		OnShutdown: api.Shutdown,
 		Bind: []interface{}{

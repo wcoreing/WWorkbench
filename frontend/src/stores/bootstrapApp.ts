@@ -1,6 +1,7 @@
 import { waitForWails } from '../api/client'
 import { applyDocumentLocale, translate } from '../i18n'
 import { applyUiFontSize } from '../shell/uiFontSize'
+import { applyWindowAlwaysOnTop } from '../shell/windowPin'
 import { Environment } from '../../wailsjs/runtime/runtime'
 import { loadAppPreferences } from './appPreferences'
 import { hydrateDatabaseWorkspace } from './databaseWorkspacePersist'
@@ -28,12 +29,14 @@ export async function bootstrapAppState() {
   document.documentElement.setAttribute('data-theme', prefs.theme)
   applyDocumentLocale(prefs.locale)
   applyUiFontSize(prefs.uiFontSize)
+  applyWindowAlwaysOnTop(prefs.alwaysOnTop)
   useAppStore.setState({
     theme: prefs.theme,
     locale: prefs.locale,
     activeProduct: prefs.activeProduct,
     terminalOpacity: prefs.terminalOpacity,
     uiFontSize: prefs.uiFontSize,
+    alwaysOnTop: prefs.alwaysOnTop,
     activeConnectionId: prefs.lastConnectionId,
     statusMessage: translate(prefs.locale, 'common.ready'),
     tabs: databaseWs.tabs,

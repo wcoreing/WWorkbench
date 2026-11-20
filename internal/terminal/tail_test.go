@@ -18,6 +18,19 @@ func TestCoerceUpdatedAtMs(t *testing.T) {
 	}
 }
 
+func TestLooksLikeShellPromptIdle(t *testing.T) {
+	tail := newOutputTail()
+	tail.append([]byte("built in 651ms\nweining@host web % "))
+	if !looksLikeShellPromptIdle(tail) {
+		t.Fatal("want prompt idle")
+	}
+	tail2 := newOutputTail()
+	tail2.append([]byte("building...\ntransforming (12)"))
+	if looksLikeShellPromptIdle(tail2) {
+		t.Fatal("mid-build should not look like prompt")
+	}
+}
+
 func TestWaitQuietReturnsAfterSilence(t *testing.T) {
 	tail := newOutputTail()
 	tail.append([]byte("hi\n"))

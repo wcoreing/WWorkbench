@@ -2,16 +2,21 @@ package mcpserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
 const readyWait = 25 * time.Second
+
+// listenRetryBudget wails 热重启时旧进程可能尚未释放端口，短暂重试避免 early listen 失败。
+const listenRetryBudget = 8 * time.Second
 
 // Endpoint 提前占用 MCP 端口。工作台未就绪时挂起请求，就绪后交给正式 handler。
 // 避免 Cursor 在启动窗口里遇到 ECONNREFUSED 后把服务标成失败。
@@ -25,11 +30,27 @@ type Endpoint struct {
 }
 
 // Listen 绑定地址并开始接受连接。此时还没有工具面，请求会等到 SetHandler。
+// 端口占用时会在 listenRetryBudget 内重试（适配 wails 热重启竞态）。
 func Listen(addr string) (*Endpoint, error) {
 	addr = strings.TrimSpace(addr)
 	if addr == "" {
 		addr = DefaultHTTPAddr
 	}
+	deadline := time.Now().Add(listenRetryBudget)
+	for {
+		ep, err := listenOnce(addr)
+		if err == nil {
+			return ep, nil
+		}
+		if !isAddrInUse(err) || time.Now().After(deadline) {
+			return nil, err
+		}
+		log.Printf("mcp: listen %s busy, retrying… (%v)", addr, err)
+		time.Sleep(200 * time.Millisecond)
+	}
+}
+
+func listenOnce(addr string) (*Endpoint, error) {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("mcp listen %s: %w", addr, err)
@@ -51,6 +72,17 @@ func Listen(addr string) (*Endpoint, error) {
 	}()
 	log.Printf("mcp: listening %s", ep.baseURL)
 	return ep, nil
+}
+
+func isAddrInUse(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, syscall.EADDRINUSE) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "address already in use") || strings.Contains(msg, "bind: address already in use")
 }
 
 // SetHandler 装上正式 MCP handler。已连上、还在等待的请求会继续处理。
@@ -115,17 +147,19 @@ func (e *Endpoint) HealthURL() string {
 	return e.baseURL + "/health"
 }
 
-// Stop 关闭监听。
+// Stop 关闭监听。优先优雅 Shutdown；超时或失败后 Close，保证端口立刻可被热重启占用。
 func (e *Endpoint) Stop(ctx context.Context) error {
 	if e == nil || e.srv == nil {
 		return nil
 	}
 	if ctx == nil {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
+		ctx, cancel = context.WithTimeout(context.Background(), 500*time.Millisecond)
 		defer cancel()
 	}
-	return e.srv.Shutdown(ctx)
+	err := e.srv.Shutdown(ctx)
+	_ = e.srv.Close()
+	return err
 }
 
 func (e *Endpoint) current() http.Handler {

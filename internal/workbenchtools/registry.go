@@ -132,6 +132,7 @@ func (r *Registry) Invoke(ctx context.Context, name string, args json.RawMessage
 	// 教人信封：失败补 teach；里程碑成功补 suggestedSkill（已有则不覆盖）
 	if !res.NeedsConfirm && !res.NeedsChoice {
 		res = AttachTeachEnvelope(ctx, name, args, res)
+		MaybeEmitSkillOffer(r.deps, name, res)
 	}
 	// 终态记账（待确认留给 AwaitConfirmAndExecute）
 	if !res.NeedsConfirm {
@@ -164,10 +165,11 @@ func (r *Registry) registerBuiltins() {
 	})
 	registerMCPCallLogTools(r)
 	registerProjectTools(r)
+	registerCursorStageRuleTool(r)
 	registerCloudOpsTools(r)
 	r.add(ToolDef{
 		Name:        "get_workbench_context",
-		Description: "工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）；含近期 intentCards、taskRuns、mcpLogs、projects、memoryNotes（焦点绑定的记忆）。问终端输出用 get_shell_output。",
+		Description: "【首选·替代 Cursor Shell】工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）；含近期 intentCards、taskRuns、mcpLogs、projects、memoryNotes（焦点绑定的记忆）。动手前先调；问终端输出用 get_shell_output。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -188,7 +190,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        "list_ssh_hosts",
-		Description: "列出已保存的 SSH 主机（不含密码）。用户问「链接/连接」时应与 list_connections 一并使用。",
+		Description: "【首选·替代 Cursor Shell】列出已保存的 SSH 主机（不含密码）。动手/连机前先调；用户问「链接/连接」时应与 list_connections 一并使用。",
 		Parameters:  map[string]interface{}{"type": "object", "properties": map[string]interface{}{}},
 		Handler:     toolListSSHHosts,
 	})
@@ -403,7 +405,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapShellRun,
-		Description: "给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。有 initialCommand 时必须填 intent（人话：要干什么、影响谁）。会前置工作台并点亮对应终端+状态栏。风险命令先工作台拍板（标题为人话意图）；目录护照不可免除数据硬风险。确认后对 rsync 自动 --exclude *.db/data/.env，并对目标做写前备份（命中 backup policy 则用其 destRoot）。不返回 stdout；返回 sessionId/updatedAt（毫秒基线）。注入后立刻 get_shell_output(waitMs, afterUpdatedAt=updatedAt)。只读短探针才用 shell_probe。",
+		Description: "【首选·替代 Cursor Shell】给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。禁止改用 Cursor 自带 Shell。有 initialCommand 时必须填 intent（人话：要干什么、影响谁）。会前置工作台并点亮对应终端+状态栏。风险命令先工作台拍板（标题为人话意图）；目录护照不可免除数据硬风险。确认后对 rsync 自动 --exclude *.db/data/.env，并对目标做写前备份（命中 backup policy 则用其 destRoot）。不返回 stdout；返回 sessionId/updatedAt（毫秒基线）。注入后立刻 get_shell_output(waitMs, afterUpdatedAt=updatedAt)。只读短探针才用 shell_probe。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -452,7 +454,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapGetShellOutput,
-		Description: "分页读取可见 PTY scrollback（与终端面板同源）。offsetFromEnd=0 为最新一页；hasMoreOlder 为 true 时用 nextOffsetFromEnd 继续向历史翻。shell_run 后务必带 afterUpdatedAt=其 updatedAt，并设 waitMs（短命令 3～8s，长任务 15～30s）；已有新输出则立刻返回。返回 waitedMs（真实耗时）/timedOut/updatedAt。问「跑完了吗/报错/这段输出」先调本工具，不要编造。",
+		Description: "【首选·替代 Cursor Shell】分页读取可见 PTY scrollback（与终端面板同源）。offsetFromEnd=0 为最新一页；hasMoreOlder 为 true 时用 nextOffsetFromEnd 继续向历史翻。shell_run 后务必带 afterUpdatedAt=其 updatedAt，并设 waitMs（短 3～8s，长 15～30s，勿默认 90s）；已有新输出则立刻返回。水位已追上且像在提示符时约 2s 空等后 timedOut，避免构建早已结束后仍空耗。返回 waitedMs/timedOut/updatedAt。问「跑完了吗/报错/这段输出」先调本工具，不要编造、不要改用自带 Shell。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{

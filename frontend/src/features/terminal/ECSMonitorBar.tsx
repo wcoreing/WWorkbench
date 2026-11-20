@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { ECSMetricSeries, ECSMonitor, OSSMonitor } from '../../api/types'
 import { api } from '../../api/client'
 import { IconRefresh } from '../../components/Icons'
+import { PaneCollapseButton } from '../../components/layout'
 import { pressProps } from '../../components/compat'
 import { useI18n } from '../../i18n'
 import { terminalBackground } from './TerminalPane'
+
+const ECS_MONITOR_COLLAPSED_KEY = 'ecs_monitor_bar__collapsed'
 
 interface Props {
   hostId: string
@@ -95,7 +98,7 @@ function Sparkline({ points }: { points: { value: number }[] }) {
   )
 }
 
-/** ECSMonitorBar 终端上方云监控条：ECS + 同地域 OSS 带宽，过宽自动换行。 */
+/** ECSMonitorBar 终端上方云监控条：ECS + 同地域 OSS 带宽，过宽自动换行；可收起。 */
 export function ECSMonitorBar({ hostId, active, opacity }: Props) {
   const { t } = useI18n()
   const [windowHours, setWindowHours] = useState(1)
@@ -104,9 +107,24 @@ export function ECSMonitorBar({ hostId, active, opacity }: Props) {
   const [ossError, setOssError] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem(ECS_MONITOR_COLLAPSED_KEY) === '1',
+  )
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(ECS_MONITOR_COLLAPSED_KEY, next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }, [])
 
   useEffect(() => {
-    if (!active || !hostId) return
+    if (!active || !hostId || collapsed) return
     let cancelled = false
     const load = () => {
       setLoading(true)
@@ -142,7 +160,7 @@ export function ECSMonitorBar({ hostId, active, opacity }: Props) {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [hostId, active, windowHours, t])
+  }, [hostId, active, windowHours, collapsed, t])
 
   const series = [...(mon?.series ?? []), ...(oss?.series ?? [])]
   const peakWindow = mon?.windowHours || oss?.windowHours || windowHours
@@ -172,12 +190,38 @@ export function ECSMonitorBar({ hostId, active, opacity }: Props) {
       .finally(() => setLoading(false))
   }
 
+  if (collapsed) {
+    return (
+      <div
+        className="ecs-monitor-bar is-collapsed"
+        style={{ backgroundColor: terminalBackground(opacity) }}
+      >
+        <button
+          type="button"
+          className="ecs-monitor-expand"
+          title={t('ecs.expandBar')}
+          aria-expanded={false}
+          {...pressProps(toggleCollapsed)}
+        >
+          <span className="tree-chevron wn-collapse-chevron is-y is-collapsed" aria-hidden />
+          <span className="ecs-monitor-expand-label">{t('ecs.barTitle')}</span>
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div
       className="ecs-monitor-bar"
       style={{ backgroundColor: terminalBackground(opacity) }}
       title={hint || undefined}
     >
+      <PaneCollapseButton
+        axis="y"
+        onToggle={toggleCollapsed}
+        title={t('ecs.collapseBar')}
+        className="ecs-monitor-collapse"
+      />
       <select
         className="ecs-monitor-range"
         value={windowHours}

@@ -247,6 +247,19 @@ body.is-row-resizing .wn-pane-gutter-y::before {
   margin: 0;
 }
 
+/* ProductLayout 收起后的窄轨槽：必须限宽，否则 flex 子项 width:100% 会吞掉主区 */
+.wn-product-collapse-rail-slot {
+  flex: 0 0 auto;
+  width: calc(28 * var(--ui-scale) * 1px);
+  min-width: calc(28 * var(--ui-scale) * 1px);
+  max-width: calc(36 * var(--ui-scale) * 1px);
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--fill-sidebar, var(--color-sidebar, var(--color-surface)));
+}
+
 /* 收起轨：带短标题的展开入口，替代随意塞在沟槽里的小三角 */
 .wn-collapse-rail {
   display: flex;

@@ -950,10 +950,38 @@ type SuggestProjectResourcesResultDO struct {
 
 // ConfigureProjectResourcesResultDO 智能配置应用结果。
 type ConfigureProjectResourcesResultDO struct {
-	Project   WorkbenchProjectDO            `json:"project"`
-	Added     []ProjectResourceSuggestionDO `json:"added"`
-	Skipped   []ProjectResourceSuggestionDO `json:"skipped,omitempty"`
-	Suggested []ProjectResourceSuggestionDO `json:"suggested,omitempty"`
+	Project         WorkbenchProjectDO            `json:"project"`
+	Added           []ProjectResourceSuggestionDO `json:"added"`
+	Skipped         []ProjectResourceSuggestionDO `json:"skipped,omitempty"`
+	Suggested       []ProjectResourceSuggestionDO `json:"suggested,omitempty"`
+	CursorStageRule *CursorStageRuleDO            `json:"cursorStageRule,omitempty"`
+}
+
+// CursorStageRuleDO 项目内 Cursor alwaysApply 舞台优先规则写入结果。
+type CursorStageRuleDO struct {
+	Path    string `json:"path,omitempty"`
+	Written bool   `json:"written"`
+	Skipped bool   `json:"skipped,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
+// EnsureCursorStageRulesResultDO 批量写入各项目舞台规则的结果。
+type EnsureCursorStageRulesResultDO struct {
+	Results []CursorStageRuleProjectDO `json:"results"`
+	NOK     int                        `json:"nOk"`
+	NSkip   int                        `json:"nSkip"`
+	NErr    int                        `json:"nErr"`
+}
+
+// CursorStageRuleProjectDO 单个项目的舞台规则结果。
+type CursorStageRuleProjectDO struct {
+	ProjectID   string `json:"projectId,omitempty"`
+	ProjectName string `json:"projectName,omitempty"`
+	LocalPath   string `json:"localPath,omitempty"`
+	Path        string `json:"path,omitempty"`
+	Written     bool   `json:"written"`
+	Skipped     bool   `json:"skipped,omitempty"`
+	Error       string `json:"error,omitempty"`
 }
 
 // HomeStatusDO 本机连接账号服务的状态。
@@ -1218,6 +1246,7 @@ type NotebookAssetDO struct {
 type AgentCapabilityDO struct {
 	Name        string `json:"name"`
 	Label       string `json:"label"`
+	Domain      string `json:"domain"`
 	Risk        string `json:"risk"`
 	Description string `json:"description"`
 	Enabled     bool   `json:"enabled"`

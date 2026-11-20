@@ -17,11 +17,14 @@ export function ConfirmHost() {
       open={!!req}
       title={req?.title ?? ''}
       message={req?.message}
+      ledger={req?.ledger}
       code={req?.code}
       product={req?.product}
       confirmLabel={req?.confirmLabel ?? t('common.confirm')}
+      cancelLabel={req?.cancelLabel}
       danger={req?.danger}
       hardRisk={req?.hardRisk}
+      softRisk={req?.softRisk}
       placement={req?.placement}
       onConfirm={() => resolveConfirm(true)}
       onCancel={() => resolveConfirm(false)}

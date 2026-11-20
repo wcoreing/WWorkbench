@@ -100,6 +100,7 @@ func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 			preview["intent"] = intent
 		}
 		if isHardShellRiskReason(reason) {
+			preview["hardRisk"] = true
 			preview["dataGuard"] = true
 			preview["backupDir"] = defaultDataBackupRoot
 			if reason == riskSyncNoDataExclude || (isRsyncCmd(in.InitialCommand) && !hasDataExcludes(in.InitialCommand)) {
@@ -108,6 +109,8 @@ func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 			if shouldApplyDataGuardOnConfirm(reason) {
 				preview["backupBefore"] = true
 			}
+		} else if isSoftFileRiskReason(reason) {
+			preview["softRisk"] = true
 		}
 		summary := "终端注入：" + reason
 		if intent := strings.TrimSpace(in.Intent); intent != "" {

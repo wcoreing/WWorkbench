@@ -3,6 +3,7 @@ package app
 import (
 	"strings"
 
+	"WWorkbench/internal/cursorrule"
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/store"
@@ -54,6 +55,9 @@ func (s *Service) SaveWorkbenchProject(p model.WorkbenchProjectDO) ApiResult[mod
 	_ = s.store.SetAppSetting(store.SettingLastWorkbenchProjectID, saved.ID)
 	if s.radar != nil {
 		s.radar.EmitAsset(workbench.RadarDomainProject, "project", op, saved.ID, "ui-project-save", saved.Name, true)
+	}
+	if lp := strings.TrimSpace(saved.LocalPath); lp != "" {
+		_, _ = cursorrule.EnsureStageRule(lp)
 	}
 	return OkResult(saved)
 }
@@ -120,5 +124,20 @@ func (s *Service) ConfigureWorkbenchProjectResources(id string, keys []string) A
 	if err != nil {
 		return ErrResult[model.ConfigureProjectResourcesResultDO](err)
 	}
+	s.ensureProjectNotebookRoot(out.Project.Name)
+	return OkResult(out)
+}
+
+// EnsureCursorStageRules 对所有带 localPath 的项目幂等写入 Cursor 舞台优先规则。
+func (s *Service) EnsureCursorStageRules() ApiResult[model.EnsureCursorStageRulesResultDO] {
+	deps, err := s.projectToolDeps()
+	if err != nil {
+		// Store 仍可用时直接扫项目
+		if s.store == nil {
+			return ErrResult[model.EnsureCursorStageRulesResultDO](err)
+		}
+		deps = &workbenchtools.Deps{Store: s.store}
+	}
+	out := workbenchtools.EnsureCursorStageRulesForStore(deps)
 	return OkResult(out)
 }

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"WWorkbench/internal/buildinfo"
 	"WWorkbench/internal/workbenchtools"
 
 	"github.com/mark3labs/mcp-go/server"
@@ -14,26 +15,28 @@ import (
 // DefaultHTTPAddr WWorkbench MCP 默认监听（避开 ningharness 51020 / agentdesk 50423）。
 const DefaultHTTPAddr = "127.0.0.1:51021"
 
-// ServerVersion MCP serverInfo.version（与 AppVersion 同步递增）。
-const ServerVersion = "0.54.690"
+// ServerVersion MCP serverInfo.version（与 AppVersion 同源）。
+const ServerVersion = buildinfo.Version
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明（前馈；不因未读规则拒绝工具）。
-const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（数据库 / 终端 / Docker / HTTP / 日志 / 笔记本 / 浏览器舞台 / 桌面应用 / 备份 / 插件等）。
+const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（按「AI 能力权限」精简暴露；默认关浏览器/桌面/插件等重域）。
+- 【路由协议·首选本 MCP】动手意图（SSH/部署/查生产/改配置）：① 先确认本 MCP 工具可用；② 先调 get_workbench_context 或 list_ssh_hosts；③ 改机只用 shell_run + get_shell_output。禁止先调 Cursor 自带 Shell/SSH/Terminal。缺工具 → 说「设置→能力权限打开对应域」，禁止说「我改用 Shell」。项目可 ensure_cursor_stage_rule 写入 alwaysApply 规则。
+- 【舞台优先·禁止绕开】改本机/远端机器必须用本 MCP（人看得见终端+确认弹窗）。确认弹窗烦也不许绕开。
+- 【工具面】tools/list 只含已开启能力。缺工具 → 设置→能力权限打开对应域→保存（MCP 列表热更新）。勿再挂叠 chrome-devtools / browser-use / computer-use 等与本端点重叠的 MCP。
 - 【前馈】本段即系统约束摘要；可选 get_agent_rules(domain?) 复核全文。不会因未调用 get_agent_rules 而拒绝工具。
 - 【意图】动手类请传 intent（人话：要干什么、影响谁）；缺省时系统会合成「未声明意图」卡片，仍继续执行，确认弹窗与舞台可见。审计：list_mcp_logs 看意图→产品资源(ssh/db/docker/log/http/note/backup/skill)→工具。
-- 【项目】list/get/save_project；detect_project_git；智能配置：suggest/configure_project_resources。Cursor 跨机：sync/list/get_project_cursor_transcripts（仓库 .wworkbench/cursor-transcripts；非 requestId）。
+- 【项目】list/get/save_project；detect_project_git；智能配置：suggest/configure_project_resources；ensure_cursor_stage_rule（写入 alwaysApply 舞台规则）。Cursor 跨机：sync/list/get_project_cursor_transcripts（仓库 .wworkbench/cursor-transcripts；非 requestId）。
 - 【鉴权】URL ?token= 或 Authorization Bearer（设置页可复制 mcp.json）；/health 免鉴权。勿用假 token（Cursor 会卡 Authenticating）。
 - 【备份】host_health_scan(sshHostId, workDir) → 用户勾选后 ensure_host_backup_policies(findingIds)；或 save_backup_policy → run_backup 无头。禁止全盘扫、禁止默认全选。
 - 参数=schema 顶层字段（勿再包 {"arguments":…}）。
-- 危险写操作在工作台弹窗拍板（工具阻塞至用户确认；与看过程同一视线）。含：SQL/容器/插件/run_backup，以及 shell_run 风险命令。终端右键「允许 MCP 写入当前目录」后软文件写可免确认；数据硬风险（rsync/scp/cp 碰 *.db/data/.env、库导入）不可免。确认后：rsync 自动 exclude；写前备份。勿解析 ww_confirm 文本。
+- 危险写操作只在确认弹窗拍板（产品标签+账本+命令）。含：SQL/容器/插件/run_backup，以及 shell_run 风险命令。终端右键「允许 MCP 写入当前目录」后软文件写可免确认；数据硬风险不可免。确认后：rsync 自动 exclude；写前备份。勿解析 ww_confirm 文本。
 - 能解析到 SSH 的操作会先打开/聚焦对应终端 + 状态栏。shell_run 返回 updatedAt → 立刻 get_shell_output(waitMs, afterUpdatedAt)。shell_probe=无头只读短探针。断线先 terminal_reconnect。
-- 教人信封（全域）：工具失败/里程碑成功可能带 teach、suggestedSkill；须转述并问人再 update_skill。云：get_ecs_monitor / sync_ssh_security_group / configure_ssh_sg_sync。细则 get_agent_rules(domain=cloud|browser|desktop)。
-- 容器启停删用 start/stop/remove_container，勿用 shell_probe 跑 docker rm。
-- 词典：任务=目标；账本=thought+op→log.md；Skill=任意目录 SKILL.md。对外只认 list/get/update/run/distill_skill（旧 *workflow / update_agent_skill 已别名转发）。闭环：接目标→task_record/browser_*→update_skill。禁止任务场景直连 10086/18765。样板 get_skill(wwb-skill-standard)。
-- 浏览器：browser_*；等壳；fill(fields)；可写宏 browser_run(mode=macro)。自学习：探索记 log → update_skill（无变更跳过；有变更写前 pin 再落盘，免确认）→ get_skill/run_skill。
-- 桌面应用：desktop_*（原生应用的界面读取与操作）。默认一个应用都读不了：首次读取 / 操作某应用时工作台弹窗请用户按应用授权，被拒后勿重复请求。先 desktop_status；ref 原样使用；细则 get_agent_rules(domain=desktop)。
+- 教人信封（全域）：工具失败/里程碑成功可能带 teach、suggestedSkill；工作台会弹 skill_offer 人审落盘，Agent 须转述勿重复追问。云：get_ecs_monitor / sync_ssh_security_group / configure_ssh_sg_sync。细则 get_agent_rules(domain=cloud|browser|desktop)。
+- 容器启停删用 start/stop/remove_container（默认权限关，用时打开），勿用 shell_probe 跑 docker rm。
+- 词典：任务=目标；账本=thought+op→log.md；Skill=任意目录 SKILL.md。对外只认 list/get/update/run/distill_skill。闭环：接目标→task_record/browser_*→update_skill。样板 get_skill(wwb-skill-standard)。
+- 浏览器/桌面：默认权限关；打开后 browser_* / desktop_*；细则 get_agent_rules(domain=browser|desktop)。
 - 笔记本：list_notes / get_note / get_skill；动手前读主机 memory。插件 UI：先 get_plugin_protocol。
-- 工具受「AI 能力权限」开关约束。Cursor 配置本端点 /mcp/workbench（非 /mcp）。`
+- Cursor 只配置本端点 /mcp/workbench（非 /mcp）。`
 
 // NewHandler 组装 /mcp、/mcp/workbench、/health。不监听端口。
 // authToken 非空时对非 /health 路径要求 Bearer；CORS 仅本机 Origin。
@@ -51,8 +54,14 @@ func NewHandler(gw *toolgateway.Gateway, reg *workbenchtools.Registry, authToken
 		server.WithEndpointPath("/mcp"),
 		server.WithStateLess(true),
 	)
+	perms := func() map[string]bool {
+		if reg == nil || reg.Deps() == nil {
+			return nil
+		}
+		return reg.Deps().EffectivePermissions()
+	}
 	wb := server.NewStreamableHTTPServer(
-		NewWorkbenchMCPServer(gw, reg),
+		NewWorkbenchMCPServer(gw, reg, perms),
 		server.WithEndpointPath("/mcp/workbench"),
 		server.WithStateLess(true),
 	)

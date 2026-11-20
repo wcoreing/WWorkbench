@@ -6,7 +6,12 @@ import { withSSHHostTrust } from '../../api/sshTrust'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { ContextMenu } from '../../components/ContextMenu'
 import { EmptyState } from '../../components/EmptyState'
-import { ProductLayout } from '../../components/layout'
+import {
+  ProductLayout,
+  rememberScalarSize,
+  recallScalarSize,
+  useResizable,
+} from '../../components/layout'
 import { TabContextMenu, openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
 import { IconCopy, IconDocker, IconLaptop, IconPlus, IconRefresh, IconTerminal } from '../../components/Icons'
 import { openAgentDraft, mentionSSH, mentionDockerHost } from '../../features/agent/openAgentDraft'
@@ -49,6 +54,9 @@ import {
 } from '../../features/terminal/terminalLayout'
 
 const TERMINAL_SIDE_TAB_KEY = 'terminal_sidebar_tab'
+const TERMINAL_SIDEBAR_WIDTH_KEY = 'terminal_sidebar_width'
+const TERMINAL_SIDEBAR_EXPANDED_KEY = 'terminal_sidebar_width__expanded'
+const TERMINAL_SIDEBAR_COLLAPSED_KEY = 'terminal_sidebar__collapsed'
 type TerminalSideTab = 'local' | 'ssh' | 'docker' | 'forward'
 
 function loadTerminalSideTab(): TerminalSideTab {
@@ -111,6 +119,37 @@ export function TerminalWorkbench() {
   const [reconnectingTabId, setReconnectingTabId] = useState<string | null>(null)
   const [splitting, setSplitting] = useState(false)
   const [sideTab, setSideTab] = useState<TerminalSideTab>(() => loadTerminalSideTab())
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem(TERMINAL_SIDEBAR_COLLAPSED_KEY) === '1',
+  )
+  const {
+    size: terminalSidebarWidth,
+    setSizeAndSave: setTerminalSidebarWidth,
+    onResizeStart: onTerminalSidebarResizeStart,
+  } = useResizable({
+    axis: 'x',
+    storageKey: TERMINAL_SIDEBAR_WIDTH_KEY,
+    defaultSize: 220,
+    min: 180,
+    max: 480,
+  })
+  const toggleSidebarCollapse = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(TERMINAL_SIDEBAR_COLLAPSED_KEY, next ? '1' : '0')
+      } catch {
+        /* ignore */
+      }
+      if (next) rememberScalarSize(TERMINAL_SIDEBAR_EXPANDED_KEY, terminalSidebarWidth)
+      else {
+        setTerminalSidebarWidth(
+          recallScalarSize(TERMINAL_SIDEBAR_EXPANDED_KEY, terminalSidebarWidth, 180, 480),
+        )
+      }
+      return next
+    })
+  }, [terminalSidebarWidth, setTerminalSidebarWidth])
   const [ctxMenu, setCtxMenu] = useState<
     { x: number; y: number; host: ShellHost | 'local' } | null
   >(null)
@@ -1017,9 +1056,18 @@ export function TerminalWorkbench() {
       </div>
 
       <ProductLayout
-        storageKey="terminal_sidebar_width"
-        resizeTitle={t('common.resizeWidth')}
+        storageKey={TERMINAL_SIDEBAR_WIDTH_KEY}
+        resizeTitle={`${t('common.resizeWidth')} · ${t('common.collapsePane')}`}
+        defaultWidth={220}
+        minWidth={180}
+        maxWidth={480}
+        width={terminalSidebarWidth}
+        onResizeStart={onTerminalSidebarResizeStart}
         sidebarClassName="terminal-sidebar"
+        sidebarCollapsed={sidebarCollapsed}
+        onToggleSidebarCollapse={toggleSidebarCollapse}
+        sidebarRailLabel={t('terminal.sidebarRail')}
+        sidebarExpandTitle={t('terminal.expandSidebar')}
         sidebar={
           <div className="terminal-side">
             <div className="terminal-side-tabs" role="tablist" aria-label={t('terminal.sideTabs')}>

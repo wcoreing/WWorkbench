@@ -19,7 +19,11 @@ func normalizeAgentAPIBase(base string) string {
 }
 
 const AgentKeyToolPermissions = "agent_tool_permissions"
+const AgentKeyToolPermsProfile = "agent_tool_permissions_profile"
 const AgentKeyProvider = "agent_provider"
+
+// ToolPermsProfileSlim 精简默认：浏览器/桌面/插件等默认关，打开 MCP 工具面更短。
+const ToolPermsProfileSlim = "2"
 
 const (
 	AgentProviderOpenAI   = "openai"
@@ -89,17 +93,42 @@ func LookupAgentProviderPreset(provider string) (AgentProviderPreset, bool) {
 	}
 }
 
-// GetToolPermissions 读取工具权限映射（缺省为全部启用）。
+// GetToolPermissions 读取工具权限映射（缺省为 RecommendedDefault 精简集）。
 func (s *Store) GetToolPermissions() map[string]bool {
+	def := agentcap.DefaultPermissions()
+	profile, _ := s.GetAppSetting(AgentKeyToolPermsProfile)
 	raw, _ := s.GetAppSetting(AgentKeyToolPermissions)
+
+	// 一次性迁到精简推荐：旧「全开」配置会冲掉 MCP 注意力收敛。
+	if profile != ToolPermsProfileSlim {
+		_ = s.SetAppSetting(AgentKeyToolPermsProfile, ToolPermsProfileSlim)
+		if raw == "" {
+			return def
+		}
+		var old map[string]bool
+		if err := json.Unmarshal([]byte(raw), &old); err != nil || permissionsEffectivelyAllOn(old) {
+			_ = s.SaveToolPermissions(def)
+			return def
+		}
+		// 用户曾关掉部分：以精简默认为底，仅保留其显式关闭
+		for name, on := range old {
+			if !on {
+				if _, ok := def[name]; ok {
+					def[name] = false
+				}
+			}
+		}
+		_ = s.SaveToolPermissions(def)
+		return def
+	}
+
 	if raw == "" {
-		return agentcap.DefaultPermissions()
+		return def
 	}
 	var m map[string]bool
 	if err := json.Unmarshal([]byte(raw), &m); err != nil {
-		return agentcap.DefaultPermissions()
+		return def
 	}
-	def := agentcap.DefaultPermissions()
 	legacy := map[string]string{
 		"open_terminal":           workbench.CapShellRun,
 		"terminal.open":           workbench.CapShellRun,
@@ -121,6 +150,29 @@ func (s *Store) GetToolPermissions() map[string]bool {
 		def[name] = on
 	}
 	return def
+}
+
+// permissionsEffectivelyAllOn 旧配置是否等于「目录内几乎全开」。
+func permissionsEffectivelyAllOn(m map[string]bool) bool {
+	if len(m) == 0 {
+		return true
+	}
+	off := 0
+	for _, on := range m {
+		if !on {
+			off++
+		}
+	}
+	// 关掉不超过 2 个仍视为「全开残留」
+	return off <= 2
+}
+
+// ResetToolPermissionsToRecommended 恢复精简推荐并标记 profile。
+func (s *Store) ResetToolPermissionsToRecommended() error {
+	if err := s.SetAppSetting(AgentKeyToolPermsProfile, ToolPermsProfileSlim); err != nil {
+		return err
+	}
+	return s.SaveToolPermissions(agentcap.DefaultPermissions())
 }
 
 // SaveToolPermissionsJSON 从 JSON 字符串保存工具权限。
@@ -156,9 +208,11 @@ func (s *Store) BuildAgentCapabilitiesWith(perms map[string]bool) []model.AgentC
 	}
 	out := make([]model.AgentCapabilityDO, 0, len(agentcap.Catalog()))
 	for _, c := range agentcap.Catalog() {
+		d := agentcap.DomainOf(c.Name)
 		out = append(out, model.AgentCapabilityDO{
 			Name:        c.Name,
 			Label:       c.Label,
+			Domain:      string(d),
 			Risk:        string(c.Risk),
 			Description: c.Description,
 			Enabled:     perms[c.Name],

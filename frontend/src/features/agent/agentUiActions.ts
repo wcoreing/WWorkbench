@@ -3,7 +3,7 @@ import { useAppStore } from '../../stores/appStore'
 import { dispatchWorkbenchCommand } from '../../workbench/workbenchCommandBus'
 import { Capability } from '../../workbench/capabilities'
 import type { ProductId } from '../../shell/products'
-import { askConfirm } from '../../utils/askConfirm'
+import { askConfirm, type ConfirmLedgerRow } from '../../utils/askConfirm'
 import { api } from '../../api/client'
 import { notify } from '../../notify'
 
@@ -20,7 +20,7 @@ function setStatus(label: string) {
   useAppStore.getState().setStatusMessage(label)
 }
 
-/** hardRiskTool 确认经济：硬风险不可免确认。 */
+/** hardRiskTool 工具级硬风险（不可免确认）。 */
 function hardRiskTool(toolName: string): boolean {
   const n = toolName.toLowerCase()
   return (
@@ -31,6 +31,32 @@ function hardRiskTool(toolName: string): boolean {
     n.includes('restore_') ||
     n === 'run_backup' ||
     n.includes('ensure_host_backup')
+  )
+}
+
+/** previewMarksHard 预览字段标硬风险（shell 数据防护等）。 */
+function previewMarksHard(obj: Record<string, unknown> | null): boolean {
+  if (!obj) return false
+  if (obj.hardRisk === true || obj.dataGuard === true) return true
+  const risk = obj.risk != null ? String(obj.risk) : ''
+  return (
+    risk.includes('数据文件') ||
+    risk.includes('递归同步') ||
+    risk.includes('数据库') ||
+    risk.includes('exclude')
+  )
+}
+
+/** previewMarksSoft 预览字段标软风险（可被目录护照免除）。 */
+function previewMarksSoft(obj: Record<string, unknown> | null): boolean {
+  if (!obj || previewMarksHard(obj)) return false
+  if (obj.softRisk === true) return true
+  const risk = obj.risk != null ? String(obj.risk) : ''
+  return (
+    risk.includes('写入文件') ||
+    risk.includes('tee') ||
+    risk.includes('删除文件') ||
+    risk.includes('rm')
   )
 }
 
@@ -190,93 +216,107 @@ function prettyBreakShellChain(cmd: string): string {
   return parts.join('\n')
 }
 
-/** formatMcpConfirmBody 拆分说明文案与代码块内容。 */
-function formatMcpConfirmBody(
-  preview: unknown,
-  toolName: string,
-): { message?: string; code?: string } {
+type ConfirmBody = {
+  code?: string
+  ledger?: ConfirmLedgerRow[]
+  hardRisk: boolean
+  softRisk: boolean
+}
+
+function pushLedger(rows: ConfirmLedgerRow[], label: string, value: string, tone?: ConfirmLedgerRow['tone']) {
+  const v = value.trim()
+  if (!v) return
+  rows.push({ label, value: v, tone })
+}
+
+/** formatMcpConfirmBody 拆分账本行与代码块；并标硬/软风险。 */
+function formatMcpConfirmBody(preview: unknown, toolName: string): ConfirmBody {
+  const toolHard = hardRiskTool(toolName)
   if (preview == null) {
-    return { message: toolName ? `工具 · ${toolName}` : undefined }
+    return {
+      ledger: toolName ? [{ label: '工具', value: toolName, tone: 'muted' }] : undefined,
+      hardRisk: toolHard,
+      softRisk: false,
+    }
   }
   if (typeof preview === 'string') {
     const text = formatConfirmCode(preview)
-    return text ? { code: text } : { message: toolName ? `工具 · ${toolName}` : undefined }
+    return { code: text || undefined, hardRisk: toolHard, softRisk: false }
   }
   try {
     const obj = typeof preview === 'object' ? (preview as Record<string, unknown>) : null
     if (!obj) {
-      return { code: formatConfirmCode(String(preview)) }
+      return { code: formatConfirmCode(String(preview)), hardRisk: toolHard, softRisk: false }
     }
+    const hard = toolHard || previewMarksHard(obj)
+    const soft = !hard && previewMarksSoft(obj)
     const codeRaw = [obj.command, obj.sql, obj.initialCommand, obj.commandPreview]
       .map((v) => (v != null ? String(v) : ''))
       .find((s) => s.trim())
-    // 桌面应用：要输入的文本原样展示，不按 shell 命令拆行
     const desktopApp = toolName.startsWith('desktop_') && obj.app != null ? String(obj.app).trim() : ''
     const desktopText = desktopApp && obj.text != null ? String(obj.text) : ''
     const code = codeRaw ? formatConfirmCode(codeRaw) : desktopText.trim() ? desktopText : undefined
 
-    const meta: string[] = []
+    const ledger: ConfirmLedgerRow[] = []
     const impact = impactFromPreview(obj, toolName)
-    // 标题已是意图，账本不再重复「意图 ·」行
-    if (impact) meta.push(`影响 · ${impact}`)
-    if (hardRiskTool(toolName)) {
-      meta.push('风险 · 硬风险（不可免确认）')
-    } else if (obj.risk != null && String(obj.risk).trim()) {
-      meta.push(`风险 · ${String(obj.risk).trim()}`)
+    if (impact) pushLedger(ledger, '影响', impact)
+    if (obj.risk != null && String(obj.risk).trim()) {
+      pushLedger(ledger, '风险', String(obj.risk).trim(), hard ? 'danger' : soft ? 'warn' : undefined)
+    } else if (hard) {
+      pushLedger(ledger, '风险', '硬风险（不可免确认）', 'danger')
     }
     if (desktopApp) {
       const bundle = obj.bundleId != null ? String(obj.bundleId).trim() : ''
-      meta.push(`应用 · ${desktopApp}${bundle && bundle !== desktopApp ? `（${bundle}）` : ''}`)
-      if (obj.scope != null && String(obj.scope).trim()) meta.push(`范围 · ${String(obj.scope).trim()}`)
-      if (obj.note != null && String(obj.note).trim()) meta.push(String(obj.note).trim())
+      pushLedger(
+        ledger,
+        '应用',
+        `${desktopApp}${bundle && bundle !== desktopApp ? `（${bundle}）` : ''}`,
+      )
+      if (obj.scope != null) pushLedger(ledger, '范围', String(obj.scope), 'muted')
+      if (obj.note != null) pushLedger(ledger, '说明', String(obj.note), 'muted')
     }
-    if (toolName) meta.push(`工具 · ${toolName}`)
+    if (toolName) pushLedger(ledger, '工具', toolName, 'muted')
     const hostLabel = [obj.name, obj.host, obj.user]
       .map((v) => (v != null ? String(v).trim() : ''))
       .filter(Boolean)
-    // 影响行已含主机时不再重复「主机 ·」
     if (!(impact && (impact.startsWith('主机') || impact.startsWith('SSH') || impact === '本机终端'))) {
       if (obj.kind === 'local' || obj.localShell) {
-        meta.push('目标 · 本机')
+        pushLedger(ledger, '目标', '本机', 'muted')
       } else if (hostLabel.length) {
-        meta.push(`主机 · ${hostLabel.join(' · ')}`)
+        pushLedger(ledger, '主机', hostLabel.join(' · '), 'muted')
       }
     }
-    if (obj.dataGuard) {
-      meta.push('数据防护 · 已启用')
-    }
+    if (obj.dataGuard) pushLedger(ledger, '数据防护', '已启用', 'danger')
     if (obj.autoExclude != null && String(obj.autoExclude).trim()) {
-      meta.push(`确认后自动 exclude · ${String(obj.autoExclude).trim()}`)
+      pushLedger(ledger, '确认后 exclude', String(obj.autoExclude).trim(), 'warn')
     }
     if (obj.backupBefore) {
       const bak =
         obj.backupDir != null && String(obj.backupDir).trim()
           ? String(obj.backupDir).trim()
           : '/www/backup/wworkbench'
-      meta.push(`确认后写前备份 · ${bak}/<时间戳>/`)
+      pushLedger(ledger, '写前备份', `${bak}/<时间戳>/`, 'warn')
     }
     if (Array.isArray(obj.backupPolicies) && obj.backupPolicies.length) {
-      meta.push(
-        `备份策略 · ${obj.backupPolicies.map((x) => String(x)).filter(Boolean).join('、')}`,
+      pushLedger(
+        ledger,
+        '备份策略',
+        obj.backupPolicies.map((x) => String(x)).filter(Boolean).join('、'),
+        'muted',
       )
     }
     for (const key of ['url', 'method', 'path', 'containerId', 'packId', 'releaseId'] as const) {
       const v = obj[key]
-      if (v != null && String(v).trim() && key !== 'path') {
-        meta.push(`${key} · ${String(v).trim()}`)
-      } else if (key === 'path' && v != null && String(v).trim() && !code) {
-        meta.push(`path · ${String(v).trim()}`)
-      }
+      if (v == null || !String(v).trim()) continue
+      if (key === 'path' && code) continue
+      pushLedger(ledger, key, String(v).trim(), 'muted')
     }
-    if (!code && meta.length === 0) {
-      return { code: formatConfirmCode(JSON.stringify(preview, null, 2)) }
+    if (!code && ledger.length === 0) {
+      return { code: formatConfirmCode(JSON.stringify(preview, null, 2)), hardRisk: hard, softRisk: soft }
     }
-    return {
-      message: meta.length ? meta.join('\n') : undefined,
-      code,
-    }
+    return { ledger: ledger.length ? ledger : undefined, code, hardRisk: hard, softRisk: soft }
   } catch {
-    return { code: formatConfirmCode(String(preview)) }
+    return { code: formatConfirmCode(String(preview)), hardRisk: toolHard, softRisk: false }
   }
 }
 
@@ -319,16 +359,17 @@ async function handleMcpConfirm(raw: Record<string, unknown>) {
     useAppStore.getState().setActiveProduct(product)
   }
   setStatus(`待确认 · ${summary}`)
-  // 拍板唯一入口：右下角确认弹窗（产品/账本/代码块）
+  // 拍板唯一入口：右下角确认弹窗（产品标签 + 结构化账本 + 代码块）
   const body = formatMcpConfirmBody(raw.preview, toolName)
   const ok = await askConfirm({
     title: summary,
-    message: body.message,
+    ledger: body.ledger,
     code: body.code,
     product: product ?? undefined,
     confirmLabel: String(raw.confirmLabel ?? '').trim() || '执行',
     danger: true,
-    hardRisk: hardRiskTool(toolName),
+    hardRisk: body.hardRisk,
+    softRisk: body.softRisk,
     placement: 'corner',
   })
   try {
@@ -363,6 +404,64 @@ export function subscribeMcpStage() {
   return EventsOn('mcp:stage', (raw: Record<string, unknown>) => {
     const label = String(raw.label ?? '').trim()
     if (label) setStatus(label)
+  })
+}
+
+async function handleMcpSkillOffer(raw: Record<string, unknown>) {
+  bringWorkbenchForward()
+  const name = String(raw.name ?? '').trim()
+  const lessons = String(raw.lessons ?? '').trim()
+  const prompt = String(raw.offerPrompt ?? '').trim() || '要把这次做法写进 Skill 吗？'
+  if (!name || !lessons) return
+
+  const product = asProductId(raw.product)
+  if (product) {
+    useAppStore.getState().setActiveProduct(product)
+  }
+  setStatus(`沉淀建议 · ${name}`)
+
+  const ledger: ConfirmLedgerRow[] = [
+    { label: 'Skill', value: name },
+    { label: '经验', value: lessons.length > 280 ? `${lessons.slice(0, 280)}…` : lessons },
+  ]
+  const domain = String(raw.domain ?? '').trim()
+  if (domain) ledger.push({ label: '域', value: domain, tone: 'muted' })
+  const toolName = String(raw.tool ?? '').trim()
+  if (toolName) ledger.push({ label: '工具', value: toolName, tone: 'muted' })
+
+  const ok = await askConfirm({
+    title: prompt,
+    ledger,
+    product: product ?? undefined,
+    confirmLabel: '写进 Skill',
+    cancelLabel: '跳过',
+    placement: 'corner',
+  })
+  if (!ok) {
+    setStatus(`已跳过沉淀 · ${name}`)
+    notify.info(`已跳过沉淀「${name}」`)
+    return
+  }
+  try {
+    await api.updateSkill({
+      name,
+      intent: `人审沉淀：${prompt}`,
+      lessons,
+    })
+    setStatus(`已沉淀 · ${name}`)
+    notify.success(`已写入 Skill「${name}」`)
+  } catch (err) {
+    notify.error(err instanceof Error ? err.message : String(err))
+  }
+}
+
+/**
+ * subscribeMcpSkillOffer 里程碑 suggestedSkill → 工作台右下角人审 → update_skill。
+ * 与危险确认串行同一视线，避免叠窗。
+ */
+export function subscribeMcpSkillOffer() {
+  return EventsOn('mcp:skill_offer', (raw: Record<string, unknown>) => {
+    mcpConfirmQueue = mcpConfirmQueue.then(() => handleMcpSkillOffer(raw)).catch(() => {})
   })
 }
 

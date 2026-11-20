@@ -93,3 +93,15 @@ export function IconUiSettings({ size, className }: ShellChromeIconProps) {
     </UiIcon>
   )
 }
+
+/** 窗口置顶（图钉） */
+export function IconUiPin({ size, className }: ShellChromeIconProps) {
+  return (
+    <UiIcon size={size} className={className}>
+      <path d="M8 13.5V9.2" />
+      <path d="M5.2 9.2h5.6" />
+      <path d="M6 9.2l.7-5.2h2.6L10 9.2" />
+      <path d="M6.4 4h3.2" />
+    </UiIcon>
+  )
+}

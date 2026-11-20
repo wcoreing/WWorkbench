@@ -278,6 +278,10 @@ export function EnableDirVersion(arg1) {
   return window['go']['app']['Service']['EnableDirVersion'](arg1);
 }
 
+export function EnsureCursorStageRules() {
+  return window['go']['app']['Service']['EnsureCursorStageRules']();
+}
+
 export function EnsureDockerHost(arg1, arg2) {
   return window['go']['app']['Service']['EnsureDockerHost'](arg1, arg2);
 }
@@ -904,6 +908,10 @@ export function RenameTaskRun(arg1, arg2) {
 
 export function ReplayTaskStep(arg1, arg2, arg3, arg4) {
   return window['go']['app']['Service']['ReplayTaskStep'](arg1, arg2, arg3, arg4);
+}
+
+export function ResetAgentPermissionsRecommended() {
+  return window['go']['app']['Service']['ResetAgentPermissionsRecommended']();
 }
 
 export function ResizeTerminal(arg1, arg2, arg3) {

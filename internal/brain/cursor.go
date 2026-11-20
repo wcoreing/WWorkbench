@@ -180,14 +180,11 @@ func (b *CursorBrain) RunTurn(ctx context.Context, in guest.ExternalTurn, tools 
 	if agentID == "" {
 		agentID, err = cli.CreateAgent(ctx, opts)
 		if err != nil {
+			// 禁止静默降级为「无工作台工具」Agent：否则 Cursor 会改用自带 Shell 直连服务器，舞台失明。
 			if len(opts.CustomTools) > 0 {
-				opts.CustomTools = nil
-				agentID, err = cli.CreateAgent(ctx, opts)
+				return "", fmt.Errorf("CreateAgent 挂载工作台工具失败: %w（请重启 App / 检查 Cursor Bridge；不会降级为无工具 Agent）", err)
 			}
-			if err != nil {
-				return "", fmt.Errorf("CreateAgent: %w", err)
-			}
-			emit(guest.Event{Kind: guest.EventToolEnd, Tool: "cursor_bridge", Status: "ok", Summary: "已创建 Agent（工作台工具未挂载，请重启 App）"})
+			return "", fmt.Errorf("CreateAgent: %w", err)
 		}
 		b.saveAgentID(in.SessionKey, agentID)
 	}
@@ -322,9 +319,9 @@ func mapCursorMode(mode string) string {
 
 func buildCursorUserMessage(prompt, feedforward, mode, recentDialog string) string {
 	var b strings.Builder
-	b.WriteString("你在 WWorkbench 桌面工作台中运行。数据库/SSH/插件等能力以自定义工具提供")
-	b.WriteString("（如 list_connections、execute_sql、read_plugin_pack_file、edit_plugin_pack_file）；")
-	b.WriteString("需要时请调用工具，不要假装已执行。对用户用简体中文。\n")
+	b.WriteString("你在 WWorkbench 桌面工作台中运行。数据库/SSH/终端/插件等能力以**工作台自定义工具**提供")
+	b.WriteString("（shell_run、get_shell_output、list_ssh_hosts、list_connections、execute_sql 等）；")
+	b.WriteString("【路由】动手前先 get_workbench_context 或 list_ssh_hosts；改机器必须走这些工具，**禁止**先调 Cursor 自带 Shell/SSH。缺工具说能力权限，勿改用自带 Shell。需要时请调用工具，不要假装已执行。对用户用简体中文。\n")
 	b.WriteString("界面快照只描述 UI，不取代对话历史；用户只回数字时按历史里上一轮助手编号选项执行。拍板优先 offer_choices。\n")
 	if mode != "" {
 		b.WriteString("当前模式: ")

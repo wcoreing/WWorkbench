@@ -450,6 +450,48 @@
   color: #e8d9a8;
 }
 
+.ecs-monitor-bar.is-collapsed {
+  flex-wrap: nowrap;
+  padding: 0;
+  min-height: calc(22 * var(--ui-scale) * 1px);
+}
+
+.ecs-monitor-expand {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  width: 100%;
+  margin: 0;
+  padding: calc(3 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ecs-monitor-expand:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ecs-monitor-expand-label {
+  font-size: var(--font-size-caption);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+}
+
+.ecs-monitor-collapse {
+  color: inherit;
+  opacity: 0.75;
+}
+
+.ecs-monitor-collapse:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .ecs-monitor-range {
   flex-shrink: 0;
   appearance: none;

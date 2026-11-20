@@ -1,4 +1,4 @@
-import type { RefObject } from 'react'
+import { useMemo, type RefObject } from 'react'
 import type { AgentChatLine, AgentSessionPhase } from '../../stores/agentStore'
 import { useAgentStore } from '../../stores/agentStore'
 import type { AgentChatMode } from './agentChatMode'
@@ -10,6 +10,7 @@ import { AgentInputBar } from './AgentInputBar'
 import { AgentChatTurn } from './AgentChatTurn'
 import { AgentStarter, type AgentStarterItem } from './AgentStarter'
 import type { ChatImage } from './agentImages'
+import { coalesceToolOnlyLines } from './agentLines'
 
 interface Props {
   t: (key: string, params?: Record<string, string | number>) => string
@@ -96,12 +97,13 @@ export function AgentChatPane({
   onUnbindThreadSkill,
   onSuggest,
 }: Props) {
-  const lastAssistantIdx = lastAssistantIndex(lines)
+  const displayLines = useMemo(() => coalesceToolOnlyLines(lines), [lines])
+  const lastAssistantIdx = lastAssistantIndex(displayLines)
   const streamingLineId = useAgentStore((s) => s.streamingLineId)
   const streamingDraft = useAgentStore((s) => s.streamingDraft)
   const showActionRail = Boolean(choiceQuestions?.length)
   const ENV_TOOL = /^(cursor_bridge|mcp)/
-  const lastTools = lastAssistantIdx >= 0 ? lines[lastAssistantIdx].tools || [] : []
+  const lastTools = lastAssistantIdx >= 0 ? displayLines[lastAssistantIdx].tools || [] : []
   const runningBusiness = lastTools.filter(
     (s) => s.status === 'running' && !ENV_TOOL.test(s.tool),
   )
@@ -118,19 +120,19 @@ export function AgentChatPane({
     <div className="agent-chat-pane">
       <div className="agent-messages" ref={scrollRef} onScroll={onMessagesScroll}>
         <div className="agent-messages-inner">
-          {lines.length === 0 &&
+          {displayLines.length === 0 &&
             (onSuggest ? (
               <AgentStarter t={t} busy={active} onSuggest={onSuggest} />
             ) : (
               <div className="agent-empty">{t('agent.hint')}</div>
             ))}
-          {lines.map((line, idx) => (
+          {displayLines.map((line, idx) => (
             <AgentChatTurn
               key={line.id}
               line={line}
               threadId={threadId}
               isLastAssistant={idx === lastAssistantIdx}
-              showRoleLabel={shouldShowRoleLabel(lines, idx)}
+              showRoleLabel={shouldShowRoleLabel(displayLines, idx)}
               choiceDisabled={active || idx !== lastAssistantIdx}
               hideInlineChoice={Boolean(choiceQuestions?.length) && idx === lastAssistantIdx}
               skillCatalog={skillCatalog}
