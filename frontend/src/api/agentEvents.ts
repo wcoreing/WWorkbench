@@ -7,6 +7,21 @@ export interface AgentAssistantEvent {
   seq?: number
 }
 
+export interface AgentTeachPayload {
+  summary?: string
+  nextSteps?: string[]
+  highlights?: string[]
+  raw?: string
+}
+
+export interface AgentSuggestedSkillPayload {
+  name?: string
+  lessons?: string
+  askHuman?: boolean
+  offerPrompt?: string
+  domain?: string
+}
+
 export interface AgentToolEvent {
   threadId: string
   tool: string
@@ -16,6 +31,8 @@ export interface AgentToolEvent {
   status?: string
   summary?: string
   images?: { mime: string; data: string }[]
+  teach?: AgentTeachPayload
+  suggestedSkill?: AgentSuggestedSkillPayload
 }
 
 export interface AgentDoneEvent {
@@ -73,6 +90,40 @@ function parseEventSkillIds(raw: unknown): string[] | undefined {
   if (!Array.isArray(raw)) return undefined
   const out = raw.map((v) => String(v ?? '').trim()).filter(Boolean)
   return out.length ? out : undefined
+}
+
+function parseTeach(raw: unknown): AgentTeachPayload | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const rec = raw as Record<string, unknown>
+  const summary = String(rec.summary ?? '').trim()
+  const nextSteps = Array.isArray(rec.nextSteps)
+    ? rec.nextSteps.map((v) => String(v ?? '').trim()).filter(Boolean)
+    : undefined
+  const highlights = Array.isArray(rec.highlights)
+    ? rec.highlights.map((v) => String(v ?? '').trim()).filter(Boolean)
+    : undefined
+  const rawText = String(rec.raw ?? '').trim()
+  if (!summary && !(nextSteps && nextSteps.length) && !(highlights && highlights.length)) return undefined
+  return {
+    summary: summary || undefined,
+    nextSteps: nextSteps?.length ? nextSteps : undefined,
+    highlights: highlights?.length ? highlights : undefined,
+    raw: rawText || undefined,
+  }
+}
+
+function parseSuggestedSkill(raw: unknown): AgentSuggestedSkillPayload | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const rec = raw as Record<string, unknown>
+  const name = String(rec.name ?? '').trim()
+  if (!name) return undefined
+  return {
+    name,
+    lessons: String(rec.lessons ?? '').trim() || undefined,
+    askHuman: rec.askHuman !== false,
+    offerPrompt: String(rec.offerPrompt ?? '').trim() || undefined,
+    domain: String(rec.domain ?? '').trim() || undefined,
+  }
 }
 
 function optionalSeq(raw: Record<string, unknown>): number | undefined {
@@ -168,6 +219,8 @@ export function subscribeAgentEvents(handlers: {
             status: raw.status ? String(raw.status) : undefined,
             summary: raw.summary ? String(raw.summary) : undefined,
             images: parseEventImages(raw.images),
+            teach: parseTeach(raw.teach),
+            suggestedSkill: parseSuggestedSkill(raw.suggestedSkill),
           }),
         )
       }),

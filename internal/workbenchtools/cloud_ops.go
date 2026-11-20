@@ -389,14 +389,16 @@ func cloudTeachMonitor(host *model.SSHHostDO, mon model.ECSMonitorDO) Teach {
 		peaks = append(peaks, fmt.Sprintf("%s 最新 %.1f%s", s.Metric, s.Latest, s.Unit))
 	}
 	_ = host
+	steps := []string{
+		"把尖峰用人话讲给人：是否刚部署、是否爬虫、是否备份窗口",
+		"内存/磁盘为 0 或报错时：提醒装云监控插件，不是工作台坏了",
+		"需要改白名单连不上时：用 sync_ssh_security_group，不要让人去控制台手改一堆规则",
+		"要推告警群：notify_send(channel=wecom_webhook, markdown=…)；未配置先 configure_notify",
+	}
 	return Teach{
 		Summary:    "已拉到近窗监控；请解释趋势与可能原因，而不是只贴表格",
 		Highlights: peaks,
-		NextSteps: []string{
-			"把尖峰用人话讲给人：是否刚部署、是否爬虫、是否备份窗口",
-			"内存/磁盘为 0 或报错时：提醒装云监控插件，不是工作台坏了",
-			"需要改白名单连不上时：用 sync_ssh_security_group，不要让人去控制台手改一堆规则",
-		},
+		NextSteps:  steps,
 	}
 }
 

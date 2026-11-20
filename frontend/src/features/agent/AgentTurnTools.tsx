@@ -80,8 +80,15 @@ function ToolRow({
   const hint = previewToolArgs(step.argsPreview)
   const summary = step.summary
   const shotImages = step.images?.filter((img) => img.data) ?? []
+  const teach = step.teach
+  const suggested = step.suggestedSkill
+  const hasTeach = Boolean(teach?.summary?.trim() || (teach?.nextSteps && teach.nextSteps.length))
   const hasDetail =
-    Boolean(step.argsPreview?.trim()) || Boolean(summary?.trim()) || shotImages.length > 0
+    Boolean(step.argsPreview?.trim()) ||
+    Boolean(summary?.trim()) ||
+    shotImages.length > 0 ||
+    hasTeach ||
+    Boolean(suggested?.name)
   const showBody = open && hasDetail
 
   return (
@@ -117,6 +124,24 @@ function ToolRow({
           ) : null}
           {summary && summary !== step.argsPreview ? (
             <pre className="agent-turn-tool-pre">{summary}</pre>
+          ) : null}
+          {hasTeach ? (
+            <div className="agent-turn-teach">
+              {teach?.summary ? <p className="agent-turn-teach-summary">{teach.summary}</p> : null}
+              {teach?.nextSteps && teach.nextSteps.length > 0 ? (
+                <ol className="agent-turn-teach-steps">
+                  {teach.nextSteps.map((s) => (
+                    <li key={s}>{s}</li>
+                  ))}
+                </ol>
+              ) : null}
+            </div>
+          ) : null}
+          {suggested?.name ? (
+            <p className="agent-turn-skill-hint">
+              {t('agent.teachSuggestedSkill')}: {suggested.name}
+              {suggested.offerPrompt ? ` — ${suggested.offerPrompt}` : ''}
+            </p>
           ) : null}
           {shotImages.length > 0 ? (
             <div className="agent-msg-images agent-tool-shot-images">
@@ -170,7 +195,8 @@ export function AgentTurnTools({ tools, live }: Props) {
   const isOpen = (step: AgentToolStep) => {
     if (openMap[step.id] !== undefined) return openMap[step.id]
     const st = normalizeStatus(step.status)
-    return st === 'running' || st === 'error' || st === 'denied' || st === 'need_choice'
+    if (st === 'running' || st === 'error' || st === 'denied' || st === 'need_choice') return true
+    return Boolean(step.teach?.summary || step.suggestedSkill?.name)
   }
 
   const renderList = (list: AgentToolStep[]) =>

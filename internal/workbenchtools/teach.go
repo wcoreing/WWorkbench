@@ -139,16 +139,22 @@ func milestoneSuggestedSkill(tool string, args json.RawMessage, res ToolResult) 
 		if !looksLikeGoalClose(intent) {
 			return SuggestedSkill{}, false
 		}
-		lessons := "桌面操作已完成关键一步。桌面 Skill 用 desktop_*；截图点选须带 windowId。发送类先 offer_choices。"
+		lessons := "桌面操作已完成关键一步。微信发送收口到 工作流/微信文件传输助手；截图点选须带 windowId；发送类先 offer_choices。"
 		if intent != "" {
 			lessons = intent + "。\n" + lessons
 		}
+		name := "工作流/微信文件传输助手"
+		if !looksLikeWechatSend(intent) {
+			name = "工作流/桌面操作"
+		}
 		return NewSuggestedSkill(
 			"desktop",
-			"工作流/桌面操作",
+			name,
 			lessons,
 			"关键桌面步骤已完成。要归纳进 Skill 吗？（人审后 update_skill）",
 		), true
+	case workbench.CapNotifySend, workbench.CapConfigureNotify:
+		return SuggestedSkill{}, false // 自身已带 suggestedSkill / teach
 	case workbench.CapSyncSSHSecurityGroup, workbench.CapConfigureSSHSGSync:
 		// 云工具自身已带 suggestedSkill
 		return SuggestedSkill{}, false
@@ -172,6 +178,17 @@ func looksLikeGoalClose(intent string) bool {
 	return false
 }
 
+func looksLikeWechatSend(intent string) bool {
+	intent = strings.ToLower(strings.TrimSpace(intent))
+	keys := []string{"微信", "传输助手", "文件传输", "wechat", "file transfer"}
+	for _, k := range keys {
+		if strings.Contains(intent, k) {
+			return true
+		}
+	}
+	return false
+}
+
 func isHandsOnTool(tool string) bool {
 	switch tool {
 	case workbench.CapDesktopAct, workbench.CapDesktopLaunch,
@@ -180,6 +197,7 @@ func isHandsOnTool(tool string) bool {
 		workbench.CapBrowserSelectOption, workbench.CapBrowserDrag,
 		workbench.CapShellRun, workbench.CapRunBackup,
 		workbench.CapSyncSSHSecurityGroup, workbench.CapConfigureSSHSGSync,
+		workbench.CapNotifySend, workbench.CapConfigureNotify,
 		workbench.CapExecuteSQL, "execute_http",
 		"start_container", "stop_container", "remove_container":
 		return true
@@ -212,6 +230,13 @@ func TeachFromError(tool, errMsg string) Teach {
 		teach.NextSteps = []string{
 			"无障碍树空时改用 desktop_screenshot + 图上坐标（带 windowId）",
 			"确认应用已获「操作」授权；微信等多窗须带正确 windowId",
+			"发消息：get_skill(微信文件传输助手) → offer_choices → headed 发送；点到 AI搜索索引则重截图",
+		}
+	case tool == workbench.CapNotifySend || tool == workbench.CapConfigureNotify:
+		teach.Summary = "通知通道失败"
+		teach.NextSteps = []string{
+			"企微：configure_notify 保存 Webhook 后再 notify_send",
+			"个人微信：channel=desktop_wechat，按返回 teach 走桌面 Skill，勿用协议机器人",
 		}
 	case strings.HasPrefix(tool, "browser_") || tool == workbench.CapBrowserRun:
 		teach.Summary = "浏览器步骤失败"

@@ -232,6 +232,8 @@ export function useAgentSession(opts: {
           mapToolStatus(evt.status || 'ok'),
           evt.summary,
           evt.images,
+          evt.teach,
+          evt.suggestedSkill,
         )
       },
       onOfferChoices: (evt) => {

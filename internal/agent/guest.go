@@ -236,6 +236,7 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 			if len(preview) > 0 {
 				payload["images"] = previewImages(preview)
 			}
+			attachTeachToEnd(payload, result)
 			g.r.emit("agent:tool_end", payload)
 
 			if progressPolls >= maxProgressPolls {

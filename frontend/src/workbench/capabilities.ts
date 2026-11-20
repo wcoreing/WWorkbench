@@ -11,6 +11,8 @@ export const Capability = {
   GetECSMonitor: 'get_ecs_monitor',
   SyncSSHSecurityGroup: 'sync_ssh_security_group',
   ConfigureSSHSGSync: 'configure_ssh_sg_sync',
+  ConfigureNotify: 'configure_notify',
+  NotifySend: 'notify_send',
   ShellRun: 'shell_run',
   ShellProbe: 'shell_probe',
   TerminalReconnect: 'terminal_reconnect',

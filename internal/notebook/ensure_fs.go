@@ -130,7 +130,8 @@ func (s *Service) ensureMemorySeedFS() error {
 
 // seedBuiltinWorkflowsFS 直接写盘种子，禁止再走 ListGroups/GetNote（避免 Ensure 递归）。
 func (s *Service) seedBuiltinWorkflowsFS() error {
-	for _, p := range BuiltinWorkflows() {
+	for _, seed := range builtinWorkflowSeeds() {
+		p := seed.WF
 		name := strings.TrimSpace(p.Name)
 		if name == "" {
 			continue
@@ -145,7 +146,7 @@ func (s *Service) seedBuiltinWorkflowsFS() error {
 			continue
 		}
 		p.NoteID = noteID
-		content := FormatWorkflowNoteContent(p, WorkflowNoteBodyExtras{})
+		content := FormatWorkflowNoteContent(p, seed.Extras)
 		if err := os.MkdirAll(filepath.Join(dir, SkillAssetsDir), 0o700); err != nil {
 			return err
 		}

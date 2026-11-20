@@ -48,3 +48,26 @@ func TestFormatParseWorkflowNoteRoundTrip(t *testing.T) {
 		t.Fatalf("meta noteId=%s source=%s", got.NoteID, got.Source)
 	}
 }
+
+func TestDesktopBindPreservedOnExtractAndFormat(t *testing.T) {
+	src := model.WorkflowDO{
+		Name:  "微信文件传输助手",
+		Title: "微信文件传输助手",
+		Steps: []model.WorkflowStepDO{{Action: "pause", Summary: "headed 发送"}},
+	}
+	content := FormatWorkflowNoteContent(src, WorkflowNoteBodyExtras{Bind: "desktop"})
+	if !strings.Contains(content, "bind: desktop") {
+		t.Fatalf("want bind desktop: %s", content)
+	}
+	extras := ExtractWorkflowNoteBodyExtras(content)
+	if extras.Bind != "desktop" {
+		t.Fatalf("extract bind=%q", extras.Bind)
+	}
+	// 模拟 update_skill 未传 Bind：须沿用已有 desktop，不能默认成 browser
+	again := FormatWorkflowNoteContent(src, WorkflowNoteBodyExtras{
+		Lessons: extras.Lessons, Scripts: extras.Scripts, Resources: extras.Resources, Bind: extras.Bind,
+	})
+	if !strings.Contains(again, "bind: desktop") {
+		t.Fatalf("bind lost after reformat: %s", again)
+	}
+}

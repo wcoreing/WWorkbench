@@ -21,6 +21,7 @@ type WorkflowNoteBodyExtras struct {
 	Lessons   string // ## 经验 正文（不含标题）
 	Scripts   string // ## 脚本 正文
 	Resources string // ## 资源 正文
+	Bind      string // frontmatter bind：browser | desktop；空则默认 browser
 }
 
 type workflowFrontmatter struct {
@@ -36,7 +37,7 @@ type workflowFrontmatter struct {
 
 // ExtractWorkflowNoteBodyExtras 从已有笔记抽出经验/脚本/资源段落，避免 save 步骤时冲掉沉淀。
 func ExtractWorkflowNoteBodyExtras(content string) WorkflowNoteBodyExtras {
-	_, body, ok := splitWorkflowFrontmatter(content)
+	fm, body, ok := splitWorkflowFrontmatter(content)
 	if !ok {
 		body = content
 	}
@@ -44,6 +45,7 @@ func ExtractWorkflowNoteBodyExtras(content string) WorkflowNoteBodyExtras {
 		Lessons:   extractMarkdownSection(body, "经验"),
 		Scripts:   extractMarkdownSection(body, "脚本"),
 		Resources: extractMarkdownSection(body, "资源"),
+		Bind:      strings.TrimSpace(fm.Bind),
 	}
 }
 
@@ -113,6 +115,10 @@ func DefaultSkillResourcesPlaceholder(noteID string) string {
 func FormatWorkflowNoteContent(p model.WorkflowDO, extras WorkflowNoteBodyExtras) string {
 	name := strings.TrimSpace(p.Name)
 	noteID := firstNonEmptyStr(strings.TrimSpace(p.NoteID), SkillNoteID(name))
+	bind := strings.TrimSpace(extras.Bind)
+	if bind == "" {
+		bind = "browser"
+	}
 	fm := workflowFrontmatter{
 		Role:        model.NoteRoleSkill,
 		Name:        name,
@@ -120,7 +126,7 @@ func FormatWorkflowNoteContent(p model.WorkflowDO, extras WorkflowNoteBodyExtras
 		SourceRunID: strings.TrimSpace(p.SourceRunID),
 		Intent:      strings.TrimSpace(p.Intent),
 		Description: strings.TrimSpace(p.Description),
-		Bind:        "browser",
+		Bind:        bind,
 	}
 	if sess := sessionFromSteps(p.Steps); sess != "" {
 		fm.Session = sess
@@ -410,6 +416,9 @@ func (s *Service) SaveWorkflowNoteWithExtras(p model.WorkflowDO, extras Workflow
 	}
 	if strings.TrimSpace(extras.Resources) != "" {
 		merged.Resources = strings.TrimSpace(extras.Resources)
+	}
+	if strings.TrimSpace(extras.Bind) != "" {
+		merged.Bind = strings.TrimSpace(extras.Bind)
 	}
 	content := FormatWorkflowNoteContent(p, merged)
 	title := firstNonEmptyStr(strings.TrimSpace(p.Title), SkillBasename(id), name)
