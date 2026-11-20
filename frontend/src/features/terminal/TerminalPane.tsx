@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { api } from '../../api/client'
 import { onTerminalClosed, onTerminalOutput } from '../../api/terminalEvents'
-import { bindSelectionGuard, pressProps } from '../../components/compat'
+import { pressProps } from '../../components/compat'
 import { ContextMenu } from '../../components/ContextMenu'
 import { IconRefresh } from '../../components/Icons'
 import { openAgentDraft } from '../agent/openAgentDraft'
@@ -26,6 +26,7 @@ import {
   setActiveTerminalTailSession,
   writeAppClipboard,
 } from './terminalClipboard'
+import { bindTerminalShellSelection } from './terminalSelection'
 import {
   formatFrequentPathLabel,
   frequentPathsHostKey,
@@ -136,6 +137,10 @@ export function TerminalPane({ sessionId, hostId = '', active, focused = false, 
     term.attachCustomKeyEventHandler((ev) => {
       if (ev.type !== 'keydown') return true
       const key = ev.key.toLowerCase()
+      if (key === 'escape' && term.hasSelection()) {
+        term.clearSelection()
+        return false
+      }
       const copyKey = (ev.metaKey && key === 'c') || (ev.ctrlKey && ev.shiftKey && key === 'c')
       const copySelOnly = ev.ctrlKey && !ev.metaKey && !ev.shiftKey && key === 'c' && term.hasSelection()
       if (copyKey || copySelOnly) {
@@ -177,7 +182,7 @@ export function TerminalPane({ sessionId, hostId = '', active, focused = false, 
     }
     el.addEventListener('contextmenu', onCtx)
 
-    const unbindGuard = bindSelectionGuard(el, () => term.clearSelection())
+    const unbindSelection = bindTerminalShellSelection(term, el)
     const ro = new ResizeObserver(() => resize())
     ro.observe(el)
 
@@ -185,7 +190,7 @@ export function TerminalPane({ sessionId, hostId = '', active, focused = false, 
       disposed = true
       el.removeEventListener('contextmenu', onCtx)
       el.removeEventListener('paste', onPaste, true)
-      unbindGuard()
+      unbindSelection()
       ro.disconnect()
       term.dispose()
       termRef.current = null

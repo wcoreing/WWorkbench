@@ -3,7 +3,8 @@ export const SELECT_DRAG_SLOP_PX = 5
 
 /**
  * bindSelectionGuard — 抑制误触选区：未形成有效拖拽则 clearSelection。
- * 用于 xterm / Monaco 等「稍一移动就大块选中」的场景。
+ * 用于 Monaco / xterm 等「稍一移动就大块选中」的场景。
+ * 终端内容边界见 features/terminal/terminalSelection。
  */
 export function bindSelectionGuard(el: HTMLElement, clearSelection: () => void): () => void {
   let origin: { x: number; y: number } | null = null
