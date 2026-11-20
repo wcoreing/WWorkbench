@@ -579,6 +579,11 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "open_project_stage", Label: "打开项目舞台", Risk: RiskWrite,
+			Description:    "按 id/localPath 对齐项目舞台（可自动建项）；写规则、同步对话、返回 SSH",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "replay_task_step", Label: "试跑日志一步", Risk: RiskWrite,
 			Description:    "教练式：按 locator 重定位后执行/跳过一步，返回 nextSeq",
 			DefaultEnabled: true,

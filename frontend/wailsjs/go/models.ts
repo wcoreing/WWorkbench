@@ -628,6 +628,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult_WWorkbench_internal_model_CursorStageRuleDO_ {
+	    ok: boolean;
+	    data: model.CursorStageRuleDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_CursorStageRuleDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.CursorStageRuleDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult_WWorkbench_internal_model_DDLResultDO_ {
 	    ok: boolean;
 	    data: model.DDLResultDO;
@@ -1627,6 +1661,40 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], model.OSSMonitorDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_model_OpenWorkbenchProjectStageResultDO_ {
+	    ok: boolean;
+	    data: model.OpenWorkbenchProjectStageResultDO;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_model_OpenWorkbenchProjectStageResultDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.OpenWorkbenchProjectStageResultDO);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -6939,6 +7007,71 @@ export namespace model {
 		    return a;
 		}
 	}
+	export class ProjectCursorSyncSummaryDO {
+	    ok: boolean;
+	    nSynced: number;
+	    noteIds?: string[];
+	    error?: string;
+	    skipped?: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ProjectCursorSyncSummaryDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.nSynced = source["nSynced"];
+	        this.noteIds = source["noteIds"];
+	        this.error = source["error"];
+	        this.skipped = source["skipped"];
+	    }
+	}
+	export class OpenWorkbenchProjectStageResultDO {
+	    project: WorkbenchProjectDO;
+	    created: boolean;
+	    source?: string;
+	    sshHostIds: string[];
+	    sshHostIdsOmitted?: number;
+	    cursorStageRule?: CursorStageRuleDO;
+	    cursorSync?: ProjectCursorSyncSummaryDO;
+	    note?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new OpenWorkbenchProjectStageResultDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.project = this.convertValues(source["project"], WorkbenchProjectDO);
+	        this.created = source["created"];
+	        this.source = source["source"];
+	        this.sshHostIds = source["sshHostIds"];
+	        this.sshHostIdsOmitted = source["sshHostIdsOmitted"];
+	        this.cursorStageRule = this.convertValues(source["cursorStageRule"], CursorStageRuleDO);
+	        this.cursorSync = this.convertValues(source["cursorSync"], ProjectCursorSyncSummaryDO);
+	        this.note = source["note"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class ProjectEnvHintDO {
 	    path: string;
 	    hints: string[];

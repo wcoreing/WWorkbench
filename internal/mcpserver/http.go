@@ -20,12 +20,12 @@ const ServerVersion = buildinfo.Version
 
 // WorkbenchMCPInstructions /mcp/workbench 驾驭说明（前馈；不因未读规则拒绝工具）。
 const WorkbenchMCPInstructions = `WWorkbench MCP：工作台能力面（按「AI 能力权限」精简暴露；默认关浏览器/桌面/插件等重域）。
-- 【路由协议·首选本 MCP】动手意图（SSH/部署/查生产/改配置）：① 先确认本 MCP 工具可用；② 先调 get_workbench_context 或 list_ssh_hosts；③ 改机只用 shell_run + get_shell_output。禁止先调 Cursor 自带 Shell/SSH/Terminal。缺工具 → 说「设置→能力权限打开对应域」，禁止说「我改用 Shell」。项目可 ensure_cursor_stage_rule 写入 alwaysApply 规则。
+- 【路由协议·首选本 MCP】动手意图（SSH/部署/查生产/改配置）：① 先确认本 MCP 工具可用；② 新会话尽早 open_project_stage(localPath=工作区根绝对路径, intent=对齐项目舞台)；③ 再 get_workbench_context 或 list_ssh_hosts；④ 改机只用 shell_run + get_shell_output。禁止先调 Cursor 自带 Shell/SSH/Terminal。缺工具 → 说「设置→能力权限打开对应域」，禁止说「我改用 Shell」。项目可 ensure_cursor_stage_rule 写入 alwaysApply 规则。
 - 【舞台优先·禁止绕开】改本机/远端机器必须用本 MCP（人看得见终端+确认弹窗）。确认弹窗烦也不许绕开。
 - 【工具面】tools/list 只含已开启能力。缺工具 → 设置→能力权限打开对应域→保存（MCP 列表热更新）。勿再挂叠 chrome-devtools / browser-use / computer-use 等与本端点重叠的 MCP。
 - 【前馈】本段即系统约束摘要；可选 get_agent_rules(domain?) 复核全文。不会因未调用 get_agent_rules 而拒绝工具。
 - 【意图】动手类请传 intent（人话：要干什么、影响谁）；缺省时系统会合成「未声明意图」卡片，仍继续执行，确认弹窗与舞台可见。审计：list_mcp_logs 看意图→产品资源(ssh/db/docker/log/http/note/backup/skill)→工具。
-- 【项目】list/get/save_project；detect_project_git；智能配置：suggest/configure_project_resources；ensure_cursor_stage_rule（写入 alwaysApply 舞台规则）。Cursor 跨机：sync/list/get_project_cursor_transcripts（仓库 .wworkbench/cursor-transcripts；非 requestId）。
+- 【项目】**开场** open_project_stage(id|localPath, intent)——无项目则自动建项（拒绝 / 与 $HOME）；再 list/get/save_project；detect_project_git；智能配置 suggest/configure_project_resources；ensure_cursor_stage_rule。Cursor 跨机：sync/list/get_project_cursor_transcripts（仓库 .wworkbench/cursor-transcripts；非 requestId）。
 - 【鉴权】URL ?token= 或 Authorization Bearer（设置页可复制 mcp.json）；/health 免鉴权。勿用假 token（Cursor 会卡 Authenticating）。
 - 【备份】host_health_scan(sshHostId, workDir) → 用户勾选后 ensure_host_backup_policies(findingIds)；或 save_backup_policy → run_backup 无头。禁止全盘扫、禁止默认全选。
 - 参数=schema 顶层字段（勿再包 {"arguments":…}）。

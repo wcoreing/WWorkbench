@@ -111,6 +111,7 @@ func (s *Service) Startup(ctx context.Context) {
 	s.wireEnvEvents()
 	s.startBrowserBridge() // 须在 wireAgentRunner 前，Deps.Browser 才能注入工具
 	s.wireAgentRunner()
+	s.ensureCursorUserProjectStageRuleOnStart()
 }
 
 // Shutdown Wails 退出回调，释放终端等资源。

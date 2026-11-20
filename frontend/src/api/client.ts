@@ -220,6 +220,9 @@ import {
   GetMCPStatus,
   SaveMCPConfig,
   EnsureCursorStageRules,
+  EnsureCursorUserProjectStageRule,
+  RemoveCursorUserProjectStageRule,
+  OpenWorkbenchProjectStage,
   GetHomeStatus,
   HomeLogin,
   HomeRegister,
@@ -1136,6 +1139,12 @@ export const api = {
   saveMCPConfig: (in_: model.MCPConfigSaveDO) => unwrap(() => SaveMCPConfig(in_)),
   ensureCursorStageRules: async () =>
     unwrap(() => EnsureCursorStageRules()) as Promise<model.EnsureCursorStageRulesResultDO>,
+  ensureCursorUserProjectStageRule: async () =>
+    unwrap(() => EnsureCursorUserProjectStageRule()) as Promise<model.CursorStageRuleDO>,
+  removeCursorUserProjectStageRule: async () =>
+    unwrap(() => RemoveCursorUserProjectStageRule()) as Promise<model.CursorStageRuleDO>,
+  openWorkbenchProjectStage: async (id: string) =>
+    unwrap(() => OpenWorkbenchProjectStage(id)) as Promise<model.OpenWorkbenchProjectStageResultDO>,
   getHomeStatus: async () => unwrap(() => GetHomeStatus()) as Promise<model.HomeStatusDO>,
   homeLogin: (in_: model.HomeAuthDO) => unwrap(() => HomeLogin(in_)) as Promise<model.HomeStatusDO>,
   homeRegister: (in_: model.HomeAuthDO) =>

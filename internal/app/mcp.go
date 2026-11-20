@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"WWorkbench/internal/cursorrule"
 	"WWorkbench/internal/mcpserver"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/store"
@@ -28,6 +29,9 @@ func (s *Service) applyMCPFromSettings() error {
 	if !wantOn {
 		s.mcpLastErr = ""
 		return s.stopMCPLocked()
+	}
+	if _, err := cursorrule.EnsureUserProjectStageRule(); err != nil {
+		log.Printf("cursorrule: user project stage on mcp enable: %v", err)
 	}
 	if s.harnessHost == nil || s.toolsRegistry == nil {
 		s.mcpLastErr = "harness 未就绪，无法启动 MCP"

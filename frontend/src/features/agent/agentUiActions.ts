@@ -127,6 +127,10 @@ export function dispatchAgentUiAction(raw: Record<string, unknown>) {
         const label = String(payload.stageLabel ?? '')
         if (label) setStatus(label)
         else notify.success('AI：已打开 Docker 上下文')
+      } else if (kind === Capability.OpenProjectStage) {
+        const name = String(payload.projectName ?? payload.projectId ?? '')
+        const created = Boolean(payload.created)
+        setStatus(created ? `已建项并进入舞台 · ${name}` : `已对齐项目舞台 · ${name}`)
       }
     } else if (res.error) {
       notify.error(res.error)

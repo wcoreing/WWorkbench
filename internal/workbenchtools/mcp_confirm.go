@@ -184,7 +184,7 @@ func ProductForTool(toolName string) string {
 	case workbench.CapListProjects, workbench.CapGetProject, workbench.CapSaveProject, workbench.CapDeleteProject,
 		workbench.CapSuggestProjectResources, workbench.CapConfigureProjectResources, workbench.CapDetectProjectGit,
 		workbench.CapSyncProjectCursorTranscripts, workbench.CapListProjectCursorTranscripts, workbench.CapGetProjectCursorTranscript,
-		workbench.CapEnsureCursorStageRule:
+		workbench.CapEnsureCursorStageRule, workbench.CapOpenProjectStage:
 		return "project"
 	case "edit_plugin_pack_file", "write_plugin_pack_file", "build_plugin_pack_ui", "rollback_plugin_pack":
 		return "plugins"

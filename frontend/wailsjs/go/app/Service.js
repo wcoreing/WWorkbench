@@ -282,6 +282,10 @@ export function EnsureCursorStageRules() {
   return window['go']['app']['Service']['EnsureCursorStageRules']();
 }
 
+export function EnsureCursorUserProjectStageRule() {
+  return window['go']['app']['Service']['EnsureCursorUserProjectStageRule']();
+}
+
 export function EnsureDockerHost(arg1, arg2) {
   return window['go']['app']['Service']['EnsureDockerHost'](arg1, arg2);
 }
@@ -802,6 +806,10 @@ export function OpenTerminal(arg1, arg2, arg3) {
   return window['go']['app']['Service']['OpenTerminal'](arg1, arg2, arg3);
 }
 
+export function OpenWorkbenchProjectStage(arg1) {
+  return window['go']['app']['Service']['OpenWorkbenchProjectStage'](arg1);
+}
+
 export function PickDockerComposeDirectory(arg1) {
   return window['go']['app']['Service']['PickDockerComposeDirectory'](arg1);
 }
@@ -884,6 +892,10 @@ export function ReloadBrowserExtension() {
 
 export function RemoveContainer(arg1, arg2) {
   return window['go']['app']['Service']['RemoveContainer'](arg1, arg2);
+}
+
+export function RemoveCursorUserProjectStageRule() {
+  return window['go']['app']['Service']['RemoveCursorUserProjectStageRule']();
 }
 
 export function RemoveDockerHost(arg1) {

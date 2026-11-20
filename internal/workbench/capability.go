@@ -104,6 +104,7 @@ const (
 	CapListProjectCursorTranscripts  = "list_project_cursor_transcripts"
 	CapGetProjectCursorTranscript    = "get_project_cursor_transcript"
 	CapEnsureCursorStageRule         = "ensure_cursor_stage_rule"
+	CapOpenProjectStage              = "open_project_stage"
 	CapTaskRecord           = "task_record"
 	CapReplayTaskStep = "replay_task_step"
 	// Skill 对外语言（唯一）：list/get/update/run/distill_skill；旧 *workflow / update_agent_skill 仅别名。

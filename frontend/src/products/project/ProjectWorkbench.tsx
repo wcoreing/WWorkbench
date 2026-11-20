@@ -25,10 +25,20 @@ import {
   type ResourceKind,
   type ResourceWindow,
 } from '../../workbench/resourceWindow'
+import { Capability } from '../../workbench/capabilities'
+import { useWorkbenchCommand } from '../../stores/productLink'
 import { subscribeWorkbenchChanged } from '../../workbench/workbenchRadar'
 import { model } from '../../../wailsjs/go/models'
 import { ProjectAssetPicker } from './ProjectAssetPicker'
 import './project.css'
+
+type OpenStageResult = {
+  project?: WorkbenchProject
+  created?: boolean
+  sshHostIds?: string[]
+  cursorSync?: { ok?: boolean; nSynced?: number; error?: string }
+  note?: string
+}
 
 const LAST_PROJECT_SETTING = 'last_workbench_project_id'
 const MENTION_KINDS: AgentMentionKind[] = ['ssh', 'database', 'docker', 'log', 'http', 'note']
@@ -174,6 +184,8 @@ export function ProjectWorkbench() {
   const [items, setItems] = useState<WorkbenchProject[]>([])
   const [activeId, setActiveId] = useState('')
   const [draft, setDraft] = useState<WorkbenchProject>(emptyDraft())
+  const stageEnteredIdRef = useRef('')
+  const enterStageBusyRef = useRef(false)
   const [busy, setBusy] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(false)
@@ -188,30 +200,6 @@ export function ProjectWorkbench() {
     setItems(list)
     return list
   }, [])
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const list = await load()
-        if (restoredRef.current) return
-        restoredRef.current = true
-        const settings = await api.listAppSettings()
-        const lastId = String(settings[LAST_PROJECT_SETTING] || '').trim()
-        const hit = lastId ? list.find((p) => p.id === lastId) : undefined
-        const pick = hit || list[0]
-        if (pick) {
-          setActiveId(pick.id)
-          const links = hydrateProjectLinks(pick)
-          setDraft({ ...pick, links, gitRemote: pick.gitRemote || '' })
-          if (linksFingerprint(links) !== linksFingerprint(pick.links)) {
-            void api.saveWorkbenchProject(toDO({ ...pick, links, gitRemote: pick.gitRemote || '' })).catch(() => {})
-          }
-        }
-      } catch (e) {
-        notify.error((e as Error).message)
-      }
-    })()
-  }, [load])
 
   useEffect(() => {
     return subscribeWorkbenchChanged((evt) => {
@@ -265,6 +253,76 @@ export function ProjectWorkbench() {
     }
   }
 
+  const applyStageResult = useCallback(
+    (out: OpenStageResult, fallback?: WorkbenchProject) => {
+      const project = out.project || fallback
+      if (!project?.id) return
+      const links = hydrateProjectLinks(project)
+      setActiveId(project.id)
+      setDraft({ ...project, links, gitRemote: project.gitRemote || '' })
+      const stageKeyId = project.id
+      for (const hostId of out.sshHostIds || []) {
+        const link = links.find((l) => l.kind === 'ssh' && l.id === hostId)
+        openResource({
+          kind: 'ssh',
+          resourceId: hostId,
+          title: link?.label || hostId,
+          presentation: 'panel',
+          stageKey: stageKeyId,
+        })
+      }
+      const mentions = normalizeLinks(links)
+        .filter((l) => MENTION_KINDS.includes(l.kind as AgentMentionKind))
+        .map((l) => ({
+          kind: l.kind as AgentMentionKind,
+          id: l.id,
+          label: l.label || l.id,
+        }))
+      const skills = normalizeLinks(links)
+        .filter((l) => l.kind === 'skill')
+        .map((l) => l.id)
+      if (mentions.length || skills.length) {
+        openAgentDraft({
+          mentions,
+          skillIds: skills.length ? skills : undefined,
+        })
+      }
+      const name = project.name || project.localPath || project.id
+      if (out.created) {
+        notify.success(t('project.enterStageCreated', { name }))
+      } else {
+        notify.success(t('project.enterStageOk', { name }))
+      }
+      if (out.cursorSync && out.cursorSync.ok === false && out.cursorSync.error) {
+        notify.info(t('project.enterStageSyncFail', { error: out.cursorSync.error }))
+      }
+    },
+    [t],
+  )
+
+  const enterProjectStage = useCallback(
+    async (p: WorkbenchProject, opts?: { force?: boolean }) => {
+      const id = (p.id || '').trim()
+      if (!id) {
+        notify.error(t('project.enterStageNeedSave'))
+        return
+      }
+      if (!opts?.force && stageEnteredIdRef.current === id) return
+      if (enterStageBusyRef.current) return
+      enterStageBusyRef.current = true
+      try {
+        const out = (await api.openWorkbenchProjectStage(id)) as OpenStageResult
+        stageEnteredIdRef.current = id
+        applyStageResult(out, p)
+      } catch (e) {
+        notify.error((e as Error).message)
+      } finally {
+        enterStageBusyRef.current = false
+      }
+    },
+    [applyStageResult, t],
+  )
+
   const selectProject = (p: WorkbenchProject) => {
     setActiveId(p.id)
     const links = hydrateProjectLinks(p)
@@ -278,6 +336,7 @@ export function ProjectWorkbench() {
       if (linksFingerprint(links) !== linksFingerprint(p.links)) {
         void api.saveWorkbenchProject(toDO(base)).catch(() => {})
       }
+      void enterProjectStage(base)
     }
     if (!(p.gitRemote || '').trim() && (p.localPath || '').trim()) {
       void fillGitRemote(p.localPath, '').then((gitRemote) => {
@@ -286,6 +345,72 @@ export function ProjectWorkbench() {
       })
     }
   }
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const list = await load()
+        if (restoredRef.current) return
+        restoredRef.current = true
+        const settings = await api.listAppSettings()
+        const lastId = String(settings[LAST_PROJECT_SETTING] || '').trim()
+        const hit = lastId ? list.find((p) => p.id === lastId) : undefined
+        const pick = hit || list[0]
+        if (pick) {
+          selectProject(pick)
+        }
+      } catch (e) {
+        notify.error((e as Error).message)
+      }
+    })()
+  }, [load])
+
+  useWorkbenchCommand(Capability.OpenProjectStage, (cmd) => {
+    const payload = cmd.payload || {}
+    const projectId = String(payload.projectId ?? '').trim()
+    if (!projectId) return
+    if (stageEnteredIdRef.current === projectId && !payload.force) {
+      // MCP 再对齐：刷新列表选中，但不重复开终端
+      void load().then((list) => {
+        const hit = list.find((p) => p.id === projectId)
+        if (hit) {
+          setActiveId(hit.id)
+          setDraft({ ...hit, links: hydrateProjectLinks(hit), gitRemote: hit.gitRemote || '' })
+        }
+      })
+      return
+    }
+    stageEnteredIdRef.current = projectId
+    const sshHostIds = Array.isArray(payload.sshHostIds)
+      ? payload.sshHostIds.map((x) => String(x)).filter(Boolean)
+      : []
+    applyStageResult(
+      {
+        created: Boolean(payload.created),
+        sshHostIds,
+        cursorSync: {
+          ok: payload.cursorSyncOk !== false,
+          nSynced: Number(payload.cursorSyncN || 0),
+          error: payload.cursorSyncError ? String(payload.cursorSyncError) : undefined,
+        },
+        project: {
+          id: projectId,
+          name: String(payload.projectName || ''),
+          localPath: String(payload.localPath || ''),
+          gitRemote: '',
+          links: [],
+          createdAt: 0,
+          updatedAt: 0,
+        },
+      },
+    )
+    void load().then((list) => {
+      const hit = list.find((p) => p.id === projectId)
+      if (!hit) return
+      setActiveId(hit.id)
+      setDraft({ ...hit, links: hydrateProjectLinks(hit), gitRemote: hit.gitRemote || '' })
+    })
+  })
 
   const projectMentions = useCallback((): WorkbenchAssetRef[] => {
     return normalizeLinks(draft.links)
@@ -690,6 +815,14 @@ export function ProjectWorkbench() {
                 <div className="project-hero-actions">
                   <button type="button" className="wn-btn wn-btn-primary wn-btn-sm" disabled={busy || !draft.localPath} {...pressProps(() => void save())}>
                     {t('project.save')}
+                  </button>
+                  <button
+                    type="button"
+                    className="wn-btn wn-btn-sm wn-btn-tool"
+                    disabled={busy || !draft.id}
+                    {...pressProps(() => void enterProjectStage(draft, { force: true }))}
+                  >
+                    {t('project.enterStage')}
                   </button>
                   <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" disabled={busy} {...pressProps(distillSkill)}>
                     {t('project.distill')}

@@ -166,6 +166,7 @@ func (r *Registry) registerBuiltins() {
 	registerMCPCallLogTools(r)
 	registerProjectTools(r)
 	registerCursorStageRuleTool(r)
+	registerOpenProjectStageTool(r)
 	registerCloudOpsTools(r)
 	r.add(ToolDef{
 		Name:        "get_workbench_context",

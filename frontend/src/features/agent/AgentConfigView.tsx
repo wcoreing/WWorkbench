@@ -123,6 +123,32 @@ export function AgentConfigView({
     }
   }
 
+  const onEnsureUserProjectStageRule = async () => {
+    setStageBusy(true)
+    setStageMsg('')
+    try {
+      const out = await api.ensureCursorUserProjectStageRule()
+      setStageMsg(t('agent.mcpUserProjectStageRuleDone', { path: out.path || '' }))
+    } catch (e) {
+      setStageMsg((e as Error).message)
+    } finally {
+      setStageBusy(false)
+    }
+  }
+
+  const onRemoveUserProjectStageRule = async () => {
+    setStageBusy(true)
+    setStageMsg('')
+    try {
+      await api.removeCursorUserProjectStageRule()
+      setStageMsg(t('agent.mcpUserProjectStageRuleRemoved'))
+    } catch (e) {
+      setStageMsg((e as Error).message)
+    } finally {
+      setStageBusy(false)
+    }
+  }
+
   const busy = testing || saving
   const snippet = mcpStatus?.cursorSnippet || ''
   const mcpListening = Boolean(mcpStatus?.enabled && mcpStatus?.listenAddr)
@@ -179,6 +205,28 @@ export function AgentConfigView({
               >
                 {stageBusy ? t('agent.mcpStageRuleWriting') : t('agent.mcpStageRuleWrite')}
               </button>
+            </div>
+            <div className="agent-field">
+              <span className="wn-label">{t('agent.mcpUserProjectStageRule')}</span>
+              <p className="agent-settings-hint">{t('agent.mcpUserProjectStageRuleHint')}</p>
+              <div className="agent-mcp-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="wn-btn wn-btn-sm"
+                  disabled={stageBusy}
+                  {...pressProps(() => void onEnsureUserProjectStageRule(), { disabled: stageBusy })}
+                >
+                  {stageBusy ? t('agent.mcpUserProjectStageRuleWriting') : t('agent.mcpUserProjectStageRuleWrite')}
+                </button>
+                <button
+                  type="button"
+                  className="wn-btn wn-btn-sm wn-btn-ghost"
+                  disabled={stageBusy}
+                  {...pressProps(() => void onRemoveUserProjectStageRule(), { disabled: stageBusy })}
+                >
+                  {t('agent.mcpUserProjectStageRuleRemove')}
+                </button>
+              </div>
               {stageMsg ? <p className="agent-settings-hint">{stageMsg}</p> : null}
             </div>
             <div className="agent-mcp-json-head">

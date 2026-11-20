@@ -973,6 +973,27 @@ type EnsureCursorStageRulesResultDO struct {
 	NErr    int                        `json:"nErr"`
 }
 
+// OpenWorkbenchProjectStageResultDO 打开项目可控舞台的编排结果。
+type OpenWorkbenchProjectStageResultDO struct {
+	Project            WorkbenchProjectDO  `json:"project"`
+	Created            bool                `json:"created"`
+	Source             string              `json:"source,omitempty"`
+	SSHHostIDs         []string            `json:"sshHostIds"`
+	SSHHostIDsOmitted  int                 `json:"sshHostIdsOmitted,omitempty"`
+	CursorStageRule    *CursorStageRuleDO  `json:"cursorStageRule,omitempty"`
+	CursorSync         *ProjectCursorSyncSummaryDO `json:"cursorSync,omitempty"`
+	Note               string              `json:"note,omitempty"`
+}
+
+// ProjectCursorSyncSummaryDO 打开舞台时 Cursor 对话同步摘要（失败不阻断开舞台）。
+type ProjectCursorSyncSummaryDO struct {
+	OK      bool     `json:"ok"`
+	NSynced int      `json:"nSynced"`
+	NoteIDs []string `json:"noteIds,omitempty"`
+	Error   string   `json:"error,omitempty"`
+	Skipped []string `json:"skipped,omitempty"`
+}
+
 // CursorStageRuleProjectDO 单个项目的舞台规则结果。
 type CursorStageRuleProjectDO struct {
 	ProjectID   string `json:"projectId,omitempty"`

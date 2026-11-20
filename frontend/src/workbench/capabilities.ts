@@ -61,6 +61,7 @@ export const Capability = {
     BrowserCloseSession: 'browser_close_session',
   BrowserGroupSession: 'browser_group_session',
   BrowserOpen: 'browser_open',
+  OpenProjectStage: 'open_project_stage',
   DesktopStatus: 'desktop_status',
   DesktopApps: 'desktop_apps',
   DesktopSnapshot: 'desktop_snapshot',
@@ -106,4 +107,5 @@ export const UI_CAPABILITIES: ReadonlySet<string> = new Set([
   Capability.EnvironmentOpen,
   Capability.SSHForwardOpen,
   Capability.BrowserOpen,
+  Capability.OpenProjectStage,
 ])

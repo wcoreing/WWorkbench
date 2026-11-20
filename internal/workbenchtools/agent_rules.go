@@ -132,6 +132,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **记忆区项目 + Skill 协议**：绑主机的部署等方法落 记忆区/{主机}/项目/{名}/SKILL.md（同一套 get_skill / update_skill）；必须传完整目录路径。
 - **项目本地/远端目录**：约定笔记 frontmatter localPath / remotePath（侧栏右键设置）。发版前读约定或 get_workbench_context.hostProjects；本地改代码用 localPath，远端操作对准 remotePath。
 - **项目产品线**：组合器——选本机文件夹为锚点；gitRemote 空则 detect_project_git / save_project 自动探测 origin。手动「添加资源」可钉 ssh/db/docker/log/http/**note**/skill/backup；**智能配置必须经 Agent**：suggest_project_resources → 核对 → configure_project_resources。list/get/save_project；get_workbench_context.projects。智能配置经验沉淀到 项目/{名}/，不要写进 工作流/。
+- **开场对齐舞台**：若挂了 wworkbench MCP，新会话尽早 open_project_stage(localPath=工作区根绝对路径, intent=对齐 WWorkbench 项目舞台)；无匹配则自动建项（拒绝 / 与 $HOME），并写舞台规则、同步对话、通知工作台开 SSH。勿用自带 Shell 代替。
 - **Cursor 对话跨机**：不能靠 requestId。真源={localPath}/.wworkbench/cursor-transcripts/（跟 git）。sync_project_cursor_transcripts(id, intent) 从本机 ~/.cursor/projects/*/agent-transcripts 导入并镜像笔记；换机 pull 后 list_project_cursor_transcripts → get_project_cursor_transcript（默认 md）读最近 1～2 条再续作。禁止整份 jsonl 贴进聊天。
 - **动手改某台机之前**：list_notes(sshHostId, role=memory) → get_note；部署再 get_skill(记忆区/…/项目/…)。
 - **Skill 笔记**（role=skill / **/SKILL.md）：真源。list_skills / get_skill；**优先 get_skill 后自己用工具执行**；跑完 **update_skill**（name=完整目录路径；仅任务区可用短名）沉淀。

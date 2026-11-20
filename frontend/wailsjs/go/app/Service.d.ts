@@ -145,6 +145,8 @@ export function EnableDirVersion(arg1:string):Promise<app.ApiResult_map_string_i
 
 export function EnsureCursorStageRules():Promise<app.ApiResult_WWorkbench_internal_model_EnsureCursorStageRulesResultDO_>;
 
+export function EnsureCursorUserProjectStageRule():Promise<app.ApiResult_WWorkbench_internal_model_CursorStageRuleDO_>;
+
 export function EnsureDockerHost(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_ShellHostDO_>;
 
 export function EnsureEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
@@ -405,6 +407,8 @@ export function OpenSession(arg1:string,arg2:string):Promise<app.ApiResult_WWork
 
 export function OpenTerminal(arg1:string,arg2:number,arg3:number):Promise<app.ApiResult_WWorkbench_internal_model_TerminalSessionInfoDO_>;
 
+export function OpenWorkbenchProjectStage(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_OpenWorkbenchProjectStageResultDO_>;
+
 export function PickDockerComposeDirectory(arg1:string):Promise<app.ApiResult_string_>;
 
 export function PickEnvScanDirectory():Promise<app.ApiResult_string_>;
@@ -446,6 +450,8 @@ export function ReadSFTPText(arg1:string,arg2:string):Promise<app.ApiResult_WWor
 export function ReloadBrowserExtension():Promise<app.ApiResult_map_string_interface____>;
 
 export function RemoveContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
+
+export function RemoveCursorUserProjectStageRule():Promise<app.ApiResult_WWorkbench_internal_model_CursorStageRuleDO_>;
 
 export function RemoveDockerHost(arg1:string):Promise<app.ApiResult_bool_>;
 

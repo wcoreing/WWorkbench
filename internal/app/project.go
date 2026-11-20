@@ -1,6 +1,7 @@
 package app
 
 import (
+	"log"
 	"strings"
 
 	"WWorkbench/internal/cursorrule"
@@ -10,6 +11,21 @@ import (
 	"WWorkbench/internal/workbench"
 	"WWorkbench/internal/workbenchtools"
 )
+
+// ensureCursorUserProjectStageRuleOnStart MCP 开启时幂等写入 Cursor 全局开场规则。
+func (s *Service) ensureCursorUserProjectStageRuleOnStart() {
+	if s == nil || s.store == nil || !s.store.MCPEnabled() {
+		return
+	}
+	r, err := cursorrule.EnsureUserProjectStageRule()
+	if err != nil {
+		log.Printf("cursorrule: user project stage: %v", err)
+		return
+	}
+	if r.Written {
+		log.Printf("cursorrule: user project stage written %s", r.Path)
+	}
+}
 
 // ensureProjectNotebookRoot 确保 项目/{名}/对话/ 落盘，供指挥台一跳打开。
 func (s *Service) ensureProjectNotebookRoot(name string) {
@@ -139,5 +155,60 @@ func (s *Service) EnsureCursorStageRules() ApiResult[model.EnsureCursorStageRule
 		deps = &workbenchtools.Deps{Store: s.store}
 	}
 	out := workbenchtools.EnsureCursorStageRulesForStore(deps)
+	return OkResult(out)
+}
+
+// OpenWorkbenchProjectStage 打开项目可控舞台（规则 + 对话同步 + SSH id）；UI 侧再开终端/钉 Agent。
+func (s *Service) OpenWorkbenchProjectStage(id string) ApiResult[model.OpenWorkbenchProjectStageResultDO] {
+	id = strings.TrimSpace(id)
+	if id == "" {
+		return ErrResult[model.OpenWorkbenchProjectStageResultDO](errno.New(errno.CodeInvalidArg, "id 不能为空", ""))
+	}
+	deps, err := s.projectToolDeps()
+	if err != nil {
+		return ErrResult[model.OpenWorkbenchProjectStageResultDO](err)
+	}
+	out, err := workbenchtools.OpenProjectStage(deps, workbenchtools.OpenProjectStageOpts{
+		ID:       id,
+		Source:   "ui",
+		NotifyUI: false,
+		Intent:   "打开项目可控舞台",
+	})
+	if err != nil {
+		return ErrResult[model.OpenWorkbenchProjectStageResultDO](err)
+	}
+	s.ensureProjectNotebookRoot(out.Project.Name)
+	return OkResult(out)
+}
+
+// EnsureCursorUserProjectStageRule 幂等写入 Cursor 全局用户规则（开场 open_project_stage）。
+func (s *Service) EnsureCursorUserProjectStageRule() ApiResult[model.CursorStageRuleDO] {
+	r, err := cursorrule.EnsureUserProjectStageRule()
+	out := model.CursorStageRuleDO{
+		Path:    r.Path,
+		Written: r.Written,
+		Skipped: r.Skipped,
+		Error:   r.Error,
+	}
+	if err != nil {
+		return ErrResult[model.CursorStageRuleDO](err)
+	}
+	return OkResult(out)
+}
+
+// RemoveCursorUserProjectStageRule 移除托管的 Cursor 全局项目舞台用户规则。
+func (s *Service) RemoveCursorUserProjectStageRule() ApiResult[model.CursorStageRuleDO] {
+	r, err := cursorrule.RemoveUserProjectStageRule()
+	out := model.CursorStageRuleDO{
+		Path:    r.Path,
+		Skipped: r.Skipped,
+		Error:   r.Error,
+	}
+	if err != nil {
+		return ErrResult[model.CursorStageRuleDO](err)
+	}
+	if r.Removed {
+		out.Written = true
+	}
 	return OkResult(out)
 }
