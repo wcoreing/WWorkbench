@@ -37,7 +37,7 @@ type workflowFrontmatter struct {
 
 // ExtractWorkflowNoteBodyExtras 从已有笔记抽出经验/脚本/资源段落，避免 save 步骤时冲掉沉淀。
 func ExtractWorkflowNoteBodyExtras(content string) WorkflowNoteBodyExtras {
-	_, body, ok := splitWorkflowFrontmatter(content)
+	fm, body, ok := splitWorkflowFrontmatter(content)
 	if !ok {
 		body = content
 	}
@@ -45,6 +45,7 @@ func ExtractWorkflowNoteBodyExtras(content string) WorkflowNoteBodyExtras {
 		Lessons:   extractMarkdownSection(body, "经验"),
 		Scripts:   extractMarkdownSection(body, "脚本"),
 		Resources: extractMarkdownSection(body, "资源"),
+		Bind:      strings.TrimSpace(fm.Bind),
 	}
 }
 
@@ -415,6 +416,9 @@ func (s *Service) SaveWorkflowNoteWithExtras(p model.WorkflowDO, extras Workflow
 	}
 	if strings.TrimSpace(extras.Resources) != "" {
 		merged.Resources = strings.TrimSpace(extras.Resources)
+	}
+	if strings.TrimSpace(extras.Bind) != "" {
+		merged.Bind = strings.TrimSpace(extras.Bind)
 	}
 	content := FormatWorkflowNoteContent(p, merged)
 	title := firstNonEmptyStr(strings.TrimSpace(p.Title), SkillBasename(id), name)

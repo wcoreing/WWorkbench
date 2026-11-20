@@ -128,10 +128,11 @@ func teachPayloadFromResult(result workbenchtools.ToolResult) (teach map[string]
 }
 
 func attachTeachToEnd(end map[string]interface{}, result workbenchtools.ToolResult) {
-	if teach, skill := teachPayloadFromResult(result); teach != nil {
+	teach, skill := teachPayloadFromResult(result)
+	if teach != nil {
 		end["teach"] = teach
-		if skill != nil {
-			end["suggestedSkill"] = skill
-		}
+	}
+	if skill != nil {
+		end["suggestedSkill"] = skill
 	}
 }
