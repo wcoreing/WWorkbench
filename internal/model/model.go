@@ -391,6 +391,20 @@ type MCPWriteAllowDO struct {
 	Kind    string `json:"kind,omitempty"`
 }
 
+// MCPTrustOpDO MCP 信任操作账本条目（非硬风险可免确认）。
+type MCPTrustOpDO struct {
+	Tool        string `json:"tool"`
+	HostKey     string `json:"hostKey"`
+	Fingerprint string `json:"fingerprint"`
+	Intent      string `json:"intent,omitempty"`
+	Command     string `json:"command,omitempty"`
+	Risk        string `json:"risk,omitempty"`
+	ProjectID   string `json:"projectId,omitempty"`
+	SkillPath   string `json:"skillPath,omitempty"`
+	Summary     string `json:"summary,omitempty"`
+	At          int64  `json:"at"`
+}
+
 // DesktopAppGrantDO 允许 AI 读取 / 操作的桌面应用。
 type DesktopAppGrantDO struct {
 	Key   string `json:"key"`   // bundle id（缺失时为应用名）

@@ -34,6 +34,7 @@ func (s *Service) wireAgentRunner() {
 	s.radar = radar
 	mcpConfirm := workbenchtools.NewMCPConfirmGate(emit)
 	writeAllows := workbenchtools.NewMCPWriteAllowBook(s.store)
+	trustOps := workbenchtools.NewMCPTrustBook(s.store)
 	dataDir, dataDirErr := store.DataDir()
 	var desk *desktop.Driver
 	if dataDirErr == nil {
@@ -52,6 +53,7 @@ func (s *Service) wireAgentRunner() {
 		Radar:         radar,
 		MCPConfirm:    mcpConfirm,
 		WriteAllows:   writeAllows,
+		TrustOps:      trustOps,
 		Terminals:     s.terminals,
 		Browser:       s.browserBridge,
 		AgentBrowser:  s.agentBrowser,

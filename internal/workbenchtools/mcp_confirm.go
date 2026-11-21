@@ -25,8 +25,13 @@ type MCPConfirmRequest struct {
 	ConfirmLabel string `json:"confirmLabel,omitempty"`
 }
 
+type mcpConfirmDecision struct {
+	Approved bool
+	Trust    bool
+}
+
 type mcpPending struct {
-	ch chan bool
+	ch chan mcpConfirmDecision
 }
 
 // MCPConfirmGate 外置 MCP 写操作 → 工作台弹窗拍板。
@@ -48,16 +53,17 @@ func NewMCPConfirmGate(emit func(event string, payload map[string]interface{})) 
 }
 
 // Await 弹出工作台确认并阻塞至 Resolve / 超时 / ctx 取消。
-func (g *MCPConfirmGate) Await(ctx context.Context, req MCPConfirmRequest) (approved bool, err error) {
+// trust=true 表示用户点了「信任并执行」（仅非硬风险）。
+func (g *MCPConfirmGate) Await(ctx context.Context, req MCPConfirmRequest) (approved, trust bool, err error) {
 	if g == nil {
-		return false, errMCPConfirmUnavailable
+		return false, false, errMCPConfirmUnavailable
 	}
 	pendingID := req.PendingID
 	if pendingID == "" {
 		pendingID = uuid.NewString()
 		req.PendingID = pendingID
 	}
-	ch := make(chan bool, 1)
+	ch := make(chan mcpConfirmDecision, 1)
 	g.mu.Lock()
 	if g.wait == nil {
 		g.wait = make(map[string]*mcpPending)
@@ -65,7 +71,7 @@ func (g *MCPConfirmGate) Await(ctx context.Context, req MCPConfirmRequest) (appr
 	// 同 id 替换旧等待
 	if old, ok := g.wait[pendingID]; ok {
 		select {
-		case old.ch <- false:
+		case old.ch <- mcpConfirmDecision{}:
 		default:
 		}
 	}
@@ -93,19 +99,19 @@ func (g *MCPConfirmGate) Await(ctx context.Context, req MCPConfirmRequest) (appr
 	defer cancel()
 
 	select {
-	case ok := <-ch:
+	case dec := <-ch:
 		g.mu.Lock()
 		delete(g.wait, pendingID)
 		g.mu.Unlock()
-		return ok, nil
+		return dec.Approved, dec.Approved && dec.Trust, nil
 	case <-waitCtx.Done():
 		g.mu.Lock()
 		delete(g.wait, pendingID)
 		g.mu.Unlock()
 		if ctx.Err() != nil {
-			return false, ctx.Err()
+			return false, false, ctx.Err()
 		}
-		return false, errMCPConfirmTimeout
+		return false, false, errMCPConfirmTimeout
 	}
 }
 
@@ -134,8 +140,8 @@ func (g *MCPConfirmGate) EmitStage(kind, label, intent, impact, tool string) {
 	g.emit("mcp:stage", payload)
 }
 
-// Resolve 用户在工作台拍板。
-func (g *MCPConfirmGate) Resolve(pendingID string, approved bool) bool {
+// Resolve 用户在工作台拍板；trust 仅在 approved 时生效。
+func (g *MCPConfirmGate) Resolve(pendingID string, approved, trust bool) bool {
 	if g == nil || pendingID == "" {
 		return false
 	}
@@ -149,7 +155,7 @@ func (g *MCPConfirmGate) Resolve(pendingID string, approved bool) bool {
 		return false
 	}
 	select {
-	case p.ch <- approved:
+	case p.ch <- mcpConfirmDecision{Approved: approved, Trust: approved && trust}:
 	default:
 	}
 	return true

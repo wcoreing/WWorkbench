@@ -3416,6 +3416,40 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class ApiResult___WWorkbench_internal_model_MCPTrustOpDO_ {
+	    ok: boolean;
+	    data: model.MCPTrustOpDO[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_model_MCPTrustOpDO_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], model.MCPTrustOpDO);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ApiResult___WWorkbench_internal_model_MCPWriteAllowDO_ {
 	    ok: boolean;
 	    data: model.MCPWriteAllowDO[];
@@ -6753,6 +6787,36 @@ export namespace model {
 	        this.error = source["error"];
 	    }
 	}
+	export class MCPTrustOpDO {
+	    tool: string;
+	    hostKey: string;
+	    fingerprint: string;
+	    intent?: string;
+	    command?: string;
+	    risk?: string;
+	    projectId?: string;
+	    skillPath?: string;
+	    summary?: string;
+	    at: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MCPTrustOpDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tool = source["tool"];
+	        this.hostKey = source["hostKey"];
+	        this.fingerprint = source["fingerprint"];
+	        this.intent = source["intent"];
+	        this.command = source["command"];
+	        this.risk = source["risk"];
+	        this.projectId = source["projectId"];
+	        this.skillPath = source["skillPath"];
+	        this.summary = source["summary"];
+	        this.at = source["at"];
+	    }
+	}
 	export class MCPWriteAllowDO {
 	    hostKey: string;
 	    path: string;
@@ -8198,6 +8262,7 @@ export namespace workbenchtools {
 	    description: string;
 	    intent: string;
 	    lessons: string;
+	    trustedOp: string;
 	    script: string;
 	    scriptLang: string;
 	    resourcePaths: string[];
@@ -8216,6 +8281,7 @@ export namespace workbenchtools {
 	        this.description = source["description"];
 	        this.intent = source["intent"];
 	        this.lessons = source["lessons"];
+	        this.trustedOp = source["trustedOp"];
 	        this.script = source["script"];
 	        this.scriptLang = source["scriptLang"];
 	        this.resourcePaths = source["resourcePaths"];

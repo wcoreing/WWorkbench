@@ -3,7 +3,7 @@ import { useAppStore } from '../../stores/appStore'
 import { dispatchWorkbenchCommand } from '../../workbench/workbenchCommandBus'
 import { Capability } from '../../workbench/capabilities'
 import type { ProductId } from '../../shell/products'
-import { askConfirm, type ConfirmLedgerRow } from '../../utils/askConfirm'
+import { askConfirm, askConfirmOutcome, type ConfirmLedgerRow } from '../../utils/askConfirm'
 import { api } from '../../api/client'
 import { notify } from '../../notify'
 
@@ -365,25 +365,31 @@ async function handleMcpConfirm(raw: Record<string, unknown>) {
   setStatus(`待确认 · ${summary}`)
   // 拍板唯一入口：右下角确认弹窗（产品标签 + 结构化账本 + 代码块）
   const body = formatMcpConfirmBody(raw.preview, toolName)
-  const ok = await askConfirm({
+  const outcome = await askConfirmOutcome({
     title: summary,
     ledger: body.ledger,
     code: body.code,
     product: product ?? undefined,
     confirmLabel: String(raw.confirmLabel ?? '').trim() || '执行',
+    allowTrust: !body.hardRisk,
     danger: true,
     hardRisk: body.hardRisk,
     softRisk: body.softRisk,
     placement: 'corner',
   })
+  const ok = outcome.ok
+  const trust = outcome.trust
   try {
     if (pendingId) {
-      await api.resolveMCPConfirm(pendingId, ok)
+      await api.resolveMCPConfirm(pendingId, ok, trust)
     }
   } catch (err) {
     notify.error(err instanceof Error ? err.message : String(err))
   } finally {
-    if (ok) {
+    if (ok && trust) {
+      setStatus(`已信任 · ${summary}`)
+      notify.success(`已信任并执行 · ${summary}`)
+    } else if (ok) {
       setStatus(`已确认 · ${summary}`)
       notify.success(`已确认 · ${summary}`)
     } else {

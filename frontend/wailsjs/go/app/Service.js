@@ -690,6 +690,10 @@ export function ListMCPCallLogs(arg1) {
   return window['go']['app']['Service']['ListMCPCallLogs'](arg1);
 }
 
+export function ListMCPTrustOps() {
+  return window['go']['app']['Service']['ListMCPTrustOps']();
+}
+
 export function ListMCPWriteDirs() {
   return window['go']['app']['Service']['ListMCPWriteDirs']();
 }
@@ -934,8 +938,8 @@ export function ResolveContainerDatabaseLink(arg1, arg2) {
   return window['go']['app']['Service']['ResolveContainerDatabaseLink'](arg1, arg2);
 }
 
-export function ResolveMCPConfirm(arg1, arg2) {
-  return window['go']['app']['Service']['ResolveMCPConfirm'](arg1, arg2);
+export function ResolveMCPConfirm(arg1, arg2, arg3) {
+  return window['go']['app']['Service']['ResolveMCPConfirm'](arg1, arg2, arg3);
 }
 
 export function RestartContainer(arg1, arg2) {
@@ -972,6 +976,10 @@ export function RevealPluginPackPath(arg1) {
 
 export function RevokeDesktopAppGrant(arg1) {
   return window['go']['app']['Service']['RevokeDesktopAppGrant'](arg1);
+}
+
+export function RevokeMCPTrustOp(arg1) {
+  return window['go']['app']['Service']['RevokeMCPTrustOp'](arg1);
 }
 
 export function RevokeMCPWriteDir(arg1, arg2) {

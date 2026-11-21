@@ -23,6 +23,7 @@ type UpdateSkillArgs struct {
 	Description   string                 `json:"description"`
 	Intent        string                 `json:"intent"`
 	Lessons       string                 `json:"lessons"`       // 追加到 ## 经验
+	TrustedOp     string                 `json:"trustedOp"`     // 追加到 ## 已信任操作（确认弹窗信任）
 	Script        string                 `json:"script"`        // 追加脚本正文（不含围栏时可自动包）
 	ScriptLang    string                 `json:"scriptLang"`    // bash|sql|…，默认 bash
 	ResourcePaths []string               `json:"resourcePaths"` // 本机绝对路径 → 挂到笔记资源
@@ -58,7 +59,7 @@ func UpdateSkillConfirmed(_ context.Context, d *Deps, argsJSON string) ToolResul
 }
 
 func updateSkillHasPayload(in UpdateSkillArgs) bool {
-	if strings.TrimSpace(in.Lessons) != "" || strings.TrimSpace(in.Script) != "" {
+	if strings.TrimSpace(in.Lessons) != "" || strings.TrimSpace(in.Script) != "" || strings.TrimSpace(in.TrustedOp) != "" {
 		return true
 	}
 	if updateSkillWantResources(in) {
@@ -93,7 +94,7 @@ func updateSkillWantResources(in UpdateSkillArgs) bool {
 
 // updateSkillAllowsStepless 无浏览器步骤也可写盘（项目方法 / 纯经验沉淀）。
 func updateSkillAllowsStepless(in UpdateSkillArgs) bool {
-	if strings.TrimSpace(in.Lessons) != "" || strings.TrimSpace(in.Script) != "" {
+	if strings.TrimSpace(in.Lessons) != "" || strings.TrimSpace(in.Script) != "" || strings.TrimSpace(in.TrustedOp) != "" {
 		return true
 	}
 	if updateSkillWantResources(in) {
@@ -196,6 +197,21 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 			lessonsAdded = true
 		}
 	}
+	trustedAdded := false
+	if trusted := strings.TrimSpace(in.TrustedOp); trusted != "" {
+		if !textAlreadyInSection(extras.TrustedOps, trusted) {
+			line := trusted
+			if !strings.HasPrefix(strings.TrimSpace(line), "-") {
+				line = "- " + strings.TrimSpace(line)
+			}
+			if strings.TrimSpace(extras.TrustedOps) == "" {
+				extras.TrustedOps = line
+			} else {
+				extras.TrustedOps = strings.TrimSpace(extras.TrustedOps) + "\n" + line
+			}
+			trustedAdded = true
+		}
+	}
 
 	scriptAdded := false
 	if script := strings.TrimSpace(in.Script); script != "" {
@@ -227,7 +243,7 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	previewContent := notebook.FormatWorkflowNoteContent(cur, extras)
 	contentSame := !created && existing != nil &&
 		normalizeSkillContent(existing.Content) == normalizeSkillContent(previewContent)
-	if contentSame && !wantResources && !lessonsAdded && !scriptAdded {
+	if contentSame && !wantResources && !lessonsAdded && !scriptAdded && !trustedAdded {
 		out := map[string]interface{}{
 			"ok": true, "updated": false, "skipped": true,
 			"noteId": noteID, "workflow": cur,

@@ -17,6 +17,8 @@ interface ConfirmDialogProps {
   product?: ProductId
   confirmLabel?: string
   cancelLabel?: string
+  /** 非硬风险：显示「信任并执行」 */
+  allowTrust?: boolean
   danger?: boolean
   /** 硬风险：不可免确认 */
   hardRisk?: boolean
@@ -27,6 +29,7 @@ interface ConfirmDialogProps {
   children?: ReactNode
   onConfirm: () => void
   onCancel: () => void
+  onTrust?: () => void
 }
 
 function isProductId(id: string | undefined): id is ProductId {
@@ -43,6 +46,7 @@ export function ConfirmDialog({
   product,
   confirmLabel,
   cancelLabel,
+  allowTrust = false,
   danger = false,
   hardRisk = false,
   softRisk = false,
@@ -50,12 +54,14 @@ export function ConfirmDialog({
   children,
   onConfirm,
   onCancel,
+  onTrust,
 }: ConfirmDialogProps) {
   const { t } = useI18n()
   const productId = isProductId(product) ? product : 'terminal'
   const productMeta = useLocalizedProduct(productId)
   const okLabel = confirmLabel ?? t('common.confirm')
   const noLabel = cancelLabel ?? t('common.cancel')
+  const showTrust = !hardRisk && allowTrust && !!onTrust
   const hasCode = Boolean(code?.trim())
   const corner = placement === 'corner'
   const showProduct = isProductId(product)
@@ -112,6 +118,11 @@ export function ConfirmDialog({
         <button type="button" className="wn-btn wn-btn-tool" {...pressProps(onCancel)}>
           {noLabel}
         </button>
+        {showTrust ? (
+          <button type="button" className="wn-btn wn-btn-sm wn-btn-ghost" {...pressProps(onTrust)}>
+            {t('shell.confirmTrust')}
+          </button>
+        ) : null}
         <button
           type="button"
           className={`wn-btn wn-btn-sm ${danger ? 'wn-btn-danger' : 'wn-btn-primary'}`}

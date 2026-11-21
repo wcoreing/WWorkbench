@@ -18,9 +18,10 @@ var (
 
 // WorkflowNoteBodyExtras 工作流笔记中除步骤外的可沉淀段落（保存步骤时须保留）。
 type WorkflowNoteBodyExtras struct {
-	Lessons   string // ## 经验 正文（不含标题）
-	Scripts   string // ## 脚本 正文
-	Resources string // ## 资源 正文
+	Lessons    string // ## 经验 正文（不含标题）
+	TrustedOps string // ## 已信任操作 正文
+	Scripts    string // ## 脚本 正文
+	Resources  string // ## 资源 正文
 }
 
 type workflowFrontmatter struct {
@@ -41,9 +42,10 @@ func ExtractWorkflowNoteBodyExtras(content string) WorkflowNoteBodyExtras {
 		body = content
 	}
 	return WorkflowNoteBodyExtras{
-		Lessons:   extractMarkdownSection(body, "经验"),
-		Scripts:   extractMarkdownSection(body, "脚本"),
-		Resources: extractMarkdownSection(body, "资源"),
+		Lessons:    extractMarkdownSection(body, "经验"),
+		TrustedOps: extractMarkdownSection(body, "已信任操作"),
+		Scripts:    extractMarkdownSection(body, "脚本"),
+		Resources:  extractMarkdownSection(body, "资源"),
 	}
 }
 
@@ -153,6 +155,12 @@ func FormatWorkflowNoteContent(p model.WorkflowDO, extras WorkflowNoteBodyExtras
 	body.WriteString("## 经验\n\n")
 	body.WriteString(lessons)
 	body.WriteString("\n\n")
+
+	if trusted := strings.TrimSpace(extras.TrustedOps); trusted != "" {
+		body.WriteString("## 已信任操作\n\n")
+		body.WriteString(trusted)
+		body.WriteString("\n\n")
+	}
 
 	body.WriteString("## 步骤\n\n")
 	for i, st := range p.Steps {
@@ -404,6 +412,9 @@ func (s *Service) SaveWorkflowNoteWithExtras(p model.WorkflowDO, extras Workflow
 	}
 	if strings.TrimSpace(extras.Lessons) != "" {
 		merged.Lessons = strings.TrimSpace(extras.Lessons)
+	}
+	if strings.TrimSpace(extras.TrustedOps) != "" {
+		merged.TrustedOps = strings.TrimSpace(extras.TrustedOps)
 	}
 	if strings.TrimSpace(extras.Scripts) != "" {
 		merged.Scripts = strings.TrimSpace(extras.Scripts)

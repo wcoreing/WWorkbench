@@ -573,7 +573,7 @@ func toolDesktopAct(ctx context.Context, d *Deps, raw json.RawMessage) ToolResul
 		}
 		preview["risk"] = "该快捷键被标为危险：可能退出应用、关闭窗口或丢失未保存内容"
 		body, _ := json.Marshal(preview)
-		approved, err := d.MCPConfirm.Await(ctx, MCPConfirmRequest{
+		approved, _, err := d.MCPConfirm.Await(ctx, MCPConfirmRequest{
 			ToolName: workbench.CapDesktopAct, Summary: "强制" + summary + "？", Preview: body, ConfirmLabel: "发送",
 		})
 		if err != nil {

@@ -227,7 +227,7 @@ func askDesktopGrant(ctx context.Context, d *Deps, app desktop.App, need, tool, 
 		preview["risk"] = risk
 	}
 	raw, _ := json.Marshal(preview)
-	approved, err := d.MCPConfirm.Await(ctx, MCPConfirmRequest{
+	approved, _, err := d.MCPConfirm.Await(ctx, MCPConfirmRequest{
 		ToolName:     tool,
 		Summary:      summary,
 		Preview:      raw,

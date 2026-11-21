@@ -37,6 +37,7 @@ type Deps struct {
 	Radar       *RadarBus
 	MCPConfirm  *MCPConfirmGate
 	WriteAllows *MCPWriteAllowBook
+	TrustOps    *MCPTrustBook
 	Terminals   *terminal.Manager
 	Browser     *browser.Bridge
 	// AgentBrowser 第三执行器（agent-browser CLI）；nil 表示不启用。

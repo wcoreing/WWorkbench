@@ -85,6 +85,19 @@ export function AgentConfigView({
   const [copied, setCopied] = useState(false)
   const [stageBusy, setStageBusy] = useState(false)
   const [stageMsg, setStageMsg] = useState('')
+  const [trustOps, setTrustOps] = useState<
+    Array<{
+      tool: string
+      hostKey: string
+      fingerprint: string
+      intent?: string
+      command?: string
+      risk?: string
+      summary?: string
+      at: number
+    }>
+  >([])
+  const [trustBusy, setTrustBusy] = useState(false)
   const pane: SettingsPane | '' = showMcp ? 'mcp' : isPreset(provider) ? provider : ''
   const savedModels = loadSavedModels(provider)
 
@@ -94,9 +107,19 @@ export function AgentConfigView({
     setMcpError(st.error || '')
   }, [])
 
+  const refreshTrustOps = useCallback(async () => {
+    const list = await api.listMCPTrustOps()
+    setTrustOps(list)
+  }, [])
+
   useEffect(() => {
     void refreshMCP().catch((e) => setMcpError((e as Error).message))
   }, [refreshMCP])
+
+  useEffect(() => {
+    if (pane !== 'mcp') return
+    void refreshTrustOps().catch(() => setTrustOps([]))
+  }, [pane, refreshTrustOps])
 
   const onCopySnippet = async () => {
     await copyText(mcpStatus?.cursorSnippet || '')
@@ -228,6 +251,65 @@ export function AgentConfigView({
                 </button>
               </div>
               {stageMsg ? <p className="agent-settings-hint">{stageMsg}</p> : null}
+            </div>
+            <div className="agent-field">
+              <span className="wn-label">{t('agent.mcpTrustOps')}</span>
+              <p className="agent-settings-hint">{t('agent.mcpTrustOpsHint')}</p>
+              {trustOps.length === 0 ? (
+                <p className="agent-settings-hint">{t('agent.mcpTrustOpsEmpty')}</p>
+              ) : (
+                <ul className="agent-mcp-trust-list" style={{ listStyle: 'none', padding: 0, margin: '8px 0 0' }}>
+                  {trustOps.map((op) => (
+                    <li
+                      key={op.fingerprint}
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                        padding: '8px 0',
+                        borderTop: '1px solid var(--wn-border, #3333)',
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontWeight: 600 }}>
+                          {op.tool}
+                          {op.summary ? ` · ${op.summary}` : ''}
+                        </div>
+                        <div className="agent-settings-hint">
+                          {t('agent.mcpTrustOpsHost')}: {op.hostKey || 'local'}
+                          {op.risk ? ` · ${t('agent.mcpTrustOpsRisk')}: ${op.risk}` : ''}
+                          {` · ${op.fingerprint.slice(0, 12)}`}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="wn-btn wn-btn-sm wn-btn-ghost"
+                        disabled={trustBusy}
+                        {...pressProps(
+                          () => {
+                            void (async () => {
+                              setTrustBusy(true)
+                              try {
+                                await api.revokeMCPTrustOp(op.fingerprint)
+                                await refreshTrustOps()
+                                setStageMsg(t('agent.mcpTrustOpsRevoked'))
+                              } catch (e) {
+                                setMcpError((e as Error).message)
+                              } finally {
+                                setTrustBusy(false)
+                              }
+                            })()
+                          },
+                          { disabled: trustBusy },
+                        )}
+                      >
+                        {t('agent.mcpTrustOpsRevoke')}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
             <div className="agent-mcp-json-head">
               <span className="wn-label">{t('agent.mcpCursorSnippet')}</span>

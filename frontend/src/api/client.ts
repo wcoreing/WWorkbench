@@ -315,6 +315,8 @@ import {
   GrantMCPWriteDir,
   RevokeMCPWriteDir,
   ListMCPWriteDirs,
+  ListMCPTrustOps,
+  RevokeMCPTrustOp,
   ListDesktopAppGrants,
   RevokeDesktopAppGrant,
   ProbeTerminalCwd,
@@ -1205,8 +1207,22 @@ export const api = {
     unwrap(() => SnapshotPluginPack(packId)) as Promise<import('./pluginPack').PluginPackReleaseInfo>,
   rollbackPluginPack: async (packId: string, releaseId: string) =>
     unwrap(() => RollbackPluginPack(packId, releaseId)) as Promise<import('./pluginPack').PluginPackInfo>,
-  resolveMCPConfirm: async (pendingId: string, approved: boolean) =>
-    unwrap(() => ResolveMCPConfirm(pendingId, approved)),
+  resolveMCPConfirm: async (pendingId: string, approved: boolean, trust = false) =>
+    unwrap(() => ResolveMCPConfirm(pendingId, approved, trust)),
+  listMCPTrustOps: async () =>
+    asArray(await unwrap(() => ListMCPTrustOps())) as Array<{
+      tool: string
+      hostKey: string
+      fingerprint: string
+      intent?: string
+      command?: string
+      risk?: string
+      projectId?: string
+      skillPath?: string
+      summary?: string
+      at: number
+    }>,
+  revokeMCPTrustOp: async (fingerprint: string) => unwrap(() => RevokeMCPTrustOp(fingerprint)),
   probeTerminalCwd: async (sessionId: string) =>
     unwrap(() => ProbeTerminalCwd(sessionId)) as Promise<{
       sessionId: string

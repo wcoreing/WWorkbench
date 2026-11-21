@@ -133,13 +133,21 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 		return out
 	}
 
+	// 非 shell 工具：信任账本命中则直接执行（shell 已在 toolOpenTerminal 跳过 NeedsConfirm）
+	if !stepConfirmTool(toolName) && trustMatchFromArgs(d, toolName, args, "") {
+		MarkLatestIntentApproved(ctx, toolName, intent, true)
+		out = AttachTeachEnvelope(ctx, toolName, args, ExecuteConfirmed(ctx, d, toolName, string(args)))
+		MaybeEmitSkillOffer(d, toolName, out)
+		return out
+	}
+
 	if d == nil || d.MCPConfirm == nil {
 		out = Fail("工作台确认门未就绪，请在 App 内打开 WWorkbench 后重试")
 		return out
 	}
 	impact := confirmImpactHint(toolName, args)
 	d.MCPConfirm.EmitStage("confirm", firstNonEmpty(res.ConfirmSummary, toolName), intent, impact, toolName)
-	approved, err := d.MCPConfirm.Await(ctx, MCPConfirmRequest{
+	approved, trust, err := d.MCPConfirm.Await(ctx, MCPConfirmRequest{
 		PendingID: res.PendingID,
 		ToolName:  toolName,
 		Summary:   res.ConfirmSummary,
@@ -157,7 +165,17 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 		out = AttachTeachEnvelope(ctx, toolName, args, Fail("用户已在工作台拒绝："+res.ConfirmSummary))
 		return out
 	}
-	d.MCPConfirm.EmitStage("done", "已确认 · "+firstNonEmpty(res.ConfirmSummary, toolName), intent, impact, toolName)
+	if trust {
+		if _, note, gerr := GrantTrustFromConfirm(d, toolName, args, res.Data, res.ConfirmSummary); gerr == nil && note != "" {
+			d.MCPConfirm.EmitStage("done", note, intent, impact, toolName)
+		} else if gerr != nil {
+			d.MCPConfirm.EmitStage("done", "已确认（信任写入失败："+gerr.Error()+"）", intent, impact, toolName)
+		} else {
+			d.MCPConfirm.EmitStage("done", "已信任并确认 · "+firstNonEmpty(res.ConfirmSummary, toolName), intent, impact, toolName)
+		}
+	} else {
+		d.MCPConfirm.EmitStage("done", "已确认 · "+firstNonEmpty(res.ConfirmSummary, toolName), intent, impact, toolName)
+	}
 	out = AttachTeachEnvelope(ctx, toolName, args, ExecuteConfirmed(ctx, d, toolName, string(args)))
 	MaybeEmitSkillOffer(d, toolName, out)
 	return out

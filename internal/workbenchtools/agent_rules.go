@@ -147,7 +147,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 
 ## 9. 软写护照
 - 终端右键「允许 MCP 写入当前目录」后，该目录内软文件写（重定向/tee/rm）可免确认。
-- 数据硬风险（同步/库文件/导入）永远不可免。
+- 数据硬风险（同步/库文件/导入）永远不可免确认、不可「信任」。非硬风险可在确认弹窗点「信任并执行」写入 TrustBook（同主机+命令/intent 指纹命中则跳过后续确认），并沉淀进项目 Skill「已信任操作」。
 
 ## 10. 浏览器舞台与任务账本（执行器可换）
 - 先 browser_status：看 executors.wwb / executors.kimi / executors.agent-browser / recommended / capabilities；wwb 未连接时可按 extDir 加载扩展。

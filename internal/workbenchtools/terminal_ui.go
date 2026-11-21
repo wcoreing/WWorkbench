@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/workbench"
 
 	"github.com/google/uuid"
 )
@@ -88,6 +89,11 @@ func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 			}
 		}
 		if d.WriteAllows != nil && d.WriteAllows.WaiveSoftFileRisk(hostKey, in.InitialCommand, reason) {
+			return dispatchShellRun(d, in)
+		}
+		// 信任账本：非硬风险 + 指纹命中 → 跳过确认
+		if !isHardShellRiskReason(reason) && d.TrustOps != nil &&
+			d.TrustOps.Match(workbench.CapShellRun, hostKey, in.InitialCommand, in.Intent, reason) {
 			return dispatchShellRun(d, in)
 		}
 		preview, errMsg := shellRunConfirmPreview(d, in)

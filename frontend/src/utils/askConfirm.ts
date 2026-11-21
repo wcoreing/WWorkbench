@@ -22,6 +22,8 @@ export type ConfirmRequest = {
   product?: ProductId
   confirmLabel?: string
   cancelLabel?: string
+  /** 非硬风险时显示「信任并执行」 */
+  allowTrust?: boolean
   danger?: boolean
   /** 确认经济：硬风险不可免 */
   hardRisk?: boolean
@@ -31,10 +33,13 @@ export type ConfirmRequest = {
   placement?: 'center' | 'corner'
 }
 
+/** ConfirmOutcome 拍板结果；trust 仅在 ok 时有意义。 */
+export type ConfirmOutcome = { ok: boolean; trust: boolean }
+
 type Listener = () => void
 
 let current: ConfirmRequest | null = null
-let resolver: ((ok: boolean) => void) | null = null
+let resolver: ((outcome: ConfirmOutcome) => void) | null = null
 const listeners = new Set<Listener>()
 
 function notify() {
@@ -52,12 +57,13 @@ export function getConfirmDialogState(): ConfirmRequest | null {
   return current
 }
 
-/** askConfirm 弹出确认；确定 → true，取消/关闭 → false。 */
-export function askConfirm(req: ConfirmRequest): Promise<boolean> {
+/** askConfirmOutcome 弹出确认；完整结果含 trust。 */
+export function askConfirmOutcome(req: ConfirmRequest): Promise<ConfirmOutcome> {
   if (resolver) {
-    resolver(false)
+    resolver({ ok: false, trust: false })
     resolver = null
   }
+  const hardRisk = !!req.hardRisk
   current = {
     title: req.title,
     message: req.message,
@@ -66,9 +72,10 @@ export function askConfirm(req: ConfirmRequest): Promise<boolean> {
     product: req.product,
     confirmLabel: req.confirmLabel,
     cancelLabel: req.cancelLabel,
+    allowTrust: !hardRisk && !!req.allowTrust,
     danger: !!req.danger,
-    hardRisk: !!req.hardRisk,
-    softRisk: !!req.softRisk && !req.hardRisk,
+    hardRisk,
+    softRisk: !!req.softRisk && !hardRisk,
     placement: req.placement === 'corner' ? 'corner' : 'center',
   }
   notify()
@@ -77,11 +84,16 @@ export function askConfirm(req: ConfirmRequest): Promise<boolean> {
   })
 }
 
+/** askConfirm 弹出确认；确定 → true，取消/关闭 → false（忽略 trust）。 */
+export function askConfirm(req: ConfirmRequest): Promise<boolean> {
+  return askConfirmOutcome(req).then((o) => o.ok)
+}
+
 /** resolveConfirm 关闭弹窗并回传结果。 */
-export function resolveConfirm(ok: boolean) {
+export function resolveConfirm(ok: boolean, trust = false) {
   current = null
   const r = resolver
   resolver = null
   notify()
-  r?.(ok)
+  r?.({ ok, trust: ok && trust })
 }

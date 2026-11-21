@@ -349,6 +349,8 @@ export function ListLogSources():Promise<app.ApiResult___WWorkbench_internal_mod
 
 export function ListMCPCallLogs(arg1:model.MCPCallLogFilter):Promise<app.ApiResult___WWorkbench_internal_model_MCPCallLogDO_>;
 
+export function ListMCPTrustOps():Promise<app.ApiResult___WWorkbench_internal_model_MCPTrustOpDO_>;
+
 export function ListMCPWriteDirs():Promise<app.ApiResult___WWorkbench_internal_model_MCPWriteAllowDO_>;
 
 export function ListNotebookGroups():Promise<app.ApiResult___WWorkbench_internal_model_NotebookGroupDO_>;
@@ -471,7 +473,7 @@ export function ResizeTerminal(arg1:string,arg2:number,arg3:number):Promise<app.
 
 export function ResolveContainerDatabaseLink(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_ContainerDatabaseLinkDO_>;
 
-export function ResolveMCPConfirm(arg1:string,arg2:boolean):Promise<app.ApiResult_bool_>;
+export function ResolveMCPConfirm(arg1:string,arg2:boolean,arg3:boolean):Promise<app.ApiResult_bool_>;
 
 export function RestartContainer(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
@@ -490,6 +492,8 @@ export function RevealNotebookWorkspace():Promise<app.ApiResult_bool_>;
 export function RevealPluginPackPath(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function RevokeDesktopAppGrant(arg1:string):Promise<app.ApiResult_int_>;
+
+export function RevokeMCPTrustOp(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function RevokeMCPWriteDir(arg1:string,arg2:string):Promise<app.ApiResult_int_>;
 
