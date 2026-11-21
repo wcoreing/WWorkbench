@@ -114,6 +114,37 @@ func TestProposeAndEvalHarnessPatch(t *testing.T) {
 	}
 }
 
+func TestProposeUsesPreWriteBaseNotPostWriteNote(t *testing.T) {
+	d := &Deps{Harness: NewHarnessCandidateBook(nil)}
+	patch := "登录已用 browser_run(mode=macro) 跑通。下次少摸索；收口写进 Skill。"
+	// 模拟写盘后笔记已含补丁；若误用写后基线会判重复。传写前空基线应达标。
+	pre := "尚无沉淀"
+	res := ProposeHarnessPatch(d, ProposeHarnessArgs{
+		SkillPath:    "项目/web",
+		LessonsPatch: patch,
+		Domain:       "browser",
+		EmitUI:       false,
+		BaseLessons:  &pre,
+	})
+	if !res.OK {
+		t.Fatalf("propose: %s", res.Error)
+	}
+	var wrap struct {
+		Candidate HarnessCandidate `json:"candidate"`
+	}
+	_ = json.Unmarshal(res.Data, &wrap)
+	if wrap.Candidate.Score == nil || !wrap.Candidate.Score.Pass {
+		t.Fatalf("pre-write base should pass: %+v", wrap.Candidate.Score)
+	}
+	// 对比：若把写后全文当基线，会低估
+	post := "- [2026-01-01] " + patch
+	bad := scoreHarnessCandidate(HarnessCandidate{LessonsPatch: patch, BaseLessons: post})
+	good := scoreHarnessCandidate(HarnessCandidate{LessonsPatch: patch, BaseLessons: pre})
+	if !(good.Total > bad.Total) {
+		t.Fatalf("pre-write score %d should beat post-write baseline %d", good.Total, bad.Total)
+	}
+}
+
 func TestPromoteRequiresPassUnlessForce(t *testing.T) {
 	d := &Deps{Harness: NewHarnessCandidateBook(nil)}
 	c := d.Harness.Add(HarnessCandidate{

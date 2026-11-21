@@ -312,6 +312,9 @@ type ProposeHarnessArgs struct {
 	Domain       string
 	Intent       string
 	EmitUI       bool
+	// BaseLessons 非 nil 时用作评测基线（写盘前快照）；nil 则读当前 Skill 笔记。
+	// 回合收口先写后 propose 必须传写前基线，否则会把刚写入的补丁判成「高度重复」。
+	BaseLessons *string
 }
 
 // ProposeHarnessPatch 创建 shadow 候选；浏览器宏域默认。
@@ -381,7 +384,9 @@ func ProposeHarnessPatch(d *Deps, in ProposeHarnessArgs) ToolResult {
 	}
 
 	baseLessons := ""
-	if d.Notebook != nil {
+	if in.BaseLessons != nil {
+		baseLessons = *in.BaseLessons
+	} else if d.Notebook != nil {
 		if note, err := d.Notebook.GetNote(notebook.SkillNoteID(skillPath)); err == nil && note != nil {
 			baseLessons = notebook.ExtractWorkflowNoteBodyExtras(note.Content).Lessons
 		}
@@ -644,7 +649,8 @@ func DiscardHarnessCandidate(d *Deps, candidateID string, freeze bool) ToolResul
 }
 
 // MaybeProposeHarnessAfterEpisode 回合写盘成功后自动提案（仅 browser 域）。
-func MaybeProposeHarnessAfterEpisode(d *Deps, episodeID, skillPath string, writtenLessons []string) *HarnessCandidate {
+// preWriteBase 须为 UpdateSkillNow 之前的 ## 经验正文，避免评测把刚写入内容当重复。
+func MaybeProposeHarnessAfterEpisode(d *Deps, episodeID, skillPath string, writtenLessons []string, preWriteBase string) *HarnessCandidate {
 	if d == nil || d.Harness == nil || len(writtenLessons) == 0 {
 		return nil
 	}
@@ -652,12 +658,14 @@ func MaybeProposeHarnessAfterEpisode(d *Deps, episodeID, skillPath string, writt
 	if !looksLikeHarnessablePatch("browser", patch) {
 		return nil
 	}
+	base := preWriteBase
 	res := ProposeHarnessPatch(d, ProposeHarnessArgs{
 		EpisodeID:    episodeID,
 		SkillPath:    skillPath,
 		LessonsPatch: patch,
 		Domain:       "browser",
 		EmitUI:       true,
+		BaseLessons:  &base,
 	})
 	if !res.OK {
 		return nil

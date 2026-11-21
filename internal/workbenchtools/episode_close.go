@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"WWorkbench/internal/notebook"
 	"WWorkbench/internal/workbench"
 )
 
@@ -174,6 +175,7 @@ func CloseLearningEpisode(d *Deps, episodeID string, selectedIDs []string, skip 
 	written := 0
 	var notes []string
 	var writtenParts []string
+	preWriteBase := ""
 	if skillPath != "" && len(toWrite) > 0 {
 		var parts []string
 		for _, les := range toWrite {
@@ -183,6 +185,12 @@ func CloseLearningEpisode(d *Deps, episodeID string, selectedIDs []string, skip 
 		}
 		joined := strings.Join(parts, "\n\n")
 		if joined != "" {
+			// 写前快照：供 harness 评测新颖度，避免把刚写入的补丁判成重复。
+			if d.Notebook != nil {
+				if note, err := d.Notebook.GetNote(notebook.SkillNoteID(skillPath)); err == nil && note != nil {
+					preWriteBase = notebook.ExtractWorkflowNoteBodyExtras(note.Content).Lessons
+				}
+			}
 			res := UpdateSkillNow(d, UpdateSkillArgs{
 				Name:    skillPath,
 				Intent:  "回合收口沉淀：" + firstNonEmpty(ep.Intent, episodeID),
@@ -219,7 +227,7 @@ func CloseLearningEpisode(d *Deps, episodeID string, selectedIDs []string, skip 
 		"pendingLeft": len(closed.PendingLessons),
 	}
 	// 浏览器宏域：收口写盘后自动提出 harness 进化候选（shadow → 人审升版）。
-	if cand := MaybeProposeHarnessAfterEpisode(d, closed.ID, skillPath, writtenParts); cand != nil {
+	if cand := MaybeProposeHarnessAfterEpisode(d, closed.ID, skillPath, writtenParts, preWriteBase); cand != nil {
 		out["harnessCandidateId"] = cand.ID
 		out["harnessScore"] = 0
 		if cand.Score != nil {

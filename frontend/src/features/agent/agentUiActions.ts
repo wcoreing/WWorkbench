@@ -494,21 +494,21 @@ async function handleMcpEpisodeClose(raw: Record<string, unknown>) {
   const restoreHint = String(raw.restoreHint ?? '').trim()
 
   const rawChoices = Array.isArray(raw.choices) ? raw.choices : []
-  const choices: ConfirmChoice[] = rawChoices
-    .map((c) => {
-      if (!c || typeof c !== 'object') return null
-      const row = c as Record<string, unknown>
-      const id = String(row.id ?? '').trim()
-      const label = String(row.label ?? '').trim()
-      if (!id || !label) return null
-      return {
-        id,
-        label,
-        detail: String(row.detail ?? '').trim() || undefined,
-        defaultChecked: row.defaultChecked !== false,
-      }
+  const choices: ConfirmChoice[] = []
+  for (const c of rawChoices) {
+    if (!c || typeof c !== 'object') continue
+    const row = c as Record<string, unknown>
+    const id = String(row.id ?? '').trim()
+    const label = String(row.label ?? '').trim()
+    if (!id || !label) continue
+    const detail = String(row.detail ?? '').trim()
+    choices.push({
+      id,
+      label,
+      detail: detail || undefined,
+      defaultChecked: row.defaultChecked !== false,
     })
-    .filter((c): c is ConfirmChoice => !!c)
+  }
 
   if (choices.length === 0 && Number(raw.trustCount ?? 0) <= 0) return
 
