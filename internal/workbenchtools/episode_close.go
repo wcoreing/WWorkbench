@@ -173,6 +173,7 @@ func CloseLearningEpisode(d *Deps, episodeID string, selectedIDs []string, skip 
 	}
 	written := 0
 	var notes []string
+	var writtenParts []string
 	if skillPath != "" && len(toWrite) > 0 {
 		var parts []string
 		for _, les := range toWrite {
@@ -189,6 +190,7 @@ func CloseLearningEpisode(d *Deps, episodeID string, selectedIDs []string, skip 
 			})
 			if res.OK {
 				written = len(parts)
+				writtenParts = parts
 				notes = append(notes, "已写入 Skill · "+skillPath)
 			} else {
 				notes = append(notes, "Skill 写入失败："+res.Error)
@@ -207,15 +209,26 @@ func CloseLearningEpisode(d *Deps, episodeID string, selectedIDs []string, skip 
 		}
 		d.MCPConfirm.EmitStage("episode", label, closed.Intent, skillPath, "episode_close")
 	}
-	return OKData(map[string]interface{}{
-		"ok":         true,
-		"episodeId":  closed.ID,
-		"status":     closed.Status,
-		"written":    written,
-		"skillPath":  skillPath,
-		"notes":      notes,
+	out := map[string]interface{}{
+		"ok":          true,
+		"episodeId":   closed.ID,
+		"status":      closed.Status,
+		"written":     written,
+		"skillPath":   skillPath,
+		"notes":       notes,
 		"pendingLeft": len(closed.PendingLessons),
-	})
+	}
+	// 浏览器宏域：收口写盘后自动提出 harness 进化候选（shadow → 人审升版）。
+	if cand := MaybeProposeHarnessAfterEpisode(d, closed.ID, skillPath, writtenParts); cand != nil {
+		out["harnessCandidateId"] = cand.ID
+		out["harnessScore"] = 0
+		if cand.Score != nil {
+			out["harnessScore"] = cand.Score.Total
+		}
+		notes = append(notes, "已提出 harness 进化候选 · "+cand.ID)
+		out["notes"] = notes
+	}
+	return OKData(out)
 }
 
 func toolOfferEpisodeClose(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {

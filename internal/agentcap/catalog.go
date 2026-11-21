@@ -594,6 +594,31 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "propose_harness_patch", Label: "提出 Skill 进化候选", Risk: RiskWrite,
+			Description:    "从浏览器宏回合生成 shadow harness 候选（不直接写盘）；人审后 eval→promote",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "eval_harness_candidate", Label: "评测 harness 候选", Risk: RiskRead,
+			Description:    "静态打分（宏信号/新颖度/体量）；≥55 可升版",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "promote_harness_candidate", Label: "升版 harness 候选", Risk: RiskWrite,
+			Description:    "人确认后 pin→update_skill→标记 promoted；禁止改系统规则",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "discard_harness_candidate", Label: "丢弃 harness 候选", Risk: RiskWrite,
+			Description:    "丢弃或冻结候选（不写 Skill）",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "list_harness_candidates", Label: "列出 harness 候选", Risk: RiskRead,
+			Description:    "列出未升版/未丢弃的 Skill 进化候选",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "replay_task_step", Label: "试跑日志一步", Risk: RiskWrite,
 			Description:    "教练式：按 locator 重定位后执行/跳过一步，返回 nextSeq",
 			DefaultEnabled: true,

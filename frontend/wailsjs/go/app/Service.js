@@ -110,6 +110,10 @@ export function CloseLearningEpisode(arg1) {
   return window['go']['app']['Service']['CloseLearningEpisode'](arg1);
 }
 
+export function DiscardHarnessCandidate(arg1) {
+  return window['go']['app']['Service']['DiscardHarnessCandidate'](arg1);
+}
+
 export function CloseSFTPSession(arg1) {
   return window['go']['app']['Service']['CloseSFTPSession'](arg1);
 }
@@ -280,6 +284,10 @@ export function DuplicateNote(arg1) {
 
 export function EnableDirVersion(arg1) {
   return window['go']['app']['Service']['EnableDirVersion'](arg1);
+}
+
+export function EvalHarnessCandidate(arg1) {
+  return window['go']['app']['Service']['EvalHarnessCandidate'](arg1);
 }
 
 export function EnsureCursorStageRules() {
@@ -654,6 +662,10 @@ export function ListHTTPEnvironments() {
   return window['go']['app']['Service']['ListHTTPEnvironments']();
 }
 
+export function ListHarnessCandidates(arg1, arg2) {
+  return window['go']['app']['Service']['ListHarnessCandidates'](arg1, arg2);
+}
+
 export function ListHTTPFolders() {
   return window['go']['app']['Service']['ListHTTPFolders']();
 }
@@ -864,6 +876,14 @@ export function PinSkillVersion(arg1, arg2) {
 
 export function ProbeTerminalCwd(arg1) {
   return window['go']['app']['Service']['ProbeTerminalCwd'](arg1);
+}
+
+export function PromoteHarnessCandidate(arg1) {
+  return window['go']['app']['Service']['PromoteHarnessCandidate'](arg1);
+}
+
+export function ProposeHarnessPatch(arg1) {
+  return window['go']['app']['Service']['ProposeHarnessPatch'](arg1);
 }
 
 export function PruneStoppedDockerHosts() {

@@ -55,6 +55,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 工具终态可带 **teach**（summary / nextSteps）与 **suggestedSkill**（name / lessons / askHuman / offerPrompt）。浏览器宏、备份落策略、关键 shell、桌面收口、云安全组等里程碑会自动建议；失败会按域补 teach。
 - **必须转述 teach 给人**；禁止只说「失败了」或吞掉 nextSteps。
 - **suggestedSkill.askHuman=true（默认）**：里程碑只入队当前 **Episode.pendingLessons**，**不连环弹 skill_offer**；目标完成或人点收口时系统/Agent 调 **offer_episode_close** → 一张「成长卡」勾选后 **close_learning_episode** 写入项目 Skill +（信任已在拍板时进 TrustBook）。Agent 仍应转述 teach；人已在成长卡点过则勿重复 offer_choices。禁止静默落盘、禁止用 distill_skill 代替人审。
+- **Harness RSI（浏览器宏）**：收口写盘后系统可自动 **propose_harness_patch**（shadow，不进 learningDigest）→ **eval_harness_candidate** → 人在进化卡确认 **promote_harness_candidate**（pin+升版）。禁止自动改系统规则/AgentRules；不对就 **discard_harness_candidate**。
 - **Episode（回合）**：主键≈项目+intent；绑定工具调用、信任指纹、待沉淀 lessons。唯一沉淀入口=项目 Skill（## 经验 / ## 已信任操作）；TrustBook 仅运行时免确认。
 - 本轮已挂载 Skill 时：动手成功后 teach 会提醒收口；有 pending 用 offer_episode_close，不要另开无关目录。
 - 产品目标是引导人成长：讲清「为何失败、人下一步做什么、要不要沉淀」，而不是替人点完就走。

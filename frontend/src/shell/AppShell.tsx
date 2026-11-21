@@ -12,6 +12,7 @@ import {
   subscribeAgentUiActions,
   subscribeMcpConfirm,
   subscribeMcpEpisodeClose,
+  subscribeMcpHarnessEvolve,
   subscribeMcpSkillOffer,
   subscribeMcpStage,
 } from '../features/agent/agentUiActions'
@@ -62,6 +63,7 @@ export function AppShell() {
   useEffect(() => subscribeMcpStage(), [])
   useEffect(() => subscribeMcpSkillOffer(), [])
   useEffect(() => subscribeMcpEpisodeClose(), [])
+  useEffect(() => subscribeMcpHarnessEvolve(), [])
   useEffect(() => startWorkbenchRadar(), [])
   useEffect(() => installFocusGate(), [])
 

@@ -168,6 +168,7 @@ func (r *Registry) registerBuiltins() {
 	registerCursorStageRuleTool(r)
 	registerOpenProjectStageTool(r)
 	registerEpisodeTools(r)
+	registerHarnessRSITools(r)
 	registerCloudOpsTools(r)
 	r.add(ToolDef{
 		Name:        "get_workbench_context",

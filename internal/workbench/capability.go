@@ -107,6 +107,12 @@ const (
 	CapOpenProjectStage              = "open_project_stage"
 	CapOfferEpisodeClose             = "offer_episode_close"
 	CapCloseLearningEpisode          = "close_learning_episode"
+	// Harness RSI：Propose → Eval → Promote（仅 L1 Skill；不改系统规则）。
+	CapProposeHarnessPatch     = "propose_harness_patch"
+	CapEvalHarnessCandidate    = "eval_harness_candidate"
+	CapPromoteHarnessCandidate = "promote_harness_candidate"
+	CapDiscardHarnessCandidate = "discard_harness_candidate"
+	CapListHarnessCandidates   = "list_harness_candidates"
 	CapTaskRecord           = "task_record"
 	CapReplayTaskStep = "replay_task_step"
 	// Skill 对外语言（唯一）：list/get/update/run/distill_skill；旧 *workflow / update_agent_skill 仅别名。
