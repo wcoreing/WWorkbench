@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/store"
 	"WWorkbench/internal/workbench"
 
 	"github.com/google/uuid"
@@ -18,6 +20,8 @@ type openTerminalArgs struct {
 	HostOrName     string `json:"hostOrName"`
 	InitialCommand string `json:"initialCommand"`
 	Intent         string `json:"intent"`
+	// WorkDir 本机工作目录（项目根绝对路径）；多项目 MCP 用来隔离终端标签。
+	WorkDir string `json:"workDir"`
 }
 
 // normalizeTerminalCommand 将多行命令规范为可写入 PTY 的格式（每行以 \r 结尾）。
@@ -190,14 +194,22 @@ func dispatchShellRun(d *Deps, in openTerminalArgs) ToolResult {
 		if d.UIActions == nil {
 			return Fail("UI 联动未初始化")
 		}
+		workDir, projectName := resolveLocalWorkDir(d, in.WorkDir)
+		tabTitle := localShellTabTitle(workDir, projectName)
 		preview := truncateCmdPreview(in.InitialCommand, 72)
 		stagePrev := stagePreviewWithIntent(in.Intent, preview)
 		payload := map[string]interface{}{
 			"localShell":     true,
 			"initialCommand": cmd,
-			"name":           "本机",
+			"name":           tabTitle,
 			"stageLabel":     stageLabelLocal(stagePrev),
 			"commandPreview": preview,
+		}
+		if workDir != "" {
+			payload["workDir"] = workDir
+		}
+		if projectName != "" {
+			payload["projectName"] = projectName
 		}
 		if intent := strings.TrimSpace(in.Intent); intent != "" {
 			payload["intent"] = intent
@@ -207,7 +219,11 @@ func dispatchShellRun(d *Deps, in openTerminalArgs) ToolResult {
 			"opened":         true,
 			"kind":           "local",
 			"initialCommand": cmd,
-			"note":           "已切换到本机终端；命令将自动输入。随后 get_shell_output(waitMs, afterUpdatedAt=本返回的 updatedAt)。",
+			"note": "已切换到本机终端（按 workDir 隔离标签；忙碌则新开）。命令将自动输入。" +
+				"随后 get_shell_output(waitMs, afterUpdatedAt=本返回的 updatedAt)；若 session 对不上，用 get_workbench_context.openTerminals 取最新本机 sessionId。",
+		}
+		if workDir != "" {
+			out["workDir"] = workDir
 		}
 		attachShellBaseline(d, out, "", "")
 		d.UIActions.Dispatch(UIActionShellRun, payload)
@@ -284,6 +300,45 @@ func stageLabelLocal(preview string) string {
 		return "MCP · 本机终端"
 	}
 	return "MCP · 本机 · " + preview
+}
+
+// resolveLocalWorkDir 归一化本机工作目录；空则回退当前舞台项目 localPath。
+func resolveLocalWorkDir(d *Deps, workDir string) (abs, projectName string) {
+	workDir = strings.TrimSpace(workDir)
+	if workDir == "" && d != nil && d.Store != nil {
+		id, _ := d.Store.GetAppSetting(store.SettingLastWorkbenchProjectID)
+		id = strings.TrimSpace(id)
+		if id != "" {
+			if p, err := d.Store.GetWorkbenchProject(id); err == nil {
+				workDir = strings.TrimSpace(p.LocalPath)
+				projectName = strings.TrimSpace(p.Name)
+			}
+		}
+	}
+	if workDir == "" {
+		return "", projectName
+	}
+	cleaned := filepath.Clean(workDir)
+	if !filepath.IsAbs(cleaned) {
+		if absPath, err := filepath.Abs(cleaned); err == nil {
+			cleaned = absPath
+		}
+	}
+	if projectName == "" {
+		projectName = filepath.Base(cleaned)
+	}
+	return cleaned, projectName
+}
+
+func localShellTabTitle(workDir, projectName string) string {
+	name := strings.TrimSpace(projectName)
+	if name == "" && workDir != "" {
+		name = filepath.Base(workDir)
+	}
+	if name == "" {
+		return "本机"
+	}
+	return "本机 · " + name
 }
 
 func stageLabelSSH(name, preview string) string {

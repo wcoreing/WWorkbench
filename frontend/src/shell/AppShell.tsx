@@ -11,6 +11,7 @@ import { AgentPanel } from '../features/agent/AgentPanel'
 import {
   subscribeAgentUiActions,
   subscribeMcpConfirm,
+  subscribeMcpEpisodeClose,
   subscribeMcpSkillOffer,
   subscribeMcpStage,
 } from '../features/agent/agentUiActions'
@@ -60,6 +61,7 @@ export function AppShell() {
   useEffect(() => subscribeMcpConfirm(), [])
   useEffect(() => subscribeMcpStage(), [])
   useEffect(() => subscribeMcpSkillOffer(), [])
+  useEffect(() => subscribeMcpEpisodeClose(), [])
   useEffect(() => startWorkbenchRadar(), [])
   useEffect(() => installFocusGate(), [])
 

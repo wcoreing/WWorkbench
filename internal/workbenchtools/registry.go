@@ -129,10 +129,10 @@ func (r *Registry) Invoke(ctx context.Context, name string, args json.RawMessage
 		}
 		RecordIntentCard(ctx, card)
 	}
-	// 教人信封：失败补 teach；里程碑成功补 suggestedSkill（已有则不覆盖）
+	// 教人信封：失败补 teach；里程碑成功补 suggestedSkill → Episode 入队（收口弹成长卡）
 	if !res.NeedsConfirm && !res.NeedsChoice {
 		res = AttachTeachEnvelope(ctx, name, args, res)
-		MaybeEmitSkillOffer(r.deps, name, res)
+		MaybeEmitSkillOfferWithArgs(r.deps, name, args, res)
 	}
 	// 终态记账（待确认留给 AwaitConfirmAndExecute）
 	if !res.NeedsConfirm {
@@ -167,10 +167,11 @@ func (r *Registry) registerBuiltins() {
 	registerProjectTools(r)
 	registerCursorStageRuleTool(r)
 	registerOpenProjectStageTool(r)
+	registerEpisodeTools(r)
 	registerCloudOpsTools(r)
 	r.add(ToolDef{
 		Name:        "get_workbench_context",
-		Description: "【首选·替代 Cursor Shell】工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）；含近期 intentCards、taskRuns、mcpLogs、projects、memoryNotes（焦点绑定的记忆）。动手前先调；问终端输出用 get_shell_output。",
+		Description: "【首选·替代 Cursor Shell】工作台快照：连接/SSH/会话、打开中的终端列表（sessionId/hostId/totalLines，不含正文）；含 learningDigest（Skill 经验/已信任操作/未收口回合）、intentCards、taskRuns、mcpLogs、projects、memoryNotes。动手前先读 digest；问终端输出用 get_shell_output。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -406,7 +407,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapShellRun,
-		Description: "【首选·替代 Cursor Shell】给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。禁止改用 Cursor 自带 Shell。有 initialCommand 时必须填 intent（人话：要干什么、影响谁）。会前置工作台并点亮对应终端+状态栏。风险命令先工作台拍板（标题为人话意图）；目录护照不可免除数据硬风险。确认后对 rsync 自动 --exclude *.db/data/.env，并对目标做写前备份（命中 backup policy 则用其 destRoot）。不返回 stdout；返回 sessionId/updatedAt（毫秒基线）。注入后立刻 get_shell_output(waitMs, afterUpdatedAt=updatedAt)。只读短探针才用 shell_probe。",
+		Description: "【首选·替代 Cursor Shell】给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。禁止改用 Cursor 自带 Shell。有 initialCommand 时必须填 intent（人话：要干什么、影响谁）。本机务必传 workDir=工作区根绝对路径（多项目隔离标签；缺省用当前舞台项目）。会前置工作台并点亮对应终端+状态栏。风险命令先工作台拍板（标题为人话意图）；目录护照不可免除数据硬风险。确认后对 rsync 自动 --exclude *.db/data/.env，并对目标做写前备份（命中 backup policy 则用其 destRoot）。不返回 stdout；返回 sessionId/updatedAt（毫秒基线）。注入后立刻 get_shell_output(waitMs, afterUpdatedAt=updatedAt)。只读短探针才用 shell_probe。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -421,6 +422,10 @@ func (r *Registry) registerBuiltins() {
 				"hostOrName": map[string]interface{}{
 					"type":        "string",
 					"description": "IP、主机名或配置名称（与 hostId 二选一）",
+				},
+				"workDir": map[string]interface{}{
+					"type":        "string",
+					"description": "本机工作目录（项目根绝对路径）。多 Cursor 项目共用工作台时用来隔离本机终端标签；localShell=true 时强烈建议填写，缺省回退当前舞台项目 localPath",
 				},
 				"initialCommand": map[string]interface{}{
 					"type":        "string",

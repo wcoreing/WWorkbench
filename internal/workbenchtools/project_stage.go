@@ -224,6 +224,10 @@ func OpenProjectStage(d *Deps, opts OpenProjectStageOpts) (model.OpenWorkbenchPr
 		})
 	}
 
+	if digest := BuildLearningDigest(d, p.ID); digest != nil {
+		out.LearningDigest = digest
+	}
+
 	noteParts := []string{}
 	if created {
 		noteParts = append(noteParts, "已自动创建项目")
@@ -236,8 +240,24 @@ func OpenProjectStage(d *Deps, opts OpenProjectStageOpts) (model.OpenWorkbenchPr
 	if syncSum.Error != "" && !syncSum.OK {
 		noteParts = append(noteParts, "对话同步："+syncSum.Error)
 	}
+	if out.LearningDigest != nil {
+		nOpen := len(out.LearningDigest.OpenEpisodes)
+		nLes := len(out.LearningDigest.Lessons)
+		nTrust := len(out.LearningDigest.TrustedOps)
+		if nOpen > 0 || nLes > 0 || nTrust > 0 {
+			noteParts = append(noteParts, "learningDigest 已注入（经验/信任/未收口回合）")
+		}
+	}
 	out.Note = strings.Join(noteParts, "；")
-	_ = opts.Intent
+
+	intent := strings.TrimSpace(opts.Intent)
+	if intent != "" && d.Episodes != nil {
+		_, skillPath := resolveActiveProjectSkill(d)
+		ep := d.Episodes.Touch(p.ID, intent, skillPath, "")
+		if d.MCPConfirm != nil && len(ep.PendingLessons) > 0 {
+			d.MCPConfirm.EmitStage("episode", "回合进行中 · 可沉淀 "+itoa(len(ep.PendingLessons))+" 条", intent, skillPath, workbench.CapOpenProjectStage)
+		}
+	}
 	return out, nil
 }
 
@@ -263,17 +283,21 @@ func toolOpenProjectStage(_ context.Context, d *Deps, raw json.RawMessage) ToolR
 	if err != nil {
 		return Fail(err.Error())
 	}
-	return OKData(map[string]interface{}{
-		"ok":                 true,
-		"created":            out.Created,
-		"project":            out.Project,
-		"sshHostIds":         out.SSHHostIDs,
-		"sshHostIdsOmitted":  out.SSHHostIDsOmitted,
-		"cursorStageRule":    out.CursorStageRule,
-		"cursorSync":         out.CursorSync,
-		"source":             out.Source,
-		"note":               out.Note,
-	})
+	payload := map[string]interface{}{
+		"ok":                true,
+		"created":           out.Created,
+		"project":           out.Project,
+		"sshHostIds":        out.SSHHostIDs,
+		"sshHostIdsOmitted": out.SSHHostIDsOmitted,
+		"cursorStageRule":   out.CursorStageRule,
+		"cursorSync":        out.CursorSync,
+		"source":            out.Source,
+		"note":              out.Note,
+	}
+	if out.LearningDigest != nil {
+		payload["learningDigest"] = out.LearningDigest
+	}
+	return OKData(payload)
 }
 
 func registerOpenProjectStageTool(r *Registry) {

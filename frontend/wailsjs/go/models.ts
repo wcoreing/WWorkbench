@@ -4368,6 +4368,24 @@ export namespace app {
 		    return a;
 		}
 	}
+	export class CloseLearningEpisodeArgs {
+	    episodeId: string;
+	    selectedIds: string[];
+	    skip: boolean;
+	    intent: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CloseLearningEpisodeArgs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.episodeId = source["episodeId"];
+	        this.selectedIds = source["selectedIds"];
+	        this.skip = source["skip"];
+	        this.intent = source["intent"];
+	    }
+	}
 	export class ExportCSVRequest {
 	    fileName: string;
 	    headers: string[];
@@ -6516,6 +6534,69 @@ export namespace model {
 	        this.indexType = source["indexType"];
 	    }
 	}
+	export class LearningEpisodeBriefDO {
+	    id: string;
+	    intent?: string;
+	    status: string;
+	    pendingCount: number;
+	    humanSummary?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LearningEpisodeBriefDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.intent = source["intent"];
+	        this.status = source["status"];
+	        this.pendingCount = source["pendingCount"];
+	        this.humanSummary = source["humanSummary"];
+	    }
+	}
+	export class LearningDigestDO {
+	    projectId: string;
+	    projectName?: string;
+	    skillPath?: string;
+	    lessons: string[];
+	    trustedOps: string[];
+	    openEpisodes: LearningEpisodeBriefDO[];
+	    note?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new LearningDigestDO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.projectId = source["projectId"];
+	        this.projectName = source["projectName"];
+	        this.skillPath = source["skillPath"];
+	        this.lessons = source["lessons"];
+	        this.trustedOps = source["trustedOps"];
+	        this.openEpisodes = this.convertValues(source["openEpisodes"], LearningEpisodeBriefDO);
+	        this.note = source["note"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class LocalDirResultDO {
 	    path: string;
 	    entries: FileEntryDO[];
@@ -7099,6 +7180,7 @@ export namespace model {
 	    sshHostIdsOmitted?: number;
 	    cursorStageRule?: CursorStageRuleDO;
 	    cursorSync?: ProjectCursorSyncSummaryDO;
+	    learningDigest?: LearningDigestDO;
 	    note?: string;
 	
 	    static createFrom(source: any = {}) {
@@ -7114,6 +7196,7 @@ export namespace model {
 	        this.sshHostIdsOmitted = source["sshHostIdsOmitted"];
 	        this.cursorStageRule = this.convertValues(source["cursorStageRule"], CursorStageRuleDO);
 	        this.cursorSync = this.convertValues(source["cursorSync"], ProjectCursorSyncSummaryDO);
+	        this.learningDigest = this.convertValues(source["learningDigest"], LearningDigestDO);
 	        this.note = source["note"];
 	    }
 	

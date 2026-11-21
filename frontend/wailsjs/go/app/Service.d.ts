@@ -57,6 +57,8 @@ export function CheckSFTPDownloadConflict(arg1:string,arg2:string,arg3:string):P
 
 export function CheckSFTPUploadConflict(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferConflictDO_>;
 
+export function CloseLearningEpisode(arg1:app.CloseLearningEpisodeArgs):Promise<app.ApiResult_map_string_interface____>;
+
 export function CloseSFTPSession(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function CloseSession(arg1:string):Promise<app.ApiResult_bool_>;
@@ -398,6 +400,8 @@ export function MoveNotebookPath(arg1:string,arg2:string):Promise<app.ApiResult_
 export function NoteDiskPath(arg1:string):Promise<app.ApiResult_string_>;
 
 export function NotebookWorkspacePath():Promise<app.ApiResult_string_>;
+
+export function OfferLearningEpisodeClose(arg1:string,arg2:boolean):Promise<app.ApiResult_map_string_interface____>;
 
 export function OpenChromeExtensionsPage():Promise<app.ApiResult_map_string_interface____>;
 

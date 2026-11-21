@@ -1475,6 +1475,7 @@ export const zh: MessageTree = {
     cmdSent: '命令已发送，若未执行请检查终端是否已就绪',
     cmdExecuted: '已在终端执行命令',
     cmdInjectFailed: '终端写入失败（会话可能已断开），请重连后再试',
+    localBusyNewTab: '「{title}」忙碌中，已新开本机标签以免打断',
     openingLocal: '正在打开本机终端…',
     connecting: '正在连接 {name}…',
     connectingHint: 'SSH 握手可能需要几秒，请稍候',

@@ -46,6 +46,9 @@ func GrantTrustFromConfirm(d *Deps, toolName string, args json.RawMessage, previ
 	}
 
 	note := "已信任（运行时账本）"
+	if d.Episodes != nil && projectID != "" {
+		d.Episodes.RecordTrust(projectID, intent, skillPath, granted.Fingerprint)
+	}
 	if skillPath == "" {
 		return granted, "已信任（未绑定项目，未写入 Skill）", nil
 	}

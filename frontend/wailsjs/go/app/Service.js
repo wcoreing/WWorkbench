@@ -106,6 +106,10 @@ export function CheckSFTPUploadConflict(arg1, arg2, arg3) {
   return window['go']['app']['Service']['CheckSFTPUploadConflict'](arg1, arg2, arg3);
 }
 
+export function CloseLearningEpisode(arg1) {
+  return window['go']['app']['Service']['CloseLearningEpisode'](arg1);
+}
+
 export function CloseSFTPSession(arg1) {
   return window['go']['app']['Service']['CloseSFTPSession'](arg1);
 }
@@ -788,6 +792,10 @@ export function NoteDiskPath(arg1) {
 
 export function NotebookWorkspacePath() {
   return window['go']['app']['Service']['NotebookWorkspacePath']();
+}
+
+export function OfferLearningEpisodeClose(arg1, arg2) {
+  return window['go']['app']['Service']['OfferLearningEpisodeClose'](arg1, arg2);
 }
 
 export function OpenChromeExtensionsPage() {

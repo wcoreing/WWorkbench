@@ -35,6 +35,7 @@ func (s *Service) wireAgentRunner() {
 	mcpConfirm := workbenchtools.NewMCPConfirmGate(emit)
 	writeAllows := workbenchtools.NewMCPWriteAllowBook(s.store)
 	trustOps := workbenchtools.NewMCPTrustBook(s.store)
+	episodes := workbenchtools.NewLearningEpisodeBook(s.store)
 	dataDir, dataDirErr := store.DataDir()
 	var desk *desktop.Driver
 	if dataDirErr == nil {
@@ -54,6 +55,7 @@ func (s *Service) wireAgentRunner() {
 		MCPConfirm:    mcpConfirm,
 		WriteAllows:   writeAllows,
 		TrustOps:      trustOps,
+		Episodes:      episodes,
 		Terminals:     s.terminals,
 		Browser:       s.browserBridge,
 		AgentBrowser:  s.agentBrowser,

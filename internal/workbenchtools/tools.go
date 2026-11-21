@@ -134,6 +134,9 @@ func toolGetWorkbenchContext(ctx context.Context, d *Deps, raw json.RawMessage) 
 	if cards := ListIntentCards(ctx, 20); len(cards) > 0 {
 		out["intentCards"] = cards
 	}
+	if digest := BuildLearningDigest(d, ""); digest != nil {
+		out["learningDigest"] = digest
+	}
 	out["caller"] = CallerID(ctx)
 	out["taskSession"] = CurrentTaskSession(ctx)
 	if d.Store != nil {

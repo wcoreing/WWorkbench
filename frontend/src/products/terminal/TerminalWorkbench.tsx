@@ -29,6 +29,7 @@ import {
   scheduleTerminalWorkspacePersist,
   toTerminalWorkspaceSnapshot,
 } from '../../stores/terminalWorkspacePersist'
+import { shellSingleQuote } from '../../features/terminal/frequentPaths'
 import { restoreTerminalTab } from '../../features/terminal/restoreTerminalWorkspace'
 import { SSHHostModal } from '../../features/terminal/SSHHostModal'
 import { useSSHTrustConfirm } from '../../features/terminal/useSSHTrustConfirm'
@@ -38,7 +39,7 @@ import { TerminalSplitView } from '../../features/terminal/TerminalSplitView'
 import { TerminalTabStatusPane } from '../../features/terminal/TerminalTabStatusPane'
 import { ECSMonitorBar } from '../../features/terminal/ECSMonitorBar'
 import { focusTerminalSession } from '../../features/terminal/terminalFocus'
-import { terminalClipboard } from '../../features/terminal/terminalClipboard'
+import { isSessionShellIdle, terminalClipboard } from '../../features/terminal/terminalClipboard'
 import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 import { terminalBackground } from '../../features/terminal/TerminalPane'
 import {
@@ -93,8 +94,23 @@ interface TerminalTab {
   connectState: 'connecting' | 'ready' | 'failed'
   connectError?: string
   connectHost?: ShellHost
+  /** 本机项目工作目录（绝对路径）；MCP 按此隔离标签 */
+  workDir?: string
   /** 最近一次被激活（用于侧栏单击回到最近窗口） */
   focusedAt?: number
+}
+
+/** normalizeWorkDirKey 本机标签隔离键。 */
+function normalizeWorkDirKey(workDir?: string): string {
+  const s = (workDir || '').trim().replace(/\/+$/, '')
+  if (!s) return ''
+  return s
+}
+
+/** basenameWorkDir 取目录名作标签后缀。 */
+function basenameWorkDir(workDir: string): string {
+  const parts = normalizeWorkDirKey(workDir).split(/[/\\]/).filter(Boolean)
+  return parts[parts.length - 1] || workDir
 }
 
 /** isLiveSessionId 是否为已建立的后端会话。 */
@@ -330,6 +346,7 @@ export function TerminalWorkbench() {
     kind: 'local' | 'ssh' | 'docker'
     title: string
     host?: ShellHost
+    workDir?: string
   }): string => {
     const tabId = `pending-${crypto.randomUUID()}`
     const paneId = `pane-${tabId}`
@@ -342,6 +359,7 @@ export function TerminalWorkbench() {
       activePaneId: paneId,
       connectState: 'connecting',
       connectHost: opts.host,
+      workDir: opts.workDir ? normalizeWorkDirKey(opts.workDir) : undefined,
       focusedAt: Date.now(),
     }
     setTabs((prev) => [...prev, tab])
@@ -415,22 +433,127 @@ export function TerminalWorkbench() {
     setStatusMessage(t('terminal.cmdInjectFailed'))
   }
 
-  /** runTerminalLink 打开/聚焦终端；有命令则注入。MCP 反复操作同一主机时复用已有标签。 */
-  const runTerminalLink = async (hostId?: string, localShell?: boolean, initialCommand?: string) => {
-    const existing = localShell
-      ? tabsRef.current.find((t) => t.kind === 'local' && t.connectState === 'ready') ||
-        tabsRef.current.find((t) => t.kind === 'local')
-      : hostId
-        ? tabsRef.current.find(
-            (t) =>
-              (t.kind === 'ssh' || t.kind === 'docker') &&
-              t.hostId === hostId &&
-              t.connectState === 'ready',
-          ) ||
-          tabsRef.current.find(
-            (t) => (t.kind === 'ssh' || t.kind === 'docker') && t.hostId === hostId,
-          )
-        : null
+  /** findLocalTabForWorkDir 按项目 workDir 找本机标签；无 workDir 时不抢占带 workDir 的 MCP 标签。 */
+  const findLocalTabForWorkDir = (workDir?: string): TerminalTab | undefined => {
+    const key = normalizeWorkDirKey(workDir)
+    const locals = tabsRef.current.filter((t) => t.kind === 'local')
+    if (key) {
+      return (
+        locals.find((t) => normalizeWorkDirKey(t.workDir) === key && t.connectState === 'ready') ||
+        locals.find((t) => normalizeWorkDirKey(t.workDir) === key)
+      )
+    }
+    // 手工/无 workDir：仅复用同样没有 workDir 的本机标签
+    return (
+      locals.find((t) => !normalizeWorkDirKey(t.workDir) && t.connectState === 'ready') ||
+      locals.find((t) => !normalizeWorkDirKey(t.workDir))
+    )
+  }
+
+  /** localTabIdle 本机标签是否空闲可注入。 */
+  const localTabIdle = (tab: TerminalTab): boolean => {
+    if (tab.connectState !== 'ready') return false
+    const sid = firstSessionId(tab.layout)
+    if (!sid || !isLiveSessionId(sid)) return true
+    return isSessionShellIdle(sid)
+  }
+
+  /** nextLocalTitle 同项目忙碌时生成「本机 · 名 · 2」标题。 */
+  const nextLocalTitle = (baseTitle: string, workDir?: string): string => {
+    const key = normalizeWorkDirKey(workDir)
+    const same = tabsRef.current.filter(
+      (t) => t.kind === 'local' && normalizeWorkDirKey(t.workDir) === key,
+    )
+    if (same.length === 0) return baseTitle
+    return `${baseTitle} · ${same.length + 1}`
+  }
+
+  /** runTerminalLink 打开/聚焦终端；有命令则注入。本机按 workDir 隔离；忙碌则新开。 */
+  const runTerminalLink = async (
+    hostId?: string,
+    localShell?: boolean,
+    initialCommand?: string,
+    workDir?: string,
+    displayName?: string,
+  ) => {
+    if (localShell) {
+      const key = normalizeWorkDirKey(workDir)
+      const baseTitle =
+        displayName?.trim() ||
+        (key ? `本机 · ${basenameWorkDir(key)}` : t('terminal.localShellTitle'))
+      const existing = findLocalTabForWorkDir(key || undefined)
+      if (existing) {
+        const busy = existing.connectState === 'ready' && initialCommand?.trim() && !localTabIdle(existing)
+        if (busy) {
+          setStatusMessage(t('terminal.localBusyNewTab', { title: existing.title }))
+          await connectLocal(initialCommand, {
+            workDir: key || undefined,
+            title: nextLocalTitle(baseTitle, key || undefined),
+          })
+          return
+        }
+        setActiveTabId(existing.id)
+        setActiveProduct('terminal')
+        if (existing.connectState === 'ready' && initialCommand?.trim()) {
+          await injectIntoTab(existing.id, initialCommand)
+          return
+        }
+        if (existing.connectState === 'ready') {
+          setStatusMessage(t('terminal.connected', { title: existing.title }))
+          return
+        }
+        if (existing.connectState === 'failed') {
+          await retryTabConnect(existing.id)
+          if (initialCommand?.trim()) {
+            await injectIntoTab(existing.id, initialCommand)
+          }
+          return
+        }
+        if (initialCommand?.trim()) {
+          for (let i = 0; i < 40; i++) {
+            await new Promise((r) => setTimeout(r, 250))
+            const tab = tabsRef.current.find((t) => t.id === existing.id)
+            if (!tab) return
+            if (tab.connectState === 'failed') {
+              await retryTabConnect(existing.id)
+              await injectIntoTab(existing.id, initialCommand)
+              return
+            }
+            if (tab.connectState === 'ready') {
+              if (!localTabIdle(tab)) {
+                setStatusMessage(t('terminal.localBusyNewTab', { title: tab.title }))
+                await connectLocal(initialCommand, {
+                  workDir: key || undefined,
+                  title: nextLocalTitle(baseTitle, key || undefined),
+                })
+                return
+              }
+              await injectIntoTab(existing.id, initialCommand)
+              return
+            }
+          }
+          setStatusMessage(t('terminal.cmdInjectFailed'))
+        }
+        return
+      }
+      await connectLocal(initialCommand, {
+        workDir: key || undefined,
+        title: baseTitle,
+      })
+      return
+    }
+
+    const existing = hostId
+      ? tabsRef.current.find(
+          (t) =>
+            (t.kind === 'ssh' || t.kind === 'docker') &&
+            t.hostId === hostId &&
+            t.connectState === 'ready',
+        ) ||
+        tabsRef.current.find(
+          (t) => (t.kind === 'ssh' || t.kind === 'docker') && t.hostId === hostId,
+        )
+      : null
     if (existing) {
       setActiveTabId(existing.id)
       setActiveProduct('terminal')
@@ -469,10 +592,6 @@ export function TerminalWorkbench() {
       }
       return
     }
-    if (localShell) {
-      await connectLocal(initialCommand)
-      return
-    }
     if (!hostId) return
     let host = hosts.find((h) => h.id === hostId)
     if (!host) {
@@ -482,16 +601,31 @@ export function TerminalWorkbench() {
     await connectHost(host, initialCommand)
   }
 
-  const connectLocal = async (initialCommand?: string) => {
-    const title = t('terminal.localShellTitle')
-    const tabId = createPendingTab({ hostId: '', kind: 'local', title })
+  const connectLocal = async (
+    initialCommand?: string,
+    opts?: { workDir?: string; title?: string },
+  ) => {
+    const workDir = normalizeWorkDirKey(opts?.workDir)
+    const title =
+      opts?.title?.trim() ||
+      (workDir ? `本机 · ${basenameWorkDir(workDir)}` : t('terminal.localShellTitle'))
+    const tabId = createPendingTab({ hostId: '', kind: 'local', title, workDir: workDir || undefined })
     setStatusMessage(t('terminal.openingLocal'))
     try {
       const info = await api.openLocalTerminal(120, 32)
       if (!tabsRef.current.some((t) => t.id === tabId)) return
-      activateTab(tabId, { sessionId: info.sessionId, title: info.title || title })
-      setStatusMessage(t('terminal.connected', { title: info.title || title }))
-      await writeInitialCommand(info.sessionId, initialCommand)
+      activateTab(tabId, { sessionId: info.sessionId, title })
+      setStatusMessage(t('terminal.connected', { title }))
+      let cmd = initialCommand
+      if (workDir) {
+        const cd = `cd ${shellSingleQuote(workDir)}\r`
+        if (cmd?.trim()) {
+          cmd = cd + (cmd.endsWith('\r') || cmd.endsWith('\n') ? cmd : `${cmd}\r`)
+        } else {
+          cmd = cd
+        }
+      }
+      await writeInitialCommand(info.sessionId, cmd)
     } catch (e) {
       const message = (e as Error).message
       if (!tabsRef.current.some((t) => t.id === tabId)) return
@@ -701,7 +835,9 @@ export function TerminalWorkbench() {
     const hostId = payloadStr(cmd.payload, 'hostId')
     const localShell = payloadBool(cmd.payload, 'localShell')
     const initialCommand = payloadStr(cmd.payload, 'initialCommand')
-    void runTerminalLink(hostId, localShell, initialCommand).catch((e) => {
+    const workDir = payloadStr(cmd.payload, 'workDir')
+    const displayName = payloadStr(cmd.payload, 'name')
+    void runTerminalLink(hostId, localShell, initialCommand, workDir, displayName).catch((e) => {
       setStatusMessage((e as Error).message)
     })
   })

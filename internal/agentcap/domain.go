@@ -52,7 +52,8 @@ func DomainOf(name string) Domain {
 		n == "run_skill", n == "distill_skill":
 		return DomainNotebook
 	case strings.Contains(n, "project"), strings.Contains(n, "cursor_transcript"),
-		n == "ensure_cursor_stage_rule":
+		n == "ensure_cursor_stage_rule", n == "offer_episode_close", n == "close_learning_episode",
+		strings.Contains(n, "episode"):
 		return DomainProject
 	case strings.Contains(n, "container"), strings.Contains(n, "docker"):
 		return DomainDocker

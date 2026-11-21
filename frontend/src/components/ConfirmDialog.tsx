@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { useI18n, useLocalizedProduct } from '../i18n'
 import type { ProductId } from '../shell/products'
 import { PRODUCTS } from '../shell/products'
-import type { ConfirmLedgerRow } from '../utils/askConfirm'
+import type { ConfirmChoice, ConfirmLedgerRow } from '../utils/askConfirm'
 import { ModalPortal, backdropDismissProps, pressProps } from './compat'
 import './ui.css'
 
@@ -11,6 +11,9 @@ interface ConfirmDialogProps {
   title: string
   message?: string
   ledger?: ConfirmLedgerRow[]
+  choices?: ConfirmChoice[]
+  selectedIds?: string[]
+  onToggleChoice?: (id: string) => void
   /** 命令/SQL 等，以等宽代码块展示 */
   code?: string
   /** 触及的产品线 */
@@ -42,6 +45,9 @@ export function ConfirmDialog({
   title,
   message,
   ledger,
+  choices,
+  selectedIds,
+  onToggleChoice,
   code,
   product,
   confirmLabel,
@@ -66,12 +72,14 @@ export function ConfirmDialog({
   const corner = placement === 'corner'
   const showProduct = isProductId(product)
   const rows = ledger?.length ? ledger : undefined
+  const choiceRows = choices?.length ? choices : undefined
+  const selected = new Set(selectedIds ?? [])
 
   if (!open) return null
 
   const panel = (
     <div
-      className={`wn-modal wn-modal-compact is-confirm${hasCode ? ' is-code-confirm' : ''}${hardRisk ? ' is-hard-risk' : ''}${softRisk ? ' is-soft-risk' : ''}${corner ? ' is-corner-confirm' : ''}`}
+      className={`wn-modal wn-modal-compact is-confirm${hasCode ? ' is-code-confirm' : ''}${hardRisk ? ' is-hard-risk' : ''}${softRisk ? ' is-soft-risk' : ''}${corner ? ' is-corner-confirm' : ''}${choiceRows ? ' is-choice-confirm' : ''}`}
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
       role="dialog"
@@ -106,6 +114,30 @@ export function ConfirmDialog({
           <p className="wn-modal-desc wn-confirm-ledger">{message}</p>
         ) : null}
       </header>
+      {choiceRows ? (
+        <div className="wn-modal-body wn-confirm-choices">
+          <ul className="wn-confirm-choice-list">
+            {choiceRows.map((c) => {
+              const checked = selected.has(c.id)
+              return (
+                <li key={c.id} className={`wn-confirm-choice-row${checked ? ' is-checked' : ''}`}>
+                  <label className="wn-confirm-choice-label">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => onToggleChoice?.(c.id)}
+                    />
+                    <span className="wn-confirm-choice-text">
+                      <span className="wn-confirm-choice-title">{c.label}</span>
+                      {c.detail ? <span className="wn-confirm-choice-detail">{c.detail}</span> : null}
+                    </span>
+                  </label>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      ) : null}
       {hasCode ? (
         <div className="wn-modal-body wn-confirm-code-wrap">
           <pre className="wn-confirm-code" tabIndex={0}>

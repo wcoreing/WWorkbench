@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.20a"
+const AgentRulesVersion = "2026.11.21a"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -21,6 +21,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - MCP initialize.instructions 与本文件已说明约束；**不会**因未调用 get_agent_rules 而拒绝工具。
 - get_agent_rules 可选：按 domain 复核分片（terminal/cloud/database/browser/desktop/notebook/backup/plugin/all）。
 - 内置侧栏 Agent 开跑仍会 Mark 已读，供遥测。
+- **learningDigest（强制）**：open_project_stage / get_workbench_context 返回 learningDigest（项目 Skill「经验」最近条 + 「已信任操作」短摘 + 未收口 Episode）。**动手前先读并复述已知信任/经验**；已沉淀路径禁止空手重探。有 openEpisodes 时优先 offer_episode_close 收口，勿另开无关 Skill。
 
 ## 0b. 意图声明卡（intent）
 - 动手类请传 intent：人话说明「要干什么、影响谁/哪台机/哪个库」。
@@ -53,8 +54,9 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 ## 0d. 教人信封（全域，不只云）
 - 工具终态可带 **teach**（summary / nextSteps）与 **suggestedSkill**（name / lessons / askHuman / offerPrompt）。浏览器宏、备份落策略、关键 shell、桌面收口、云安全组等里程碑会自动建议；失败会按域补 teach。
 - **必须转述 teach 给人**；禁止只说「失败了」或吞掉 nextSteps。
-- **suggestedSkill.askHuman=true（默认）**：工作台会推 **mcp:skill_offer** 右下角人审（写进 Skill / 跳过）；Agent 仍应转述，若人已在弹窗点过则勿重复 offer_choices。禁止静默落盘、禁止用 distill_skill 代替人审。
-- 本轮已挂载 Skill 时：动手成功后 teach 会提醒收口 update_skill，不要另开无关目录。
+- **suggestedSkill.askHuman=true（默认）**：里程碑只入队当前 **Episode.pendingLessons**，**不连环弹 skill_offer**；目标完成或人点收口时系统/Agent 调 **offer_episode_close** → 一张「成长卡」勾选后 **close_learning_episode** 写入项目 Skill +（信任已在拍板时进 TrustBook）。Agent 仍应转述 teach；人已在成长卡点过则勿重复 offer_choices。禁止静默落盘、禁止用 distill_skill 代替人审。
+- **Episode（回合）**：主键≈项目+intent；绑定工具调用、信任指纹、待沉淀 lessons。唯一沉淀入口=项目 Skill（## 经验 / ## 已信任操作）；TrustBook 仅运行时免确认。
+- 本轮已挂载 Skill 时：动手成功后 teach 会提醒收口；有 pending 用 offer_episode_close，不要另开无关目录。
 - 产品目标是引导人成长：讲清「为何失败、人下一步做什么、要不要沉淀」，而不是替人点完就走。
 
 ## 1. 产品定位（勿做成 Cursor 插件叙事）
@@ -80,6 +82,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 ## 3. 终端与舞台
 - 凡参数能解析到 SSH（hostId / sshHostId / hostOrName / 远端 Docker / SSH 日志源 / SSH 隧道库）的操作，都会先打开并聚焦对应终端 + 状态栏。
 - shell_run = 给人看（注入 pip/下载/训练/脚本/管道），不返回 stdout；返回 sessionId/updatedAt（毫秒基线）。注入后立刻 get_shell_output(waitMs, afterUpdatedAt=该 updatedAt) 等新输出，禁止编造 stdout。
+- **本机多项目**：localShell=true 时必须传 workDir=工作区根绝对路径（与 open_project_stage 的 localPath 一致）。工作台按 workDir 隔离本机标签；忙碌会话会新开标签，避免打断另一项目的长任务。
 - 短命令 waitMs 用 3000～8000；长任务再用 15000～30000（勿默认 90s）。已有新输出会立刻返回（waitedMs 为真实耗时）；勿省略 afterUpdatedAt，否则可能空等到超时。
 - **禁止空等**：正文已含 built in / EXIT:0 / 已回到 shell 提示符（如 user@host %）时，不要再用大 waitMs 以「同一水位」再挂起；直接读当前页判断完成。水位已追上且停在提示符时，工作台最多再空等约 2s 即返回 timedOut。
 - shell_probe = 无头只读短探针，禁止改机器；看磁盘文件用 cat，不要 sed/awk 改文件。
@@ -236,7 +239,7 @@ func AgentRulesForDomain(domain string) string {
 	}
 	var b strings.Builder
 	b.WriteString("WWorkbench 约束分片 domain=" + domain + "（rulesVersion=" + AgentRulesVersion + "）\n\n")
-	b.WriteString("## 0. 前馈优先\n- 本分片为摘要；完整见 get_agent_rules(domain=all)。不会因未读而拒绝工具。\n\n")
+	b.WriteString("## 0. 前馈优先\n- 本分片为摘要；完整见 get_agent_rules(domain=all)。不会因未读而拒绝工具。\n- 动手前读 open_project_stage / get_workbench_context 的 learningDigest；收口用 offer_episode_close。\n\n")
 	full := AgentRulesText
 	for _, head := range heads {
 		start := strings.Index(full, head)

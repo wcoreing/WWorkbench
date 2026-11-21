@@ -580,7 +580,17 @@ func Catalog() []Item {
 		},
 		{
 			Name: "open_project_stage", Label: "打开项目舞台", Risk: RiskWrite,
-			Description:    "按 id/localPath 对齐项目舞台（可自动建项）；写规则、同步对话、返回 SSH",
+			Description:    "按 id/localPath 对齐项目舞台（可自动建项）；写规则、同步对话、返回 SSH与 learningDigest",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "offer_episode_close", Label: "弹出回合成长卡", Risk: RiskWrite,
+			Description:    "里程碑经验入队后，收口时弹一张成长卡供人勾选写入项目 Skill",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "close_learning_episode", Label: "收口学习回合", Risk: RiskWrite,
+			Description:    "人审确认后把勾选经验写入项目 Skill，并关闭 Episode",
 			DefaultEnabled: true,
 		},
 		{

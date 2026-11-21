@@ -129,7 +129,7 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 	if stepConfirmTool(toolName) && !browserAskConfirmEnabled(d) {
 		MarkLatestIntentApproved(ctx, toolName, intent, true)
 		out = AttachTeachEnvelope(ctx, toolName, args, ExecuteConfirmed(ctx, d, toolName, string(args)))
-		MaybeEmitSkillOffer(d, toolName, out)
+		MaybeEmitSkillOfferWithArgs(d, toolName, args, out)
 		return out
 	}
 
@@ -137,7 +137,7 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 	if !stepConfirmTool(toolName) && trustMatchFromArgs(d, toolName, args, "") {
 		MarkLatestIntentApproved(ctx, toolName, intent, true)
 		out = AttachTeachEnvelope(ctx, toolName, args, ExecuteConfirmed(ctx, d, toolName, string(args)))
-		MaybeEmitSkillOffer(d, toolName, out)
+		MaybeEmitSkillOfferWithArgs(d, toolName, args, out)
 		return out
 	}
 
@@ -177,7 +177,7 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 		d.MCPConfirm.EmitStage("done", "已确认 · "+firstNonEmpty(res.ConfirmSummary, toolName), intent, impact, toolName)
 	}
 	out = AttachTeachEnvelope(ctx, toolName, args, ExecuteConfirmed(ctx, d, toolName, string(args)))
-	MaybeEmitSkillOffer(d, toolName, out)
+	MaybeEmitSkillOfferWithArgs(d, toolName, args, out)
 	return out
 }
 

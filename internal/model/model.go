@@ -996,7 +996,28 @@ type OpenWorkbenchProjectStageResultDO struct {
 	SSHHostIDsOmitted  int                 `json:"sshHostIdsOmitted,omitempty"`
 	CursorStageRule    *CursorStageRuleDO  `json:"cursorStageRule,omitempty"`
 	CursorSync         *ProjectCursorSyncSummaryDO `json:"cursorSync,omitempty"`
+	LearningDigest     *LearningDigestDO   `json:"learningDigest,omitempty"`
 	Note               string              `json:"note,omitempty"`
+}
+
+// LearningDigestDO 项目自学习前馈摘要（开场必读）。
+type LearningDigestDO struct {
+	ProjectID    string                   `json:"projectId"`
+	ProjectName  string                   `json:"projectName,omitempty"`
+	SkillPath    string                   `json:"skillPath,omitempty"`
+	Lessons      []string                 `json:"lessons"`
+	TrustedOps   []string                 `json:"trustedOps"`
+	OpenEpisodes []LearningEpisodeBriefDO `json:"openEpisodes"`
+	Note         string                   `json:"note,omitempty"`
+}
+
+// LearningEpisodeBriefDO 未收口回合短摘要。
+type LearningEpisodeBriefDO struct {
+	ID           string `json:"id"`
+	Intent       string `json:"intent,omitempty"`
+	Status       string `json:"status"`
+	PendingCount int    `json:"pendingCount"`
+	HumanSummary string `json:"humanSummary,omitempty"`
 }
 
 // ProjectCursorSyncSummaryDO 打开舞台时 Cursor 对话同步摘要（失败不阻断开舞台）。

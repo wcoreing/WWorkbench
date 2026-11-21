@@ -3,7 +3,12 @@ import { useAppStore } from '../../stores/appStore'
 import { dispatchWorkbenchCommand } from '../../workbench/workbenchCommandBus'
 import { Capability } from '../../workbench/capabilities'
 import type { ProductId } from '../../shell/products'
-import { askConfirm, askConfirmOutcome, type ConfirmLedgerRow } from '../../utils/askConfirm'
+import {
+  askConfirm,
+  askConfirmOutcome,
+  type ConfirmChoice,
+  type ConfirmLedgerRow,
+} from '../../utils/askConfirm'
 import { api } from '../../api/client'
 import { notify } from '../../notify'
 
@@ -466,12 +471,93 @@ async function handleMcpSkillOffer(raw: Record<string, unknown>) {
 }
 
 /**
- * subscribeMcpSkillOffer 里程碑 suggestedSkill → 工作台右下角人审 → update_skill。
+ * subscribeMcpSkillOffer 兼容旧 mcp:skill_offer；主路径已改为 Episode 成长卡。
  * 与危险确认串行同一视线，避免叠窗。
  */
 export function subscribeMcpSkillOffer() {
   return EventsOn('mcp:skill_offer', (raw: Record<string, unknown>) => {
     mcpConfirmQueue = mcpConfirmQueue.then(() => handleMcpSkillOffer(raw)).catch(() => {})
+  })
+}
+
+async function handleMcpEpisodeClose(raw: Record<string, unknown>) {
+  bringWorkbenchForward()
+  const episodeId = String(raw.episodeId ?? '').trim()
+  if (!episodeId) return
+
+  const skillPath = String(raw.skillPath ?? '').trim()
+  const intent = String(raw.intent ?? '').trim()
+  const benefit = String(raw.benefit ?? '').trim()
+  const prompt =
+    String(raw.offerPrompt ?? '').trim() || '勾选要写进项目 Skill 的条目'
+  const title = String(raw.title ?? '').trim() || '本回合可记住这些'
+  const restoreHint = String(raw.restoreHint ?? '').trim()
+
+  const rawChoices = Array.isArray(raw.choices) ? raw.choices : []
+  const choices: ConfirmChoice[] = rawChoices
+    .map((c) => {
+      if (!c || typeof c !== 'object') return null
+      const row = c as Record<string, unknown>
+      const id = String(row.id ?? '').trim()
+      const label = String(row.label ?? '').trim()
+      if (!id || !label) return null
+      return {
+        id,
+        label,
+        detail: String(row.detail ?? '').trim() || undefined,
+        defaultChecked: row.defaultChecked !== false,
+      }
+    })
+    .filter((c): c is ConfirmChoice => !!c)
+
+  if (choices.length === 0 && Number(raw.trustCount ?? 0) <= 0) return
+
+  setStatus(
+    `回合可沉淀 · ${choices.length || Number(raw.pendingCount ?? 0)} 条` +
+      (intent ? ` · ${intent.slice(0, 24)}` : ''),
+  )
+
+  const ledger: ConfirmLedgerRow[] = []
+  if (benefit) ledger.push({ label: '收益', value: benefit })
+  if (skillPath) ledger.push({ label: 'Skill', value: skillPath, tone: 'muted' })
+  if (intent) ledger.push({ label: '目标', value: intent.length > 80 ? `${intent.slice(0, 80)}…` : intent })
+  if (restoreHint) ledger.push({ label: '撤销', value: restoreHint, tone: 'muted' })
+
+  const outcome = await askConfirmOutcome({
+    title,
+    message: choices.length ? prompt : '本回合信任已写入；确认收口或跳过。',
+    ledger: ledger.length ? ledger : undefined,
+    choices: choices.length ? choices : undefined,
+    confirmLabel: choices.length ? '记住勾选' : '完成本回合',
+    cancelLabel: '跳过',
+    placement: 'corner',
+  })
+
+  try {
+    if (!outcome.ok) {
+      await api.closeLearningEpisode({ episodeId, skip: true, intent: intent || '跳过沉淀' })
+      setStatus('已跳过本回合沉淀')
+      notify.info('已跳过本回合沉淀')
+      return
+    }
+    const res = await api.closeLearningEpisode({
+      episodeId,
+      selectedIds: outcome.selectedIds,
+      skip: false,
+      intent: intent || '回合收口',
+    })
+    const written = Number((res as { written?: number })?.written ?? 0)
+    setStatus(written > 0 ? `已沉淀 ${written} 条 · 下次少问` : '本回合已收口')
+    notify.success(written > 0 ? `已写入 Skill（${written} 条）` : '本回合已收口')
+  } catch (err) {
+    notify.error(err instanceof Error ? err.message : String(err))
+  }
+}
+
+/** subscribeMcpEpisodeClose 回合成长卡：勾选 → close_learning_episode。 */
+export function subscribeMcpEpisodeClose() {
+  return EventsOn('mcp:episode_close', (raw: Record<string, unknown>) => {
+    mcpConfirmQueue = mcpConfirmQueue.then(() => handleMcpEpisodeClose(raw)).catch(() => {})
   })
 }
 

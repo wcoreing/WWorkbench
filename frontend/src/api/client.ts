@@ -180,6 +180,7 @@ import {
   ReplayTaskStep,
   DistillWorkflow,
   UpdateSkill,
+  CloseLearningEpisode,
   ListDirVersions,
   MapDirVersionFlags,
   EnableDirVersion,
@@ -1223,6 +1224,20 @@ export const api = {
       at: number
     }>,
   revokeMCPTrustOp: async (fingerprint: string) => unwrap(() => RevokeMCPTrustOp(fingerprint)),
+  closeLearningEpisode: async (in_: {
+    episodeId: string
+    selectedIds?: string[]
+    skip?: boolean
+    intent?: string
+  }) =>
+    (await unwrap(() =>
+      CloseLearningEpisode({
+        episodeId: in_.episodeId,
+        selectedIds: in_.selectedIds ?? [],
+        skip: !!in_.skip,
+        intent: in_.intent || '',
+      }),
+    )) as { ok?: boolean; written?: number; skillPath?: string; status?: string; skipped?: boolean },
   probeTerminalCwd: async (sessionId: string) =>
     unwrap(() => ProbeTerminalCwd(sessionId)) as Promise<{
       sessionId: string

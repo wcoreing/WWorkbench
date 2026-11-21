@@ -10,12 +10,22 @@ export type ConfirmLedgerRow = {
   tone?: 'danger' | 'warn' | 'muted'
 }
 
+/** ConfirmChoice 成长卡等多选条目。 */
+export type ConfirmChoice = {
+  id: string
+  label: string
+  detail?: string
+  defaultChecked?: boolean
+}
+
 export type ConfirmRequest = {
   title: string
   /** 普通说明；与 ledger 二选一优先 ledger */
   message?: string
   /** 结构化账本 */
   ledger?: ConfirmLedgerRow[]
+  /** 多选条目（成长卡） */
+  choices?: ConfirmChoice[]
   /** 命令 / SQL 等，弹窗内以代码块展示 */
   code?: string
   /** 触及的产品线 */
@@ -34,7 +44,7 @@ export type ConfirmRequest = {
 }
 
 /** ConfirmOutcome 拍板结果；trust 仅在 ok 时有意义。 */
-export type ConfirmOutcome = { ok: boolean; trust: boolean }
+export type ConfirmOutcome = { ok: boolean; trust: boolean; selectedIds: string[] }
 
 type Listener = () => void
 
@@ -57,10 +67,10 @@ export function getConfirmDialogState(): ConfirmRequest | null {
   return current
 }
 
-/** askConfirmOutcome 弹出确认；完整结果含 trust。 */
+/** askConfirmOutcome 弹出确认；完整结果含 trust / selectedIds。 */
 export function askConfirmOutcome(req: ConfirmRequest): Promise<ConfirmOutcome> {
   if (resolver) {
-    resolver({ ok: false, trust: false })
+    resolver({ ok: false, trust: false, selectedIds: [] })
     resolver = null
   }
   const hardRisk = !!req.hardRisk
@@ -68,6 +78,7 @@ export function askConfirmOutcome(req: ConfirmRequest): Promise<ConfirmOutcome> 
     title: req.title,
     message: req.message,
     ledger: req.ledger?.length ? req.ledger : undefined,
+    choices: req.choices?.length ? req.choices : undefined,
     code: req.code?.trim() ? req.code : undefined,
     product: req.product,
     confirmLabel: req.confirmLabel,
@@ -90,10 +101,10 @@ export function askConfirm(req: ConfirmRequest): Promise<boolean> {
 }
 
 /** resolveConfirm 关闭弹窗并回传结果。 */
-export function resolveConfirm(ok: boolean, trust = false) {
+export function resolveConfirm(ok: boolean, trust = false, selectedIds: string[] = []) {
   current = null
   const r = resolver
   resolver = null
   notify()
-  r?.({ ok, trust: ok && trust })
+  r?.({ ok, trust: ok && trust, selectedIds: ok ? selectedIds : [] })
 }

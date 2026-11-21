@@ -10,7 +10,7 @@ import { openCapability, type CommandSource } from './workbenchCommandBus'
 
 /** openTerminal 打开本机或 SSH/容器终端。 */
 export function openTerminal(
-  opts: { hostId?: string; localShell?: boolean; initialCommand?: string },
+  opts: { hostId?: string; localShell?: boolean; initialCommand?: string; workDir?: string },
   source: CommandSource = 'user',
 ) {
   openCapability(
@@ -19,6 +19,7 @@ export function openTerminal(
       hostId: opts.hostId,
       localShell: opts.localShell,
       initialCommand: opts.initialCommand,
+      workDir: opts.workDir,
     },
     source,
   )

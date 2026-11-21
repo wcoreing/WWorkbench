@@ -1463,6 +1463,7 @@ export const en: MessageTree = {
     cmdSent: 'Command sent; check that the terminal is ready if nothing runs',
     cmdExecuted: 'Command executed in terminal',
     cmdInjectFailed: 'Failed to write to terminal (session may be dead); reconnect and retry',
+    localBusyNewTab: '“{title}” is busy — opened a new local tab to avoid interrupting it',
     openingLocal: 'Opening local terminal…',
     connecting: 'Connecting to {name}…',
     connectingHint: 'SSH handshake may take a few seconds',

@@ -40,16 +40,22 @@ func (g *MCPConfirmGate) EmitSkillOffer(tool string, skill SuggestedSkill) {
 	g.emit("mcp:skill_offer", payload)
 }
 
-// MaybeEmitSkillOffer 终态结果含 askHuman suggestedSkill 时推前端人审。
+// MaybeEmitSkillOffer 终态结果含 askHuman suggestedSkill 时入队 Episode；收口弹成长卡。
+// 无项目上下文时仍走旧 mcp:skill_offer。
 func MaybeEmitSkillOffer(d *Deps, tool string, res ToolResult) {
-	if d == nil || d.MCPConfirm == nil || !res.OK {
+	if d == nil || !res.OK {
 		return
 	}
-	sk, ok := extractSuggestedSkill(res.Data)
-	if !ok || !sk.AskHuman {
+	// 兼容：调用方若未带 args，仅用结果入队（intent 空）
+	MaybeQueueEpisodeLesson(d, tool, nil, res)
+}
+
+// MaybeEmitSkillOfferWithArgs 带工具参数（含 intent）的入队入口。
+func MaybeEmitSkillOfferWithArgs(d *Deps, tool string, args json.RawMessage, res ToolResult) {
+	if d == nil || !res.OK {
 		return
 	}
-	d.MCPConfirm.EmitSkillOffer(tool, sk)
+	MaybeQueueEpisodeLesson(d, tool, args, res)
 }
 
 func extractSuggestedSkill(data json.RawMessage) (SuggestedSkill, bool) {

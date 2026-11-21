@@ -106,6 +106,39 @@ export function readAgentShellTail(maxLines = AGENT_SHELL_TAIL_LINES): { session
   return { sessionId: activeTailSessionId, text: '' }
 }
 
+/** readSessionShellTail 按 sessionId 读 xterm 尾部（无注册则空）。 */
+export function readSessionShellTail(sessionId: string, maxLines = 12): string {
+  const id = sessionId.trim()
+  if (!id) return ''
+  const fn = tailReaders.get(id)
+  return fn ? clipShellTail(fn(), maxLines) : ''
+}
+
+/** looksLikeIdleShellPrompt 末行是否像空闲 shell 提示符（可安全注入）。 */
+export function looksLikeIdleShellPrompt(tail: string): boolean {
+  const lines = tail.replace(/\s+$/, '').split('\n')
+  let last = ''
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const s = lines[i].replace(/\s+$/, '')
+    if (s.trim()) {
+      last = s
+      break
+    }
+  }
+  if (!last) return true // 空缓冲视为可注入
+  // zsh/bash/fish 常见提示符尾
+  if (/[\$%#>❯›]\s*$/.test(last)) return true
+  if (/\b(cmdand|dquote|heredoc|quote|bquote)>?\s*$/i.test(last)) return false
+  return false
+}
+
+/** isSessionShellIdle 指定会话是否像空闲（无尾部数据时保守视为空闲，允许首注）。 */
+export function isSessionShellIdle(sessionId: string): boolean {
+  const tail = readSessionShellTail(sessionId)
+  if (!tail.trim()) return true
+  return looksLikeIdleShellPrompt(tail)
+}
+
 /** readXtermCopyText 有选区复制选区，否则复制最近输出。 */
 export function readXtermCopyText(term: Terminal): string {
   const sel = term.getSelection()
