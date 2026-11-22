@@ -2,20 +2,26 @@ package workbenchtools
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"WWorkbench/internal/model"
 )
 
 type agentChatArgs struct {
-	Message   string                 `json:"message"`
-	ThreadID  string                 `json:"threadId"`
-	Mode      string                 `json:"mode"`
-	SkillIDs  []string               `json:"skillIds"`
-	NoteID    string                 `json:"noteId"`
-	SshHostID string                 `json:"sshHostId"`
-	Mentions  []model.AgentMentionDO `json:"mentions"`
+	Message   string                   `json:"message"`
+	ThreadID  string                   `json:"threadId"`
+	Mode      string                   `json:"mode"`
+	SkillIDs  []string                 `json:"skillIds"`
+	NoteID    string                   `json:"noteId"`
+	SshHostID string                   `json:"sshHostId"`
+	Mentions  []model.AgentMentionDO   `json:"mentions"`
+	ImagePath string                   `json:"imagePath"`
+	Images    []model.AgentChatImageDO `json:"images"`
 }
 
 type agentConfirmArgs struct {
@@ -70,9 +76,18 @@ func toolAgentChat(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult
 	if mode == "" {
 		mode = "agent"
 	}
+	images := in.Images
+	if path := strings.TrimSpace(in.ImagePath); path != "" {
+		img, err := agentChatImageFromPath(path)
+		if err != nil {
+			return Fail(err.Error())
+		}
+		images = append(images, img)
+	}
 	req := model.AgentChatRequestDO{
 		ThreadID: strings.TrimSpace(in.ThreadID),
 		Message:  msg,
+		Images:   images,
 		Mode:     mode,
 		SkillIDs: in.SkillIDs,
 		Context:  agentChatContext(d, in),
@@ -82,6 +97,30 @@ func toolAgentChat(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult
 		return Fail(err.Error())
 	}
 	return OKData(out)
+}
+
+// agentChatImageFromPath 读取本机图片，交给侧栏 Agent 的多模态输入。
+func agentChatImageFromPath(path string) (model.AgentChatImageDO, error) {
+	path = filepath.Clean(path)
+	ext := strings.ToLower(filepath.Ext(path))
+	mime := map[string]string{
+		".png":  "image/png",
+		".jpg":  "image/jpeg",
+		".jpeg": "image/jpeg",
+		".webp": "image/webp",
+		".gif":  "image/gif",
+	}[ext]
+	if mime == "" {
+		return model.AgentChatImageDO{}, fmt.Errorf("imagePath 仅支持 PNG / JPEG / WebP / GIF")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return model.AgentChatImageDO{}, err
+	}
+	return model.AgentChatImageDO{
+		MIME: mime,
+		Data: base64.StdEncoding.EncodeToString(raw),
+	}, nil
 }
 
 // toolAgentConfirm 同步确认待执行工具并等待续跑（MCP）。

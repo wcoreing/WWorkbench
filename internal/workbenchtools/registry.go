@@ -395,11 +395,11 @@ func (r *Registry) registerBuiltins() {
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"sshHostId":   map[string]interface{}{"type": "string"},
-				"workDir":     map[string]interface{}{"type": "string"},
-				"findingIds":  map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "description": "host_health_scan 返回的可选 finding.id"},
-				"withCron":    map[string]interface{}{"type": "boolean", "description": "是否装定时，默认 true"},
-				"intent":      intentProp(),
+				"sshHostId":  map[string]interface{}{"type": "string"},
+				"workDir":    map[string]interface{}{"type": "string"},
+				"findingIds": map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "description": "host_health_scan 返回的可选 finding.id"},
+				"withCron":   map[string]interface{}{"type": "boolean", "description": "是否装定时，默认 true"},
+				"intent":     intentProp(),
 			},
 			"required": []interface{}{"sshHostId", "workDir", "findingIds", "intent"},
 		},
@@ -887,7 +887,7 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolSSHForwardOpen,
 	})
 	r.add(ToolDef{
-		Name: workbench.CapListSkills,
+		Name:        workbench.CapListSkills,
 		Description: "列出 Skill（任意业务根下 SKILL.md / role=skill：项目/、记忆区/…/项目/、工作流/、运维/；不含 log.md；含内置 cms_new_article）。Skill 跟资源走，不是任务子类。返回 id/name/noteId/diskPath/hasSteps。",
 		Parameters: map[string]interface{}{
 			"type":       "object",
@@ -896,7 +896,7 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolListSkills,
 	})
 	r.add(ToolDef{
-		Name: workbench.CapGetSkill,
+		Name:        workbench.CapGetSkill,
 		Description: "读取 Skill 正文（任意业务根 **/SKILL.md：项目/{名}、记忆区/…/项目/…、工作流/{任务}；永不返回 log.md）。返回 content + diskPath/skillDir/assetsDir。优先传完整目录路径；短名查找优先已有项目册，短名新建默认任务区。",
 		Parameters: map[string]interface{}{
 			"type": "object",
@@ -1011,7 +1011,7 @@ func (r *Registry) registerBuiltins() {
 		Handler: toolRestoreSkillVersion,
 	})
 	r.add(ToolDef{
-		Name: workbench.CapPublishAgentSkill,
+		Name:        workbench.CapPublishAgentSkill,
 		Description: "将笔记标为工作流（role=skill + skillId）。真源仅笔记本目录；优先传 noteId 与 id（短名）。",
 		Parameters: map[string]interface{}{
 			"type": "object",
@@ -1070,10 +1070,10 @@ func (r *Registry) registerBuiltins() {
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"packId":     map[string]interface{}{"type": "string"},
-				"relPath":    map[string]interface{}{"type": "string"},
-				"startLine":  map[string]interface{}{"type": "integer", "description": "从第几行开始（1-based），默认 1"},
-				"maxLines":   map[string]interface{}{"type": "integer", "description": "最多读多少行，默认 220，最大 400"},
+				"packId":    map[string]interface{}{"type": "string"},
+				"relPath":   map[string]interface{}{"type": "string"},
+				"startLine": map[string]interface{}{"type": "integer", "description": "从第几行开始（1-based），默认 1"},
+				"maxLines":  map[string]interface{}{"type": "integer", "description": "最多读多少行，默认 220，最大 400"},
 			},
 			"required": []interface{}{"packId", "relPath"},
 		},
@@ -1151,14 +1151,14 @@ func (r *Registry) registerBuiltins() {
 	r.add(offerChoicesToolDef())
 	r.add(ToolDef{
 		Name:        workbench.CapAgentChat,
-		Description: "同步发起 Agent 对话并等待回复（解析 /skill 前缀；mode 默认 agent）。外置 MCP 闭环测试用，不注入 Agent 工具环。",
+		Description: "把消息交给侧栏 Agent 并同步等待回复。imagePath 或 images 附图后由该模型识图。mode=ask 只作答、不调用工具；默认 agent。",
 		MCPOnly:     true,
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
-				"message":  map[string]interface{}{"type": "string", "description": "用户消息；可用 /skill-id 开头手动挂载技能"},
-				"threadId": map[string]interface{}{"type": "string", "description": "续聊线程 id，空则新建"},
-				"mode":     map[string]interface{}{"type": "string", "description": "ask | agent | plan，默认 agent"},
+				"message":   map[string]interface{}{"type": "string", "description": "用户消息；可用 /skill-id 开头手动挂载技能"},
+				"threadId":  map[string]interface{}{"type": "string", "description": "续聊线程 id，空则新建"},
+				"mode":      map[string]interface{}{"type": "string", "description": "ask | agent | plan，默认 agent"},
 				"skillIds":  map[string]interface{}{"type": "array", "items": map[string]interface{}{"type": "string"}, "description": "显式 skill id（非空时跳过 / 解析）"},
 				"noteId":    map[string]interface{}{"type": "string", "description": "可选：写入 Agent 前馈的当前笔记 id"},
 				"sshHostId": map[string]interface{}{"type": "string", "description": "可选：绑定 SSH 主机 id（等价于 mentions 里 kind=ssh）"},
@@ -1174,6 +1174,19 @@ func (r *Registry) registerBuiltins() {
 						"required": []interface{}{"kind", "id"},
 					},
 					"description": "可选：@ 绑定资源（与 UI 侧栏一致）",
+				},
+				"imagePath": map[string]interface{}{"type": "string", "description": "本机图片路径（PNG/JPEG/WebP/GIF），读入后附图给侧栏 Agent"},
+				"images": map[string]interface{}{
+					"type":        "array",
+					"description": "附图。data 为无前缀 base64 或 data URL",
+					"items": map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"mime": map[string]interface{}{"type": "string"},
+							"data": map[string]interface{}{"type": "string"},
+						},
+						"required": []interface{}{"mime", "data"},
+					},
 				},
 			},
 			"required": []interface{}{"message"},
