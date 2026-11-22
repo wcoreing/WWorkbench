@@ -494,21 +494,21 @@ async function handleMcpEpisodeClose(raw: Record<string, unknown>) {
   const restoreHint = String(raw.restoreHint ?? '').trim()
 
   const rawChoices = Array.isArray(raw.choices) ? raw.choices : []
-  const choices: ConfirmChoice[] = rawChoices
-    .map((c) => {
-      if (!c || typeof c !== 'object') return null
-      const row = c as Record<string, unknown>
-      const id = String(row.id ?? '').trim()
-      const label = String(row.label ?? '').trim()
-      if (!id || !label) return null
-      return {
-        id,
-        label,
-        detail: String(row.detail ?? '').trim() || undefined,
-        defaultChecked: row.defaultChecked !== false,
-      }
+  const choices: ConfirmChoice[] = []
+  for (const c of rawChoices) {
+    if (!c || typeof c !== 'object') continue
+    const row = c as Record<string, unknown>
+    const id = String(row.id ?? '').trim()
+    const label = String(row.label ?? '').trim()
+    if (!id || !label) continue
+    const detail = String(row.detail ?? '').trim()
+    choices.push({
+      id,
+      label,
+      detail: detail || undefined,
+      defaultChecked: row.defaultChecked !== false,
     })
-    .filter((c): c is ConfirmChoice => !!c)
+  }
 
   if (choices.length === 0 && Number(raw.trustCount ?? 0) <= 0) return
 
@@ -558,6 +558,85 @@ async function handleMcpEpisodeClose(raw: Record<string, unknown>) {
 export function subscribeMcpEpisodeClose() {
   return EventsOn('mcp:episode_close', (raw: Record<string, unknown>) => {
     mcpConfirmQueue = mcpConfirmQueue.then(() => handleMcpEpisodeClose(raw)).catch(() => {})
+  })
+}
+
+async function handleMcpHarnessEvolve(raw: Record<string, unknown>) {
+  bringWorkbenchForward()
+  const candidateId = String(raw.candidateId ?? '').trim()
+  if (!candidateId) return
+
+  const skillPath = String(raw.skillPath ?? '').trim()
+  const summary = String(raw.summary ?? '').trim()
+  const scoreTotal = Number(raw.scoreTotal ?? 0)
+  const scorePass = raw.scorePass === true
+  const minScore = Number(raw.minScore ?? 55)
+  const title = String(raw.title ?? '').trim() || 'Skill 可升版（harness 进化）'
+  const benefit = String(raw.benefit ?? '').trim()
+  const prompt =
+    String(raw.offerPrompt ?? '').trim() ||
+    '评测通过则可升版；升版会 pin 旧版，写错可 restore。'
+  const patch = String(raw.lessonsPatch ?? '').trim()
+  const breakdown = Array.isArray(raw.breakdown)
+    ? raw.breakdown.map((x) => String(x)).filter(Boolean)
+    : []
+
+  setStatus(
+    `进化候选 · ${scoreTotal} 分` + (skillPath ? ` · ${skillPath.slice(0, 28)}` : ''),
+  )
+
+  const ledger: ConfirmLedgerRow[] = []
+  if (benefit) ledger.push({ label: '收益', value: benefit })
+  if (skillPath) ledger.push({ label: 'Skill', value: skillPath, tone: 'muted' })
+  ledger.push({
+    label: '评测',
+    value: `${scoreTotal} / 100（门槛 ${minScore}${scorePass ? ' · 达标' : ' · 未达标'}）`,
+  })
+  if (summary) ledger.push({ label: '摘要', value: summary.length > 80 ? `${summary.slice(0, 80)}…` : summary })
+  if (breakdown.length) {
+    ledger.push({ label: '细项', value: breakdown.slice(0, 4).join('；'), tone: 'muted' })
+  }
+  if (patch) {
+    ledger.push({
+      label: '补丁',
+      value: patch.length > 160 ? `${patch.slice(0, 160)}…` : patch,
+      tone: 'muted',
+    })
+  }
+
+  const outcome = await askConfirmOutcome({
+    title,
+    message: prompt,
+    ledger: ledger.length ? ledger : undefined,
+    confirmLabel: scorePass ? '升版' : '仍要升版',
+    cancelLabel: '丢弃',
+    placement: 'corner',
+  })
+
+  try {
+    if (!outcome.ok) {
+      await api.discardHarnessCandidate({ candidateId })
+      setStatus('已丢弃进化候选')
+      notify.info('已丢弃 harness 进化候选')
+      return
+    }
+    const res = await api.promoteHarnessCandidate({
+      candidateId,
+      force: !scorePass,
+      intent: summary || 'harness 升版',
+    })
+    const path = String((res as { skillPath?: string })?.skillPath ?? skillPath)
+    setStatus(path ? `Harness 已升版 · ${path}` : 'Harness 已升版')
+    notify.success(path ? `已升版 Skill · ${path}` : 'Harness 已升版')
+  } catch (err) {
+    notify.error(err instanceof Error ? err.message : String(err))
+  }
+}
+
+/** subscribeMcpHarnessEvolve Skill 进化卡：升版 / 丢弃。 */
+export function subscribeMcpHarnessEvolve() {
+  return EventsOn('mcp:harness_evolve', (raw: Record<string, unknown>) => {
+    mcpConfirmQueue = mcpConfirmQueue.then(() => handleMcpHarnessEvolve(raw)).catch(() => {})
   })
 }
 

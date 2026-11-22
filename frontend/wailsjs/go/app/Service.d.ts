@@ -59,6 +59,8 @@ export function CheckSFTPUploadConflict(arg1:string,arg2:string,arg3:string):Pro
 
 export function CloseLearningEpisode(arg1:app.CloseLearningEpisodeArgs):Promise<app.ApiResult_map_string_interface____>;
 
+export function DiscardHarnessCandidate(arg1:app.DiscardHarnessCandidateArgs):Promise<app.ApiResult_map_string_interface____>;
+
 export function CloseSFTPSession(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function CloseSession(arg1:string):Promise<app.ApiResult_bool_>;
@@ -144,6 +146,8 @@ export function DropDatabase(arg1:string,arg2:string):Promise<app.ApiResult_bool
 export function DuplicateNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_NoteDO_>;
 
 export function EnableDirVersion(arg1:string):Promise<app.ApiResult_map_string_interface____>;
+
+export function EvalHarnessCandidate(arg1:string):Promise<app.ApiResult_map_string_interface____>;
 
 export function EnsureCursorStageRules():Promise<app.ApiResult_WWorkbench_internal_model_EnsureCursorStageRulesResultDO_>;
 
@@ -331,6 +335,8 @@ export function ListEnvVersions(arg1:string,arg2:string):Promise<app.ApiResult__
 
 export function ListHTTPEnvironments():Promise<app.ApiResult___WWorkbench_internal_model_HTTPEnvironmentDO_>;
 
+export function ListHarnessCandidates(arg1:string,arg2:number):Promise<app.ApiResult_map_string_interface____>;
+
 export function ListHTTPFolders():Promise<app.ApiResult___WWorkbench_internal_model_HTTPFolderDO_>;
 
 export function ListHTTPRequests():Promise<app.ApiResult___WWorkbench_internal_model_HTTPSavedRequestDO_>;
@@ -436,6 +442,10 @@ export function PinDirVersion(arg1:string,arg2:string):Promise<app.ApiResult_map
 export function PinSkillVersion(arg1:string,arg2:string):Promise<app.ApiResult_map_string_interface____>;
 
 export function ProbeTerminalCwd(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_TerminalCwdDO_>;
+
+export function PromoteHarnessCandidate(arg1:app.PromoteHarnessCandidateArgs):Promise<app.ApiResult_map_string_interface____>;
+
+export function ProposeHarnessPatch(arg1:app.ProposeHarnessPatchArgs):Promise<app.ApiResult_map_string_interface____>;
 
 export function PruneStoppedDockerHosts():Promise<app.ApiResult_int_>;
 

@@ -181,6 +181,11 @@ import {
   DistillWorkflow,
   UpdateSkill,
   CloseLearningEpisode,
+  ProposeHarnessPatch,
+  EvalHarnessCandidate,
+  PromoteHarnessCandidate,
+  DiscardHarnessCandidate,
+  ListHarnessCandidates,
   ListDirVersions,
   MapDirVersionFlags,
   EnableDirVersion,
@@ -1237,7 +1242,57 @@ export const api = {
         skip: !!in_.skip,
         intent: in_.intent || '',
       }),
-    )) as { ok?: boolean; written?: number; skillPath?: string; status?: string; skipped?: boolean },
+    )) as {
+      ok?: boolean
+      written?: number
+      skillPath?: string
+      status?: string
+      skipped?: boolean
+      harnessCandidateId?: string
+      harnessScore?: number
+    },
+  proposeHarnessPatch: async (in_: {
+    episodeId?: string
+    skillPath?: string
+    lessonsPatch?: string
+    domain?: string
+    intent?: string
+  }) =>
+    (await unwrap(() =>
+      ProposeHarnessPatch({
+        episodeId: in_.episodeId || '',
+        skillPath: in_.skillPath || '',
+        lessonsPatch: in_.lessonsPatch || '',
+        domain: in_.domain || '',
+        intent: in_.intent || '',
+      }),
+    )) as { ok?: boolean; candidate?: { id?: string } },
+  evalHarnessCandidate: async (candidateId: string) =>
+    (await unwrap(() => EvalHarnessCandidate(candidateId))) as {
+      ok?: boolean
+      score?: { total?: number; pass?: boolean }
+    },
+  promoteHarnessCandidate: async (in_: { candidateId: string; force?: boolean; intent?: string }) =>
+    (await unwrap(() =>
+      PromoteHarnessCandidate({
+        candidateId: in_.candidateId,
+        force: !!in_.force,
+        intent: in_.intent || '',
+      }),
+    )) as { ok?: boolean; skillPath?: string; skipped?: boolean },
+  discardHarnessCandidate: async (in_: { candidateId: string; freeze?: boolean }) =>
+    (await unwrap(() =>
+      DiscardHarnessCandidate({
+        candidateId: in_.candidateId,
+        freeze: !!in_.freeze,
+      }),
+    )) as { ok?: boolean },
+  listHarnessCandidates: async (skillPath = '', limit = 20) =>
+    (await unwrap(() => ListHarnessCandidates(skillPath, limit))) as {
+      ok?: boolean
+      candidates?: unknown[]
+      count?: number
+    },
   probeTerminalCwd: async (sessionId: string) =>
     unwrap(() => ProbeTerminalCwd(sessionId)) as Promise<{
       sessionId: string

@@ -4386,6 +4386,56 @@ export namespace app {
 	        this.intent = source["intent"];
 	    }
 	}
+	export class DiscardHarnessCandidateArgs {
+	    candidateId: string;
+	    freeze: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new DiscardHarnessCandidateArgs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.candidateId = source["candidateId"];
+	        this.freeze = source["freeze"];
+	    }
+	}
+	export class PromoteHarnessCandidateArgs {
+	    candidateId: string;
+	    force: boolean;
+	    intent: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PromoteHarnessCandidateArgs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.candidateId = source["candidateId"];
+	        this.force = source["force"];
+	        this.intent = source["intent"];
+	    }
+	}
+	export class ProposeHarnessPatchArgs {
+	    episodeId: string;
+	    skillPath: string;
+	    lessonsPatch: string;
+	    domain: string;
+	    intent: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ProposeHarnessPatchArgs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.episodeId = source["episodeId"];
+	        this.skillPath = source["skillPath"];
+	        this.lessonsPatch = source["lessonsPatch"];
+	        this.domain = source["domain"];
+	        this.intent = source["intent"];
+	    }
+	}
 	export class ExportCSVRequest {
 	    fileName: string;
 	    headers: string[];
