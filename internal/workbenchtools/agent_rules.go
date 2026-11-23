@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.21a"
+const AgentRulesVersion = "2026.11.22a"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -193,7 +193,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **两套路**：① 语义（默认）：desktop_apps → desktop_snapshot / desktop_find → desktop_act(click/type/press…)；不抢焦点。② 物理 headed：无障碍树空（微信等自绘）时用 mouse_click/mouse_move/mouse_wheel（屏幕绝对坐标 x,y）、hover、drag、double_click；press 请加 headed=true（物理按键，先 mouse_click 点进输入区再按）。发图：clipboard_set(imagePath=…) → mouse_click 输入区 → press keys=cmd+v headed=true → press keys=return headed=true。
 - **截图视觉**：desktop_screenshot / browser_screenshot 成功后，侧栏会把图压缩附图进下一轮模型（多模态）；据此估逻辑点坐标再 mouse_click。须使用支持视觉的模型；失败时接口会提示换模型。path 仍返回，可本机打开。隐私：只截任务所需。
 - 无 AX 窗口上 focus_window / press --app 会失败；headed 的 press 改为系统级投递，**务必先点中目标窗口**。坐标与 screencapture -R 同为逻辑点。
-- **微信搜人（无 AX）**：勿依赖 OCR。先 ⌘F+粘贴（或 skill open-to / search-prep），再**只截微信窗**；有网格刻度时读相对坐标 (rx,ry)（0..w,0..h）。多模态先标行类型（focus_search/chat_history/web/section 跳过；只点 contact/group），再 mouse_click(origin.x+rx, origin.y+ry) headed。详见技能「微信文件传输助手」。
+- **无 AX 样板（微信）**：勿依赖 OCR，禁止坐标点击选人。open-to 只截微信主窗口矩形（--window-id 看不到搜索下拉）。执行端不读图，把图交给 agent_chat(mode=ask, imagePath)，只收一行 JSON {"index","kind","text"}。第 1 项已高亮，再 ↓ index-1 次。kind 不是 contact/group 或文案不匹配就 Esc，不要回车。下拉还在时不要 open -a WeChat。发送前 offer_choices 确认「发给谁、发什么」，人选发送后才 return + send-text（粘贴后直接回车，不再看图）。详见技能「微信文件传输助手」。
 - **桌面 Skill**：get_skill 后走 desktop_*（不是 browser_*）。发送类先 offer_choices 确认会话与正文；「发给我」默认文件传输助手。步骤多为 Agent 提纲，勿依赖 run_skill 机械重放。
 - **脚本备路**：Skill 目录 scripts/*.py 用 shell_run（本机可见终端 + intent），再 get_shell_output；禁止 shell_probe 跑 python 脚本。微信禁止 focus_window；多窗先 desktop_apps 取最大窗 windowId。
 

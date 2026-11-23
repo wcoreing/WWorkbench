@@ -668,6 +668,21 @@ func Catalog() []Item {
 			Description:    "展示可点选项并等待用户选择（拍板/选下一步）；调用后本轮暂停",
 			DefaultEnabled: true,
 		},
+		{
+			Name: "get_agent_rules", Label: "读取系统约束", Risk: RiskRead,
+			Description:    "按 domain 复核系统约束分片；MCP 已注入摘要",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "agent_chat", Label: "侧栏识图与作答", Risk: RiskSession,
+			Description:    "把消息和本机图片交给侧栏 Agent；mode=ask 只作答",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "agent_confirm", Label: "确认侧栏待办", Risk: RiskSession,
+			Description:    "确认或拒绝 agent_chat 返回的 pendingId，并等待续跑结束",
+			DefaultEnabled: true,
+		},
 	}
 }
 
