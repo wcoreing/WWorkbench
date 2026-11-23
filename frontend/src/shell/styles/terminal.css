@@ -57,6 +57,86 @@
   container-name: product-sidebar;
 }
 
+.terminal-toolbar-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.terminal-toolbar-action:hover:not(:disabled) {
+  color: var(--accent);
+  background: transparent;
+}
+
+.terminal-toolbar-action:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.terminal-side-tabs-row {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: calc(4 * var(--ui-scale) * 1px);
+  margin: calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px) calc(2 * var(--ui-scale) * 1px);
+}
+
+.terminal-side-tabs-row .terminal-side-tabs {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.terminal-add-modal .wn-modal-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(10 * var(--ui-scale) * 1px);
+}
+
+.terminal-add-kind-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(12 * var(--ui-scale) * 1px);
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.terminal-add-kind-tab {
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: var(--font-size-ui);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.terminal-add-kind-tab:hover {
+  color: var(--color-text);
+}
+
+.terminal-add-kind-tab.is-active {
+  color: var(--accent);
+  font-weight: 650;
+}
+
 /* 侧栏分段：无底无框，选中靠字色/字重 */
 .terminal-side-tabs,
 .sftp-side-tabs,
@@ -74,10 +154,10 @@
 .terminal-side-tab,
 .sftp-side-tab,
 .database-side-tab {
-  flex: 1 1 0;
+  flex: 0 1 auto;
   min-width: 0;
   height: var(--control-height-sm);
-  padding: 0 calc(2 * var(--ui-scale) * 1px);
+  padding: 0 calc(6 * var(--ui-scale) * 1px);
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -91,6 +171,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   transition: color var(--motion-fast) var(--ease-ui), background var(--motion-fast) var(--ease-ui);
+}
+
+.sftp-side-tab,
+.database-side-tab {
+  flex: 1 1 0;
+  padding: 0 calc(2 * var(--ui-scale) * 1px);
 }
 
 .terminal-side-tab:hover,
@@ -135,8 +221,7 @@
 
 .terminal-side-panel,
 .sftp-side-panel,
-.database-side-panel,
-.terminal-sidebar .ssh-forward-section.is-embedded {
+.database-side-panel {
   flex: 1;
   min-height: 0;
   border-bottom: 0;
@@ -144,13 +229,6 @@
   flex-direction: column;
 }
 
-.terminal-sidebar .ssh-forward-section.is-embedded .sidebar-body {
-  overflow: auto;
-}
-
-.terminal-side-embed-actions {
-  justify-content: flex-end;
-}
 
 .terminal-sidebar .sidebar-header {
   border-bottom: 1px solid var(--color-divider);
@@ -608,11 +686,23 @@
   flex-shrink: 0;
 }
 
-.terminal-xterm-host {
+/**
+ * FitAddon 按「父元素 height − xterm 自身 padding」算行数，不会扣父级 padding。
+ * 视觉边距放在 frame；host 零 padding，避免末行被 overflow 裁半截。
+ */
+.terminal-xterm-frame {
   flex: 1;
   min-height: 0;
   width: 100%;
   padding: calc(6 * var(--ui-scale) * 1px) calc(8 * var(--ui-scale) * 1px);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.terminal-xterm-host {
+  height: 100%;
+  width: 100%;
+  padding: 0;
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -668,16 +758,6 @@
 }
 
 @container terminal-workbench (max-width: 980px) {
-  /* 有图标的按钮收成图标；纯文字按钮（如分屏）保留文案 */
-  .terminal-toolbar .product-actions .wn-btn-chrome:has(svg) > span {
-    display: none;
-  }
-
-  .terminal-toolbar .product-actions .wn-btn-run span,
-  .terminal-toolbar .product-actions > .wn-btn-chrome:nth-of-type(2) span {
-    display: inline;
-  }
-
   .terminal-toolbar .terminal-opacity-control > span:first-child {
     display: none;
   }

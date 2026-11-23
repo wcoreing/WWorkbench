@@ -181,7 +181,7 @@ func (s *Service) OpenWorkbenchProjectStage(id string) ApiResult[model.OpenWorkb
 	return OkResult(out)
 }
 
-// EnsureCursorUserProjectStageRule 幂等写入 Cursor 全局用户规则（开场 open_project_stage）。
+// EnsureCursorUserProjectStageRule 幂等写入 Cursor 全局用户规则（动手意图才 open_project_stage）。
 func (s *Service) EnsureCursorUserProjectStageRule() ApiResult[model.CursorStageRuleDO] {
 	r, err := cursorrule.EnsureUserProjectStageRule()
 	out := model.CursorStageRuleDO{

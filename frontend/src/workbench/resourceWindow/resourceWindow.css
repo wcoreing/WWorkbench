@@ -169,10 +169,15 @@
 }
 
 .rw-surface-terminal .terminal-pane-stack,
-.rw-surface-terminal .terminal-xterm-host {
+.rw-surface-terminal .terminal-xterm-frame {
   flex: 1;
   min-height: 0;
   height: 100%;
+}
+
+.rw-surface-terminal .terminal-xterm-host {
+  height: 100%;
+  min-height: 0;
 }
 
 .rw-surface-notebook .notebook-ide {

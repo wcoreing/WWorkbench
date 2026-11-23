@@ -305,7 +305,7 @@ func registerOpenProjectStageTool(r *Registry) {
 		Name: workbench.CapOpenProjectStage,
 		Description: "打开/对齐 WWorkbench 项目可控舞台：写入 Cursor 舞台规则、同步 Cursor 对话、返回至多 3 个已钉 SSH。" +
 			"传 id 或 localPath；localPath 无匹配项目时自动建项（拒绝 / 与 $HOME）。须 intent。" +
-			"Cursor 新会话应尽早调用：localPath=工作区根绝对路径。",
+			"仅动手意图（SSH/部署/查生产/改机/shell）调用；纯读码/改 UI 勿为对齐而调用。localPath=工作区根绝对路径。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{

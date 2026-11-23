@@ -114,17 +114,25 @@ func MaybeQueueEpisodeLesson(d *Deps, tool string, args json.RawMessage, res Too
 		}
 		return
 	}
+	// Skill 已有 / 任意未收口回合已有同类 → 不再入队、不弹成长卡
+	if skillHasEquivalentLesson(d, skillPath, lessons) {
+		return
+	}
+	if d.Episodes.HasEquivalentPending(projectID, lessons) {
+		return
+	}
 
 	human := humanizeLessonLabel(lessons, "lesson")
 	if prompt := strings.TrimSpace(sk.OfferPrompt); prompt != "" && !strings.Contains(prompt, "fingerprint") {
 		human = truncateRunes(strings.TrimSuffix(prompt, "吗？"), 48)
 	}
 	ep := d.Episodes.AppendLesson(projectID, intent, skillPath, EpisodePendingLesson{
-		Kind:       "lesson",
-		HumanLabel: human,
-		Lessons:    lessons,
-		Tool:       tool,
-		Domain:     sk.Domain,
+		Kind:        "lesson",
+		HumanLabel:  human,
+		Lessons:     lessons,
+		Tool:        tool,
+		Domain:      sk.Domain,
+		Fingerprint: lessonFingerprint(lessons),
 	})
 	if d.MCPConfirm != nil {
 		n := len(ep.PendingLessons)

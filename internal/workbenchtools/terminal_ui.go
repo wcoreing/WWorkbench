@@ -100,6 +100,10 @@ func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 			d.TrustOps.Match(workbench.CapShellRun, hostKey, in.InitialCommand, in.Intent, reason) {
 			return dispatchShellRun(d, in)
 		}
+		// 本机项目：非硬风险不弹确认（人仍可见终端输出）；Skill/Episode 沉淀照常。
+		if waiveLocalProjectShellConfirm(in.LocalShell, reason) {
+			return dispatchShellRun(d, in)
+		}
 		preview, errMsg := shellRunConfirmPreview(d, in)
 		if errMsg != "" {
 			return Fail(errMsg)
@@ -129,6 +133,12 @@ func toolOpenTerminal(ctx context.Context, d *Deps, raw json.RawMessage) ToolRes
 		return Confirm(uuid.NewString(), summary, preview)
 	}
 	return dispatchShellRun(d, in)
+}
+
+// waiveLocalProjectShellConfirm 本机 shell（localShell）非硬风险免确认弹窗。
+// 硬风险（同步/库文件/导入）仍拍板。免确认不阻断 teach / suggestedSkill / update_skill。
+func waiveLocalProjectShellConfirm(localShell bool, reason string) bool {
+	return localShell && !isHardShellRiskReason(reason)
 }
 
 // ShellRunConfirmed 用户确认后注入 shell_run（跳过风险检查；数据防护仍自动 exclude + 写前备份）。

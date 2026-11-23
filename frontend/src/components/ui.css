@@ -1530,7 +1530,7 @@ body > .wn-modal-backdrop {
   background: var(--color-divider);
 }
 
-/* 标签页 */
+/* 标签页：可横滑，但隐藏滚动条——macOS/WKWebView 覆盖式滚动条会压住 tab 文字 */
 .wn-tabs {
   display: flex;
   align-items: stretch;
@@ -1540,7 +1540,12 @@ body > .wn-modal-backdrop {
   overflow-x: auto;
   flex-shrink: 0;
   scroll-padding-inline: 12px;
-  scrollbar-width: thin;
+  scrollbar-width: none;
+}
+
+.wn-tabs::-webkit-scrollbar {
+  display: none;
+  height: 0;
 }
 
 .wn-tab {

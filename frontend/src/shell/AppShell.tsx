@@ -4,6 +4,7 @@ import { useAppStore } from '../stores/appStore'
 import { bootstrapAppState } from '../stores/bootstrapApp'
 import { listRegisteredProductIds, resolveProductViews } from '../plugin/registry'
 import { useMountedProductViews } from './useMountedProductViews'
+import { useParkHiddenProductCompositor } from './parkHiddenProductCompositor'
 import { ProductRail } from './ProductRail'
 import { ShellChrome } from './ShellChrome'
 import { StatusBar } from './StatusBar'
@@ -35,6 +36,7 @@ export function AppShell() {
   const { mountedProducts } = useMountedProductViews(activeProduct)
   const productViews = useMemo(() => resolveProductViews(), [])
   const productKeys = useMemo(() => listRegisteredProductIds(), [])
+  useParkHiddenProductCompositor(activeProduct)
 
   useEffect(() => {
     if (preferencesReady) {

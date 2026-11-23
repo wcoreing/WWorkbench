@@ -117,15 +117,17 @@ func milestoneSuggestedSkill(tool string, args json.RawMessage, res ToolResult) 
 	intent := strings.TrimSpace(extractIntent(args))
 	switch tool {
 	case workbench.CapBrowserRun:
+		// lessons 稳定模板；intent 只进 offerPrompt，避免同类经验无法去重
 		lessons := "网页宏已跑通。收口时把稳定 browser_run(mode=macro) 写成 Skill 一步；探索期单步不要整段贴进 Skill。"
+		prompt := "这段网页宏已经跑通。要沉淀成 Skill，下次直接复用吗？"
 		if intent != "" {
-			lessons = intent + "。\n" + lessons
+			prompt = truncateRunes(intent, 36) + " · 要沉淀成 Skill 吗？"
 		}
 		return NewSuggestedSkill(
 			"browser",
 			"工作流/网页宏",
 			lessons,
-			"这段网页宏已经跑通。要沉淀成 Skill，下次直接复用吗？",
+			prompt,
 		), true
 	case workbench.CapRunBackup:
 		return NewSuggestedSkill(
@@ -145,15 +147,16 @@ func milestoneSuggestedSkill(tool string, args json.RawMessage, res ToolResult) 
 		if !looksLikeGoalClose(intent) && !looksLikeOpsShell(args) {
 			return SuggestedSkill{}, false
 		}
-		lessons := "关键 shell 已在可见终端跑通。危险命令走确认弹窗；软文件写可护照免确认，数据硬风险不可免。断线先 terminal_reconnect。"
+		lessons := "远程 shell 已在可见终端跑通。本机非硬风险免确认；远端危险命令走确认弹窗；软文件写可护照免确认，数据硬风险不可免。断线先 terminal_reconnect。"
+		prompt := "这次远程 shell 已跑通。要归纳进运维 Skill 吗？"
 		if intent != "" {
-			lessons = intent + "。\n" + lessons
+			prompt = truncateRunes(intent, 36) + " · 要写进运维 Skill 吗？"
 		}
 		return NewSuggestedSkill(
 			"shell",
 			"运维/终端操作",
 			lessons,
-			"这次关键 shell 已跑通。要归纳进运维 Skill 吗？",
+			prompt,
 		), true
 	case workbench.CapDesktopAct:
 		// 单步点击噪声大；仅在 intent 像「收口/发送/完成」时建议
@@ -161,14 +164,15 @@ func milestoneSuggestedSkill(tool string, args json.RawMessage, res ToolResult) 
 			return SuggestedSkill{}, false
 		}
 		lessons := "桌面操作已完成关键一步。桌面 Skill 用 desktop_*；截图点选须带 windowId。发送类先 offer_choices。"
+		prompt := "远程桌面步骤已完成。要归纳进 Skill 吗？（人审后 update_skill）"
 		if intent != "" {
-			lessons = intent + "。\n" + lessons
+			prompt = truncateRunes(intent, 36) + " · 要写进 Skill 吗？"
 		}
 		return NewSuggestedSkill(
 			"desktop",
 			"工作流/桌面操作",
 			lessons,
-			"关键桌面步骤已完成。要归纳进 Skill 吗？（人审后 update_skill）",
+			prompt,
 		), true
 	case workbench.CapSyncSSHSecurityGroup, workbench.CapConfigureSSHSGSync:
 		// 云工具自身已带 suggestedSkill

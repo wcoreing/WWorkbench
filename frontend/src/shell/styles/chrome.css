@@ -77,11 +77,7 @@
   background: var(--fill-sidebar);
 }
 
-/* 侧栏|主区拖拽缝：默认 handle 透明，glass 下会透桌面；铺实底并改用暗色分隔线 */
-.workbench-shell.is-terminal-glass .terminal-workbench .wn-resize-handle {
-  background: var(--color-sidebar);
-}
-
+/* glass 下分隔线改用暗色，实底已由 .wn-resize-handle 统一提供 */
 .workbench-shell.is-terminal-glass .terminal-workbench .wn-resize-handle-x::after {
   background: rgba(255, 255, 255, 0.1);
 }
@@ -518,6 +514,88 @@ body.is-col-resizing .workbench-shell.is-terminal-glass .terminal-workbench .wn-
   display: flex;
   align-items: center;
   gap: calc(2 * var(--ui-scale) * 1px);
+}
+
+/* 产品顶栏操作：对齐终端——无边框/无底/无阴影，仅图标与文字 */
+.product-toolbar .product-actions .wn-btn-chrome,
+.product-toolbar .product-actions .wn-btn-tool,
+.product-toolbar .product-actions > .wn-btn {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--color-text-secondary);
+  height: var(--control-height-sm);
+  min-height: var(--control-height-sm);
+  padding: 0 calc(6 * var(--ui-scale) * 1px);
+}
+
+.product-toolbar .product-actions .wn-btn-chrome.wn-btn-icon-only,
+.product-toolbar .product-actions .wn-btn.wn-btn-icon {
+  width: var(--control-height-sm);
+  min-width: var(--control-height-sm);
+  padding: 0;
+}
+
+.product-toolbar .product-actions .wn-btn-chrome:hover:not(:disabled),
+.product-toolbar .product-actions .wn-btn-tool:hover:not(:disabled),
+.product-toolbar .product-actions > .wn-btn:hover:not(:disabled) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--accent);
+}
+
+.product-toolbar .product-actions .wn-btn-chrome:active:not(:disabled),
+.product-toolbar .product-actions .wn-btn-tool:active:not(:disabled),
+.product-toolbar .product-actions > .wn-btn:active:not(:disabled) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.product-toolbar .product-actions .wn-btn-chrome.wn-btn-run,
+.product-toolbar .product-actions .wn-btn-tool.wn-btn-accent {
+  color: var(--accent);
+}
+
+.product-toolbar .product-actions .wn-btn-chrome.wn-btn-run:hover:not(:disabled),
+.product-toolbar .product-actions .wn-btn-tool.wn-btn-accent:hover:not(:disabled) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--accent-hover);
+}
+
+.product-toolbar .product-actions .wn-btn-chrome.active,
+.product-toolbar .product-actions .wn-btn-tool.active {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.product-toolbar .product-actions .wn-btn-chrome.active:hover:not(:disabled),
+.product-toolbar .product-actions .wn-btn-tool.active:hover:not(:disabled) {
+  background: transparent;
+  color: var(--accent-hover);
+}
+
+.product-toolbar .product-actions .wn-btn-chrome.wn-btn-danger:hover:not(:disabled),
+.product-toolbar .product-actions .wn-btn-tool.danger:hover:not(:disabled) {
+  background: transparent;
+  border: none;
+  color: var(--color-danger);
+}
+
+.product-toolbar .product-actions .wn-btn-chrome:disabled,
+.product-toolbar .product-actions .wn-btn-tool:disabled,
+.product-toolbar .product-actions > .wn-btn:disabled {
+  opacity: 0.35;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 .product-toolbar-status {

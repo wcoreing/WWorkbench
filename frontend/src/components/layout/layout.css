@@ -39,13 +39,14 @@
 .wn-resize-handle {
   flex-shrink: 0;
   position: relative;
-  z-index: 2;
-  background: transparent;
+  z-index: 6;
+  /* WKWebView 透明窗：全透明像素不收鼠标，拖拽缝必须有实底 */
+  background: var(--fill-sidebar, var(--color-sidebar, var(--color-surface)));
 }
 
 .wn-resize-handle-x {
-  width: 5px;
-  margin: 0 -2px;
+  width: 7px;
+  margin: 0 -3px;
   cursor: col-resize;
 }
 

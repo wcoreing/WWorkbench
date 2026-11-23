@@ -3,7 +3,6 @@ import { api } from '../../api/client'
 import { withSSHHostTrust } from '../../api/sshTrust'
 import type { SSHForwardActive, SSHForwardPreset, SSHHost } from '../../api/types'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
-import { IconPlus } from '../../components/Icons'
 import { pressProps } from '../../components/compat'
 import { useI18n } from '../../i18n'
 import { useAppStore } from '../../stores/appStore'
@@ -18,12 +17,14 @@ import { useSSHTrustConfirm } from './useSSHTrustConfirm'
 interface Props {
   hosts: SSHHost[]
   onStatus: (msg: string) => void
-  /** 嵌入侧栏 tab：不渲染分区标题，由外层 tab 承担。 */
+  /** 嵌入侧栏：不渲染分区标题；新建走顶栏统一弹窗。 */
   embedded?: boolean
+  /** 外层统一新增保存隧道后递增，立即刷新列表。 */
+  refreshToken?: number
 }
 
 /** SSHForwardPanel 终端侧栏端口转发管理。 */
-export function SSHForwardPanel({ hosts, onStatus, embedded = false }: Props) {
+export function SSHForwardPanel({ hosts, onStatus, embedded = false, refreshToken = 0 }: Props) {
   const { t } = useI18n()
   const { confirmTrust, trustDialog } = useSSHTrustConfirm()
   const [active, setActive] = useState<SSHForwardActive[]>([])
@@ -51,6 +52,11 @@ export function SSHForwardPanel({ hosts, onStatus, embedded = false }: Props) {
     const timer = setInterval(() => void refresh(), 5000)
     return () => clearInterval(timer)
   }, [refresh])
+
+  useEffect(() => {
+    if (!refreshToken) return
+    void refresh()
+  }, [refreshToken, refresh])
 
   useEffect(() => {
     const apply = async (evt: WorkbenchChangedEvent) => {
@@ -145,39 +151,6 @@ export function SSHForwardPanel({ hosts, onStatus, embedded = false }: Props) {
   return (
     <>
       <section className={`sidebar-section ssh-forward-section${embedded ? ' is-embedded' : ''}`}>
-        {!embedded && (
-          <div className="sidebar-header">
-            <span>{t('sshForward.title')}</span>
-            <button
-              type="button"
-              className="wn-btn wn-btn-icon wn-btn-sm"
-              title={t('sshForward.newPreset')}
-              {...pressProps(() => {
-                setEditing(null)
-                setDraftHostId(undefined)
-                setModalOpen(true)
-              })}
-            >
-              <IconPlus size={14} />
-            </button>
-          </div>
-        )}
-        {embedded && (
-          <div className="sidebar-header terminal-side-embed-actions">
-            <button
-              type="button"
-              className="wn-btn wn-btn-icon wn-btn-sm"
-              title={t('sshForward.newPreset')}
-              {...pressProps(() => {
-                setEditing(null)
-                setDraftHostId(undefined)
-                setModalOpen(true)
-              })}
-            >
-              <IconPlus size={14} />
-            </button>
-          </div>
-        )}
         <div className="sidebar-body">
           <div className="ssh-forward-subhead">{t('sshForward.active')}</div>
           {active.length === 0 ? (
@@ -230,6 +203,7 @@ export function SSHForwardPanel({ hosts, onStatus, embedded = false }: Props) {
                   <div className="conn-meta">
                     <span className="conn-name">{p.name}</span>
                     <span className="conn-host">
+                      {hosts.find((h) => h.id === p.sshHostId)?.name || '—'} ·{' '}
                       {p.localPort ? `:${p.localPort}` : ':*'} → {p.remoteHost}:{p.remotePort}
                     </span>
                   </div>

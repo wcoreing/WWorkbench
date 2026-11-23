@@ -24,9 +24,9 @@ const userProjectStagePluginJSON = `{
 }
 `
 
-// UserProjectStageMDC 全局 alwaysApply：开场上报工作区到 WWorkbench。
+// UserProjectStageMDC 全局 alwaysApply：仅动手意图才对齐项目舞台（纯读码跳过）。
 const UserProjectStageMDC = `---
-description: WWorkbench — 新会话尽早 open_project_stage 对齐项目舞台
+description: WWorkbench — 仅动手意图才 open_project_stage 对齐项目舞台
 alwaysApply: true
 ---
 
@@ -36,12 +36,13 @@ alwaysApply: true
 
 若已配置 **wworkbench** MCP（/mcp/workbench）：
 
-1. **新会话尽早**调用 open_project_stage：
+1. **仅当本回合有动手意图**（SSH / 部署 / 查生产 / 改本机或远端配置 / shell_run）时，再调用 open_project_stage：
    - localPath = **当前工作区根目录的绝对路径**
-   - intent = 对齐 WWorkbench 项目舞台
-2. 无匹配项目时 WWorkbench 会自动建项并写入舞台规则、同步 Cursor 对话；已有项目则幂等对齐。
-3. **禁止**用 Cursor 自带 Shell / 扫盘脚本代替本工具。
-4. 工具列表没有 open_project_stage：提示人在 WWorkbench「设置 → AI 能力权限」打开项目域，勿绕开。
+   - intent = 人话说明要干什么、影响谁
+2. **纯读码、改 UI、讨论方案、写文档**：不要调用 open_project_stage，不要为对齐而开舞台。
+3. 无匹配项目时 WWorkbench 会自动建项并写入舞台规则、同步 Cursor 对话；已有项目则幂等对齐。
+4. **禁止**用 Cursor 自带 Shell / 扫盘脚本代替本工具做改机。
+5. 工具列表没有 open_project_stage：提示人在 WWorkbench「设置 → AI 能力权限」打开项目域，勿绕开。
 `
 
 // UserRuleResult 用户规则 / 本地插件写入结果。

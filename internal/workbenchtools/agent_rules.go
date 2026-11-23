@@ -55,6 +55,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 工具终态可带 **teach**（summary / nextSteps）与 **suggestedSkill**（name / lessons / askHuman / offerPrompt）。浏览器宏、备份落策略、关键 shell、桌面收口、云安全组等里程碑会自动建议；失败会按域补 teach。
 - **必须转述 teach 给人**；禁止只说「失败了」或吞掉 nextSteps。
 - **suggestedSkill.askHuman=true（默认）**：里程碑只入队当前 **Episode.pendingLessons**，**不连环弹 skill_offer**；目标完成或人点收口时系统/Agent 调 **offer_episode_close** → 一张「成长卡」勾选后 **close_learning_episode** 写入项目 Skill +（信任已在拍板时进 TrustBook）。Agent 仍应转述 teach；人已在成长卡点过则勿重复 offer_choices。禁止静默落盘、禁止用 distill_skill 代替人审。
+- **同类经验去重**：入队前对照 Skill「## 经验」与任意未收口 pending（归一化去时间戳/intent 头后指纹）；已有则跳过。update_skill(lessons) 同样归一化比对，无新意则 skipped。里程碑 lessons 保持稳定模板，intent 只进 offerPrompt。
 - **Episode（回合）**：主键≈项目+intent；绑定工具调用、信任指纹、待沉淀 lessons。唯一沉淀入口=项目 Skill（## 经验 / ## 已信任操作）；TrustBook 仅运行时免确认。
 - 本轮已挂载 Skill 时：动手成功后 teach 会提醒收口；有 pending 用 offer_episode_close，不要另开无关目录。
 - 产品目标是引导人成长：讲清「为何失败、人下一步做什么、要不要沉淀」，而不是替人点完就走。
@@ -135,7 +136,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **记忆区项目 + Skill 协议**：绑主机的部署等方法落 记忆区/{主机}/项目/{名}/SKILL.md（同一套 get_skill / update_skill）；必须传完整目录路径。
 - **项目本地/远端目录**：约定笔记 frontmatter localPath / remotePath（侧栏右键设置）。发版前读约定或 get_workbench_context.hostProjects；本地改代码用 localPath，远端操作对准 remotePath。
 - **项目产品线**：组合器——选本机文件夹为锚点；gitRemote 空则 detect_project_git / save_project 自动探测 origin。手动「添加资源」可钉 ssh/db/docker/log/http/**note**/skill/backup；**智能配置必须经 Agent**：suggest_project_resources → 核对 → configure_project_resources。list/get/save_project；get_workbench_context.projects。智能配置经验沉淀到 项目/{名}/，不要写进 工作流/。
-- **开场对齐舞台**：若挂了 wworkbench MCP，新会话尽早 open_project_stage(localPath=工作区根绝对路径, intent=对齐 WWorkbench 项目舞台)；无匹配则自动建项（拒绝 / 与 $HOME），并写舞台规则、同步对话、通知工作台开 SSH。勿用自带 Shell 代替。
+- **动手对齐舞台**：若挂了 wworkbench MCP，**仅 SSH/部署/查生产/改本机或远端/shell_run 等动手意图**才 open_project_stage(localPath=工作区根绝对路径, intent=人话目标)；纯读码/改 UI/讨论方案跳过。无匹配则自动建项（拒绝 / 与 $HOME），并写舞台规则、同步对话。勿用自带 Shell 代替改机。
 - **Cursor 对话跨机**：不能靠 requestId。真源={localPath}/.wworkbench/cursor-transcripts/（跟 git）。sync_project_cursor_transcripts(id, intent) 从本机 ~/.cursor/projects/*/agent-transcripts 导入并镜像笔记；换机 pull 后 list_project_cursor_transcripts → get_project_cursor_transcript（默认 md）读最近 1～2 条再续作。禁止整份 jsonl 贴进聊天。
 - **动手改某台机之前**：list_notes(sshHostId, role=memory) → get_note；部署再 get_skill(记忆区/…/项目/…)。
 - **Skill 笔记**（role=skill / **/SKILL.md）：真源。list_skills / get_skill；**优先 get_skill 后自己用工具执行**；跑完 **update_skill**（name=完整目录路径；仅任务区可用短名）沉淀。
@@ -148,9 +149,10 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 先 get_plugin_protocol；再改 src/ui；局部 edit_plugin_pack_file；构建 build_plugin_pack_ui。
 - 禁止用 list_skills/get_skill 找 bridge；禁止复制 React/Host。
 
-## 9. 软写护照
-- 终端右键「允许 MCP 写入当前目录」后，该目录内软文件写（重定向/tee/rm）可免确认。
-- 数据硬风险（同步/库文件/导入）永远不可免确认、不可「信任」。非硬风险可在确认弹窗点「信任并执行」写入 TrustBook（同主机+命令/intent 指纹命中则跳过后续确认），并沉淀进项目 Skill「已信任操作」。
+## 9. 软写护照与本机项目
+- **本机项目**（shell_run localShell=true）：非硬风险**不弹确认**（写文件/rm/git 等直接进可见终端）；**仍可** update_skill / Episode 成长卡沉淀。数据硬风险（同步/库文件/导入）本机也不可免。
+- 远端 SSH：终端右键「允许 MCP 写入当前目录」后，该目录内软文件写（重定向/tee/rm）可免确认。
+- 数据硬风险永远不可免确认、不可「信任」。远端非硬风险可在确认弹窗点「信任并执行」写入 TrustBook（同主机+命令/intent 指纹命中则跳过后续确认），并沉淀进项目 Skill「已信任操作」。
 
 ## 10. 浏览器舞台与任务账本（执行器可换）
 - 先 browser_status：看 executors.wwb / executors.kimi / executors.agent-browser / recommended / capabilities；wwb 未连接时可按 extDir 加载扩展。
@@ -200,9 +202,10 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 危险快捷键（cmd+q）默认拦；press + force=true 每次单独确认。
 - 账本：desktop_act / desktop_launch 自动记 op。完成后 update_skill；桌面步骤暂不支持 run_skill 机械重放。
 - 隐私：快照/截图是真实桌面内容；只取任务所需。
-`
 
-// MarkAgentRulesAck 标记当前调用方「已读系统规则」（内置 Agent 开跑 / get_agent_rules）。
+
+// MarkAgentRulesAck 标记当前调用方「已读系统规则」（内置 Agent 开跑 / get_agent_rules）。`
+
 func MarkAgentRulesAck(ctx context.Context) {
 	stateOf(ctx).markRulesAck()
 }

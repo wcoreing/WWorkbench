@@ -211,6 +211,9 @@ func (b *LearningEpisodeBook) AppendLesson(projectID, intent, skillPath string, 
 	if lesson.Kind == "" {
 		lesson.Kind = "lesson"
 	}
+	if strings.TrimSpace(lesson.Fingerprint) == "" {
+		lesson.Fingerprint = lessonFingerprint(lesson.Lessons)
+	}
 
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -219,7 +222,10 @@ func (b *LearningEpisodeBook) AppendLesson(projectID, intent, skillPath string, 
 			continue
 		}
 		for _, existing := range b.items[i].PendingLessons {
-			if existing.Lessons == lesson.Lessons || (lesson.Fingerprint != "" && existing.Fingerprint == lesson.Fingerprint) {
+			if lesson.Fingerprint != "" && existing.Fingerprint == lesson.Fingerprint {
+				return b.items[i]
+			}
+			if existing.Lessons == lesson.Lessons || lessonBodiesEquivalent(existing.Lessons, lesson.Lessons) {
 				return b.items[i]
 			}
 		}

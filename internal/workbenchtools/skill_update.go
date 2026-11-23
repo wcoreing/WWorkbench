@@ -105,19 +105,6 @@ func updateSkillAllowsStepless(in UpdateSkillArgs) bool {
 		strings.Contains(strings.ReplaceAll(strings.TrimSpace(in.Name), "\\", "/"), "/")
 }
 
-// textAlreadyInSection 经验/脚本去重：正文已出现则不再追加（避免时间戳导致假变更）。
-func textAlreadyInSection(section, piece string) bool {
-	piece = strings.TrimSpace(piece)
-	section = strings.TrimSpace(section)
-	if piece == "" {
-		return true
-	}
-	if section == "" || strings.Contains(section, "尚无沉淀") || strings.Contains(section, "update_skill(script") {
-		return false
-	}
-	return strings.Contains(section, piece)
-}
-
 // UpdateSkillNow 写回 Skill 沉淀（免确认）。
 // 无实质变更则跳过；有变更则写前 pin 目录版本，再落盘（Save 写后再 pin）。
 func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {

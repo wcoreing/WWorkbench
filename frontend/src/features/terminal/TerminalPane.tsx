@@ -477,12 +477,9 @@ export function TerminalPane({ sessionId, hostId = '', active, focused = false, 
 
   return (
     <div className="terminal-pane-stack">
-      <div
-        ref={containerRef}
-        className="terminal-xterm-host"
-        data-ww-focus-hog=""
-        style={{ backgroundColor: terminalBackground(opacity) }}
-      />
+      <div className="terminal-xterm-frame" style={{ backgroundColor: terminalBackground(opacity) }}>
+        <div ref={containerRef} className="terminal-xterm-host" data-ww-focus-hog="" />
+      </div>
       {sessionEnded && (
         <div className="terminal-ended-bar" role="status">
           <span className="terminal-ended-bar-text">{t('terminal.sessionEndedHint')}</span>

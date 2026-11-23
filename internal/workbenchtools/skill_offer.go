@@ -79,7 +79,11 @@ func (g *MCPConfirmGate) shouldSkipSkillOffer(name, lessons string) bool {
 	if g == nil {
 		return true
 	}
-	key := name + "\n" + strings.TrimSpace(lessons)
+	fp := lessonFingerprint(lessons)
+	if fp == "" {
+		fp = strings.TrimSpace(lessons)
+	}
+	key := name + "\n" + fp
 	now := time.Now()
 	g.skillOfferMu.Lock()
 	defer g.skillOfferMu.Unlock()

@@ -112,15 +112,8 @@
   background: var(--color-divider);
 }
 
-.database-toolbar .wn-btn-run {
-  padding-inline: 9px;
-}
-
 .database-toolbar .wn-btn-run:disabled {
   color: var(--color-text-disabled);
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
 }
 
 .database-toolbar .product-toolbar-status {

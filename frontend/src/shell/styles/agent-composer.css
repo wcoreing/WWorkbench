@@ -560,6 +560,11 @@
   background: transparent;
 }
 
+/* 非终端玻璃时内容区必须实底，避免透明 WebView 透出桌面黑带 */
+.workbench-shell:not(.is-terminal-glass) .workbench-content {
+  background: var(--color-bg);
+}
+
 .product-view-host {
   flex: 1;
   min-height: 0;
@@ -567,10 +572,22 @@
   display: flex;
   flex-direction: column;
   background: transparent;
+  position: relative;
+  isolation: isolate;
+}
+
+.product-view-host.is-active {
+  background: var(--color-bg);
+  z-index: 1;
+  /* 强制独立合成层，压住兄弟产品滞留的 canvas 幽灵层 */
+  transform: translateZ(0);
 }
 
 .product-view-host[hidden] {
   display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  z-index: 0;
 }
 
 /* 确认条：从 skills.css 收拢到 composer 域 */

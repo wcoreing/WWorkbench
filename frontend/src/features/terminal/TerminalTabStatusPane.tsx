@@ -50,6 +50,14 @@ export function TerminalTabStatusPane({
         <>
           <span className="terminal-connect-spinner" aria-hidden />
           <p className="terminal-connect-title">{t('terminal.connecting', { name: title })}</p>
+          {onRetry ? (
+            <div className="terminal-connect-actions">
+              <button type="button" className="wn-btn wn-btn-chrome" {...pressProps(onRetry)}>
+                <IconRefresh size={13} />
+                <span>{t('terminal.cancelAndRetry')}</span>
+              </button>
+            </div>
+          ) : null}
         </>
       ) : (
         <>

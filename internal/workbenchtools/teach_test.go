@@ -72,6 +72,13 @@ func TestAttachTeachEnvelopeShellOps(t *testing.T) {
 	if !hasSuggestedSkill(res.Data) {
 		t.Fatalf("want suggestedSkill for rsync: %s", string(res.Data))
 	}
+	var m map[string]interface{}
+	_ = json.Unmarshal(res.Data, &m)
+	sk := m["suggestedSkill"].(map[string]interface{})
+	lessons, _ := sk["lessons"].(string)
+	if strings.Contains(lessons, "同步配置") {
+		t.Fatalf("lessons must not embed intent: %q", lessons)
+	}
 }
 
 func TestAttachTeachEnvelopeShellNoise(t *testing.T) {

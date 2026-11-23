@@ -71,11 +71,12 @@
   display: inline-flex;
   align-items: center;
   gap: calc(6 * var(--ui-scale) * 1px);
-  height: var(--control-height-chrome);
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
+  height: var(--control-height-sm);
+  padding: 0 calc(4 * var(--ui-scale) * 1px);
+  border: none;
+  border-radius: 0;
   background: transparent;
+  box-shadow: none;
   color: var(--color-text-secondary);
   font-size: var(--font-size-ui-sm);
   cursor: pointer;
@@ -83,8 +84,8 @@
 }
 
 .httpapi-env-trigger:hover {
-  border-color: var(--color-border);
-  background: var(--color-hover);
+  background: transparent;
+  color: var(--accent);
 }
 
 .httpapi-env-icon {
@@ -115,20 +116,39 @@
 .httpapi-method.httpapi-method-delete { color: var(--color-danger); border-color: var(--color-border-strong); }
 
 .httpapi-btn-send {
-  background: var(--accent) !important;
-  border-color: var(--accent) !important;
-  color: #fff !important;
-  font-weight: 600;
-  min-width: calc(76 * var(--ui-scale) * 1px);
-  box-shadow: var(--shadow-sm);
+  background: transparent !important;
+  border: none !important;
+  color: var(--accent) !important;
+  font-weight: 650;
+  min-width: 0;
+  box-shadow: none !important;
 }
 
 .httpapi-btn-send:hover:not(:disabled) {
-  background: var(--accent-hover) !important;
+  background: transparent !important;
+  color: var(--accent-hover) !important;
 }
 
 .httpapi-btn-stash {
   color: var(--color-text-muted);
+}
+
+/* 运行栏 / URL 栏操作：无边框纯文字 */
+.httpapi-run-actions .wn-btn,
+.httpapi-url-bar .wn-btn {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  height: var(--control-height-sm);
+  min-height: var(--control-height-sm);
+  padding: 0 calc(6 * var(--ui-scale) * 1px);
+}
+
+.httpapi-run-actions .wn-btn:hover:not(:disabled),
+.httpapi-url-bar .wn-btn:hover:not(:disabled) {
+  background: transparent;
+  color: var(--accent);
 }
 
 .httpapi-split-host {
@@ -257,17 +277,37 @@
 
 .httpapi-tree-action-bar {
   display: flex;
-  gap: calc(6 * var(--ui-scale) * 1px);
+  gap: calc(10 * var(--ui-scale) * 1px);
   padding: 0 var(--space-2) calc(6 * var(--ui-scale) * 1px);
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
 .httpapi-tree-action-btn {
-  flex: 1;
-  justify-content: center;
+  flex: 0 1 auto;
+  justify-content: flex-start;
   min-width: 0;
   white-space: nowrap;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  height: var(--control-height-sm);
+  padding: 0;
+  color: var(--color-text-secondary);
+}
+
+.httpapi-tree-action-btn:hover:not(:disabled) {
+  background: transparent !important;
+  color: var(--accent) !important;
+}
+
+.httpapi-tree-action-btn.wn-btn-danger {
+  color: var(--color-text-secondary);
+}
+
+.httpapi-tree-action-btn.wn-btn-danger:hover:not(:disabled) {
+  color: var(--color-danger) !important;
 }
 
 .httpapi-env-quick {

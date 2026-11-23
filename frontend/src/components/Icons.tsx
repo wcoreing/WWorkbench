@@ -1,6 +1,6 @@
 /** 应用图标统一入口：全部走 iconRegistry + assets/icons PNG */
 
-import type { ImgHTMLAttributes } from 'react'
+import type { ImgHTMLAttributes, ReactNode } from 'react'
 import { ICON_SRC, type IconName } from './iconRegistry'
 import './icons.css'
 
@@ -129,4 +129,60 @@ export function IconArrowRight({ size = 12, className }: IconProps) {
 /** IconDocumentCopy Element Plus 风格文档复制。 */
 export function IconDocumentCopy({ size = 14, className }: IconProps) {
   return <EpSvgIcon path={EP_DOCUMENT_COPY} size={size} className={className} />
+}
+
+function LineSvgIcon({
+  size = 14,
+  className,
+  children,
+}: IconProps & { children: ReactNode }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 16 16"
+      width={size}
+      height={size}
+      className={['wn-line-icon', className].filter(Boolean).join(' ')}
+      aria-hidden
+      focusable="false"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ width: size, height: size }}
+    >
+      {children}
+    </svg>
+  )
+}
+
+/** IconSplitVertical 左右分屏。 */
+export function IconSplitVertical({ size = 14, className }: IconProps) {
+  return (
+    <LineSvgIcon size={size} className={className}>
+      <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" />
+      <path d="M8 3v10" />
+    </LineSvgIcon>
+  )
+}
+
+/** IconSplitHorizontal 上下分屏。 */
+export function IconSplitHorizontal({ size = 14, className }: IconProps) {
+  return (
+    <LineSvgIcon size={size} className={className}>
+      <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" />
+      <path d="M3 8h10" />
+    </LineSvgIcon>
+  )
+}
+
+/** IconSplitClose 关闭当前分屏。 */
+export function IconSplitClose({ size = 14, className }: IconProps) {
+  return (
+    <LineSvgIcon size={size} className={className}>
+      <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" />
+      <path d="M5.5 5.5 10.5 10.5M10.5 5.5 5.5 10.5" />
+    </LineSvgIcon>
+  )
 }
