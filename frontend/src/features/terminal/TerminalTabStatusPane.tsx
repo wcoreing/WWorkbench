@@ -12,10 +12,22 @@ interface Props {
   hostKind?: 'local' | 'ssh' | 'docker'
   onRetry?: () => void
   onEdit?: () => void
+  /** 绑定了 ECS 时：手动把本机公网 IP 写入安全组 */
+  onSyncSecurityGroup?: () => void
+  sgSyncing?: boolean
 }
 
 /** 连接中/失败遮罩：始终实底，避免终端玻璃透出桌面造成「双层」观感。 */
-export function TerminalTabStatusPane({ title, status, error, hostKind, onRetry, onEdit }: Props) {
+export function TerminalTabStatusPane({
+  title,
+  status,
+  error,
+  hostKind,
+  onRetry,
+  onEdit,
+  onSyncSecurityGroup,
+  sgSyncing,
+}: Props) {
   const { t } = useI18n()
 
   const askConnectHelp = () => {
@@ -47,7 +59,20 @@ export function TerminalTabStatusPane({ title, status, error, hostKind, onRetry,
             <p className="terminal-connect-title">{t('terminal.connectFailed', { name: title })}</p>
           )}
           <p className="terminal-connect-hint">{t('terminal.connectFailedHint')}</p>
+          {onSyncSecurityGroup ? (
+            <p className="terminal-connect-hint">{t('sshHost.sgSyncAfterTimeout')}</p>
+          ) : null}
           <div className="terminal-connect-actions">
+            {onSyncSecurityGroup && (
+              <button
+                type="button"
+                className="wn-btn wn-btn-chrome"
+                disabled={sgSyncing}
+                {...pressProps(onSyncSecurityGroup, { disabled: sgSyncing })}
+              >
+                <span>{sgSyncing ? t('sshHost.sgSyncing') : t('sshHost.sgSyncNow')}</span>
+              </button>
+            )}
             {onRetry && (
               <button type="button" className="wn-btn wn-btn-chrome" {...pressProps(onRetry)}>
                 <IconRefresh size={13} />

@@ -49,9 +49,13 @@ func SyncHomeIPToSecurityGroup(ctx context.Context, accessKeyID, accessKeySecret
 	}
 	cidr := ip + "/32"
 	out := SyncHomeIPResult{PublicIP: ip, CIDR: cidr, Port: port}
+	vpnHint := publicIPMismatchHint(ctx, ip)
 	if cidr == lastCIDR {
 		out.Skipped = true
-		out.Message = "本机 IP 未变化，安全组不用改"
+		out.Message = "本机 IP 未变化（" + ip + "），安全组不用改"
+		if vpnHint != "" {
+			out.Message += "。" + vpnHint
+		}
 		if preferredSG != "" {
 			out.SecurityGroup = preferredSG
 		}
@@ -98,7 +102,20 @@ func SyncHomeIPToSecurityGroup(ctx context.Context, accessKeyID, accessKeySecret
 		out.RevokedOldCIDR = old
 	}
 	out.Message = "已把本机 IP " + ip + " 写入安全组"
+	if vpnHint != "" {
+		out.Message += "。" + vpnHint
+	}
 	return out, nil
+}
+
+// publicIPMismatchHint 国内/海外探测不一致时提示（常见于开着 VPN）。
+func publicIPMismatchHint(ctx context.Context, chosen string) string {
+	client := &http.Client{Timeout: 4 * time.Second}
+	other, _ := firstPublicIP(ctx, client, publicIPEndpointsGlobal)
+	if other == "" || other == chosen {
+		return ""
+	}
+	return "另探测到海外出口 " + other + "；已优先国内源。若 SSH 仍超时，请关掉 VPN 后再点「立即写入安全组」"
 }
 
 func isDuplicatePermission(err error) bool {

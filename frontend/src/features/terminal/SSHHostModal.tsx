@@ -114,6 +114,7 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
   const [success, setSuccess] = useState('')
   const testLoading = useLoading('sshHost.test')
   const [saving, setSaving] = useState(false)
+  const [sgSyncing, setSgSyncing] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -254,6 +255,56 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
     setForm((f) => ({ ...f, ...patch }))
   }
 
+  const canManualSgSync = Boolean(
+    form.id && (form.cloudAccountId || cloudMode) && form.cloudInstanceId,
+  )
+
+  const looksLikeSgBlock = (msg: string) => {
+    const m = msg.toLowerCase()
+    return (
+      m.includes('i/o timeout') ||
+      m.includes('timed out') ||
+      m.includes('timeout') ||
+      m.includes('connection refused') ||
+      m.includes('no route to host')
+    )
+  }
+
+  const handleSyncSecurityGroup = async () => {
+    if (!form.id) {
+      setError(t('sshHost.sgSyncNeedSave'))
+      return
+    }
+    if (!form.cloudInstanceId || !(form.cloudAccountId || cloudMode)) {
+      setTab('ecs')
+      setError(t('sshHost.ecsErrBind'))
+      return
+    }
+    setSgSyncing(true)
+    setError('')
+    setSuccess('')
+    try {
+      const res = await api.syncSSHHostSecurityGroup(form.id)
+      const cidr = res.cidr || res.publicIp || ''
+      if (cidr) {
+        update({
+          sgLastCidr: cidr.includes('/') ? cidr : `${cidr}/32`,
+          sgId: res.securityGroupId || form.sgId,
+          sgSyncedAt: Math.floor(Date.now() / 1000),
+        })
+      }
+      setSuccess(
+        res.message?.trim()
+          ? t('sshHost.sgSyncOk', { message: res.message })
+          : t('sshHost.sgSyncManualOk', { cidr: cidr || 'ok' }),
+      )
+    } catch (e) {
+      setError(t('sshHost.sgSyncManualFail', { error: (e as Error).message }))
+    } finally {
+      setSgSyncing(false)
+    }
+  }
+
   const handleTest = async () => {
     const invalid = validateSSHHostForm(form, locale)
     if (invalid) {
@@ -270,7 +321,12 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
           await withSSHHostTrust(form.host, form.port, () => api.testSSHHost(form), confirmTrust)
           setSuccess(t('sshHost.testOk'))
         } catch (e) {
-          setError((e as Error).message)
+          const msg = (e as Error).message
+          if (canManualSgSync && looksLikeSgBlock(msg)) {
+            setError(`${msg}\n${t('sshHost.sgSyncAfterTimeout')}`)
+          } else {
+            setError(msg)
+          }
         }
       },
       { label: t('common.testing') },
@@ -340,7 +396,7 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
   }
 
   const isEdit = Boolean(form.id && initial?.id)
-  const busy = testLoading.active || saving
+  const busy = testLoading.active || saving || sgSyncing
   const passwordPlaceholder =
     isEdit && form.hasPassword && !form.clearPassword && !form.password
       ? t('sshHost.passwordKeptPlaceholder')
@@ -633,6 +689,22 @@ export function SSHHostModal({ open, initial, onClose, onSaved }: Props) {
                         <span>{t('sshHost.sgSync')}</span>
                       </label>
                       <p className="conn-ssh-hint">{t('sshHost.sgSyncHint')}</p>
+                      <div className="ssh-sg-sync-actions">
+                        <button
+                          type="button"
+                          className="wn-btn wn-btn-sm wn-btn-chrome"
+                          disabled={busy || !form.id}
+                          title={!form.id ? t('sshHost.sgSyncNeedSave') : t('sshHost.sgSyncNowHint')}
+                          {...pressProps(handleSyncSecurityGroup, { disabled: busy || !form.id })}
+                        >
+                          {sgSyncing ? t('sshHost.sgSyncing') : t('sshHost.sgSyncNow')}
+                        </button>
+                        {!form.id ? (
+                          <p className="conn-ssh-hint">{t('sshHost.sgSyncNeedSave')}</p>
+                        ) : (
+                          <p className="conn-ssh-hint">{t('sshHost.sgSyncNowHint')}</p>
+                        )}
+                      </div>
                       {form.sgLastCidr ? (
                         <p className="conn-ssh-hint">
                           {t('sshHost.sgLastCidr', { cidr: form.sgLastCidr })}

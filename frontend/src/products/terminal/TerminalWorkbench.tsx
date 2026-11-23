@@ -130,6 +130,7 @@ export function TerminalWorkbench() {
   const [tabs, setTabs] = useState<TerminalTab[]>([])
   const [activeTabId, setActiveTabId] = useState<string | null>(null)
   const [hostModalOpen, setHostModalOpen] = useState(false)
+  const [sgSyncingHostId, setSgSyncingHostId] = useState('')
   const [localPortsOpen, setLocalPortsOpen] = useState(false)
   const [editingHost, setEditingHost] = useState<SSHHost | null>(null)
   const [reconnectingTabId, setReconnectingTabId] = useState<string | null>(null)
@@ -315,6 +316,27 @@ export function TerminalWorkbench() {
 
   const updateTab = (tabId: string, patch: Partial<TerminalTab>) => {
     setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, ...patch } : t)))
+  }
+
+  const syncHostSecurityGroup = async (hostId: string) => {
+    const id = hostId.trim()
+    if (!id || sgSyncingHostId) return
+    setSgSyncingHostId(id)
+    setStatusMessage(t('sshHost.sgSyncing'))
+    try {
+      const res = await api.syncSSHHostSecurityGroup(id)
+      await refreshHosts()
+      const cidr = res.cidr || res.publicIp || ''
+      setStatusMessage(
+        res.message?.trim()
+          ? t('sshHost.sgSyncOk', { message: res.message })
+          : t('sshHost.sgSyncManualOk', { cidr: cidr || 'ok' }),
+      )
+    } catch (e) {
+      setStatusMessage(t('sshHost.sgSyncManualFail', { error: (e as Error).message }))
+    } finally {
+      setSgSyncingHostId('')
+    }
   }
 
   const openHostModal = (host?: SSHHost) => {
@@ -1461,6 +1483,18 @@ export function TerminalWorkbench() {
                             if (ssh) openHostModal(ssh)
                           }
                         : undefined
+                    }
+                    onSyncSecurityGroup={
+                      t.connectState === 'failed' &&
+                      t.kind === 'ssh' &&
+                      t.connectHost?.cloudInstanceId &&
+                      t.connectHost?.cloudAccountId
+                        ? () => void syncHostSecurityGroup(t.hostId || t.connectHost!.id)
+                        : undefined
+                    }
+                    sgSyncing={
+                      Boolean(sgSyncingHostId) &&
+                      sgSyncingHostId === (t.hostId || t.connectHost?.id || '')
                     }
                   />
                 )}

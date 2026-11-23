@@ -399,6 +399,18 @@ button.wn-select-trigger {
   color: var(--color-text-muted);
 }
 
+.ssh-sg-sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(8 * var(--ui-scale) * 1px);
+  margin-top: calc(8 * var(--ui-scale) * 1px);
+}
+
+.ssh-sg-sync-actions .conn-ssh-hint {
+  flex: 1 1 12rem;
+}
+
 /* 弹窗 */
 .wn-modal-backdrop {
   position: absolute;
