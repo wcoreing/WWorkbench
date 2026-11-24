@@ -47,6 +47,28 @@ type AuthResponse struct {
 	AccessToken string `json:"accessToken"`
 }
 
+// MarketListing 技能商店卡片。
+type MarketListing struct {
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Version     string   `json:"version"`
+	Root        string   `json:"root"`
+	Bind        string   `json:"bind"`
+	Intent      string   `json:"intent"`
+	Description string   `json:"description"`
+	Limits      []string `json:"limits"`
+	Files       []string `json:"files"`
+	AuthorID    string   `json:"authorId"`
+	AuthorName  string   `json:"authorName"`
+	UpdatedAt   int64    `json:"updatedAt"`
+}
+
+// MarketPackage 商店上的可安装包。
+type MarketPackage struct {
+	MarketListing
+	Bodies map[string]string `json:"bodies"`
+}
+
 type PutDocRequest struct {
 	Path    string `json:"path"`
 	Content string `json:"content"`

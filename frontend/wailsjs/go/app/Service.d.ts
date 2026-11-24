@@ -175,6 +175,8 @@ export function ExportExcel(arg1:app.ExportExcelRequest):Promise<app.ApiResult_W
 
 export function ExportNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
+export function ExportSkillShelf(arg1:string):Promise<app.ApiResult_WWorkbench_internal_notebook_ShelfManifest_>;
+
 export function ExportTableExcel(arg1:string,arg2:string,arg3:string,arg4:model.TableDataQueryDO,arg5:number,arg6:Array<string>):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
 export function ExportTableInsertSQL(arg1:string,arg2:string,arg3:string,arg4:number):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
@@ -281,6 +283,10 @@ export function InstallEnvManager(arg1:string,arg2:string):Promise<app.ApiResult
 
 export function InstallEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
 
+export function InstallSkillMarket(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_notebook_ShelfInstallResult_>;
+
+export function InstallSkillShelf(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_notebook_ShelfInstallResult_>;
+
 export function KillLocalPortProcesses(arg1:number,arg2:boolean):Promise<app.ApiResult_WWorkbench_internal_model_LocalPortKillResultDO_>;
 
 export function ListActiveSSHForwards():Promise<app.ApiResult___WWorkbench_internal_model_SSHForwardActiveDO_>;
@@ -375,6 +381,10 @@ export function ListSSHHosts():Promise<app.ApiResult___WWorkbench_internal_model
 
 export function ListShellHosts():Promise<app.ApiResult___WWorkbench_internal_model_ShellHostDO_>;
 
+export function ListSkillMarket():Promise<app.ApiResult___WWorkbench_internal_homeclient_MarketListing_>;
+
+export function ListSkillShelf():Promise<app.ApiResult___WWorkbench_internal_notebook_ShelfCard_>;
+
 export function ListSkillVersions(arg1:string,arg2:number):Promise<app.ApiResult_map_string_interface____>;
 
 export function ListSkillsDir(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_FileEntryDO_>;
@@ -442,6 +452,8 @@ export function PruneStoppedDockerHosts():Promise<app.ApiResult_int_>;
 export function PublishAgentSkill(arg1:model.AgentSkillPublishDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
 
 export function PublishNoteAsSkill(arg1:model.AgentSkillPublishDO):Promise<app.ApiResult_WWorkbench_internal_model_AgentSkillDO_>;
+
+export function PublishSkillMarket(arg1:string):Promise<app.ApiResult_WWorkbench_internal_homeclient_MarketListing_>;
 
 export function PublishWorkflow(arg1:string,arg2:string):Promise<app.ApiResult_map_string_interface____>;
 

@@ -10,6 +10,65 @@
   min-height: 0;
 }
 
+.skill-shelf {
+  display: flex;
+  flex-direction: column;
+  gap: calc(8 * var(--ui-scale) * 1px);
+  padding: calc(8 * var(--ui-scale) * 1px);
+  min-height: 0;
+  overflow: auto;
+}
+
+.skill-shelf-note,
+.skill-shelf-intent {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-ui-sm);
+  line-height: 1.45;
+}
+
+.skill-shelf-dir {
+  margin: 0;
+  word-break: break-all;
+}
+
+.skill-shelf-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(8 * var(--ui-scale) * 1px);
+}
+
+.skill-shelf-card {
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  padding: calc(8 * var(--ui-scale) * 1px);
+  display: flex;
+  flex-direction: column;
+  gap: calc(4 * var(--ui-scale) * 1px);
+}
+
+.skill-shelf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(6 * var(--ui-scale) * 1px);
+}
+
+.skill-shelf-card-title {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(8 * var(--ui-scale) * 1px);
+}
+
+.skill-shelf-limits {
+  margin: 0;
+  padding-left: 1.1em;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-ui-sm);
+}
+
 .notebook-explorer-header .sidebar-header-title {
   letter-spacing: 0.04em;
   text-transform: uppercase;

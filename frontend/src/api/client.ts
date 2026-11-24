@@ -24,7 +24,7 @@ import type {
 } from './types'
 import { ApiCallError } from './errors'
 import { normalizeHTTPFolder, normalizeHTTPSavedRequest } from './httpNormalize'
-import { model, workbenchtools } from '../../wailsjs/go/models'
+import { model, notebook, workbenchtools } from '../../wailsjs/go/models'
 
 // Wails 绑定在 generate 后可用
 import {
@@ -182,6 +182,12 @@ import {
   UpdateSkill,
   CloseLearningEpisode,
   ListDirVersions,
+  ListSkillShelf,
+  ExportSkillShelf,
+  InstallSkillShelf,
+  ListSkillMarket,
+  PublishSkillMarket,
+  InstallSkillMarket,
   MapDirVersionFlags,
   EnableDirVersion,
   PinDirVersion,
@@ -536,6 +542,24 @@ function normalizeLocalDir(raw: LocalDirResult | null | undefined): LocalDirResu
     path: raw?.path ?? '',
     entries: asFileEntries(raw?.entries),
   }
+}
+
+export type SkillShelfCard = notebook.ShelfCard
+export type SkillShelfInstall = notebook.ShelfInstallResult
+
+export type SkillMarketListing = {
+  id: string
+  name: string
+  version: string
+  root: string
+  bind: string
+  intent: string
+  description: string
+  limits: string[]
+  files?: string[]
+  authorId?: string
+  authorName?: string
+  updatedAt?: number
 }
 
 export const api = {
@@ -1034,6 +1058,14 @@ export const api = {
   applyNotebookLayout: (layout: model.NotebookLayoutDO) => unwrap(() => ApplyNotebookLayout(layout)),
   deleteNotebookGroup: (id: string) => unwrap(() => DeleteNotebookGroup(id)),
   listNotes: async () => asArray(await unwrap(() => ListNotes())),
+  listSkillShelf: async () => asArray(await unwrap(() => ListSkillShelf())),
+  exportSkillShelf: (dirRel: string) => unwrap(() => ExportSkillShelf(dirRel)),
+  installSkillShelf: (id: string, version: string) => unwrap(() => InstallSkillShelf(id, version)),
+  listSkillMarket: async () => asArray((await unwrap(() => ListSkillMarket())) as unknown as SkillMarketListing[]),
+  publishSkillMarket: (dirRel: string) =>
+    unwrap(() => PublishSkillMarket(dirRel)) as Promise<SkillMarketListing>,
+  installSkillMarket: (id: string, version: string) =>
+    unwrap(() => InstallSkillMarket(id, version)) as Promise<SkillShelfInstall>,
   listDirVersions: async (dirRel: string, limit = 24) =>
     (await unwrap(() => ListDirVersions(dirRel, limit))) as {
       ok?: boolean

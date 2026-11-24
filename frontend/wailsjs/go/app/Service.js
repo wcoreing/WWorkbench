@@ -342,6 +342,10 @@ export function ExportNote(arg1) {
   return window['go']['app']['Service']['ExportNote'](arg1);
 }
 
+export function ExportSkillShelf(arg1) {
+  return window['go']['app']['Service']['ExportSkillShelf'](arg1);
+}
+
 export function ExportTableExcel(arg1, arg2, arg3, arg4, arg5, arg6) {
   return window['go']['app']['Service']['ExportTableExcel'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
@@ -554,6 +558,14 @@ export function InstallEnvVersion(arg1, arg2, arg3) {
   return window['go']['app']['Service']['InstallEnvVersion'](arg1, arg2, arg3);
 }
 
+export function InstallSkillMarket(arg1, arg2) {
+  return window['go']['app']['Service']['InstallSkillMarket'](arg1, arg2);
+}
+
+export function InstallSkillShelf(arg1, arg2) {
+  return window['go']['app']['Service']['InstallSkillShelf'](arg1, arg2);
+}
+
 export function KillLocalPortProcesses(arg1, arg2) {
   return window['go']['app']['Service']['KillLocalPortProcesses'](arg1, arg2);
 }
@@ -742,6 +754,14 @@ export function ListShellHosts() {
   return window['go']['app']['Service']['ListShellHosts']();
 }
 
+export function ListSkillMarket() {
+  return window['go']['app']['Service']['ListSkillMarket']();
+}
+
+export function ListSkillShelf() {
+  return window['go']['app']['Service']['ListSkillShelf']();
+}
+
 export function ListSkillVersions(arg1, arg2) {
   return window['go']['app']['Service']['ListSkillVersions'](arg1, arg2);
 }
@@ -876,6 +896,10 @@ export function PublishAgentSkill(arg1) {
 
 export function PublishNoteAsSkill(arg1) {
   return window['go']['app']['Service']['PublishNoteAsSkill'](arg1);
+}
+
+export function PublishSkillMarket(arg1) {
+  return window['go']['app']['Service']['PublishSkillMarket'](arg1);
 }
 
 export function PublishWorkflow(arg1, arg2) {

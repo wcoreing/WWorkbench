@@ -289,6 +289,43 @@ func (c *Client) PutSyncJSON(raw []byte) (*WorkspaceSnapshot, int64, int64, erro
 	return &out.Snapshot, rawN, wireN, nil
 }
 
+// ListMarket 列出技能商店。不需要登录。
+func (c *Client) ListMarket() ([]MarketListing, error) {
+	var out struct {
+		Listings []MarketListing `json:"listings"`
+	}
+	if err := c.do(http.MethodGet, "/v1/market/listings", nil, &out); err != nil {
+		return nil, err
+	}
+	if out.Listings == nil {
+		out.Listings = []MarketListing{}
+	}
+	return out.Listings, nil
+}
+
+// PublishMarket 把一个技能版本上架到商店。需要登录。
+func (c *Client) PublishMarket(pkg MarketPackage) (*MarketListing, error) {
+	var out struct {
+		Listing MarketListing `json:"listing"`
+	}
+	if err := c.do(http.MethodPut, "/v1/market/listings", pkg, &out); err != nil {
+		return nil, err
+	}
+	return &out.Listing, nil
+}
+
+// GetMarketPackage 下载商店里的一个版本。
+func (c *Client) GetMarketPackage(id, version string) (*MarketPackage, error) {
+	q := "/v1/market/package?id=" + url.QueryEscape(id) + "&version=" + url.QueryEscape(version)
+	var out struct {
+		Package MarketPackage `json:"package"`
+	}
+	if err := c.do(http.MethodGet, q, nil, &out); err != nil {
+		return nil, err
+	}
+	return &out.Package, nil
+}
+
 // ParseSizeHeader 读响应头里的体积提示。
 func ParseSizeHeader(h http.Header, key string) int64 {
 	n, _ := strconv.ParseInt(strings.TrimSpace(h.Get(key)), 10, 64)
