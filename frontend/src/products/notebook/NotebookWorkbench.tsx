@@ -31,6 +31,7 @@ import {
   primaryNotebookRoot,
 } from '../../features/notebook/businessRoots'
 import { NotebookSidebar } from '../../features/notebook/NotebookSidebar'
+import { siblingHtmlNoteId, sourceNoteIdFromPage } from '../../features/notebook/derivedView'
 import {
   NOTE_FILE_TYPE_PRESETS,
   isMarkdownLikeLanguage,
@@ -109,7 +110,7 @@ export function NotebookWorkbench() {
   const opsRoot = primaryNotebookRoot('notebook') || NOTEBOOK_ROOT_OPS
   /** selectedFolderId 侧栏当前选中目录；默认落在运维工作根。 */
   const [selectedFolderId, setSelectedFolderId] = useState(opsRoot)
-  const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('source')
+  const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('split')
   const [editorFontSize, setEditorFontSize] = useState<NotebookEditorFontSize>(DEFAULT_NOTEBOOK_EDITOR_FONT)
   const [saveByNote, setSaveByNote] = useState<Record<string, 'saved' | 'dirty' | 'saving'>>({})
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
@@ -142,8 +143,24 @@ export function NotebookWorkbench() {
     t,
   })
   const noteMdLike = Boolean(activeNote && isMarkdownLikeLanguage(activeNote.language))
-  const showNoteEditor = Boolean(activeNote) && (!noteMdLike || mdViewMode !== 'preview')
-  const showNotePreview = Boolean(activeNote) && noteMdLike && mdViewMode !== 'source'
+  const pairedSourceId = activeNote ? sourceNoteIdFromPage(activeNote.id) : ''
+  const derivedPageId = useMemo(() => {
+    if (!activeNote) return ''
+    if (pairedSourceId) return activeNote.id
+    if (!noteMdLike) return ''
+    const id = siblingHtmlNoteId(activeNote.id)
+    if (!id || !summaries.some((item) => item.id === id)) return ''
+    return id
+  }, [activeNote, noteMdLike, pairedSourceId, summaries])
+  const showDerivedInline = noteMdLike && mdViewMode === 'page' && Boolean(derivedPageId)
+  const showNoteEditor = Boolean(activeNote) && !showDerivedInline && (!noteMdLike || mdViewMode !== 'preview')
+  const showNotePreview = Boolean(activeNote) && !showDerivedInline && noteMdLike && mdViewMode !== 'source'
+  useEffect(() => {
+    if (pairedSourceId) setMdViewMode('page')
+  }, [activeNote?.id])
+  useEffect(() => {
+    if (mdViewMode === 'page' && !derivedPageId) setMdViewMode('split')
+  }, [mdViewMode, derivedPageId])
   const noteEditorSplitClass =
     showNoteEditor && showNotePreview ? ' with-preview' : !showNoteEditor && showNotePreview ? ' preview-only' : ''
   const activeCrumbs = useMemo(
@@ -508,6 +525,9 @@ export function NotebookWorkbench() {
     patchActiveNoteSettings,
     insertTemplate,
     insertFilesAsAssets,
+    insertPathsAsAssets,
+    forgetResourceFile,
+    resourceRev,
     pickAssets,
     closeTab,
     closeOtherTabs,
@@ -615,6 +635,9 @@ export function NotebookWorkbench() {
           updateActiveNote={updateActiveNote}
           runInTerminal={runInTerminal}
           insertFilesAsAssets={insertFilesAsAssets}
+          insertPathsAsAssets={insertPathsAsAssets}
+          forgetResourceFile={forgetResourceFile}
+          resourceRev={resourceRev}
           pickAssets={pickAssets}
           insertTemplate={insertTemplate}
           duplicateNote={duplicateNote}
@@ -638,6 +661,8 @@ export function NotebookWorkbench() {
           activeHostName={activeHostName}
           activeConnName={activeConnName}
           openCreateFile={() => openCreateFile(selectedFolderId || opsRoot)}
+          derivedPageId={derivedPageId}
+          onOpenNote={(id) => void openNoteById(id)}
         />
       </ProductLayout>
       </LoadingPane>

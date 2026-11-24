@@ -12,6 +12,8 @@ export function capabilityToProductId(capability: string): ProductId | null {
       return 'database'
     case Capability.NotebookOpen:
       return 'notebook'
+    case Capability.SkillMarketOpen:
+      return 'skillmarket'
     case Capability.SftpOpen:
       return 'sftp'
     case Capability.DockerContextOpen:

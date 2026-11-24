@@ -72,7 +72,8 @@ func (s *Service) notePaths(noteID string) (contentPath, assetsDir string, err e
 		if strings.EqualFold(filepath.Base(abs), SkillEntryFile) {
 			return abs, filepath.Join(filepath.Dir(abs), SkillAssetsDir), nil
 		}
-		return abs, strings.TrimSuffix(abs, filepath.Ext(abs)) + PlainAssetsSuffix, nil
+		bundle, _ := plainBundleDir(abs)
+		return abs, filepath.Join(bundle, BundleAssetsName), nil
 	}
 	return filepath.Join(abs, SkillEntryFile), filepath.Join(abs, SkillAssetsDir), nil
 }

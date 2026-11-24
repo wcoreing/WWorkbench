@@ -49,6 +49,8 @@ func (s *Service) wireAgentRunner() {
 		Queries:       s.queries,
 		Store:         s.store,
 		Notebook:      s.notebook,
+		Skills:        s.skills,
+		SkillMarket:   s.skillMarketOps(),
 		Docker:        s.docker,
 		UIActions:     workbenchtools.NewUIActionBus(emit),
 		Radar:         radar,

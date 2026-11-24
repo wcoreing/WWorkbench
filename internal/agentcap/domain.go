@@ -10,8 +10,9 @@ const (
 	DomainTerminal Domain = "terminal"
 	DomainCloud    Domain = "cloud"
 	DomainDatabase Domain = "database"
-	DomainNotebook Domain = "notebook"
-	DomainProject  Domain = "project"
+	DomainNotebook    Domain = "notebook"
+	DomainSkillMarket Domain = "skillmarket"
+	DomainProject     Domain = "project"
 	DomainBrowser  Domain = "browser"
 	DomainDesktop  Domain = "desktop"
 	DomainDocker   Domain = "docker"
@@ -47,6 +48,9 @@ func DomainOf(name string) Domain {
 	case strings.Contains(n, "database"), n == "execute_sql", n == "list_tables", n == "describe_table",
 		n == "list_connections", n == "save_connection", n == "open_database_session", n == "close_database_session":
 		return DomainDatabase
+	case n == "skillmarket_open", strings.Contains(n, "skill_market"), n == "list_skill_shelf",
+		n == "publish_skill_market", n == "install_skill_market":
+		return DomainSkillMarket
 	case strings.Contains(n, "skill"), strings.Contains(n, "dir_version"), n == "list_notes",
 		n == "get_note", n == "search_notes", n == "notebook_append_content", n == "publish_agent_skill",
 		n == "run_skill", n == "distill_skill":
@@ -75,6 +79,14 @@ func RecommendedDefault(name string) bool {
 	switch DomainOf(name) {
 	case DomainBrowser, DomainDesktop, DomainPlugin:
 		return false
+	case DomainSkillMarket:
+		// 打开/只读列表默认开；上架与安装需登录且写风险，默认关。
+		switch name {
+		case "publish_skill_market", "install_skill_market":
+			return false
+		default:
+			return true
+		}
 	case DomainDocker:
 		// 列表只读开；启停删默认关
 		switch name {
@@ -128,6 +140,8 @@ func DomainLabel(d Domain) string {
 		return "数据库"
 	case DomainNotebook:
 		return "笔记 / Skill"
+	case DomainSkillMarket:
+		return "技能市场"
 	case DomainProject:
 		return "项目"
 	case DomainBrowser:

@@ -4,6 +4,8 @@ import (
 	"context"
 	"embed"
 	"log"
+	"net/http"
+	"strings"
 
 	"WWorkbench/internal/adapter"
 	mysqladapter "WWorkbench/internal/adapter/mysql"
@@ -36,6 +38,21 @@ import (
 
 //go:embed all:frontend/dist
 var assets embed.FS
+
+// notebookAssetsFirst 让 /notebook-assets/ 在开发服务器之前出图。
+// 开发模式里 GET 会先打到 Vite；Vite 对未知路径回 HTML 200，图片就被当成网页。
+func notebookAssetsFirst(dataDir string) assetserver.Middleware {
+	handler := notebook.AssetHandler(dataDir)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/notebook-assets/") {
+				handler.ServeHTTP(w, r)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
 
 func main() {
 	dataDir, err := store.DataDir()
@@ -98,13 +115,14 @@ func main() {
 		MinWidth:  0, // 0 = 不限制最小宽高
 		MinHeight: 0,
 		AssetServer: &assetserver.Options{
-			Assets:  assets,
-			Handler: notebook.AssetHandler(dataDir),
+			Assets:     assets,
+			Handler:    notebook.AssetHandler(dataDir),
+			Middleware: notebookAssetsFirst(dataDir),
 		},
 		BackgroundColour: &options.RGBA{R: 0, G: 0, B: 0, A: 0},
 		Mac: &mac.Options{
 			// 隐藏系统白标题栏，红绿灯叠在主题顶栏上（壳层跟色板走）
-			TitleBar:             mac.TitleBarHidden(),
+			TitleBar: mac.TitleBarHidden(),
 			// 只要透明 WebView；不要 WindowIsTranslucent（会铺暗色 vibrancy，看起来像死黑）
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  false,

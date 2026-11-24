@@ -20,6 +20,7 @@ const (
 	UIActionSSHForwardOpen    UIActionKind = UIActionKind(workbench.CapSSHForwardOpen)
 	UIActionBrowserOpen       UIActionKind = UIActionKind(workbench.CapBrowserOpen)
 	UIActionOpenProjectStage  UIActionKind = UIActionKind(workbench.CapOpenProjectStage)
+	UIActionSkillMarketOpen   UIActionKind = UIActionKind(workbench.CapSkillMarketOpen)
 )
 
 // UIActionBus 向前端投递 UI 联动（经 Wails agent:ui_action 事件）。

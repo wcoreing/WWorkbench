@@ -20,8 +20,10 @@ const (
 	MetaFileName = ".wwb-meta.json"
 	// GroupOrderFile 目录内排序。
 	GroupOrderFile = ".wwb-order.json"
-	// PlainAssetsSuffix 普通笔记附件目录后缀：foo.md → foo.assets/
-	PlainAssetsSuffix = ".assets"
+	// BundleAssetsName 同名目录中的附件。foo.md → foo/assets/
+	BundleAssetsName = "assets"
+	// BundleHTMLName 同名目录中的派生页面。foo.md → foo/html/foo.html
+	BundleHTMLName = "html"
 )
 
 type workspaceMeta struct {

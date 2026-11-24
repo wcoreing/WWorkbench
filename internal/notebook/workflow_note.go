@@ -7,22 +7,15 @@ import (
 	"strings"
 
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/skill/docfmt"
 
 	"gopkg.in/yaml.v3"
 )
 
-var (
-	skillStepsFenceRE = regexp.MustCompile("(?s)```wwb-skill-steps\\s*\\n(.*?)\\n```")
-	sectionRE         = regexp.MustCompile(`(?m)^##\s+(.+?)\s*$`)
-)
+var skillStepsFenceRE = regexp.MustCompile("(?s)```wwb-skill-steps\\s*\\n(.*?)\\n```")
 
-// WorkflowNoteBodyExtras 工作流笔记中除步骤外的可沉淀段落（保存步骤时须保留）。
-type WorkflowNoteBodyExtras struct {
-	Lessons    string // ## 经验 正文（不含标题）
-	TrustedOps string // ## 已信任操作 正文
-	Scripts    string // ## 脚本 正文
-	Resources  string // ## 资源 正文
-}
+// WorkflowNoteBodyExtras 兼容别名 → skill/docfmt.BodyExtras。
+type WorkflowNoteBodyExtras = docfmt.BodyExtras
 
 type workflowFrontmatter struct {
 	Role        string `yaml:"role,omitempty"`
@@ -35,168 +28,40 @@ type workflowFrontmatter struct {
 	Bind        string `yaml:"bind,omitempty"`
 }
 
-// ExtractWorkflowNoteBodyExtras 从已有笔记抽出经验/脚本/资源段落，避免 save 步骤时冲掉沉淀。
+// ExtractWorkflowNoteBodyExtras 委托 docfmt。
 func ExtractWorkflowNoteBodyExtras(content string) WorkflowNoteBodyExtras {
-	_, body, ok := splitWorkflowFrontmatter(content)
-	if !ok {
-		body = content
-	}
-	return WorkflowNoteBodyExtras{
-		Lessons:    extractMarkdownSection(body, "经验"),
-		TrustedOps: extractMarkdownSection(body, "已信任操作"),
-		Scripts:    extractMarkdownSection(body, "脚本"),
-		Resources:  extractMarkdownSection(body, "资源"),
-	}
+	return docfmt.ExtractBodyExtras(content)
 }
 
-func extractMarkdownSection(body, title string) string {
-	idxs := sectionRE.FindAllStringSubmatchIndex(body, -1)
-	if len(idxs) == 0 {
-		return ""
-	}
-	for i, m := range idxs {
-		name := strings.TrimSpace(body[m[2]:m[3]])
-		if name != title {
-			continue
-		}
-		start := m[1]
-		end := len(body)
-		if i+1 < len(idxs) {
-			end = idxs[i+1][0]
-		}
-		return strings.TrimSpace(body[start:end])
-	}
-	return ""
-}
-
-// SkillResourceKinds 资源 kind 约定（登记在 ## 资源；二进制落 Skill 目录 assets/）。
+// SkillResourceKinds 兼容常量。
 const (
-	SkillResourceKindScreenshot = "screenshot"
-	SkillResourceKindFile       = "file"
-	SkillResourceKindTemplate   = "template"
-	SkillResourceKindConfig     = "config"
+	SkillResourceKindScreenshot = docfmt.ResourceKindScreenshot
+	SkillResourceKindFile       = docfmt.ResourceKindFile
+	SkillResourceKindTemplate   = docfmt.ResourceKindTemplate
+	SkillResourceKindConfig     = docfmt.ResourceKindConfig
 )
 
-// FormatSkillResourceLine 统一资源索引行：kind · 说明 · markdown 链接（必须指向本笔记附件 URL）。
+// FormatSkillResourceLine 委托 docfmt。
 func FormatSkillResourceLine(kind, label, markdown string) string {
-	kind = strings.TrimSpace(kind)
-	if kind == "" {
-		kind = SkillResourceKindFile
-	}
-	label = strings.TrimSpace(label)
-	markdown = strings.TrimSpace(markdown)
-	if label == "" {
-		return fmt.Sprintf("- kind: %s · %s", kind, markdown)
-	}
-	return fmt.Sprintf("- kind: %s · %s · %s", kind, label, markdown)
+	return docfmt.FormatResourceLine(kind, label, markdown)
 }
 
-// DefaultSkillScriptsPlaceholder ## 脚本 空态（正文围栏 + 可选同级 scripts/）。
+// DefaultSkillScriptsPlaceholder 委托 docfmt。
 func DefaultSkillScriptsPlaceholder() string {
-	return "（无脚本。沉淀：`update_skill(script=…)`；shell/SQL 围栏写在「## 脚本」，或落同级 `scripts/`；给人核对，经工作台确认后再跑。）"
+	return docfmt.DefaultScriptsPlaceholder()
 }
 
-// DefaultSkillResourcesPlaceholder ## 资源 空态（附件统一落本笔记目录）。
+// DefaultSkillResourcesPlaceholder 委托 docfmt。
 func DefaultSkillResourcesPlaceholder(noteID string) string {
-	noteID = strings.TrimSpace(noteID)
-	if noteID == "" {
-		noteID = "工作流/{name}/SKILL.md"
-	}
-	return fmt.Sprintf(
-		"> 附件真源：本 Skill 目录下 assets/（与 SKILL.md 同级）。正文用相对链接 assets/文件名。\n\n"+
-			"（无附件。update_skill(resourcePaths=…) 或「插入附件」→ 写入 assets/ 并按 kind · 说明 · 链接 登记。noteId=%s）",
-		noteID,
-	)
+	return docfmt.DefaultResourcesPlaceholder(noteID)
 }
 
-// FormatWorkflowNoteContent 将工作流写成标准 Skill Markdown。
-// 结构固定：frontmatter → 说明 → 经验 → 步骤(+wwb-skill-steps) → 脚本 → 资源。
-// 脚本在「## 脚本」或 scripts/；二进制在同级 assets/，由 ## 资源索引。
+// FormatWorkflowNoteContent 委托 docfmt；短名空 NoteID 时补产品默认路径 工作流/…。
 func FormatWorkflowNoteContent(p model.WorkflowDO, extras WorkflowNoteBodyExtras) string {
-	name := strings.TrimSpace(p.Name)
-	noteID := firstNonEmptyStr(strings.TrimSpace(p.NoteID), SkillNoteID(name))
-	fm := workflowFrontmatter{
-		Role:        model.NoteRoleSkill,
-		Name:        name,
-		SkillID:     name,
-		SourceRunID: strings.TrimSpace(p.SourceRunID),
-		Intent:      strings.TrimSpace(p.Intent),
-		Description: strings.TrimSpace(p.Description),
-		Bind:        "browser",
+	if strings.TrimSpace(p.NoteID) == "" {
+		p.NoteID = SkillNoteID(strings.TrimSpace(p.Name))
 	}
-	if sess := sessionFromSteps(p.Steps); sess != "" {
-		fm.Session = sess
-	}
-	raw, _ := yaml.Marshal(fm)
-	block := strings.TrimRight(string(raw), "\n")
-
-	title := firstNonEmptyStr(strings.TrimSpace(p.Title), p.Name)
-	var body strings.Builder
-	fmt.Fprintf(&body, "<!-- wwb-skill: %s -->\n\n", name)
-	fmt.Fprintf(&body, "# %s\n\n", title)
-	if d := strings.TrimSpace(p.Description); d != "" {
-		body.WriteString(d)
-		body.WriteString("\n\n")
-	}
-	if intent := strings.TrimSpace(p.Intent); intent != "" {
-		fmt.Fprintf(&body, "> 意图：%s\n\n", intent)
-	}
-	body.WriteString("## 说明\n\n")
-	body.WriteString("本笔记是 **Agent Skill**（引擎=Agent；步骤=可选提示）。\n\n")
-	fmt.Fprintf(&body, "- 读：`get_skill(skill=%s)` → 用工具完成目标\n", name)
-	body.WriteString("- 沉淀：`update_skill` 写回经验 / 步骤 / 脚本 / 资源\n")
-	body.WriteString("- 资源：二进制挂本 Skill 目录 `assets/`；脚本写在「## 脚本」或 `scripts/`\n")
-	fmt.Fprintf(&body, "- 可选：`run_skill(name=%s)`（机械逐步，失败即停）\n\n", name)
-
-	lessons := strings.TrimSpace(extras.Lessons)
-	if lessons == "" {
-		lessons = "（尚无沉淀；跑通或踩坑后 `update_skill(lessons=…)` 追加。）"
-	}
-	body.WriteString("## 经验\n\n")
-	body.WriteString(lessons)
-	body.WriteString("\n\n")
-
-	if trusted := strings.TrimSpace(extras.TrustedOps); trusted != "" {
-		body.WriteString("## 已信任操作\n\n")
-		body.WriteString(trusted)
-		body.WriteString("\n\n")
-	}
-
-	body.WriteString("## 步骤\n\n")
-	for i, st := range p.Steps {
-		sum := firstNonEmptyStr(st.Summary, st.Action)
-		if st.Action == "pause" || st.Action == "coach" {
-			fmt.Fprintf(&body, "%d. **pause** — %s\n", i+1, sum)
-		} else {
-			fmt.Fprintf(&body, "%d. `%s` — %s\n", i+1, st.Action, sum)
-		}
-	}
-	body.WriteString("\n可执行步骤：\n\n")
-	stepsJSON, err := json.MarshalIndent(p.Steps, "", "  ")
-	if err != nil {
-		stepsJSON = []byte("[]")
-	}
-	body.WriteString("```wwb-skill-steps\n")
-	body.Write(stepsJSON)
-	body.WriteString("\n```\n\n")
-
-	scripts := strings.TrimSpace(extras.Scripts)
-	if scripts == "" {
-		scripts = DefaultSkillScriptsPlaceholder()
-	}
-	body.WriteString("## 脚本\n\n")
-	body.WriteString(scripts)
-	body.WriteString("\n\n")
-
-	resources := strings.TrimSpace(extras.Resources)
-	if resources == "" {
-		resources = DefaultSkillResourcesPlaceholder(noteID)
-	}
-	body.WriteString("## 资源\n\n")
-	body.WriteString(resources)
-	body.WriteString("\n")
-
-	return "---\n" + block + "\n---\n\n" + body.String()
+	return docfmt.Format(p, extras)
 }
 
 // ParseWorkflowNote 从笔记还原 WorkflowDO；失败返回 ok=false。
@@ -290,18 +155,6 @@ func splitWorkflowFrontmatter(content string) (workflowFrontmatter, string, bool
 		return workflowFrontmatter{}, content, false
 	}
 	return fm, body, true
-}
-
-func sessionFromSteps(steps []model.WorkflowStepDO) string {
-	for _, st := range steps {
-		if st.Args == nil {
-			continue
-		}
-		if v, ok := st.Args["session"].(string); ok && strings.TrimSpace(v) != "" {
-			return strings.TrimSpace(v)
-		}
-	}
-	return ""
 }
 
 func extractH1(body string) string {

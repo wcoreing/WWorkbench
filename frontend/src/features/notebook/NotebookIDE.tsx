@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { model } from '../../../wailsjs/go/models'
 import { api } from '../../api/client'
 import type { Note, NoteRole, NoteSummary, NotebookGroup } from '../../api/types'
 import { useI18n } from '../../i18n'
@@ -15,13 +16,20 @@ import { pressProps } from '../../components/compat'
 import { NoteEditor } from './NoteEditor'
 import { MarkdownPreview } from './MarkdownPreview'
 import { NotebookMdViewToggle, type NotebookMdViewMode } from './NotebookMdViewToggle'
+import { NotebookResourceStrip } from './NotebookResourceStrip'
 import { NotebookSidebar } from './NotebookSidebar'
 import { NotebookStatusBar } from './NotebookStatusBar'
 import { applyNoteRoleFields } from './noteFrontmatter'
-import { isMarkdownLikeLanguage } from './noteFileTypes'
+import { DerivedViewBar } from './DerivedViewBar'
+import { linkedSourceNoteId, siblingHtmlNoteId, sourceNoteIdFromPage } from './derivedView'
+import { HtmlNoteFrame } from './HtmlNoteFrame'
+import { isHtmlDocument, isMarkdownLikeLanguage } from './noteFileTypes'
 import { skillImageSrc } from './notebookAssetLinks'
+import { fileToBase64DataURL } from './notebookAssets'
 import { adoptNoteLanguage, skillEntryNoteId, toNoteDO, toSummary } from './noteModel'
 import { findNotebookSubtree, buildNotebookTree } from './notebookTree'
+import { useNotebookAssetIngress } from './useNotebookAssetIngress'
+import { useMdSplitScroll } from './useMdSplitScroll'
 import { askConfirm } from '../../utils/askConfirm'
 
 export type NotebookIDEHandle = {
@@ -66,11 +74,14 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
   const [summaries, setSummaries] = useState<NoteSummary[]>([])
   const [note, setNote] = useState<Note | null>(null)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'dirty' | 'saving'>('saved')
-  const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('source')
+  const [mdViewMode, setMdViewMode] = useState<NotebookMdViewMode>('split')
+  const [htmlSource, setHtmlSource] = useState(false)
+  const splitScroll = useMdSplitScroll(mdViewMode === 'split')
   const [busy, setBusy] = useState(false)
   const [search, setSearch] = useState('')
   const [selectedFolderId, setSelectedFolderId] = useState('')
   const [refreshing, setRefreshing] = useState(false)
+  const [resourceRev, setResourceRev] = useState(0)
   const noteRef = useRef<Note | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   noteRef.current = note
@@ -200,6 +211,100 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
       if (n) void persist(n)
     }, 500)
   }
+
+  const appendMarkdown = (block: string) => {
+    setNote((prev) => {
+      if (!prev) return prev
+      const content = prev.content.trim() ? `${prev.content}\n\n${block}` : block
+      const next: Note = {
+        ...prev,
+        content,
+        language: isMarkdownLikeLanguage(prev.language) ? prev.language : 'markdown',
+      }
+      noteRef.current = next
+      return next
+    })
+    setSaveStatus('dirty')
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      const n = noteRef.current
+      if (n) void persist(n)
+    }, 500)
+  }
+
+  const insertFiles = useCallback(async (files: File[]) => {
+    const cur = noteRef.current
+    if (!cur || files.length === 0) return
+    try {
+      const snippets: string[] = []
+      for (const file of files) {
+        const data = await fileToBase64DataURL(file)
+        const asset = await api.saveNotebookAsset(
+          model.NotebookAssetUploadDO.createFrom({
+            noteId: cur.id,
+            name: file.name || (file.type.startsWith('image/') ? 'screenshot.png' : 'file'),
+            mime: file.type || '',
+            data,
+          }),
+        )
+        snippets.push(asset.markdown)
+      }
+      appendMarkdown(snippets.join('\n\n') + '\n')
+      setResourceRev((n) => n + 1)
+      notify.success(
+        snippets.length === 1
+          ? t('notebook.assetInserted')
+          : t('notebook.assetsInserted', { count: snippets.length }),
+      )
+    } catch (e) {
+      notify.error((e as Error).message)
+    }
+  }, [t])
+
+  const insertPaths = useCallback(async (paths: string[]) => {
+    const cur = noteRef.current
+    if (!cur || paths.length === 0) return
+    try {
+      const assets = await api.importNotebookResources(cur.id, paths)
+      if (!assets.length) return
+      appendMarkdown(assets.map((a) => a.markdown).join('\n\n') + '\n')
+      setResourceRev((n) => n + 1)
+      notify.success(
+        assets.length === 1
+          ? t('notebook.assetInserted')
+          : t('notebook.assetsInserted', { count: assets.length }),
+      )
+    } catch (e) {
+      notify.error((e as Error).message)
+    }
+  }, [t])
+
+  const forgetResourceFile = (fileName: string) => {
+    if (!fileName) return
+    setNote((prev) => {
+      if (!prev) return prev
+      const content = prev.content
+        .split('\n')
+        .filter((line) => !line.includes(fileName))
+        .join('\n')
+      if (content === prev.content) return prev
+      const next = { ...prev, content }
+      noteRef.current = next
+      return next
+    })
+    setSaveStatus('dirty')
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      const n = noteRef.current
+      if (n) void persist(n)
+    }, 500)
+  }
+
+  const ingress = useNotebookAssetIngress({
+    enabled: note != null && note.language !== 'image',
+    onFiles: (files) => void insertFiles(files),
+    onPaths: (paths) => void insertPaths(paths),
+  })
 
   const reveal = async () => {
     if (!note) return
@@ -338,15 +443,56 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
   }, [t])
 
   const mdLike = Boolean(note && isMarkdownLikeLanguage(note.language))
+  const pairedSourceId = note ? sourceNoteIdFromPage(note.id) : ''
+  const htmlPageId = note && mdLike ? siblingHtmlNoteId(note.id) : ''
+  const derivedPageId = pairedSourceId && note
+    ? note.id
+    : htmlPageId && summaries.some((item) => item.id === htmlPageId)
+      ? htmlPageId
+      : ''
+  const htmlDoc = Boolean(note && isHtmlDocument(note.language, note.id))
+  const showHtmlPage = htmlDoc && (Boolean(pairedSourceId) || !htmlSource)
+  useEffect(() => {
+    setHtmlSource(false)
+  }, [note?.id])
   const isImage = note?.language === 'image'
-  const showEditor = Boolean(note) && !isImage && (!mdLike || mdViewMode !== 'preview')
-  const showPreview = Boolean(note) && !isImage && mdLike && mdViewMode !== 'source'
+  const showPage = mdLike && mdViewMode === 'page' && Boolean(derivedPageId)
+  const showEditor = Boolean(note) && !isImage && !showPage && (!mdLike || mdViewMode !== 'preview')
+  const showPreview = Boolean(note) && !isImage && !showPage && mdLike && mdViewMode !== 'source'
+  const [pageHtml, setPageHtml] = useState('')
+  useEffect(() => {
+    if (note && sourceNoteIdFromPage(note.id)) setMdViewMode('page')
+  }, [note?.id])
+  useEffect(() => {
+    if (mdViewMode === 'page' && !derivedPageId) setMdViewMode('split')
+  }, [mdViewMode, derivedPageId])
+  useEffect(() => {
+    if (!showPage || !derivedPageId) return
+    let cancelled = false
+    api
+      .getNote(derivedPageId)
+      .then((raw) => {
+        if (!cancelled) setPageHtml(String((raw as Note).content || ''))
+      })
+      .catch(() => {
+        if (!cancelled) setPageHtml('')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [showPage, derivedPageId])
   const splitClass =
     showEditor && showPreview ? ' with-preview' : !showEditor && showPreview ? ' preview-only' : ''
 
   const editorPane = note ? (
     <>
-      <div className={`notebook-editor-split${splitClass}`}>
+      <div
+        ref={ingress.setHost}
+        className={`notebook-editor-split notebook-asset-drop${splitClass}${ingress.dragOver ? ' is-drag-over' : ''}`}
+        onDragOver={ingress.onDragOver}
+        onDragLeave={ingress.onDragLeave}
+        onDrop={ingress.onDrop}
+      >
         {isImage && note ? (
           <div className="notebook-image-pane">
             <img
@@ -354,6 +500,29 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
               alt={note.title}
             />
           </div>
+        ) : showPage && note ? (
+          <>
+            <DerivedViewBar noteId={derivedPageId} html={pageHtml} onOpen={(id) => void openNote(id)} />
+            <HtmlNoteFrame
+              title={note.title || note.id}
+              html={pageHtml}
+              sourceId={note.id}
+              onOpenSource={(id) => {
+                if (id === note.id) setMdViewMode('split')
+                else void openNote(id)
+              }}
+            />
+          </>
+        ) : showHtmlPage && note ? (
+          <>
+            <DerivedViewBar noteId={note.id} html={note.content} onOpen={(id) => void openNote(id)} />
+            <HtmlNoteFrame
+              title={note.title || note.id}
+              html={note.content}
+              sourceId={linkedSourceNoteId(note.id, note.content)}
+              onOpenSource={(id) => void openNote(id)}
+            />
+          </>
         ) : showEditor ? (
           <div className="note-editor-wrap">
             <NoteEditor
@@ -361,12 +530,17 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
               language={note.language}
               content={note.content}
               onChange={updateContent}
+              onScrollRatio={splitScroll.onEditorRatio}
+              onBindScroll={splitScroll.bindEditorScroll}
             />
           </div>
         ) : null}
         {showPreview ? (
           <div
+            ref={splitScroll.previewRef}
             className="notebook-preview-pane"
+            onScroll={splitScroll.onPreviewScroll}
+            tabIndex={0}
             title={mdViewMode === 'preview' ? t('notebook.previewEditHint') : undefined}
             onDoubleClick={mdViewMode === 'preview' ? () => setMdViewMode('source') : undefined}
           >
@@ -376,6 +550,9 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
           </div>
         ) : null}
       </div>
+      {note && !isImage ? (
+        <NotebookResourceStrip noteId={note.id} refreshKey={resourceRev} onForget={forgetResourceFile} />
+      ) : null}
       <NotebookStatusBar
         note={note}
         saveStatus={saveStatus}
@@ -403,8 +580,28 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
           {scopeLabel ? ` · ${scopeLabel}` : ''}
         </h3>
         <div className="notebook-ide-actions">
-          {note && mdLike ? (
-            <NotebookMdViewToggle mode={mdViewMode} onChange={setMdViewMode} />
+          {note && htmlDoc && !pairedSourceId ? (
+            <button
+              type="button"
+              className="wn-btn wn-btn-xs wn-btn-ghost"
+              {...pressProps(() => setHtmlSource((v) => !v))}
+            >
+              {showHtmlPage ? t('notebook.viewHtmlSource') : t('notebook.viewHtmlPage')}
+            </button>
+          ) : null}
+          {note && (mdLike || pairedSourceId) ? (
+            <NotebookMdViewToggle
+              mode={pairedSourceId ? 'page' : mdViewMode}
+              onChange={(mode) => {
+                if (pairedSourceId && mode !== 'page') {
+                  setMdViewMode(mode)
+                  void openNote(pairedSourceId)
+                  return
+                }
+                setMdViewMode(mode)
+              }}
+              showPage={Boolean(derivedPageId)}
+            />
           ) : null}
           <button
             type="button"

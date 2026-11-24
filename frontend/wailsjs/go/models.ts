@@ -2498,74 +2498,6 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult_WWorkbench_internal_notebook_ShelfInstallResult_ {
-	    ok: boolean;
-	    data: notebook.ShelfInstallResult;
-	    error?: errno.AppError;
-	
-	    static createFrom(source: any = {}) {
-	        return new ApiResult_WWorkbench_internal_notebook_ShelfInstallResult_(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.ok = source["ok"];
-	        this.data = this.convertValues(source["data"], notebook.ShelfInstallResult);
-	        this.error = this.convertValues(source["error"], errno.AppError);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class ApiResult_WWorkbench_internal_notebook_ShelfManifest_ {
-	    ok: boolean;
-	    data: notebook.ShelfManifest;
-	    error?: errno.AppError;
-	
-	    static createFrom(source: any = {}) {
-	        return new ApiResult_WWorkbench_internal_notebook_ShelfManifest_(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.ok = source["ok"];
-	        this.data = this.convertValues(source["data"], notebook.ShelfManifest);
-	        this.error = this.convertValues(source["error"], errno.AppError);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 	export class ApiResult_WWorkbench_internal_pluginpack_BuildResult_ {
 	    ok: boolean;
 	    data: pluginpack.BuildResult;
@@ -2647,6 +2579,74 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], pluginpack.ReleaseInfo);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_skill_Bundle_ {
+	    ok: boolean;
+	    data: skill.Bundle;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_skill_Bundle_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], skill.Bundle);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult_WWorkbench_internal_skill_InstallResult_ {
+	    ok: boolean;
+	    data: skill.InstallResult;
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult_WWorkbench_internal_skill_InstallResult_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], skill.InstallResult);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -4164,40 +4164,6 @@ export namespace app {
 		    return a;
 		}
 	}
-	export class ApiResult___WWorkbench_internal_notebook_ShelfCard_ {
-	    ok: boolean;
-	    data: notebook.ShelfCard[];
-	    error?: errno.AppError;
-	
-	    static createFrom(source: any = {}) {
-	        return new ApiResult___WWorkbench_internal_notebook_ShelfCard_(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.ok = source["ok"];
-	        this.data = this.convertValues(source["data"], notebook.ShelfCard);
-	        this.error = this.convertValues(source["error"], errno.AppError);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 	export class ApiResult___WWorkbench_internal_pluginpack_PackInfo_ {
 	    ok: boolean;
 	    data: pluginpack.PackInfo[];
@@ -4245,6 +4211,74 @@ export namespace app {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ok = source["ok"];
 	        this.data = this.convertValues(source["data"], pluginpack.ReleaseInfo);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WWorkbench_internal_skill_Package_ {
+	    ok: boolean;
+	    data: skill.Package[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_skill_Package_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], skill.Package);
+	        this.error = this.convertValues(source["error"], errno.AppError);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class ApiResult___WWorkbench_internal_skill_ShelfCard_ {
+	    ok: boolean;
+	    data: skill.ShelfCard[];
+	    error?: errno.AppError;
+	
+	    static createFrom(source: any = {}) {
+	        return new ApiResult___WWorkbench_internal_skill_ShelfCard_(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.data = this.convertValues(source["data"], skill.ShelfCard);
 	        this.error = this.convertValues(source["error"], errno.AppError);
 	    }
 	
@@ -8432,100 +8466,6 @@ export namespace notebook {
 	        this.to = source["to"];
 	    }
 	}
-	export class ShelfCard {
-	    id: string;
-	    name: string;
-	    version: string;
-	    root: string;
-	    bind: string;
-	    intent: string;
-	    description: string;
-	    limits: string[];
-	    exportedAt: string;
-	    files: string[];
-	    sharedBy?: string;
-	    sharedAt?: string;
-	    installed: boolean;
-	    installedRel?: string;
-	    state: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new ShelfCard(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.name = source["name"];
-	        this.version = source["version"];
-	        this.root = source["root"];
-	        this.bind = source["bind"];
-	        this.intent = source["intent"];
-	        this.description = source["description"];
-	        this.limits = source["limits"];
-	        this.exportedAt = source["exportedAt"];
-	        this.files = source["files"];
-	        this.sharedBy = source["sharedBy"];
-	        this.sharedAt = source["sharedAt"];
-	        this.installed = source["installed"];
-	        this.installedRel = source["installedRel"];
-	        this.state = source["state"];
-	    }
-	}
-	export class ShelfInstallResult {
-	    rel: string;
-	    version: string;
-	    sideBySide: boolean;
-	    pinned?: string;
-	    already: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new ShelfInstallResult(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.rel = source["rel"];
-	        this.version = source["version"];
-	        this.sideBySide = source["sideBySide"];
-	        this.pinned = source["pinned"];
-	        this.already = source["already"];
-	    }
-	}
-	export class ShelfManifest {
-	    id: string;
-	    name: string;
-	    version: string;
-	    root: string;
-	    bind: string;
-	    intent: string;
-	    description: string;
-	    limits: string[];
-	    exportedAt: string;
-	    files: string[];
-	    sharedBy?: string;
-	    sharedAt?: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new ShelfManifest(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.name = source["name"];
-	        this.version = source["version"];
-	        this.root = source["root"];
-	        this.bind = source["bind"];
-	        this.intent = source["intent"];
-	        this.description = source["description"];
-	        this.limits = source["limits"];
-	        this.exportedAt = source["exportedAt"];
-	        this.files = source["files"];
-	        this.sharedBy = source["sharedBy"];
-	        this.sharedAt = source["sharedAt"];
-	    }
-	}
 
 }
 
@@ -8635,6 +8575,145 @@ export namespace pluginpack {
 	        this.hasUI = source["hasUI"];
 	        this.active = source["active"];
 	        this.path = source["path"];
+	    }
+	}
+
+}
+
+export namespace skill {
+	
+	export class Bundle {
+	    id: string;
+	    name: string;
+	    version: string;
+	    root: string;
+	    bind: string;
+	    intent: string;
+	    description: string;
+	    limits: string[];
+	    exportedAt: string;
+	    files: string[];
+	    sharedBy?: string;
+	    sharedAt?: string;
+	    bodies?: Record<string, string>;
+	
+	    static createFrom(source: any = {}) {
+	        return new Bundle(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.version = source["version"];
+	        this.root = source["root"];
+	        this.bind = source["bind"];
+	        this.intent = source["intent"];
+	        this.description = source["description"];
+	        this.limits = source["limits"];
+	        this.exportedAt = source["exportedAt"];
+	        this.files = source["files"];
+	        this.sharedBy = source["sharedBy"];
+	        this.sharedAt = source["sharedAt"];
+	        this.bodies = source["bodies"];
+	    }
+	}
+	export class InstallResult {
+	    rel: string;
+	    version: string;
+	    sideBySide: boolean;
+	    pinned?: string;
+	    already: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new InstallResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rel = source["rel"];
+	        this.version = source["version"];
+	        this.sideBySide = source["sideBySide"];
+	        this.pinned = source["pinned"];
+	        this.already = source["already"];
+	    }
+	}
+	export class Package {
+	    id: string;
+	    name?: string;
+	    dir?: string;
+	    root?: string;
+	    content?: string;
+	    description?: string;
+	    bind?: string;
+	    intent?: string;
+	    version?: string;
+	    diskPath?: string;
+	    assetsDir?: string;
+	    noteId?: string;
+	    hasSteps?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Package(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.dir = source["dir"];
+	        this.root = source["root"];
+	        this.content = source["content"];
+	        this.description = source["description"];
+	        this.bind = source["bind"];
+	        this.intent = source["intent"];
+	        this.version = source["version"];
+	        this.diskPath = source["diskPath"];
+	        this.assetsDir = source["assetsDir"];
+	        this.noteId = source["noteId"];
+	        this.hasSteps = source["hasSteps"];
+	    }
+	}
+	export class ShelfCard {
+	    id: string;
+	    name: string;
+	    version: string;
+	    root: string;
+	    bind: string;
+	    intent: string;
+	    description: string;
+	    limits: string[];
+	    exportedAt: string;
+	    files: string[];
+	    sharedBy?: string;
+	    sharedAt?: string;
+	    bodies?: Record<string, string>;
+	    installed: boolean;
+	    installedRel?: string;
+	    state: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ShelfCard(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.version = source["version"];
+	        this.root = source["root"];
+	        this.bind = source["bind"];
+	        this.intent = source["intent"];
+	        this.description = source["description"];
+	        this.limits = source["limits"];
+	        this.exportedAt = source["exportedAt"];
+	        this.files = source["files"];
+	        this.sharedBy = source["sharedBy"];
+	        this.sharedAt = source["sharedAt"];
+	        this.bodies = source["bodies"];
+	        this.installed = source["installed"];
+	        this.installedRel = source["installedRel"];
+	        this.state = source["state"];
 	    }
 	}
 

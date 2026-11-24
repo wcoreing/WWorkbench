@@ -20,6 +20,7 @@ export const PRODUCT_VIEWS: Record<ProductId, ComponentType> = {
   docker: lazyNamed(() => import('../products/docker/DockerWorkbench'), 'DockerWorkbench'),
   environment: lazyNamed(() => import('../products/environment/EnvironmentWorkbench'), 'EnvironmentWorkbench'),
   notebook: lazyNamed(() => import('../products/notebook/NotebookWorkbench'), 'NotebookWorkbench'),
+  skillmarket: lazyNamed(() => import('../products/skillmarket/SkillMarketWorkbench'), 'SkillMarketWorkbench'),
   httpapi: lazyNamed(() => import('../products/httpapi/HttpApiWorkbench'), 'HttpApiWorkbench'),
   logs: lazyNamed(() => import('../products/logs/LogCenterWorkbench'), 'LogCenterWorkbench'),
   backup: lazyNamed(() => import('../products/backup/BackupWorkbench'), 'BackupWorkbench'),

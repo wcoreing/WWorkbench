@@ -187,16 +187,19 @@ mkdir -p "$NVM_DIR"
 }
 
 // goenvShellBlock 返回 goenv 初始化脚本块。
+// 先 unset GOENV_VERSION：避免外层（旧 ROOT / Cursor）钉死已卸载版本，导致本机 PTY 无法注入命令。
 func goenvShellBlock() string {
 	order := "export GOENV_PATH_ORDER=front"
 	if prefix := brewPrefix("goenv"); prefix != "" {
 		bin := filepath.Join(prefix, "bin")
-		return `export GOENV_ROOT="` + prefix + `"
+		return `unset GOENV_VERSION
+export GOENV_ROOT="` + prefix + `"
 ` + order + `
 export PATH="` + bin + `:$PATH"
 eval "$(goenv init -)"`
 	}
-	return `export GOENV_ROOT="$HOME/.goenv"
+	return `unset GOENV_VERSION
+export GOENV_ROOT="$HOME/.goenv"
 ` + order + `
 export PATH="$GOENV_ROOT/bin:$PATH"
 eval "$(goenv init -)"`

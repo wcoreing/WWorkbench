@@ -22,6 +22,7 @@ import (
 	"WWorkbench/internal/query"
 	"WWorkbench/internal/session"
 	sftpsvc "WWorkbench/internal/sftp"
+	"WWorkbench/internal/skill"
 	"WWorkbench/internal/store"
 	"WWorkbench/internal/terminal"
 	"WWorkbench/internal/tunnel"
@@ -44,6 +45,7 @@ type Service struct {
 	docker        *dockersvc.Manager
 	env           *environment.Manager
 	notebook      *notebook.Service
+	skills        skill.Store
 	sessions      *session.Manager
 	meta          *meta.Service
 	queries       *query.Service
@@ -92,6 +94,7 @@ func NewService(
 		docker:           dockerMgr,
 		env:              envMgr,
 		notebook:         notebookSvc,
+		skills:           newSkillStore(notebookSvc),
 		sessions:         sessions,
 		meta:             meta,
 		queries:          queries,

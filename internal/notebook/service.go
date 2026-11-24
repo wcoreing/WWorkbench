@@ -6,7 +6,9 @@ import (
 	"sync"
 
 	"WWorkbench/internal/errno"
+	"WWorkbench/internal/file"
 	"WWorkbench/internal/model"
+	"WWorkbench/internal/resource"
 	"WWorkbench/internal/store"
 
 	"github.com/google/uuid"
@@ -14,17 +16,26 @@ import (
 
 const uiSettingKey = "notebook_ui"
 
-// Service 笔记本业务服务（正文与资源真源 = 磁盘工作区 ~/.wworkbench/notebook）。
+// Service 文档视图所用的工作区服务。文件身份在 file.Service，正文仍在 ~/.wworkbench/notebook。
 type Service struct {
-	store    *store.Store // 仅 UI 设置等；笔记不再写 SQLite
-	dataDir  string
-	ensureMu sync.Mutex
-	fsReady  bool
+	store     *store.Store // 仅 UI 设置等；文档不再写 SQLite
+	dataDir   string
+	files     *file.Service
+	resources *resource.Service
+	ensureMu  sync.Mutex
+	fsReady   bool
 }
 
-// NewService 创建笔记本服务并确保磁盘工作区。
+// NewService 创建文档工作区服务，并挂上文件目录与资源服务。
 func NewService(st *store.Store, dataDir string) *Service {
-	s := &Service{store: st, dataDir: dataDir}
+	files := file.New(dataDir)
+	files.BindGit(WorkspaceRoot(dataDir))
+	s := &Service{
+		store:     st,
+		dataDir:   dataDir,
+		files:     files,
+		resources: resource.New(dataDir),
+	}
 	_ = s.EnsureFSNotebook()
 	return s
 }

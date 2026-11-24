@@ -18,10 +18,10 @@ func goenvScript() string {
 	if prefix := brewPrefix("goenv"); prefix != "" {
 		bin := filepath.Join(prefix, "bin")
 		if fileExists(filepath.Join(bin, "goenv")) {
-			return `export GOENV_ROOT="` + prefix + `" && ` + order + ` && export PATH="` + bin + `:$PATH" && eval "$(goenv init -)"`
+			return `unset GOENV_VERSION && export GOENV_ROOT="` + prefix + `" && ` + order + ` && export PATH="` + bin + `:$PATH" && eval "$(goenv init -)"`
 		}
 	}
-	return `export GOENV_ROOT="$HOME/.goenv" && ` + order + ` && export PATH="$GOENV_ROOT/bin:$PATH" && eval "$(goenv init -)"`
+	return `unset GOENV_VERSION && export GOENV_ROOT="$HOME/.goenv" && ` + order + ` && export PATH="$GOENV_ROOT/bin:$PATH" && eval "$(goenv init -)"`
 }
 
 // detectGo 检测 Go 运行时。

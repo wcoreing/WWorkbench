@@ -911,7 +911,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapEnableDirVersion,
-		Description: "启用笔记本某目录的版本管理（目录内建 git；工作流目录默认 ignore log.md）。",
+		Description: "文件服务绑定的 git：为相对目录建仓（目录内 .git；工作流默认 ignore log.md）。不要自己执行 git。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -924,7 +924,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapListDirVersions,
-		Description: "列出笔记本目录版本。任意文件夹可纳管；工作流排除 log.md。",
+		Description: "列出文件服务 git 工具里的目录版本。工作流排除 log.md。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -938,7 +938,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapPinDirVersion,
-		Description: "为笔记本目录创建版本（未启用则自动启用；无变更返回 HEAD）。",
+		Description: "经文件服务的 git 为目录创建版本（未启用则自动启用）。不要自己执行 git。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{
@@ -1207,6 +1207,7 @@ func (r *Registry) registerBuiltins() {
 		},
 		Handler: toolAgentConfirm,
 	})
+	registerSkillMarketTools(r)
 	registerBrowserTools(r)
 	registerDesktopTools(r)
 }

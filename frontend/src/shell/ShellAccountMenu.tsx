@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type KeyboardEvent } from 'react'
 import { api } from '../api/client'
 import { formatBytes, onHomeSyncProgress, type HomeSyncProgressEvent } from '../api/homeSyncEvents'
 import { ModalPortal, backdropDismissProps, pressProps } from '../components/compat'
+import { openSkillMarket } from '../features/skillmarket/openSkillMarket'
 import { useI18n } from '../i18n'
 import { notify } from '../notify'
 import { model } from '../../wailsjs/go/models'
@@ -287,6 +288,17 @@ export function ShellAccountMenu() {
                     </label>
                   </>
                 )}
+                <button
+                  type="button"
+                  className="wn-btn wn-btn-sm"
+                  title={t('shell.accountSkillMarketHint')}
+                  {...pressProps(() => {
+                    close()
+                    openSkillMarket()
+                  })}
+                >
+                  {t('shell.accountSkillMarket')}
+                </button>
                 {status?.loggedIn ? (
                   <div className="shell-account-sync-meta">
                     <p className="shell-account-hint">{t('shell.accountSecretHint')}</p>

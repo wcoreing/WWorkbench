@@ -27,6 +27,11 @@ export const Capability = {
   EnsureHostBackupPolicies: 'ensure_host_backup_policies',
   DatabaseOpen: 'database_open',
   NotebookOpen: 'notebook_open',
+  SkillMarketOpen: 'skillmarket_open',
+  ListSkillMarket: 'list_skill_market',
+  ListSkillShelf: 'list_skill_shelf',
+  PublishSkillMarket: 'publish_skill_market',
+  InstallSkillMarket: 'install_skill_market',
   NotebookAppend: 'notebook_append_content',
   ListNotes: 'list_notes',
   SearchNotes: 'search_notes',
@@ -108,4 +113,5 @@ export const UI_CAPABILITIES: ReadonlySet<string> = new Set([
   Capability.SSHForwardOpen,
   Capability.BrowserOpen,
   Capability.OpenProjectStage,
+  Capability.SkillMarketOpen,
 ])

@@ -13,6 +13,7 @@ import (
 	"WWorkbench/internal/pluginpack"
 	"WWorkbench/internal/query"
 	"WWorkbench/internal/session"
+	"WWorkbench/internal/skill"
 	"WWorkbench/internal/store"
 	"WWorkbench/internal/terminal"
 )
@@ -32,6 +33,10 @@ type Deps struct {
 	Queries     *query.Service
 	Store       *store.Store
 	Notebook    *notebook.Service
+	// Skills 方法包领域接口；list/get/pin/export 优先走这里。Notebook 仍用于账本/附件等产品能力。
+	Skills skill.Store
+	// SkillMarket 云商店 + 本机货架（服务端产品扩展先行）。
+	SkillMarket *SkillMarketOps
 	Docker      *dockersvc.Manager
 	UIActions   *UIActionBus
 	Radar       *RadarBus

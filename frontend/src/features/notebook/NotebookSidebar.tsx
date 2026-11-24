@@ -41,8 +41,6 @@ import {
   type NotebookSidebarCtxMenu,
 } from './NotebookSidebarContextMenu'
 import { NotebookSidebarTree } from './NotebookSidebarTree'
-import { SkillShelfPanel } from './SkillShelfPanel'
-
 interface Props {
   groups: NotebookGroup[]
   summaries: NoteSummary[]
@@ -118,7 +116,6 @@ export function NotebookSidebar({
   const [clipboard, setClipboard] = useState<NotebookClipboard | null>(null)
   const [dropOver, setDropOver] = useState('')
   const [versionBusy, setVersionBusy] = useState(false)
-  const [shelfOpen, setShelfOpen] = useState(false)
   const [versionModalDir, setVersionModalDir] = useState('')
   const [versionFlags, setVersionFlags] = useState<Record<string, boolean>>({})
   const inlineRef = useRef<HTMLInputElement>(null)
@@ -512,14 +509,6 @@ export function NotebookSidebar({
           <div className="sidebar-header-actions">
             <button
               type="button"
-              className={`wn-btn wn-btn-sm${shelfOpen ? ' wn-btn-primary' : ''}`}
-              aria-pressed={shelfOpen}
-              {...pressProps(() => setShelfOpen((v) => !v))}
-            >
-              货架
-            </button>
-            <button
-              type="button"
               className="wn-btn wn-btn-icon wn-btn-sm"
               title={t('notebook.newFile')}
               {...pressProps(() => beginInlineCreate(selectedFolderId || treeRootId, false))}
@@ -550,14 +539,6 @@ export function NotebookSidebar({
           <div className="sidebar-header-actions">
             <button
               type="button"
-              className={`wn-btn wn-btn-sm${shelfOpen ? ' wn-btn-primary' : ''}`}
-              aria-pressed={shelfOpen}
-              {...pressProps(() => setShelfOpen((v) => !v))}
-            >
-              货架
-            </button>
-            <button
-              type="button"
               className="wn-btn wn-btn-icon wn-btn-sm"
               title={t('notebook.newFile')}
               {...pressProps(() => beginInlineCreate(selectedFolderId || treeRootId, false))}
@@ -576,7 +557,7 @@ export function NotebookSidebar({
         </div>
       )}
 
-      {!compact && !shelfOpen ? (
+      {!compact ? (
         <div className="notebook-filter-bar">
           <input
             type="search"
@@ -588,7 +569,7 @@ export function NotebookSidebar({
         </div>
       ) : null}
 
-      {selectionCount > 0 && !shelfOpen && (
+      {selectionCount > 0 && (
         <div className="notebook-selection-bar">
           <span className="pane-meta">{t('notebook.selectedCount', { count: selectionCount })}</span>
           <button type="button" className="wn-btn wn-btn-xs wn-btn-ghost" {...pressProps(clearSelection)}>
@@ -622,12 +603,6 @@ export function NotebookSidebar({
         </div>
       )}
 
-      {shelfOpen ? (
-        <SkillShelfPanel
-          selectedDir={selectedFolderId === NOTEBOOK_ROOT_ID ? '' : selectedFolderId}
-          onInstalled={() => void onRefresh()}
-        />
-      ) : (
       <div
         className={`sidebar-body notebook-tree-body${selectionCount > 0 ? ' is-batching' : ''}`}
         onClick={(e) => {
@@ -679,7 +654,6 @@ export function NotebookSidebar({
           t={t}
         />
       </div>
-      )}
 
       {ctx && (
         <NotebookSidebarContextMenu

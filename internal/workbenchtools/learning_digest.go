@@ -5,6 +5,7 @@ import (
 
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/notebook"
+	"WWorkbench/internal/skill/docfmt"
 	"WWorkbench/internal/store"
 )
 
@@ -49,9 +50,20 @@ func BuildLearningDigest(d *Deps, projectID string) *model.LearningDigestDO {
 		OpenEpisodes: []model.LearningEpisodeBriefDO{},
 	}
 
-	if d.Notebook != nil && skillPath != "" {
-		if note, err := d.Notebook.GetNote(notebook.SkillNoteID(skillPath)); err == nil && note != nil {
-			extras := notebook.ExtractWorkflowNoteBodyExtras(note.Content)
+	if skillPath != "" {
+		var content string
+		if d.Skills != nil {
+			if pkg, err := d.Skills.Get(skillPath); err == nil {
+				content = pkg.Content
+			}
+		}
+		if content == "" && d.Notebook != nil {
+			if note, err := d.Notebook.GetNote(notebook.SkillNoteID(skillPath)); err == nil && note != nil {
+				content = note.Content
+			}
+		}
+		if content != "" {
+			extras := docfmt.ExtractBodyExtras(content)
 			out.Lessons = clipDigestLines(extras.Lessons, learningDigestLessonLimit)
 			out.TrustedOps = clipDigestLines(extras.TrustedOps, learningDigestTrustLimit)
 		}

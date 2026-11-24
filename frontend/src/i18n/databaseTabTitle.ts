@@ -12,7 +12,7 @@ export function localizeWorkTabTitle(
     return t('database.untitledQuery')
   }
   if (title === '历史查询' || title === 'History query') return t('database.historyQuery')
-  if (title === '笔记本' || title === 'Notebook') return t('database.notebookTab')
+  if (title === '笔记本' || title === '文档' || title === 'Notebook' || title === 'Docs') return t('database.notebookTab')
 
   let m = title.match(/^(?:新建表|New table) · (.+)$/i)
   if (m) return t('database.newTableTab', { database: m[1] })

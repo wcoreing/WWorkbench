@@ -2,17 +2,15 @@ package workbenchtools
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"mime"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/notebook"
+	"WWorkbench/internal/skill"
+	"WWorkbench/internal/skill/docfmt"
 	"WWorkbench/internal/workbench"
 )
 
@@ -106,21 +104,36 @@ func updateSkillAllowsStepless(in UpdateSkillArgs) bool {
 }
 
 // UpdateSkillNow 写回 Skill 沉淀（免确认）。
-// 无实质变更则跳过；有变更则写前 pin 目录版本，再落盘（Save 写后再 pin）。
+// 正文经 skill.Store.Put；格式化仍用 notebook 工作流模板（产品文案，非存储）。
 func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
-	if d == nil || d.Notebook == nil {
-		return Fail("笔记本未就绪")
+	if d == nil || d.Skills == nil {
+		return Fail("技能存储未就绪")
 	}
 	name := strings.TrimSpace(in.Name)
 	if name == "" {
 		return Fail("name 不能为空")
 	}
-	cur, err := resolveWorkflowSSOT(d, name)
+	var cur model.WorkflowDO
+	var existingContent string
 	created := false
-	if err != nil {
+	pkg, getErr := d.Skills.Get(name)
+	if getErr == nil {
+		nid := firstNonEmpty(pkg.NoteID, skill.EntryInDir(pkg.Dir))
+		existingContent = pkg.Content
+		n := model.NoteDO{ID: nid, Title: pkg.Name, Content: pkg.Content, Role: model.NoteRoleSkill}
+		if p, ok := notebook.ParseWorkflowNote(n); ok {
+			cur = p
+		} else {
+			cur = model.WorkflowDO{
+				Name: firstNonEmpty(pkg.ID, name), Title: pkg.Name,
+				Description: pkg.Description, Intent: pkg.Intent,
+				NoteID: nid, Source: "skill", Steps: []model.WorkflowStepDO{},
+			}
+		}
+	} else {
 		// 项目/运维等方法 Skill 允许无浏览器步骤，仅 lessons/脚本/说明即可首创。
 		if len(in.Steps) == 0 && !updateSkillAllowsStepless(in) {
-			return Fail(err.Error() + "；新建 Skill：传完整目录路径 + lessons/description/script，或传入 steps（任务区浏览器步骤）")
+			return Fail(getErr.Error() + "；新建 Skill：传完整目录路径 + lessons/description/script，或传入 steps（任务区浏览器步骤）")
 		}
 		title := strings.TrimSpace(in.Title)
 		if title == "" {
@@ -140,15 +153,14 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 			Intent:      strings.TrimSpace(in.Intent),
 			Steps:       steps,
 			SourceRunID: strings.TrimSpace(in.SourceRunID),
-			Source:      "note",
+			Source:      "skill",
 		}
 		created = true
 	}
 	noteID := firstNonEmpty(cur.NoteID, notebook.SkillNoteID(name))
-	existing, _ := d.Notebook.GetNote(noteID)
-	extras := notebook.WorkflowNoteBodyExtras{}
-	if existing != nil {
-		extras = notebook.ExtractWorkflowNoteBodyExtras(existing.Content)
+	extras := docfmt.BodyExtras{}
+	if existingContent != "" {
+		extras = docfmt.ExtractBodyExtras(existingContent)
 	}
 
 	if v := strings.TrimSpace(in.Title); v != "" {
@@ -227,16 +239,19 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	}
 	cur.Source = "update_skill"
 
-	previewContent := notebook.FormatWorkflowNoteContent(cur, extras)
-	contentSame := !created && existing != nil &&
-		normalizeSkillContent(existing.Content) == normalizeSkillContent(previewContent)
+	if strings.TrimSpace(cur.NoteID) == "" {
+		cur.NoteID = noteID
+	}
+	previewContent := docfmt.Format(cur, extras)
+	contentSame := !created && existingContent != "" &&
+		normalizeSkillContent(existingContent) == normalizeSkillContent(previewContent)
 	if contentSame && !wantResources && !lessonsAdded && !scriptAdded && !trustedAdded {
 		out := map[string]interface{}{
 			"ok": true, "updated": false, "skipped": true,
 			"noteId": noteID, "workflow": cur,
 			"note": "内容无实质变更，跳过写盘与版本；list_skill_versions 可回看。",
 		}
-		if st, e := d.Notebook.ListSkillVersions(name, 1); e == nil && len(st.Commits) > 0 {
+		if st, e := d.Skills.ListVersions(name, 1); e == nil && len(st.Commits) > 0 {
 			out["version"] = st.Commits[0]
 		}
 		return OKData(out)
@@ -244,12 +259,12 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 
 	var beforeVer interface{}
 	var beforePinErr string
-	if existing != nil {
+	if !created && existingContent != "" {
 		msg := "写前检查点"
 		if intent := strings.TrimSpace(in.Intent); intent != "" {
 			msg = "写前检查点: " + truncateRunes(intent, 48)
 		}
-		if v, pinErr := d.Notebook.PinSkillVersion(name, msg); pinErr != nil {
+		if v, pinErr := d.Skills.Pin(name, msg); pinErr != nil {
 			beforePinErr = pinErr.Error()
 		} else {
 			beforeVer = v
@@ -257,49 +272,62 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	}
 
 	attached := []map[string]interface{}{}
-	for _, p := range in.ResourcePaths {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-		asset, aerr := attachLocalFileToSkillNote(d, noteID, p)
-		if aerr != nil {
-			return Fail(fmt.Sprintf("挂载资源失败 %s: %s", p, aerr.Error()))
-		}
-		kind := notebook.SkillResourceKindFile
-		if asset.IsImage {
-			kind = notebook.SkillResourceKindScreenshot
-		}
-		attached = append(attached, map[string]interface{}{
-			"name": asset.Name, "url": asset.URL, "markdown": asset.Markdown, "kind": kind,
-		})
-		md := strings.TrimSpace(asset.Markdown)
-		if md == "" {
-			continue
-		}
-		line := notebook.FormatSkillResourceLine(kind, stamp+" · "+asset.Name, md)
-		if strings.TrimSpace(extras.Resources) == "" ||
-			strings.Contains(extras.Resources, "无附件") ||
-			strings.Contains(extras.Resources, "update_skill(resourcePaths") ||
-			strings.Contains(extras.Resources, "插入附件") {
-			head := fmt.Sprintf("> 附件真源：本 Skill 目录 assets/（与 SKILL.md 同级；noteId=%s）。相对链接 assets/文件名。\n\n", noteID)
-			extras.Resources = head + line
-		} else {
-			extras.Resources = strings.TrimSpace(extras.Resources) + "\n" + line
+	if wantResources {
+		for _, p := range in.ResourcePaths {
+			p = strings.TrimSpace(p)
+			if p == "" {
+				continue
+			}
+			asset, aerr := d.Skills.AttachAsset(name, p)
+			if aerr != nil {
+				return Fail(fmt.Sprintf("挂载资源失败 %s: %s", p, aerr.Error()))
+			}
+			kind := docfmt.ResourceKindFile
+			if asset.IsImage {
+				kind = docfmt.ResourceKindScreenshot
+			}
+			attached = append(attached, map[string]interface{}{
+				"name": asset.Name, "relPath": asset.RelPath, "markdown": asset.Markdown, "kind": kind,
+			})
+			md := strings.TrimSpace(asset.Markdown)
+			if md == "" {
+				continue
+			}
+			line := docfmt.FormatResourceLine(kind, stamp+" · "+asset.Name, md)
+			if strings.TrimSpace(extras.Resources) == "" ||
+				strings.Contains(extras.Resources, "无附件") ||
+				strings.Contains(extras.Resources, "update_skill(resourcePaths") ||
+				strings.Contains(extras.Resources, "插入附件") {
+				head := fmt.Sprintf("> 附件真源：本 Skill 目录 assets/（与 SKILL.md 同级；noteId=%s）。相对链接 assets/文件名。\n\n", noteID)
+				extras.Resources = head + line
+			} else {
+				extras.Resources = strings.TrimSpace(extras.Resources) + "\n" + line
+			}
 		}
 	}
 
-	saved, err := d.Notebook.SaveWorkflowNoteWithExtras(cur, extras)
+	writeContent := docfmt.Format(cur, extras)
+	savedPkg, err := d.Skills.Put(name, skill.Patch{Content: writeContent})
 	if err != nil {
 		return Fail(err.Error())
 	}
+	savedNoteID := firstNonEmpty(savedPkg.NoteID, noteID)
+	cur.NoteID = savedNoteID
+	cur.Name = firstNonEmpty(savedPkg.ID, cur.Name)
+	pinMsg := "update_skill"
+	if intent := strings.TrimSpace(in.Intent); intent != "" {
+		pinMsg = pinMsg + ": " + intent
+	}
+	if _, pinErr := d.Skills.Pin(name, pinMsg); pinErr != nil {
+		_ = pinErr
+	}
 	// Skill 跟资源走：项目收口勿切浏览器/工作流产品线，也不自动 reveal 抢走当前页。
-	if d.Radar != nil && saved.NoteID != "" {
-		d.Radar.EmitNotebookNote(workbench.RadarOpUpdate, saved.NoteID, "skill-"+saved.Name, saved.Title, false)
+	if d.Radar != nil && savedNoteID != "" {
+		d.Radar.EmitNotebookNote(workbench.RadarOpUpdate, savedNoteID, "skill-"+cur.Name, cur.Title, false)
 	}
 	out := map[string]interface{}{
 		"ok": true, "updated": true, "skipped": false,
-		"workflow": saved, "noteId": saved.NoteID,
+		"workflow": cur, "noteId": savedNoteID,
 		"attached": attached,
 		"note":     "已写前打版本并更新 Skill；list_skill_versions / restore_skill_version 可回滚；下次 get_skill 即生效。",
 	}
@@ -309,7 +337,7 @@ func UpdateSkillNow(d *Deps, in UpdateSkillArgs) ToolResult {
 	if beforePinErr != "" {
 		out["beforePinError"] = beforePinErr
 	}
-	if st, e := d.Notebook.ListSkillVersions(saved.Name, 1); e == nil && len(st.Commits) > 0 {
+	if st, e := d.Skills.ListVersions(name, 1); e == nil && len(st.Commits) > 0 {
 		out["version"] = st.Commits[0]
 	}
 	return OKData(out)
@@ -319,27 +347,4 @@ func normalizeSkillContent(s string) string {
 	s = strings.ReplaceAll(s, "\r\n", "\n")
 	s = strings.ReplaceAll(s, "\r", "\n")
 	return strings.TrimSpace(s)
-}
-
-func attachLocalFileToSkillNote(d *Deps, noteID, absPath string) (*model.NotebookAssetDO, error) {
-	absPath = filepath.Clean(absPath)
-	if !filepath.IsAbs(absPath) {
-		return nil, fmt.Errorf("需要绝对路径")
-	}
-	raw, err := os.ReadFile(absPath)
-	if err != nil {
-		return nil, err
-	}
-	name := filepath.Base(absPath)
-	mimeType := mime.TypeByExtension(filepath.Ext(name))
-	if mimeType == "" {
-		mimeType = "application/octet-stream"
-	}
-	b64 := base64.StdEncoding.EncodeToString(raw)
-	return d.Notebook.SaveAsset(model.NotebookAssetUploadDO{
-		NoteID: noteID,
-		Name:   name,
-		MIME:   mimeType,
-		Data:   b64,
-	})
 }

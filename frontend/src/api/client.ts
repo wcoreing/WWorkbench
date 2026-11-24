@@ -24,7 +24,7 @@ import type {
 } from './types'
 import { ApiCallError } from './errors'
 import { normalizeHTTPFolder, normalizeHTTPSavedRequest } from './httpNormalize'
-import { model, notebook, workbenchtools } from '../../wailsjs/go/models'
+import { model, notebook, skill, workbenchtools } from '../../wailsjs/go/models'
 
 // Wails 绑定在 generate 后可用
 import {
@@ -69,6 +69,7 @@ import {
   TrustSSHHost,
   OpenTerminal,
   OpenLocalTerminal,
+  OpenNotebookAsset,
   CloseTerminal,
   WriteTerminal,
   ResizeTerminal,
@@ -183,6 +184,7 @@ import {
   CloseLearningEpisode,
   ListDirVersions,
   ListSkillShelf,
+  ListSkillPackages,
   ExportSkillShelf,
   InstallSkillShelf,
   ListSkillMarket,
@@ -287,6 +289,7 @@ import {
   ListNotes,
   SearchNotes,
   GetNote,
+  NoteFileRevision,
   SaveNote,
   DeleteNote,
   DeleteNotes,
@@ -296,6 +299,10 @@ import {
   ExportNote,
   SaveNotebookAsset,
   PickNotebookAssets,
+  ImportNotebookResources,
+  ListNotebookResources,
+  DeleteNotebookResource,
+  RevealNotebookResource,
   NotebookWorkspacePath,
   NoteDiskPath,
   RevealNotebookNote,
@@ -544,8 +551,9 @@ function normalizeLocalDir(raw: LocalDirResult | null | undefined): LocalDirResu
   }
 }
 
-export type SkillShelfCard = notebook.ShelfCard
-export type SkillShelfInstall = notebook.ShelfInstallResult
+export type SkillShelfCard = skill.ShelfCard
+export type SkillShelfInstall = skill.InstallResult
+export type SkillPackageSummary = skill.Package
 
 export type SkillMarketListing = {
   id: string
@@ -1059,6 +1067,8 @@ export const api = {
   deleteNotebookGroup: (id: string) => unwrap(() => DeleteNotebookGroup(id)),
   listNotes: async () => asArray(await unwrap(() => ListNotes())),
   listSkillShelf: async () => asArray(await unwrap(() => ListSkillShelf())),
+  listSkillPackages: async (prefix = '') =>
+    asArray(await unwrap(() => ListSkillPackages(prefix))) as SkillPackageSummary[],
   exportSkillShelf: (dirRel: string) => unwrap(() => ExportSkillShelf(dirRel)),
   installSkillShelf: (id: string, version: string) => unwrap(() => InstallSkillShelf(id, version)),
   listSkillMarket: async () => asArray((await unwrap(() => ListSkillMarket())) as unknown as SkillMarketListing[]),
@@ -1066,6 +1076,14 @@ export const api = {
     unwrap(() => PublishSkillMarket(dirRel)) as Promise<SkillMarketListing>,
   installSkillMarket: (id: string, version: string) =>
     unwrap(() => InstallSkillMarket(id, version)) as Promise<SkillShelfInstall>,
+  noteFileRevision: async (fileRel: string) =>
+    (await unwrap(() => NoteFileRevision(fileRel))) as {
+      enabled?: boolean
+      short?: string
+      dirty?: boolean
+      rel?: string
+      repo?: string
+    },
   listDirVersions: async (dirRel: string, limit = 24) =>
     (await unwrap(() => ListDirVersions(dirRel, limit))) as {
       ok?: boolean
@@ -1147,6 +1165,14 @@ export const api = {
   saveNotebookAsset: (in_: model.NotebookAssetUploadDO) => unwrap(() => SaveNotebookAsset(in_)),
   pickNotebookAssets: async (noteId: string, imagesOnly: boolean) =>
     asArray(await unwrap(() => PickNotebookAssets(noteId, imagesOnly))),
+  importNotebookResources: async (noteId: string, paths: string[]) =>
+    asArray(await unwrap(() => ImportNotebookResources(noteId, paths))),
+  listNotebookResources: async (noteId: string) =>
+    asArray(await unwrap(() => ListNotebookResources(noteId))),
+  deleteNotebookResource: (id: string) => unwrap(() => DeleteNotebookResource(id)),
+  revealNotebookResource: (id: string) => unwrap(() => RevealNotebookResource(id)),
+  openNotebookAsset: (noteId: string, fileName: string) =>
+    unwrap(() => OpenNotebookAsset(noteId, fileName)),
   notebookWorkspacePath: async () => (await unwrap(() => NotebookWorkspacePath())) ?? '',
   noteDiskPath: async (noteId: string) => (await unwrap(() => NoteDiskPath(noteId))) ?? '',
   revealNotebookNote: (noteId: string) => unwrap(() => RevealNotebookNote(noteId)),

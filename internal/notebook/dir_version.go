@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"WWorkbench/internal/dirgit"
+	"WWorkbench/internal/file"
 )
 
-// DirVersion 目录仓一版提交。
-type DirVersion = dirgit.CommitInfo
+// DirVersion 目录仓一版提交。版本工具是文件服务绑定的 git。
+type DirVersion = file.Revision
 
 // DirVersionStatus 目录版本时间轴。
 type DirVersionStatus struct {
@@ -22,8 +22,14 @@ type DirVersionStatus struct {
 	Commits []DirVersion `json:"commits"`
 }
 
-func (s *Service) dirVersionOpt(dirRel string) dirgit.Options {
-	return dirgit.Options{ExtraIgnore: dirgit.DefaultExtraIgnore(dirRel)}
+func (s *Service) gitTool() *file.Git {
+	if s == nil || s.files == nil {
+		return nil
+	}
+	if s.files.Git() == nil {
+		s.files.BindGit(s.workspaceRoot())
+	}
+	return s.files.Git()
 }
 
 // ResolveDirRel 解析笔记本内相对目录（禁止 .. / 越界）。
@@ -64,46 +70,59 @@ func (s *Service) ResolveDirRel(dirRel string) (abs, rel string, err error) {
 
 // EnableDirVersion 启用目录版本管理。
 func (s *Service) EnableDirVersion(dirRel string) (DirVersionStatus, error) {
-	abs, rel, err := s.ResolveDirRel(dirRel)
-	if err != nil {
+	g := s.gitTool()
+	if g == nil {
+		return DirVersionStatus{}, errnoNotebook("文件服务未绑定 git")
+	}
+	if err := g.Enable(dirRel); err != nil {
 		return DirVersionStatus{}, err
 	}
-	if err := dirgit.Enable(abs, s.dirVersionOpt(rel)); err != nil {
+	_, rel, err := s.ResolveDirRel(dirRel)
+	if err != nil {
 		return DirVersionStatus{}, err
 	}
 	return s.ListDirVersions(rel, 24)
 }
 
+// FileRevision 笔记文件在最近一层目录仓中的提交。
+func (s *Service) FileRevision(fileRel string) (file.FileRevision, error) {
+	g := s.gitTool()
+	if g == nil {
+		return file.FileRevision{}, errnoNotebook("文件服务未绑定 git")
+	}
+	return g.FileRevision(fileRel)
+}
+
 // ListDirVersions 列出目录版本。
 func (s *Service) ListDirVersions(dirRel string, limit int) (DirVersionStatus, error) {
-	abs, rel, err := s.ResolveDirRel(dirRel)
-	if err != nil {
-		return DirVersionStatus{}, err
+	g := s.gitTool()
+	if g == nil {
+		return DirVersionStatus{}, errnoNotebook("文件服务未绑定 git")
 	}
-	st, err := dirgit.StatusOf(abs, limit)
+	st, err := g.Status(dirRel, limit)
 	if err != nil {
 		return DirVersionStatus{}, err
 	}
 	return DirVersionStatus{
-		Rel: rel, Dir: abs, Enabled: st.Enabled,
+		Rel: st.Rel, Dir: st.Dir, Enabled: st.Enabled,
 		Head: st.Head, Working: st.Working, Commits: st.Commits,
 	}, nil
 }
 
 // PinDirVersion 创建目录版本。
 func (s *Service) PinDirVersion(dirRel, message string) (DirVersion, error) {
-	abs, rel, err := s.ResolveDirRel(dirRel)
-	if err != nil {
-		return DirVersion{}, err
+	g := s.gitTool()
+	if g == nil {
+		return DirVersion{}, errnoNotebook("文件服务未绑定 git")
 	}
-	return dirgit.Pin(abs, message, s.dirVersionOpt(rel))
+	return g.Pin(dirRel, message)
 }
 
 // RestoreDirVersion 回退目录到某版本。
 func (s *Service) RestoreDirVersion(dirRel, hash, message string) (DirVersion, error) {
-	abs, rel, err := s.ResolveDirRel(dirRel)
-	if err != nil {
-		return DirVersion{}, err
+	g := s.gitTool()
+	if g == nil {
+		return DirVersion{}, errnoNotebook("文件服务未绑定 git")
 	}
 	msg := strings.TrimSpace(message)
 	if msg == "" {
@@ -113,16 +132,16 @@ func (s *Service) RestoreDirVersion(dirRel, hash, message string) (DirVersion, e
 		}
 		msg = "restore: " + short
 	}
-	return dirgit.Restore(abs, hash, msg, s.dirVersionOpt(rel))
+	return g.Restore(dirRel, hash, msg)
 }
 
 // DirVersionEnabled 目录是否已建仓。
 func (s *Service) DirVersionEnabled(dirRel string) bool {
-	abs, _, err := s.ResolveDirRel(dirRel)
-	if err != nil {
+	g := s.gitTool()
+	if g == nil {
 		return false
 	}
-	return dirgit.IsRepo(abs)
+	return g.Enabled(dirRel)
 }
 
 // MapDirVersionFlags 批量：相对路径 → 是否已建仓（只查 .git，不跑 git log）。

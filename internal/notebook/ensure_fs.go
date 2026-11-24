@@ -43,6 +43,9 @@ func (s *Service) EnsureFSNotebook() error {
 	if err := s.seedBuiltinWorkflowsFS(); err != nil {
 		return err
 	}
+	if err := s.relocateLegacyBundles(); err != nil {
+		return err
+	}
 	s.fsReady = true
 	return nil
 }

@@ -1,4 +1,4 @@
-// Package dirgit 笔记本任意目录的 git 版本仓（目录内 .git；可按策略 ignore）。
+// Package dirgit 目录内 git 引擎。对外由文件服务绑定的 file.Git 调用，产品与技能不要直接依赖本包。
 package dirgit
 
 import (
@@ -66,6 +66,31 @@ func run(dir string, args ...string) (string, error) {
 func mustRun(dir string, args ...string) string {
 	out, _ := run(dir, args...)
 	return out
+}
+
+// FileStamp 该文件在仓内的最近提交（前 7 位）以及工作区是否改过它。
+// 空仓没有提交时 short 为空，不视为失败。
+func FileStamp(repoDir, fileRel string) (short string, dirty bool, err error) {
+	fileRel = strings.TrimPrefix(filepath.ToSlash(strings.TrimSpace(fileRel)), "/")
+	if fileRel == "" || strings.Contains(fileRel, "..") {
+		return "", false, fmt.Errorf("非法路径")
+	}
+	out, logErr := run(repoDir, "log", "-1", "--format=%H", "--", fileRel)
+	hash := strings.TrimSpace(out)
+	if i := strings.IndexByte(hash, '\n'); i >= 0 {
+		hash = strings.TrimSpace(hash[:i])
+	}
+	if logErr != nil && hash == "" && !strings.Contains(logErr.Error(), "does not have any commits") {
+		return "", false, logErr
+	}
+	if len(hash) >= 7 {
+		short = hash[:7]
+	}
+	st, err := run(repoDir, "status", "--porcelain", "--", fileRel)
+	if err != nil {
+		return short, false, err
+	}
+	return short, strings.TrimSpace(st) != "", nil
 }
 
 // IsRepo 目录是否已纳管。
@@ -215,6 +240,36 @@ func Enable(dir string, opt Options) error {
 		return fmt.Errorf("invalid dir")
 	}
 	return ensureRepo(dir, opt)
+}
+
+// CommitIfDirty 源文件有变更才提交。无变更返回当前 HEAD，changed 为 false。未建仓则先 Enable。
+func CommitIfDirty(dir, message string, opt Options) (CommitInfo, bool, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	dir = filepath.Clean(strings.TrimSpace(dir))
+	if dir == "" || dir == "." {
+		return CommitInfo{}, false, fmt.Errorf("invalid dir")
+	}
+	if err := ensureRepo(dir, opt); err != nil {
+		return CommitInfo{}, false, err
+	}
+	if _, err := run(dir, "add", "-A"); err != nil {
+		return CommitInfo{}, false, err
+	}
+	if _, err := run(dir, "diff", "--cached", "--quiet"); err == nil {
+		info, err := headInfo(dir)
+		return info, false, err
+	}
+	msg := strings.TrimSpace(message)
+	if msg == "" {
+		msg = "update"
+	}
+	if _, err := run(dir, "commit", "-m", msg); err != nil {
+		return CommitInfo{}, false, err
+	}
+	info, err := headInfo(dir)
+	return info, true, err
 }
 
 // Pin 创建当前目录版本（无变更则返回 HEAD；未建仓则先 Enable）。

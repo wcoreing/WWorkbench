@@ -33,6 +33,7 @@ export const PRODUCT_NOTEBOOK_ROOTS: Record<ProductId, readonly string[]> = {
   logs: [NOTEBOOK_ROOT_OPS],
   httpapi: [NOTEBOOK_ROOT_OPS],
   notebook: [NOTEBOOK_ROOT_MEMORY, NOTEBOOK_ROOT_OPS],
+  skillmarket: [],
   plugins: [],
 }
 

@@ -74,7 +74,7 @@ func (s *Service) listGroupsFS() ([]model.NotebookGroupDO, error) {
 		}
 		addGroup(name, name, "", base+i, mt)
 	}
-	// 如实递归子目录（含 Skill 的 assets/、scripts/、*.assets）
+	// 如实递归子目录（含 Skill 的 assets/、scripts/，以及笔记同名目录）
 	err = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil || path == root {
 			return nil
@@ -515,12 +515,7 @@ func (s *Service) saveNoteFS(n model.NoteDO) (*model.NoteDO, error) {
 		n.ID = filepath.ToSlash(rel)
 		if oldContent != "" && !sameFile(oldContent, path) {
 			_ = os.Remove(oldContent)
-			newAssets := strings.TrimSuffix(path, filepath.Ext(path)) + PlainAssetsSuffix
-			if oldAssets != "" && !sameFile(oldAssets, newAssets) {
-				if _, err := os.Stat(oldAssets); err == nil {
-					_ = os.Rename(oldAssets, newAssets)
-				}
-			}
+			s.adoptPlainBundle(oldContent, path)
 		}
 	}
 	now := time.Now().Unix()
@@ -528,6 +523,10 @@ func (s *Service) saveNoteFS(n model.NoteDO) (*model.NoteDO, error) {
 		n.CreatedAt = now
 	}
 	n.UpdatedAt = now
+	if content, _, err := s.notePaths(n.ID); err == nil && oldContent != "" && !sameFile(oldContent, content) {
+		s.rebaseDocuments(oldContent, content)
+	}
+	s.indexDocument(n.ID)
 	return s.getNoteFS(n.ID)
 }
 
@@ -570,10 +569,11 @@ func (s *Service) plainNoteSavePath(n *model.NoteDO) (string, error) {
 }
 
 func (s *Service) deleteNoteFS(id string) error {
-	contentPath, assetsDir, err := s.notePaths(id)
+	contentPath, _, err := s.notePaths(id)
 	if err != nil {
 		return err
 	}
+	s.forgetAssets(id)
 	if dir, _, ok := s.skillDirAbs(id); ok {
 		if err := os.RemoveAll(dir); err != nil {
 			return errno.Wrap(errno.CodeStoreFailed, "删除 Skill 失败", err)
@@ -581,8 +581,13 @@ func (s *Service) deleteNoteFS(id string) error {
 		return nil
 	}
 	_ = os.Remove(contentPath)
-	_ = os.RemoveAll(assetsDir)
+	s.removePlainBundle(contentPath)
 	return nil
+}
+
+func isHtmlNoteID(id string) bool {
+	id = strings.ToLower(strings.TrimSpace(id))
+	return strings.HasSuffix(id, ".html") || strings.HasSuffix(id, ".htm")
 }
 
 func (s *Service) searchNotesFS(keyword string) ([]model.NoteSummaryDO, error) {
@@ -598,6 +603,9 @@ func (s *Service) searchNotesFS(keyword string) ([]model.NoteSummaryDO, error) {
 	for _, sum := range all {
 		if strings.Contains(strings.ToLower(sum.Title), keyword) {
 			out = append(out, sum)
+			continue
+		}
+		if isHtmlNoteID(sum.ID) {
 			continue
 		}
 		n, err := s.getNoteFS(sum.ID)

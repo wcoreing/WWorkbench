@@ -21,6 +21,7 @@ import { useAgentStore } from '../stores/agentStore'
 import { ConfirmHost } from '../components/ConfirmHost'
 import { NotifyHost } from '../notify'
 import { installFocusGate } from '../components/compat'
+import { installInAppLinkGuard } from '../utils/inAppLinks'
 import { ResourceDialogHost } from '../workbench/resourceWindow'
 import { useI18n } from '../i18n'
 import type { ProductId } from './products'
@@ -66,6 +67,7 @@ export function AppShell() {
   useEffect(() => subscribeMcpEpisodeClose(), [])
   useEffect(() => startWorkbenchRadar(), [])
   useEffect(() => installFocusGate(), [])
+  useEffect(() => installInAppLinkGuard(), [])
 
   if (booting) {
     return (

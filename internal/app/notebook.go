@@ -1,7 +1,6 @@
 package app
 
 import (
-	"encoding/base64"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +10,7 @@ import (
 	"WWorkbench/internal/errno"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/notebook"
+	"WWorkbench/internal/resource"
 	"WWorkbench/internal/workbench"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -252,27 +252,73 @@ func (s *Service) PickNotebookAssets(noteID string, imagesOnly bool) ApiResult[[
 	if len(paths) == 0 {
 		return OkResult([]model.NotebookAssetDO{})
 	}
-	out := make([]model.NotebookAssetDO, 0, len(paths))
-	for _, path := range paths {
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return ErrResult[[]model.NotebookAssetDO](errno.Wrap(errno.CodeStoreFailed, "读取文件失败", err))
+	if imagesOnly {
+		filtered := make([]string, 0, len(paths))
+		for _, path := range paths {
+			if resource.IsImageExt(path) {
+				filtered = append(filtered, path)
+			}
 		}
-		asset, err := s.notebook.SaveAsset(model.NotebookAssetUploadDO{
-			NoteID: noteID,
-			Name:   filepath.Base(path),
-			MIME:   "",
-			Data:   base64.StdEncoding.EncodeToString(data),
-		})
-		if err != nil {
-			return ErrResult[[]model.NotebookAssetDO](err)
-		}
-		if imagesOnly && !asset.IsImage {
-			continue
-		}
-		out = append(out, *asset)
+		paths = filtered
+	}
+	out, err := s.notebook.ImportAssets(noteID, paths)
+	if err != nil {
+		return ErrResult[[]model.NotebookAssetDO](err)
+	}
+	if out == nil {
+		out = []model.NotebookAssetDO{}
 	}
 	return OkResult(out)
+}
+
+// ImportNotebookResources 把本机绝对路径复制进笔记资源库（粘贴 file URL / 访达拖入）。
+func (s *Service) ImportNotebookResources(noteID string, paths []string) ApiResult[[]model.NotebookAssetDO] {
+	out, err := s.notebook.ImportAssets(noteID, paths)
+	if err != nil {
+		return ErrResult[[]model.NotebookAssetDO](err)
+	}
+	if out == nil {
+		out = []model.NotebookAssetDO{}
+	}
+	return OkResult(out)
+}
+
+// ListNotebookResources 列出笔记已落盘的本地资源。
+func (s *Service) ListNotebookResources(noteID string) ApiResult[[]model.NotebookAssetDO] {
+	out, err := s.notebook.ListAssets(noteID)
+	if err != nil {
+		return ErrResult[[]model.NotebookAssetDO](err)
+	}
+	if out == nil {
+		out = []model.NotebookAssetDO{}
+	}
+	return OkResult(out)
+}
+
+// DeleteNotebookResource 删除一条本地资源。
+func (s *Service) DeleteNotebookResource(id string) ApiResult[bool] {
+	if err := s.notebook.DeleteAsset(id); err != nil {
+		return ErrResult[bool](err)
+	}
+	return OkResult(true)
+}
+
+// OpenNotebookAsset 用系统默认应用打开预览里的附件，避免 WebView 跟着链接导航走。
+func (s *Service) OpenNotebookAsset(noteID, fileName string) ApiResult[bool] {
+	path, err := s.notebook.AssetFilePath(noteID, fileName)
+	if err != nil {
+		return ErrResult[bool](err)
+	}
+	return revealInFileManager(path, false)
+}
+
+// RevealNotebookResource 在访达中显示资源文件。
+func (s *Service) RevealNotebookResource(id string) ApiResult[bool] {
+	path, err := s.notebook.AssetAbsPath(id)
+	if err != nil {
+		return ErrResult[bool](err)
+	}
+	return revealInFileManager(path, true)
 }
 
 // NotebookWorkspacePath 返回固定磁盘工作区绝对路径。
@@ -561,6 +607,21 @@ func dirVersionPayload(st notebook.DirVersionStatus) map[string]interface{} {
 		"ok": true, "rel": st.Rel, "dir": st.Dir, "enabled": st.Enabled,
 		"head": st.Head, "working": st.Working, "versions": commits, "total": len(commits),
 	}
+}
+
+// NoteFileRevision 笔记文件在最近一层目录仓中的提交。未建仓时 enabled 为 false。
+func (s *Service) NoteFileRevision(fileRel string) ApiResult[map[string]interface{}] {
+	if s.notebook == nil {
+		return ErrResult[map[string]interface{}](errno.New(errno.CodeInvalidArg, "笔记本未就绪", ""))
+	}
+	rev, err := s.notebook.FileRevision(fileRel)
+	if err != nil {
+		return ErrResult[map[string]interface{}](err)
+	}
+	return OkResult(map[string]interface{}{
+		"rel": rev.Rel, "repo": rev.Repo, "enabled": rev.Enabled,
+		"short": rev.Short, "dirty": rev.Dirty,
+	})
 }
 
 // ListDirVersions 列出笔记本目录版本。

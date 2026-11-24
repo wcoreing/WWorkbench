@@ -117,6 +117,8 @@ export function DeleteNotebookGroup(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function DeleteNotebookPath(arg1:string):Promise<app.ApiResult_bool_>;
 
+export function DeleteNotebookResource(arg1:string):Promise<app.ApiResult_bool_>;
+
 export function DeleteNotes(arg1:Array<string>):Promise<app.ApiResult_int_>;
 
 export function DeleteSFTPBookmark(arg1:string):Promise<app.ApiResult_bool_>;
@@ -175,7 +177,7 @@ export function ExportExcel(arg1:app.ExportExcelRequest):Promise<app.ApiResult_W
 
 export function ExportNote(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
-export function ExportSkillShelf(arg1:string):Promise<app.ApiResult_WWorkbench_internal_notebook_ShelfManifest_>;
+export function ExportSkillShelf(arg1:string):Promise<app.ApiResult_WWorkbench_internal_skill_Bundle_>;
 
 export function ExportTableExcel(arg1:string,arg2:string,arg3:string,arg4:model.TableDataQueryDO,arg5:number,arg6:Array<string>):Promise<app.ApiResult_WWorkbench_internal_model_ExportResultDO_>;
 
@@ -279,13 +281,15 @@ export function HomeSyncPush():Promise<app.ApiResult_WWorkbench_internal_model_H
 
 export function ImportConnectionsFromFile():Promise<app.ApiResult_int_>;
 
+export function ImportNotebookResources(arg1:string,arg2:Array<string>):Promise<app.ApiResult___WWorkbench_internal_model_NotebookAssetDO_>;
+
 export function InstallEnvManager(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
 export function InstallEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
 
-export function InstallSkillMarket(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_notebook_ShelfInstallResult_>;
+export function InstallSkillMarket(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_skill_InstallResult_>;
 
-export function InstallSkillShelf(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_notebook_ShelfInstallResult_>;
+export function InstallSkillShelf(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_skill_InstallResult_>;
 
 export function KillLocalPortProcesses(arg1:number,arg2:boolean):Promise<app.ApiResult_WWorkbench_internal_model_LocalPortKillResultDO_>;
 
@@ -363,6 +367,8 @@ export function ListMCPWriteDirs():Promise<app.ApiResult___WWorkbench_internal_m
 
 export function ListNotebookGroups():Promise<app.ApiResult___WWorkbench_internal_model_NotebookGroupDO_>;
 
+export function ListNotebookResources(arg1:string):Promise<app.ApiResult___WWorkbench_internal_model_NotebookAssetDO_>;
+
 export function ListNotes():Promise<app.ApiResult___WWorkbench_internal_model_NoteSummaryDO_>;
 
 export function ListPluginPackReleases(arg1:string):Promise<app.ApiResult___WWorkbench_internal_pluginpack_ReleaseInfo_>;
@@ -383,7 +389,9 @@ export function ListShellHosts():Promise<app.ApiResult___WWorkbench_internal_mod
 
 export function ListSkillMarket():Promise<app.ApiResult___WWorkbench_internal_homeclient_MarketListing_>;
 
-export function ListSkillShelf():Promise<app.ApiResult___WWorkbench_internal_notebook_ShelfCard_>;
+export function ListSkillPackages(arg1:string):Promise<app.ApiResult___WWorkbench_internal_skill_Package_>;
+
+export function ListSkillShelf():Promise<app.ApiResult___WWorkbench_internal_skill_ShelfCard_>;
 
 export function ListSkillVersions(arg1:string,arg2:number):Promise<app.ApiResult_map_string_interface____>;
 
@@ -409,6 +417,8 @@ export function MoveNotebookPath(arg1:string,arg2:string):Promise<app.ApiResult_
 
 export function NoteDiskPath(arg1:string):Promise<app.ApiResult_string_>;
 
+export function NoteFileRevision(arg1:string):Promise<app.ApiResult_map_string_interface____>;
+
 export function NotebookWorkspacePath():Promise<app.ApiResult_string_>;
 
 export function OfferLearningEpisodeClose(arg1:string,arg2:boolean):Promise<app.ApiResult_map_string_interface____>;
@@ -416,6 +426,8 @@ export function OfferLearningEpisodeClose(arg1:string,arg2:boolean):Promise<app.
 export function OpenChromeExtensionsPage():Promise<app.ApiResult_map_string_interface____>;
 
 export function OpenLocalTerminal(arg1:number,arg2:number):Promise<app.ApiResult_WWorkbench_internal_model_TerminalSessionInfoDO_>;
+
+export function OpenNotebookAsset(arg1:string,arg2:string):Promise<app.ApiResult_bool_>;
 
 export function OpenSFTPSession(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_SFTPSessionInfoDO_>;
 
@@ -502,6 +514,8 @@ export function RevealBrowserExtDir():Promise<app.ApiResult_WWorkbench_internal_
 export function RevealNotebookNote(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function RevealNotebookPath(arg1:string):Promise<app.ApiResult_bool_>;
+
+export function RevealNotebookResource(arg1:string):Promise<app.ApiResult_bool_>;
 
 export function RevealNotebookWorkspace():Promise<app.ApiResult_bool_>;
 

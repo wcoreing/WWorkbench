@@ -226,6 +226,10 @@ export function DeleteNotebookPath(arg1) {
   return window['go']['app']['Service']['DeleteNotebookPath'](arg1);
 }
 
+export function DeleteNotebookResource(arg1) {
+  return window['go']['app']['Service']['DeleteNotebookResource'](arg1);
+}
+
 export function DeleteNotes(arg1) {
   return window['go']['app']['Service']['DeleteNotes'](arg1);
 }
@@ -550,6 +554,10 @@ export function ImportConnectionsFromFile() {
   return window['go']['app']['Service']['ImportConnectionsFromFile']();
 }
 
+export function ImportNotebookResources(arg1, arg2) {
+  return window['go']['app']['Service']['ImportNotebookResources'](arg1, arg2);
+}
+
 export function InstallEnvManager(arg1, arg2) {
   return window['go']['app']['Service']['InstallEnvManager'](arg1, arg2);
 }
@@ -718,6 +726,10 @@ export function ListNotebookGroups() {
   return window['go']['app']['Service']['ListNotebookGroups']();
 }
 
+export function ListNotebookResources(arg1) {
+  return window['go']['app']['Service']['ListNotebookResources'](arg1);
+}
+
 export function ListNotes() {
   return window['go']['app']['Service']['ListNotes']();
 }
@@ -756,6 +768,10 @@ export function ListShellHosts() {
 
 export function ListSkillMarket() {
   return window['go']['app']['Service']['ListSkillMarket']();
+}
+
+export function ListSkillPackages(arg1) {
+  return window['go']['app']['Service']['ListSkillPackages'](arg1);
 }
 
 export function ListSkillShelf() {
@@ -810,6 +826,10 @@ export function NoteDiskPath(arg1) {
   return window['go']['app']['Service']['NoteDiskPath'](arg1);
 }
 
+export function NoteFileRevision(arg1) {
+  return window['go']['app']['Service']['NoteFileRevision'](arg1);
+}
+
 export function NotebookWorkspacePath() {
   return window['go']['app']['Service']['NotebookWorkspacePath']();
 }
@@ -824,6 +844,10 @@ export function OpenChromeExtensionsPage() {
 
 export function OpenLocalTerminal(arg1, arg2) {
   return window['go']['app']['Service']['OpenLocalTerminal'](arg1, arg2);
+}
+
+export function OpenNotebookAsset(arg1, arg2) {
+  return window['go']['app']['Service']['OpenNotebookAsset'](arg1, arg2);
 }
 
 export function OpenSFTPSession(arg1) {
@@ -996,6 +1020,10 @@ export function RevealNotebookNote(arg1) {
 
 export function RevealNotebookPath(arg1) {
   return window['go']['app']['Service']['RevealNotebookPath'](arg1);
+}
+
+export function RevealNotebookResource(arg1) {
+  return window['go']['app']['Service']['RevealNotebookResource'](arg1);
 }
 
 export function RevealNotebookWorkspace() {

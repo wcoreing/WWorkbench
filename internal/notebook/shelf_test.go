@@ -35,6 +35,14 @@ func TestExportSkillPackageStripsPrivateFiles(t *testing.T) {
 		}
 	}
 
+	cards, err := s.ListSkillShelf()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cards) != 1 || !cards[0].Installed || cards[0].Version != manifest.Version {
+		t.Fatalf("published source should stay installed, cards=%+v", cards)
+	}
+
 	installed, err := s.InstallSkillPackage(manifest.ID, manifest.Version)
 	if err != nil {
 		t.Fatal(err)
@@ -48,19 +56,36 @@ func TestExportSkillPackageStripsPrivateFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	side, err := s.InstallSkillPackage(again.ID, again.Version)
+	// 再装刚导出的正文：与目录一致，留在正本，不复制「目录@版本」。
+	same, err := s.InstallSkillPackage(again.ID, again.Version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if same.SideBySide || same.Rel != rel {
+		t.Fatalf("same content should stay in place, got %+v", same)
+	}
+	// 装回旧快照：正文不同，才并排，避免覆盖当前修改。
+	side, err := s.InstallSkillPackage(manifest.ID, manifest.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !side.SideBySide || side.Rel == rel {
 		t.Fatalf("expected side-by-side, got %+v", side)
 	}
-	cards, err := s.ListSkillShelf()
+	cards, err = s.ListSkillShelf()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(cards) != 2 {
 		t.Fatalf("cards = %d", len(cards))
+	}
+	for _, card := range cards {
+		if card.Version == again.Version && !card.Installed {
+			t.Fatalf("current source should not offer install, card=%+v", card)
+		}
+		if card.Version == manifest.Version && card.Installed && card.InstalledRel == rel {
+			t.Fatalf("old snapshot is not the current source, card=%+v", card)
+		}
 	}
 }
 

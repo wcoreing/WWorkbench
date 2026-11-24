@@ -101,9 +101,13 @@ func extractMCPResources(tool string, args json.RawMessage) []model.MCPAssetRef 
 		case "get_skill", "update_skill", "run_skill", "list_skills", "distill_skill",
 			"list_skill_versions", "pin_skill_version", "restore_skill_version",
 			"publish_agent_skill", "get_workflow", "save_workflow", "list_workflows",
-			"update_agent_skill", "distill_workflow":
+			"update_agent_skill", "distill_workflow",
+			"publish_skill_market", "install_skill_market":
 			add(model.MCPAssetSkill, id, "")
 		}
+	}
+	if id := str("dir", "path"); id != "" && (tool == "publish_skill_market") {
+		add(model.MCPAssetSkill, id, "")
 	}
 
 	// Browser session（任务标签组）

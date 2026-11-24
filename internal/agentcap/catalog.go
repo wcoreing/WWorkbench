@@ -55,7 +55,7 @@ func Catalog() []Item {
 		},
 		{
 			Name: "enable_dir_version", Label: "启用目录版本", Risk: RiskWrite,
-			Description:    "给笔记本任意文件夹建版本仓",
+			Description:    "文件服务绑定的 git：给相对目录建仓",
 			DefaultEnabled: true,
 		},
 		{
@@ -65,7 +65,7 @@ func Catalog() []Item {
 		},
 		{
 			Name: "pin_dir_version", Label: "创建目录版本", Risk: RiskWrite,
-			Description:    "为笔记本文件夹创建版本（未启用则自动启用）",
+			Description:    "经文件服务的 git 创建目录版本",
 			DefaultEnabled: true,
 		},
 		{

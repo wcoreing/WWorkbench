@@ -143,6 +143,8 @@ func (s *Service) RenameRel(rel, newName string) (PathMutation, error) {
 	if err := os.Rename(abs, dst); err != nil {
 		return PathMutation{}, errno.Wrap(errno.CodeStoreFailed, "重命名失败", err)
 	}
+	s.adoptPlainBundle(abs, dst)
+	s.rebaseDocuments(abs, dst)
 	toRel, _ := filepath.Rel(s.workspaceRoot(), dst)
 	return PathMutation{From: clean, To: filepath.ToSlash(toRel)}, nil
 }
@@ -192,6 +194,8 @@ func (s *Service) MoveRel(fromRel, destDirRel string) (PathMutation, error) {
 	if err := os.Rename(srcAbs, dstAbs); err != nil {
 		return PathMutation{}, errno.Wrap(errno.CodeStoreFailed, "移动失败", err)
 	}
+	s.adoptPlainBundle(srcAbs, dstAbs)
+	s.rebaseDocuments(srcAbs, dstAbs)
 	toRel, _ := filepath.Rel(s.workspaceRoot(), dstAbs)
 	return PathMutation{From: fromClean, To: filepath.ToSlash(toRel)}, nil
 }
@@ -231,6 +235,7 @@ func (s *Service) CopyRel(fromRel, destDirRel string) (PathMutation, error) {
 		if err := copyFile(srcAbs, dstAbs); err != nil {
 			return PathMutation{}, errno.Wrap(errno.CodeStoreFailed, "复制文件失败", err)
 		}
+		s.copyPlainBundle(srcAbs, dstAbs)
 	}
 	toRel, _ := filepath.Rel(s.workspaceRoot(), dstAbs)
 	return PathMutation{From: fromClean, To: filepath.ToSlash(toRel)}, nil
@@ -257,16 +262,12 @@ func (s *Service) DeleteRel(rel string) error {
 		return errno.Wrap(errno.CodeNotFound, "路径不存在", err)
 	}
 	if info.IsDir() {
-		// 若是 Skill 目录（含 SKILL.md），整目录删
-		if _, err := os.Stat(filepath.Join(abs, SkillEntryFile)); err == nil {
-			return os.RemoveAll(abs)
-		}
+		s.dropFileTree(rel)
 		return os.RemoveAll(abs)
 	}
-	// 普通 .md：顺带删 .assets
+	s.dropFileTree(rel)
 	_ = os.Remove(abs)
-	assets := strings.TrimSuffix(abs, filepath.Ext(abs)) + PlainAssetsSuffix
-	_ = os.RemoveAll(assets)
+	s.removePlainBundle(abs)
 	return nil
 }
 

@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useState,
   type Dispatch,
   type RefObject,
   type SetStateAction,
@@ -86,6 +87,8 @@ export function useNotebookWorkbenchActions(opts: {
     setStatusMessage,
     t,
   } = opts
+
+  const [resourceRev, setResourceRev] = useState(0)
 
   const openCreateFile = (groupId = opsRoot) => {
     setNewFileGroupId(groupId)
@@ -220,6 +223,7 @@ export function useNotebookWorkbenchActions(opts: {
           snippets.push(asset.markdown)
         }
         appendAssetMarkdown(snippets)
+        setResourceRev((n) => n + 1)
         notify.success(
           snippets.length === 1
             ? t('notebook.assetInserted')
@@ -232,6 +236,39 @@ export function useNotebookWorkbenchActions(opts: {
     [activeNote, appendAssetMarkdown, t],
   )
 
+  const insertPathsAsAssets = useCallback(
+    async (paths: string[]) => {
+      if (!activeNote || paths.length === 0) return
+      try {
+        const assets = await api.importNotebookResources(activeNote.id, paths)
+        if (!assets.length) return
+        appendAssetMarkdown(assets.map((a) => a.markdown))
+        setResourceRev((n) => n + 1)
+        notify.success(
+          assets.length === 1
+            ? t('notebook.assetInserted')
+            : t('notebook.assetsInserted', { count: assets.length }),
+        )
+      } catch (e) {
+        notify.error((e as Error).message)
+      }
+    },
+    [activeNote, appendAssetMarkdown, t],
+  )
+
+  const forgetResourceFile = useCallback(
+    (fileName: string) => {
+      if (!activeNote || !fileName) return
+      const next = activeNote.content
+        .split('\n')
+        .filter((line) => !line.includes(fileName))
+        .join('\n')
+      if (next !== activeNote.content) updateActiveNote({ content: next })
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeNote],
+  )
+
   const pickAssets = useCallback(
     async (imagesOnly: boolean) => {
       if (!activeNote) return
@@ -239,6 +276,7 @@ export function useNotebookWorkbenchActions(opts: {
         const assets = await api.pickNotebookAssets(activeNote.id, imagesOnly)
         if (!assets.length) return
         appendAssetMarkdown(assets.map((a) => a.markdown))
+        setResourceRev((n) => n + 1)
         notify.success(
           assets.length === 1
             ? t('notebook.assetInserted')
@@ -417,6 +455,9 @@ export function useNotebookWorkbenchActions(opts: {
     patchActiveNoteSettings,
     insertTemplate,
     insertFilesAsAssets,
+    insertPathsAsAssets,
+    forgetResourceFile,
+    resourceRev,
     pickAssets,
     closeTab,
     closeOtherTabs,

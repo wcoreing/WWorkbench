@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"strings"
 
-	"WWorkbench/internal/notebook"
+	"WWorkbench/internal/skill/docfmt"
 )
 
 var (
@@ -109,7 +109,7 @@ func textAlreadyInSection(section, piece string) bool {
 
 // skillHasEquivalentLesson 项目 Skill「## 经验」是否已有同类正文。
 func skillHasEquivalentLesson(d *Deps, skillPath, lessons string) bool {
-	if d == nil || d.Notebook == nil {
+	if d == nil || d.Skills == nil {
 		return false
 	}
 	skillPath = strings.TrimSpace(skillPath)
@@ -117,16 +117,11 @@ func skillHasEquivalentLesson(d *Deps, skillPath, lessons string) bool {
 	if skillPath == "" || lessons == "" {
 		return false
 	}
-	cur, err := resolveWorkflowSSOT(d, skillPath)
+	pkg, err := d.Skills.Get(skillPath)
 	if err != nil {
 		return false
 	}
-	noteID := firstNonEmpty(cur.NoteID, notebook.SkillNoteID(skillPath))
-	existing, err := d.Notebook.GetNote(noteID)
-	if err != nil || existing == nil {
-		return false
-	}
-	extras := notebook.ExtractWorkflowNoteBodyExtras(existing.Content)
+	extras := docfmt.ExtractBodyExtras(pkg.Content)
 	return textAlreadyInSection(extras.Lessons, lessons)
 }
 

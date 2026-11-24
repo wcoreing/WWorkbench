@@ -303,7 +303,7 @@ func (c *Client) ListMarket() ([]MarketListing, error) {
 	return out.Listings, nil
 }
 
-// PublishMarket 把一个技能版本上架到商店。需要登录。
+// PublishMarket 把一次提交推到技能仓库。需要登录。同一仓库 id 下按提交区分。
 func (c *Client) PublishMarket(pkg MarketPackage) (*MarketListing, error) {
 	var out struct {
 		Listing MarketListing `json:"listing"`

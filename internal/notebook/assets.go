@@ -9,12 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"unicode"
 
 	"WWorkbench/internal/errno"
+	"WWorkbench/internal/file"
 	"WWorkbench/internal/model"
-
-	"github.com/google/uuid"
+	"WWorkbench/internal/resource"
 )
 
 func pathUnescape(s string) (string, error) {
@@ -22,21 +21,13 @@ func pathUnescape(s string) (string, error) {
 }
 
 const (
-	assetsURLPrefix    = "/notebook-assets/"
-	maxImageBytes      = 12 << 20
-	maxAttachmentBytes = 50 << 20
+	assetsURLPrefix = "/notebook-assets/"
+	// maxImageBytes 图片笔记内联预览上限（与资源服务的图片上限一致）。
+	maxImageBytes = 12 << 20
 )
 
-var imageMIME = map[string]string{
-	"image/png":  ".png",
-	"image/jpeg": ".jpg",
-	"image/jpg":  ".jpg",
-	"image/webp": ".webp",
-	"image/gif":  ".gif",
-}
-
 // AssetHandler 提供工作区内附件只读访问：/notebook-assets/{noteId}/{file}
-// Skill 附件落在 工作流/{name}/assets/；普通笔记落在 {note}.assets/。
+// Skill 附件落在技能目录 assets/；普通笔记落在同名目录 assets/。
 func AssetHandler(dataDir string) http.Handler {
 	svc := &Service{dataDir: dataDir}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -65,22 +56,8 @@ func AssetHandler(dataDir string) http.Handler {
 		}
 		noteID := rel[:slash]
 		fileName := rel[slash+1:]
-		if strings.Contains(fileName, "/") || fileName == ".." || fileName == "." {
-			http.NotFound(w, r)
-			return
-		}
-		_, assetsDir, err := svc.notePaths(noteID)
-		if err != nil || assetsDir == "" {
-			http.NotFound(w, r)
-			return
-		}
-		full := filepath.Join(assetsDir, fileName)
-		if !strings.HasPrefix(full, assetsDir+string(filepath.Separator)) {
-			http.NotFound(w, r)
-			return
-		}
-		info, err := os.Stat(full)
-		if err != nil || info.IsDir() {
+		full, err := svc.AssetFilePath(noteID, fileName)
+		if err != nil {
 			http.NotFound(w, r)
 			return
 		}
@@ -89,7 +66,7 @@ func AssetHandler(dataDir string) http.Handler {
 			mimeType = "application/octet-stream"
 		}
 		w.Header().Set("Content-Type", mimeType)
-		if isImageMIME(mimeType) {
+		if resource.IsImageMIME(mimeType) {
 			w.Header().Set("Content-Disposition", "inline")
 		} else {
 			w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename=%q`, filepath.Base(full)))
@@ -99,78 +76,94 @@ func AssetHandler(dataDir string) http.Handler {
 	})
 }
 
-// SaveAsset 将 base64 内容写入该笔记同级附件目录。
+// SaveAsset 将 base64 内容交给资源服务落盘。
 func (s *Service) SaveAsset(in model.NotebookAssetUploadDO) (*model.NotebookAssetDO, error) {
-	noteID := strings.TrimSpace(in.NoteID)
-	if noteID == "" {
-		return nil, errno.New(errno.CodeInvalidArg, "笔记 ID 不能为空", "")
-	}
-	if _, err := s.GetNote(noteID); err != nil {
+	slot, err := s.assetSlot(in.NoteID)
+	if err != nil {
 		return nil, err
-	}
-	name := sanitizeFileName(in.Name)
-	if name == "" {
-		name = "file"
 	}
 	raw, mimeType, err := decodeAssetPayload(in.MIME, in.Data)
 	if err != nil {
 		return nil, err
 	}
-	isImage := isImageMIME(mimeType)
-	limit := maxAttachmentBytes
-	if isImage {
-		limit = maxImageBytes
-	}
-	if len(raw) == 0 {
-		return nil, errno.New(errno.CodeInvalidArg, "文件内容为空", "")
-	}
-	if len(raw) > limit {
-		return nil, errno.New(errno.CodeInvalidArg, fmt.Sprintf("文件超过 %dMB 上限", limit>>20), name)
-	}
-	ext := extensionFor(name, mimeType, raw)
-	assetID := uuid.NewString()
-	stored := assetID + ext
-	_, assetsDir, err := s.notePaths(noteID)
+	item, err := s.resources.Put(slot, in.Name, mimeType, raw)
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(assetsDir, 0o700); err != nil {
-		return nil, errno.Wrap(errno.CodeStoreFailed, "创建附件目录失败", err)
-	}
-	path := filepath.Join(assetsDir, stored)
-	if err := os.WriteFile(path, raw, 0o600); err != nil {
-		return nil, errno.Wrap(errno.CodeStoreFailed, "写入附件失败", err)
-	}
-	displayName := name
-	if filepath.Ext(displayName) == "" && ext != "" {
-		displayName += ext
-	}
-	url := assetsURLPrefix + noteID + "/" + stored
-	// 正文真源用相对路径（Skill→assets/；普通笔记→{stem}.assets/）；预览再映射到 URL。
-	relLink := SkillAssetsDir + "/" + stored
-	if !isSkillPathID(noteID) {
-		contentPath, _, _ := s.notePaths(noteID)
-		stem := strings.TrimSuffix(filepath.Base(contentPath), filepath.Ext(contentPath))
-		if stem == "" {
-			stem = "note"
-		}
-		relLink = stem + PlainAssetsSuffix + "/" + stored
-	}
-	md := buildAssetMarkdown(displayName, relLink, isImage)
-	return &model.NotebookAssetDO{
-		ID:       assetID,
-		NoteID:   noteID,
-		Name:     displayName,
-		MIME:     mimeType,
-		URL:      url,
-		Markdown: md,
-		IsImage:  isImage,
-		Size:     int64(len(raw)),
-	}, nil
+	out := assetDO(slot.OwnerID, item)
+	return &out, nil
 }
 
-// DeleteNoteAssets 删除笔记附件目录。
+// ImportAssets 把本机文件复制进该笔记的资源目录。
+func (s *Service) ImportAssets(noteID string, paths []string) ([]model.NotebookAssetDO, error) {
+	slot, err := s.assetSlot(noteID)
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.resources.Import(slot, paths)
+	if err != nil {
+		return nil, err
+	}
+	return assetDOList(slot.OwnerID, items), nil
+}
+
+// ListAssets 列出笔记仍在磁盘上的本地资源。
+func (s *Service) ListAssets(noteID string) ([]model.NotebookAssetDO, error) {
+	slot, err := s.assetSlot(noteID)
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.resources.List(slot)
+	if err != nil {
+		return nil, err
+	}
+	return assetDOList(slot.OwnerID, items), nil
+}
+
+// DeleteAsset 删除一条本地资源（账本 + 文件）。
+func (s *Service) DeleteAsset(id string) error {
+	if s.resources == nil {
+		return errno.New(errno.CodeStoreFailed, "资源服务未就绪", "")
+	}
+	return s.resources.Delete(id, s.locateOwner)
+}
+
+// AssetFilePath 解析预览链接 /notebook-assets/{noteID}/{file} 对应的磁盘文件。
+func (s *Service) AssetFilePath(noteID, fileName string) (string, error) {
+	noteID = strings.TrimSpace(noteID)
+	fileName = strings.TrimSpace(fileName)
+	if noteID == "" || fileName == "" || strings.Contains(fileName, "/") || fileName == "." || fileName == ".." {
+		return "", errno.New(errno.CodeInvalidArg, "附件路径无效", fileName)
+	}
+	_, assetsDir, err := s.notePaths(noteID)
+	if err != nil {
+		return "", err
+	}
+	if assetsDir == "" {
+		return "", errno.New(errno.CodeNotFound, "附件目录不存在", noteID)
+	}
+	full := filepath.Join(assetsDir, fileName)
+	if !strings.HasPrefix(full, assetsDir+string(filepath.Separator)) {
+		return "", errno.New(errno.CodeInvalidArg, "附件路径无效", fileName)
+	}
+	info, err := os.Stat(full)
+	if err != nil || info.IsDir() {
+		return "", errno.New(errno.CodeNotFound, "附件不存在", fileName)
+	}
+	return full, nil
+}
+
+// AssetAbsPath 返回资源文件绝对路径。
+func (s *Service) AssetAbsPath(id string) (string, error) {
+	if s.resources == nil {
+		return "", errno.New(errno.CodeStoreFailed, "资源服务未就绪", "")
+	}
+	return s.resources.AbsPath(id, s.locateOwner)
+}
+
+// DeleteNoteAssets 删除笔记附件目录，并清掉资源账本。
 func (s *Service) DeleteNoteAssets(noteID string) {
+	s.forgetAssets(noteID)
 	_, assetsDir, err := s.notePaths(strings.TrimSpace(noteID))
 	if err != nil || assetsDir == "" {
 		return
@@ -178,47 +171,9 @@ func (s *Service) DeleteNoteAssets(noteID string) {
 	_ = os.RemoveAll(assetsDir)
 }
 
-// ListNoteAssets 列出笔记附件。
+// ListNoteAssets 列出笔记资源（与 ListAssets 相同）。
 func (s *Service) ListNoteAssets(noteID string) ([]model.NotebookAssetDO, error) {
-	noteID = strings.TrimSpace(noteID)
-	_, assetsDir, err := s.notePaths(noteID)
-	if err != nil {
-		return nil, err
-	}
-	entries, err := os.ReadDir(assetsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return []model.NotebookAssetDO{}, nil
-		}
-		return nil, errno.Wrap(errno.CodeStoreFailed, "读取附件目录失败", err)
-	}
-	out := make([]model.NotebookAssetDO, 0, len(entries))
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		name := e.Name()
-		if name == "" || strings.HasPrefix(name, ".") {
-			continue
-		}
-		info, err := e.Info()
-		if err != nil {
-			continue
-		}
-		mimeType := mime.TypeByExtension(filepath.Ext(name))
-		if mimeType == "" {
-			mimeType = "application/octet-stream"
-		}
-		url := assetsURLPrefix + noteID + "/" + name
-		isImage := isImageMIME(mimeType)
-		id := strings.TrimSuffix(name, filepath.Ext(name))
-		out = append(out, model.NotebookAssetDO{
-			ID: id, NoteID: noteID, Name: name, MIME: mimeType,
-			URL: url, Markdown: buildAssetMarkdown(name, url, isImage),
-			IsImage: isImage, Size: info.Size(),
-		})
-	}
-	return out, nil
+	return s.ListAssets(noteID)
 }
 
 // NoteAssetsDir 返回笔记附件绝对目录。
@@ -281,71 +236,151 @@ func decodeAssetPayload(mimeHint, data string) ([]byte, string, error) {
 	return raw, mimeType, nil
 }
 
-func extensionFor(name, mimeType string, raw []byte) string {
-	if ext := strings.ToLower(filepath.Ext(name)); ext != "" && len(ext) <= 12 {
-		return ext
+// assetSlot 把文档路径解析成资源落点。归属是文件 ID，目录约定在 file.Placement。
+func (s *Service) assetSlot(noteID string) (resource.Slot, error) {
+	if s == nil || s.files == nil || s.resources == nil {
+		return resource.Slot{}, errno.New(errno.CodeStoreFailed, "文件服务未就绪", "")
 	}
-	if ext, ok := imageMIME[mimeType]; ok {
-		return ext
+	noteID = strings.TrimSpace(noteID)
+	if noteID == "" {
+		return resource.Slot{}, errno.New(errno.CodeInvalidArg, "文档 ID 不能为空", "")
 	}
-	if exts, _ := mime.ExtensionsByType(mimeType); len(exts) > 0 {
-		return exts[0]
+	if _, err := s.GetNote(noteID); err != nil {
+		return resource.Slot{}, err
 	}
-	if detected := http.DetectContentType(raw); detected != "" {
-		if ext, ok := imageMIME[detected]; ok {
-			return ext
-		}
-		if exts, _ := mime.ExtensionsByType(detected); len(exts) > 0 {
-			return exts[0]
-		}
-	}
-	return ""
+	return s.placeDocument(noteID)
 }
 
-func buildAssetMarkdown(name, url string, isImage bool) string {
-	safe := strings.ReplaceAll(name, "]", "")
-	safe = strings.ReplaceAll(safe, "[", "")
-	if isImage {
-		return fmt.Sprintf("![%s](%s)", safe, url)
-	}
-	return fmt.Sprintf("[%s](%s)", safe, url)
-}
-
-func isImageMIME(mimeType string) bool {
-	mimeType = strings.ToLower(strings.TrimSpace(mimeType))
-	if _, ok := imageMIME[mimeType]; ok {
-		return true
-	}
-	return strings.HasPrefix(mimeType, "image/") && mimeType != "image/svg+xml"
-}
-
-func sanitizeFileName(name string) string {
-	name = strings.TrimSpace(filepath.Base(name))
-	if name == "" || name == "." || name == ".." {
-		return ""
-	}
-	var b strings.Builder
-	for _, r := range name {
-		switch {
-		case r == '/' || r == '\\' || r == 0:
-			continue
-		case unicode.IsControl(r):
-			continue
-		default:
-			b.WriteRune(r)
+// locateOwner 资源删除/打开时按文件 ID 找回落点。旧账本里的路径归属仍可解析。
+func (s *Service) locateOwner(ownerID string) (resource.Slot, error) {
+	if s != nil && s.files != nil {
+		if f, err := s.files.ByID(ownerID); err == nil {
+			return s.placeFile(f)
 		}
 	}
-	out := strings.TrimSpace(b.String())
-	if out == "" {
-		return ""
+	return s.placeDocument(ownerID)
+}
+
+func (s *Service) placeDocument(noteID string) (resource.Slot, error) {
+	contentPath, _, err := s.notePaths(noteID)
+	if err != nil {
+		return resource.Slot{}, err
 	}
-	if len(out) > 120 {
-		ext := filepath.Ext(out)
-		base := strings.TrimSuffix(out, ext)
-		if len(base) > 100 {
-			base = base[:100]
+	rel, err := filepath.Rel(s.workspaceRoot(), contentPath)
+	if err != nil {
+		return resource.Slot{}, errno.Wrap(errno.CodeInvalidArg, "文档路径无效", err)
+	}
+	f, err := s.files.Ensure(filepath.ToSlash(rel))
+	if err != nil {
+		return resource.Slot{}, err
+	}
+	return s.placeFile(f)
+}
+
+func (s *Service) placeFile(f file.File) (resource.Slot, error) {
+	place, err := file.Placement(s.workspaceRoot(), f)
+	if err != nil {
+		return resource.Slot{}, err
+	}
+	return resource.Slot{OwnerID: place.FileID, Dir: place.Dir, LinkPrefix: place.LinkPrefix}, nil
+}
+
+func (s *Service) indexDocument(noteID string) {
+	if s == nil || s.files == nil {
+		return
+	}
+	contentPath, _, err := s.notePaths(noteID)
+	if err != nil || contentPath == "" {
+		return
+	}
+	rel, err := filepath.Rel(s.workspaceRoot(), contentPath)
+	if err != nil {
+		return
+	}
+	_, _ = s.files.Ensure(filepath.ToSlash(rel))
+}
+
+func (s *Service) rebaseDocuments(fromAbs, toAbs string) {
+	if s == nil || s.files == nil {
+		return
+	}
+	fromRel, err1 := filepath.Rel(s.workspaceRoot(), fromAbs)
+	toRel, err2 := filepath.Rel(s.workspaceRoot(), toAbs)
+	if err1 != nil || err2 != nil {
+		return
+	}
+	_ = s.files.Rebase(filepath.ToSlash(fromRel), filepath.ToSlash(toRel))
+}
+
+func (s *Service) forgetAssets(noteID string) {
+	if s == nil || s.resources == nil {
+		return
+	}
+	noteID = strings.TrimSpace(noteID)
+	_ = s.resources.ForgetOwner(noteID)
+	if s.files != nil {
+		if ids, err := s.files.ForgetTree(noteID); err == nil {
+			for _, id := range ids {
+				_ = s.resources.ForgetOwner(id)
+			}
 		}
-		out = base + ext
+	}
+	contentPath, _, err := s.notePaths(noteID)
+	if err != nil || contentPath == "" {
+		return
+	}
+	rel, err := filepath.Rel(s.workspaceRoot(), contentPath)
+	if err != nil {
+		return
+	}
+	rel = filepath.ToSlash(rel)
+	_ = s.resources.ForgetOwner(rel)
+	if s.files == nil {
+		return
+	}
+	if ids, err := s.files.ForgetTree(rel); err == nil {
+		for _, id := range ids {
+			_ = s.resources.ForgetOwner(id)
+		}
+	}
+	if !isSkillPathID(noteID) {
+		return
+	}
+	if dir := filepath.ToSlash(filepath.Dir(rel)); dir != "" && dir != "." {
+		s.dropFileTree(dir)
+	}
+}
+
+func (s *Service) dropFileTree(rel string) {
+	if s == nil || s.files == nil {
+		return
+	}
+	ids, err := s.files.ForgetTree(rel)
+	if err != nil || s.resources == nil {
+		return
+	}
+	for _, id := range ids {
+		_ = s.resources.ForgetOwner(id)
+	}
+}
+
+func assetDOList(noteID string, items []resource.Item) []model.NotebookAssetDO {
+	out := make([]model.NotebookAssetDO, 0, len(items))
+	for _, it := range items {
+		out = append(out, assetDO(noteID, it))
 	}
 	return out
+}
+
+func assetDO(noteID string, it resource.Item) model.NotebookAssetDO {
+	return model.NotebookAssetDO{
+		ID:       it.ID,
+		NoteID:   noteID,
+		Name:     it.Name,
+		MIME:     it.MIME,
+		URL:      assetsURLPrefix + noteID + "/" + it.File,
+		Markdown: it.Markdown(),
+		IsImage:  resource.IsImageMIME(it.MIME),
+		Size:     it.Size,
+	}
 }

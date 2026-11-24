@@ -212,6 +212,9 @@ func ProductForTool(toolName string) string {
 		workbench.CapListDirVersions, workbench.CapEnableDirVersion, workbench.CapPinDirVersion, workbench.CapRestoreDirVersion,
 		workbench.CapListSkillVersions, workbench.CapPinSkillVersion, workbench.CapRestoreSkillVersion:
 		return "notebook"
+	case workbench.CapSkillMarketOpen, workbench.CapListSkillMarket, workbench.CapListSkillShelf,
+		workbench.CapPublishSkillMarket, workbench.CapInstallSkillMarket:
+		return "skillmarket"
 	default:
 		return "terminal"
 	}

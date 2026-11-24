@@ -10,65 +10,6 @@
   min-height: 0;
 }
 
-.skill-shelf {
-  display: flex;
-  flex-direction: column;
-  gap: calc(8 * var(--ui-scale) * 1px);
-  padding: calc(8 * var(--ui-scale) * 1px);
-  min-height: 0;
-  overflow: auto;
-}
-
-.skill-shelf-note,
-.skill-shelf-intent {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-ui-sm);
-  line-height: 1.45;
-}
-
-.skill-shelf-dir {
-  margin: 0;
-  word-break: break-all;
-}
-
-.skill-shelf-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: calc(8 * var(--ui-scale) * 1px);
-}
-
-.skill-shelf-card {
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  padding: calc(8 * var(--ui-scale) * 1px);
-  display: flex;
-  flex-direction: column;
-  gap: calc(4 * var(--ui-scale) * 1px);
-}
-
-.skill-shelf-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: calc(6 * var(--ui-scale) * 1px);
-}
-
-.skill-shelf-card-title {
-  display: flex;
-  justify-content: space-between;
-  gap: calc(8 * var(--ui-scale) * 1px);
-}
-
-.skill-shelf-limits {
-  margin: 0;
-  padding-left: 1.1em;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-ui-sm);
-}
-
 .notebook-explorer-header .sidebar-header-title {
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1244,6 +1185,38 @@
   min-height: 0;
 }
 
+.notebook-derived-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border, #e3e6ea);
+  background: var(--bg-elevated, #f6f7f9);
+}
+
+.notebook-derived-skill {
+  color: var(--text-muted, #6b7280);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notebook-derived-stale {
+  color: var(--text-warning, #9a6700);
+  flex-shrink: 0;
+}
+
+.notebook-html-frame {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: 0;
+  background: #fff;
+}
+
 .notebook-editor-split {
   flex: 1;
   min-height: 0;
@@ -1373,10 +1346,87 @@
   border: 1px solid var(--color-border-subtle);
 }
 
-.note-editor-wrap.is-drag-over {
+.notebook-editor-split.notebook-asset-drop {
+  --wails-drop-target: drop;
+}
+
+.notebook-editor-split.is-drag-over {
   outline: 2px dashed var(--accent, #5b8def);
   outline-offset: -4px;
   background: color-mix(in srgb, var(--accent, #5b8def) 8%, transparent);
+}
+
+.notebook-resource-strip {
+  display: flex;
+  align-items: flex-start;
+  gap: calc(8 * var(--ui-scale) * 1px);
+  padding: calc(6 * var(--ui-scale) * 1px) calc(10 * var(--ui-scale) * 1px);
+  border-bottom: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-1);
+}
+
+.notebook-resource-label {
+  flex: none;
+  margin-top: calc(4 * var(--ui-scale) * 1px);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-ui);
+}
+
+.notebook-resource-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.notebook-resource-chip {
+  display: flex;
+  align-items: center;
+  gap: calc(6 * var(--ui-scale) * 1px);
+  max-width: 100%;
+  padding: calc(2 * var(--ui-scale) * 1px) calc(6 * var(--ui-scale) * 1px);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+}
+
+.notebook-resource-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: calc(220 * var(--ui-scale) * 1px);
+  font-size: var(--font-size-ui);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notebook-resource-size,
+.notebook-resource-btn {
+  flex: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-ui);
+}
+
+.notebook-resource-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.notebook-resource-btn.is-danger {
+  color: var(--color-danger, #d4564e);
+}
+
+.notebook-preview-pane:focus {
+  outline: none;
 }
 
 .notebook-md-preview blockquote {

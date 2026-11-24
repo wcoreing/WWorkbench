@@ -129,6 +129,13 @@ const (
 	CapListSkillVersions    = "list_skill_versions"
 	CapPinSkillVersion      = "pin_skill_version"
 	CapRestoreSkillVersion  = "restore_skill_version"
+
+	// 技能市场（云商店 / 本机货架 / 上架）——服务端产品扩展先行。
+	CapSkillMarketOpen     = "skillmarket_open"
+	CapListSkillMarket     = "list_skill_market"
+	CapListSkillShelf      = "list_skill_shelf"
+	CapPublishSkillMarket  = "publish_skill_market"
+	CapInstallSkillMarket  = "install_skill_market"
 )
 
 // UICapabilities 需前端执行的 UI 联动能力（切产品线 + CommandBus handler）。
@@ -146,6 +153,7 @@ func UICapabilities() []string {
 		CapEnvironmentOpen,
 		CapSSHForwardOpen,
 		CapBrowserOpen,
+		CapSkillMarketOpen,
 	}
 }
 

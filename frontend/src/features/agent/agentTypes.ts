@@ -17,6 +17,7 @@ export const DOMAIN_ORDER = [
   'cloud',
   'database',
   'notebook',
+  'skillmarket',
   'project',
   'browser',
   'desktop',

@@ -1,20 +1,17 @@
 import {
   forwardRef,
-  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
-  useState,
-  type DragEvent,
 } from 'react'
+import type { editor as monacoEditor } from 'monaco-editor'
 import Editor, { type OnMount } from '@monaco-editor/react'
-import type { editor } from 'monaco-editor'
+import { scrollRatio } from './useMdSplitScroll'
 import type { NoteLanguage } from '../../api/types'
 import { bindSelectionGuard } from '../../components/compat'
 import { useContainerHeight } from '../../hooks/useContainerHeight'
 import { useAppStore } from '../../stores/appStore'
 import { isDarkTheme } from '../../theme/appTheme'
-import { collectTransferFiles } from './notebookAssets'
 import { DEFAULT_NOTEBOOK_EDITOR_FONT } from './notebookEditorFont'
 import { monacoLanguageForNote } from './noteFileTypes'
 
@@ -25,6 +22,8 @@ export interface NoteEditorHandle {
   insertText: (text: string) => void
   /** focus 聚焦编辑区。 */
   focus: () => void
+  /** scrollToRatio 按可见比例滚动，供双屏预览对齐。 */
+  scrollToRatio: (ratio: number) => void
 }
 
 interface Props {
@@ -34,8 +33,10 @@ interface Props {
   editorFontSize?: number
   onChange: (content: string) => void
   onRunSelection?: () => void
-  /** onInsertFiles 粘贴/拖入文件时上传并插入 Markdown。 */
-  onInsertFiles?: (files: File[]) => void | Promise<void>
+  /** onScrollRatio 编辑区纵向滚动比例，双屏时驱动预览。 */
+  onScrollRatio?: (ratio: number) => void
+  /** onBindScroll 交出按比例滚动的方法；编辑器卸载时传 null。返回是否实际滚动。 */
+  onBindScroll?: (scrollToRatio: ((ratio: number) => boolean) | null) => void
 }
 
 type MonacoNS = typeof import('monaco-editor')
@@ -49,23 +50,25 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
     editorFontSize = DEFAULT_NOTEBOOK_EDITOR_FONT,
     onChange,
     onRunSelection,
-    onInsertFiles,
+    onScrollRatio,
+    onBindScroll,
   },
   ref,
 ) {
   const theme = useAppStore((s) => s.theme)
   const hostRef = useRef<HTMLDivElement>(null)
-  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null)
+  const editorRef = useRef<monacoEditor.IStandaloneCodeEditor | null>(null)
   const monacoRef = useRef<MonacoNS | null>(null)
   const onRunSelectionRef = useRef(onRunSelection)
   onRunSelectionRef.current = onRunSelection
-  const onInsertFilesRef = useRef(onInsertFiles)
-  onInsertFilesRef.current = onInsertFiles
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const onScrollRatioRef = useRef(onScrollRatio)
+  onScrollRatioRef.current = onScrollRatio
+  const onBindScrollRef = useRef(onBindScroll)
+  onBindScrollRef.current = onBindScroll
   const contentRef = useRef(content)
   contentRef.current = content
-  const [dragOver, setDragOver] = useState(false)
   const editorHeight = useContainerHeight(hostRef, 120)
   const fontSize = Math.max(10, Math.round(editorFontSize))
   const lineHeight = Math.max(14, Math.round(editorFontSize * 1.7))
@@ -111,6 +114,10 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
         ed.focus()
       },
       focus: () => editorRef.current?.focus(),
+      scrollToRatio: (ratio: number) => {
+        const ed = editorRef.current
+        if (ed) scrollEditorToRatio(ed, ratio)
+      },
     }),
     [],
   )
@@ -135,13 +142,6 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
     }
   }, [content, noteId])
 
-  const takeFiles = useCallback((dt: DataTransfer | null) => {
-    const files = collectTransferFiles(dt)
-    if (!files.length || !onInsertFilesRef.current) return false
-    void onInsertFilesRef.current(files)
-    return true
-  }, [])
-
   const onMount: OnMount = (editorInstance, monaco) => {
     editorRef.current = editorInstance
     monacoRef.current = monaco
@@ -156,52 +156,28 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
       run: () => onRunSelectionRef.current?.(),
     })
-    const dom = editorInstance.getDomNode()
-    if (!dom) return
-    const onPaste = (e: ClipboardEvent) => {
-      if (takeFiles(e.clipboardData)) e.preventDefault()
-    }
-    dom.addEventListener('paste', onPaste)
-    const unbind = bindSelectionGuard(dom, () => {
-      const pos = editorInstance.getPosition()
-      if (!pos) return
-      editorInstance.setSelection(monaco.Selection.fromPositions(pos, pos))
+    const scrollSub = editorInstance.onDidScrollChange((e) => {
+      if (!e.scrollTopChanged) return
+      onScrollRatioRef.current?.(editorScrollRatio(editorInstance))
     })
+    onBindScrollRef.current?.((ratio) => scrollEditorToRatio(editorInstance, ratio))
+    const dom = editorInstance.getDomNode()
+    const unbind = dom
+      ? bindSelectionGuard(dom, () => {
+          const pos = editorInstance.getPosition()
+          if (!pos) return
+          editorInstance.setSelection(monaco.Selection.fromPositions(pos, pos))
+        })
+      : () => undefined
     editorInstance.onDidDispose(() => {
       unbind()
-      dom.removeEventListener('paste', onPaste)
+      scrollSub.dispose()
+      onBindScrollRef.current?.(null)
     })
   }
 
-  const onDragOver = useCallback((e: DragEvent) => {
-    if (![...e.dataTransfer.types].includes('Files')) return
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
-    setDragOver(true)
-  }, [])
-
-  const onDragLeave = useCallback((e: DragEvent) => {
-    if (e.currentTarget.contains(e.relatedTarget as Node)) return
-    setDragOver(false)
-  }, [])
-
-  const onDrop = useCallback(
-    (e: DragEvent) => {
-      setDragOver(false)
-      if (!takeFiles(e.dataTransfer)) return
-      e.preventDefault()
-    },
-    [takeFiles],
-  )
-
   return (
-    <div
-      className={`note-editor-wrap${dragOver ? ' is-drag-over' : ''}`}
-      data-ww-focus-hog=""
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-    >
+    <div className="note-editor-wrap" data-ww-focus-hog="">
       <div ref={hostRef} className="note-editor-host">
         <Editor
           key={noteId}
@@ -233,3 +209,17 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
     </div>
   )
 })
+
+function editorScrollRatio(ed: monacoEditor.IStandaloneCodeEditor): number {
+  const height = ed.getLayoutInfo().height
+  return scrollRatio(ed.getScrollTop(), ed.getScrollHeight(), height)
+}
+
+function scrollEditorToRatio(ed: monacoEditor.IStandaloneCodeEditor, ratio: number): boolean {
+  const height = ed.getLayoutInfo().height
+  const max = Math.max(0, ed.getScrollHeight() - height)
+  const next = ratio * max
+  if (Math.abs(ed.getScrollTop() - next) < 1) return false
+  ed.setScrollTop(next)
+  return true
+}

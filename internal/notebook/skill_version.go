@@ -5,11 +5,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"WWorkbench/internal/dirgit"
+	"WWorkbench/internal/file"
 )
 
-// SkillVersion 技能目录仓的一版提交（兼容旧名）。
-type SkillVersion = dirgit.CommitInfo
+// SkillVersion 技能目录仓的一版提交（兼容旧名）。版本工具仍是文件服务绑定的 git。
+type SkillVersion = file.Revision
 
 // SkillVersionStatus 技能目录版本时间轴。
 type SkillVersionStatus struct {
@@ -90,9 +90,12 @@ func (s *Service) ShowSkillVersion(skillName, hash string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	abs, _, err := s.ResolveDirRel(rel)
-	if err != nil {
+	if _, _, err = s.ResolveDirRel(rel); err != nil {
 		return "", err
 	}
-	return dirgit.ShowFile(abs, hash, SkillEntryFile)
+	g := s.gitTool()
+	if g == nil {
+		return "", errnoNotebook("文件服务未绑定 git")
+	}
+	return g.Show(rel, hash, SkillEntryFile)
 }

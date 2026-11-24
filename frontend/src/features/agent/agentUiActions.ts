@@ -340,6 +340,7 @@ function asProductId(v: unknown): ProductId | null {
     'docker',
     'environment',
     'notebook',
+    'skillmarket',
     'httpapi',
     'logs',
     'backup',

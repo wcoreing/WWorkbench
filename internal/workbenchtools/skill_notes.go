@@ -4,12 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
-
-	"WWorkbench/internal/model"
-	"WWorkbench/internal/notebook"
 )
 
-// toolListSkills 列出笔记本工作流（role=skill；任意业务根下的 SKILL.md，含记忆区项目）。
+// toolListSkills 列出已安装方法包（经 skill.Store；含任意业务根下的 SKILL.md）。
 func toolListSkills(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	_ = raw
 	type item struct {
@@ -23,73 +20,34 @@ func toolListSkills(_ context.Context, d *Deps, raw json.RawMessage) ToolResult 
 		Source      string `json:"source"`
 		HasSteps    bool   `json:"hasSteps,omitempty"`
 	}
-	seen := map[string]struct{}{}
-	out := make([]item, 0, 32)
-
-	if d == nil || d.Notebook == nil {
-		return Fail("笔记本未就绪")
+	if d == nil || d.Skills == nil {
+		return Fail("技能存储未就绪")
 	}
 
-	appendItem := func(id, title, desc, noteID string, hasSteps bool) {
-		id = strings.TrimSpace(id)
-		if id == "" {
-			return
-		}
-		if _, ok := seen[id]; ok {
-			return
-		}
-		seen[id] = struct{}{}
-		resolvedNote := noteID
-		noteID, skillDir, assetsDir, _ := d.Notebook.ResolveSkillPaths(id)
-		if resolvedNote != "" {
-			noteID = resolvedNote
-		}
-		out = append(out, item{
-			ID: id, Name: firstNonEmpty(strings.TrimSpace(title), id),
-			Description: desc, NoteID: noteID,
-			DiskPath: skillDir, SkillDir: skillDir, AssetsDir: assetsDir,
-			Source: "notebook", HasSteps: hasSteps,
-		})
-	}
-
-	list, err := d.Notebook.ListSkillNotes(80)
+	list, err := d.Skills.List("")
 	if err != nil {
 		return Fail(err.Error())
 	}
-	for _, sum := range list {
-		n, err := d.Notebook.GetNote(sum.ID)
-		if err != nil || n == nil {
+	seen := map[string]struct{}{}
+	out := make([]item, 0, len(list)+1)
+	for _, pkg := range list {
+		id := strings.TrimSpace(pkg.ID)
+		if id == "" {
+			id = strings.TrimSpace(pkg.Dir)
+		}
+		if id == "" {
 			continue
 		}
-		// 对外 id：路径技能用完整目录；任务区仍用短名
-		id := notebook.SkillNameFromNoteID(n.ID)
-		if id == "" {
-			id = notebook.ReadLinkedSkillID(n.Content)
+		if _, ok := seen[id]; ok {
+			continue
 		}
-		if id == "" {
-			if p, ok := notebook.ParseWorkflowNote(*n); ok && p.Name != "" {
-				id = p.Name
-			}
-		}
-		if id == "" {
-			id = notebook.SuggestSkillID(n.Title, n.ID)
-		}
-		desc := ""
-		hasSteps := false
-		if p, ok := notebook.ParseWorkflowNote(*n); ok {
-			desc = firstNonEmpty(p.Description, p.Intent)
-			hasSteps = len(p.Steps) > 0
-			// 仅短名 frontmatter 且位于 工作流/ 时覆盖；路径技能保留目录 id
-			if p.Name != "" && !strings.Contains(id, "/") {
-				id = p.Name
-			}
-		}
-		if desc == "" {
-			if fm, _, ok := notebook.PeekFrontmatter(n.Content); ok {
-				desc = notebook.FrontmatterString(fm, "description")
-			}
-		}
-		appendItem(id, n.Title, desc, n.ID, hasSteps)
+		seen[id] = struct{}{}
+		out = append(out, item{
+			ID: id, Name: firstNonEmpty(pkg.Name, id),
+			Description: pkg.Description, NoteID: pkg.NoteID,
+			DiskPath: firstNonEmpty(pkg.DiskPath, pkg.Dir), SkillDir: pkg.Dir, AssetsDir: pkg.AssetsDir,
+			Source: "skill", HasSteps: pkg.HasSteps,
+		})
 	}
 	if _, ok := seen["cms_new_article"]; !ok {
 		out = append(out, item{
@@ -98,11 +56,11 @@ func toolListSkills(_ context.Context, d *Deps, raw json.RawMessage) ToolResult 
 		})
 	}
 
-	b, _ := json.Marshal(map[string]any{"ok": true, "skills": out, "total": len(out), "ssot": "notebook"})
+	b, _ := json.Marshal(map[string]any{"ok": true, "skills": out, "total": len(out), "ssot": "skill"})
 	return OKData(string(b))
 }
 
-// toolGetSkill 读取笔记本工作流正文；返回 diskPath / skillDir / assetsDir。
+// toolGetSkill 读取方法包正文（经 skill.Store）。
 func toolGetSkill(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	var in struct {
 		Skill string `json:"skill"`
@@ -128,85 +86,24 @@ func toolGetSkill(ctx context.Context, d *Deps, raw json.RawMessage) ToolResult 
 			"run":     map[string]any{"tool": "run_skill", "name": "cms_new_article"},
 		})
 	}
-	if d == nil || d.Notebook == nil {
-		return Fail("笔记本未就绪")
+	if d == nil || d.Skills == nil {
+		return Fail("技能存储未就绪")
 	}
 
-	n, ok := findSkillNote(d.Notebook, key)
-	if !ok {
-		return Fail("未找到工作流：" + key + "（笔记本任意业务根下的 SKILL.md，含 工作流/ 与 记忆区/…/项目/）")
+	pkg, err := d.Skills.Get(key)
+	if err != nil {
+		return Fail("未找到工作流：" + key + "（任意业务根下的 SKILL.md，含 工作流/ 与 记忆区/…/项目/）")
 	}
-	body := notebook.SkillBodyFromNote(n.Content)
-	if body == "" {
-		body = strings.TrimSpace(n.Content)
-	}
-	hasSteps := false
-	runName := notebook.SkillNameFromNoteID(n.ID)
-	if runName == "" {
-		runName = key
-	}
-	if p, pok := notebook.ParseWorkflowNote(*n); pok {
-		hasSteps = len(p.Steps) > 0
-		if p.Name != "" && !strings.Contains(runName, "/") {
-			runName = p.Name
-		}
-	}
-	noteID, skillDir, assetsDir, _ := d.Notebook.ResolveSkillPaths(runName)
-	if noteID == "" {
-		noteID = n.ID
-	}
-	if skillDir == "" {
-		if dir := notebook.SkillDirFromNoteID(n.ID); dir != "" {
-			_, skillDir, assetsDir, _ = d.Notebook.ResolveSkillPaths(dir)
-		}
-	}
-	diskFile := ""
-	if p, err := d.Notebook.NoteDiskPath(noteID); err == nil {
-		diskFile = p
-	}
-	if assetsDir != "" {
-		SetCallerSkillAssets(ctx, assetsDir)
+	runName := firstNonEmpty(pkg.ID, key)
+	if pkg.AssetsDir != "" {
+		SetCallerSkillAssets(ctx, pkg.AssetsDir)
 	}
 	b, _ := json.Marshal(map[string]any{
-		"ok": true, "id": runName, "name": firstNonEmpty(n.Title, runName),
-		"noteId": noteID, "source": "notebook", "hasSteps": hasSteps,
-		"diskPath": diskFile, "skillDir": skillDir, "assetsDir": assetsDir,
-		"content": body,
+		"ok": true, "id": runName, "name": firstNonEmpty(pkg.Name, runName),
+		"noteId": pkg.NoteID, "source": "skill", "hasSteps": pkg.HasSteps,
+		"diskPath": pkg.DiskPath, "skillDir": pkg.Dir, "assetsDir": pkg.AssetsDir,
+		"content": pkg.Content,
 		"run":     map[string]any{"tool": "run_skill", "name": runName, "note": "可选机械捷径；优先读正文后由 Agent 用工具执行"},
 	})
 	return OKData(string(b))
-}
-
-type noteGetter interface {
-	GetNote(id string) (*model.NoteDO, error)
-	FindNoteIDBySkillID(skillID string) string
-}
-
-func findSkillNote(nb noteGetter, key string) (*model.NoteDO, bool) {
-	key = strings.TrimSpace(key)
-	if key == "" || nb == nil {
-		return nil, false
-	}
-	accept := func(n *model.NoteDO) bool {
-		if n == nil || notebook.IsTaskLogNoteID(n.ID) {
-			return false
-		}
-		if notebook.SkillNameFromNoteID(n.ID) != "" {
-			return true
-		}
-		if _, ok := notebook.ParseWorkflowNote(*n); ok {
-			return true
-		}
-		return notebook.NormalizeNoteRole(n.Role) == model.NoteRoleSkill
-	}
-	// 寻址只走笔记本 SSOT；工具层不再平行扫 ListSkillNotes / ListWorkflowNotes。
-	id := nb.FindNoteIDBySkillID(key)
-	if id == "" {
-		return nil, false
-	}
-	n, err := nb.GetNote(id)
-	if err != nil || !accept(n) {
-		return nil, false
-	}
-	return n, true
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Skill 版本工具：薄封装到目录版本（dir=工作流/{name}）。
+// Skill 版本工具：经 skill.Store（目录版本）。
 
 func toolPinSkillVersion(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
 	var in struct {
@@ -28,9 +28,8 @@ func toolPinSkillVersion(_ context.Context, d *Deps, raw json.RawMessage) ToolRe
 	if key == "" {
 		return Fail("请提供 skill（或 name）")
 	}
-	rel, err := notebook.SkillDirRel(key)
-	if err != nil {
-		return Fail(err.Error())
+	if d == nil || d.Skills == nil {
+		return Fail("技能存储未就绪")
 	}
 	msg := strings.TrimSpace(in.Message)
 	if msg == "" {
@@ -41,8 +40,11 @@ func toolPinSkillVersion(_ context.Context, d *Deps, raw json.RawMessage) ToolRe
 	} else if !strings.HasPrefix(msg, "pin:") && !strings.HasPrefix(msg, "update_skill") {
 		msg = "pin: " + msg
 	}
-	raw2, _ := json.Marshal(map[string]any{"dir": rel, "message": msg})
-	return toolPinDirVersion(nil, d, raw2)
+	v, err := d.Skills.Pin(key, msg)
+	if err != nil {
+		return Fail(err.Error())
+	}
+	return OKData(map[string]any{"ok": true, "skill": key, "version": v})
 }
 
 func toolListSkillVersions(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
@@ -59,16 +61,17 @@ func toolListSkillVersions(_ context.Context, d *Deps, raw json.RawMessage) Tool
 	if key == "" {
 		return Fail("请提供 skill（或 name）")
 	}
-	rel, err := notebook.SkillDirRel(key)
+	if d == nil || d.Skills == nil {
+		return Fail("技能存储未就绪")
+	}
+	st, err := d.Skills.ListVersions(key, in.Limit)
 	if err != nil {
 		return Fail(err.Error())
 	}
-	raw2, _ := json.Marshal(map[string]any{"dir": rel, "limit": in.Limit})
-	res := toolListDirVersions(nil, d, raw2)
-	if !res.OK {
-		return res
-	}
-	return res
+	return OKData(map[string]any{
+		"ok": true, "skill": key, "dir": st.Dir, "head": st.Head,
+		"enabled": st.Enabled, "working": st.Working, "versions": st.Commits,
+	})
 }
 
 func toolRestoreSkillVersion(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
@@ -98,8 +101,9 @@ func toolRestoreSkillVersion(_ context.Context, d *Deps, raw json.RawMessage) To
 	})
 }
 
-// RestoreSkillVersionConfirmed 确认后回退技能目录。
+// RestoreSkillVersionConfirmed 确认后回退技能目录（经 skill.Store）。
 func RestoreSkillVersionConfirmed(ctx context.Context, d *Deps, argsJSON string) ToolResult {
+	_ = ctx
 	var in struct {
 		Skill  string `json:"skill"`
 		Name   string `json:"name"`
@@ -112,19 +116,27 @@ func RestoreSkillVersionConfirmed(ctx context.Context, d *Deps, argsJSON string)
 	if key == "" {
 		key = strings.TrimSpace(in.Name)
 	}
-	dir := strings.TrimSpace(in.Dir)
-	if dir == "" && key != "" {
-		dir, _ = notebook.SkillDirRel(key)
+	if key == "" {
+		key = strings.TrimSpace(in.Dir)
 	}
 	hash := strings.TrimSpace(in.Hash)
-	if dir == "" || hash == "" {
+	if key == "" || hash == "" {
 		return Fail("skill/dir / hash 不能为空")
 	}
-	raw, _ := json.Marshal(map[string]any{"dir": dir, "hash": hash, "intent": in.Intent})
-	res := RestoreDirVersionConfirmed(ctx, d, string(raw))
-	if res.OK && key != "" && d != nil && d.Radar != nil {
+	if d == nil || d.Skills == nil {
+		return Fail("技能存储未就绪")
+	}
+	msg := strings.TrimSpace(in.Intent)
+	if msg == "" {
+		msg = "restore_skill_version"
+	}
+	v, err := d.Skills.Restore(key, hash, msg)
+	if err != nil {
+		return Fail(err.Error())
+	}
+	if d.Radar != nil {
 		noteID := notebook.SkillNoteID(key)
 		d.Radar.EmitNotebookNote(workbench.RadarOpUpdate, noteID, "workflow-"+key, key, true)
 	}
-	return res
+	return OKData(map[string]any{"ok": true, "skill": key, "version": v})
 }

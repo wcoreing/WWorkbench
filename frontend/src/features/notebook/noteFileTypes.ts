@@ -28,6 +28,14 @@ export const NOTE_FILE_TYPE_PRESETS: NoteFileTypePreset[] = [
   { id: 'css', labelKey: 'langCss', ext: '.css', markdownLike: false },
 ]
 
+/** isHtmlDocument 是否按 HTML 页面打开，而不是源码。 */
+export function isHtmlDocument(language?: string, noteId?: string): boolean {
+  const id = (language || '').trim().toLowerCase()
+  if (id === 'html' || id === 'htm') return true
+  const path = (noteId || '').replace(/\\/g, '/').toLowerCase()
+  return path.endsWith('.html') || path.endsWith('.htm')
+}
+
 /** isMarkdownLikeLanguage 是否按 Markdown 预览。 */
 export function isMarkdownLikeLanguage(language: string): boolean {
   const id = (language || 'markdown').trim().toLowerCase()

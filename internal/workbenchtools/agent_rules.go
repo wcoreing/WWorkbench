@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.22a"
+const AgentRulesVersion = "2026.11.24h"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -33,7 +33,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 ## 0c. 词典与自学习闭环（先探索，再确定）
 - **任务**：人分配的目标（要办成的事；常与 Chrome 标签组 session 对齐）。不是待办列表实体名。
 - **任务账本 / 日志**：SSOT。含 **思考（kind=thought）** 与 **操作（kind=op）**；TaskRun → 工作流/{name}/log.md。探索期如实记录；是总结技能的**资料**，不是必须逐步回放的脚本。
-- **工作流协议（Skill）**：笔记本**基础能力**（任意目录下的 SKILL.md + log.md + assets/、scripts/）。结构：说明 → 经验 → 步骤 → 脚本 → 资源。**引擎是 Agent**。Skill **跟资源走**，不是「任务」的子类；顶栏「工作流/」只是任务产品默认落点。
+- **工作流协议（Skill）**：**独立领域** internal/skill（Store：List/Get/Put/Pin/Export/Install）；磁盘真源仍为任意业务根下 SKILL.md + log.md + assets/、scripts/。结构：说明 → 经验 → 步骤 → 脚本 → 资源。**引擎是 Agent**。Skill **跟资源走**，不是「任务」的子类；顶栏「工作流/」只是任务产品默认落点。产品只依赖接口，不把归属策略写进领域内核。
 - **Skill 归属（强制）**：
   - **项目方法**（智能配置、跨机同步、部署清单等）→ 项目/{项目名}/SKILL.md；update_skill / get_skill 必须传完整目录路径（如 name=项目/百度标注），**禁止**落到 工作流/。
   - **主机部署/巡检** → 记忆区/{主机}/项目/{名}/SKILL.md（传完整路径）。
@@ -48,7 +48,8 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **谁执行**：当前在用的 Agent（Cursor / 侧栏 / 其他 MCP 客户端）负责两阶段；舞台只备资料与焦点，不指定通道、不机械写 Skill。
 - **磁盘真源**：笔记本 = ~/.wworkbench/notebook/。根下按**业务工作根**分区：工作流/（任务）、项目/（Workbench 项目）、运维/、记忆区/。产品只挂自己的根；笔记本产品看全盘。样板：get_skill(skill=wwb-skill-standard)。当前目录若只有 log.md，update_skill 可带 steps 首创同目录 SKILL.md。
 - **log.md**：与 SKILL.md 同目录的账本投影；同步时**只追加**更高 seq 的思考/操作并刷新头信息，不整文件覆盖。get_skill / list_skills **只认 SKILL.md**。
-- **目录版本（笔记本基础能力）**：任意文件夹可 enable_dir_version；仓在目录内 .git。技能目录默认 ignore log.md。list_dir_versions / pin_dir_version；Skill 兼容 list/pin/restore_skill_version。update_skill：有变更时写前+写后各 pin（可 restore 回更新前）。
+- **目录版本**：git 是文件服务绑定的版本工具。任意相对目录用 enable_dir_version / list_dir_versions / pin_dir_version（Skill 兼容 list/pin/restore_skill_version）。仓在该目录内 .git；工作流目录忽略 log.md。禁止自己在目录里执行 git。update_skill：有变更时写前+写后各 pin（可 restore 回更新前）。
+- **技能商店 = GitHub**：一个技能一个固定仓库 id（目录路径，如 工作流/某技能）。版本是该仓库的提交，不是新技能。推送把当前提交送到同一仓库；云端已有该提交则不要再推，云端还没有则把本机这份快照再推一次。检出指定提交。禁止把每个提交拆成一条商店记录。
 - 关系：分配目标 → 探索记账本（思考+操作）→ 完成后 update_skill(归属目录) → 下次 get_skill 更强。
 
 ## 0d. 教人信封（全域，不只云）
@@ -124,9 +125,11 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 前端统一 MIME：application/x-wworkbench-asset；列表行用 assetDragRowProps（拖+单击），AI 侧栏只认这一份协议。
 - **禁止**同一节点叠 pressProps：其 pointerdown.preventDefault 会掐死 HTML5 拖拽。
 
-## 7. 笔记本 = 底座；业务 = 工作根组合
-- 笔记本是基础服务（树/编辑/版本/角色）；业务产品组合舞台 + 自己的工作根，禁止再造第二套文件树。
-- 读：list_notes / search_notes / get_note。写：notebook_append_content；附件进该笔记/Skill 目录的 assets。
+## 7. 文档工作台 = 文件的一种打开方式
+- 文件身份在文件目录（dataDir/files/catalog.json）：稳定 ID + 相对路径。文档用 Markdown / 文本 / HTML 页面打开这些文件。HTML 不另建存储。
+- **派生页面**：放在笔记同名目录的 html/ 下（运维/本地后台.md → 运维/本地后台/html/本地后台.html）。打开 HTML 默认是页面。页头注释 <!-- wwb-view source="相对路径" skill="技能目录" sourceRev="该文件当前 7 位提交" -->。sourceRev 取该文件所在目录仓里这个文件的提交（list_dir_versions 的目录；文件未纳入仓则留空），不要写时间戳。源有新提交或未提交改动时，界面标「源已更新」，不要自动重写。不改 Markdown，不在应用里解析字段。口令不进技能、不进回复。search_notes 不返回 HTML 正文。页面与源笔记按同名目录互相关联：页脚里的源路径点回 Markdown，Markdown 的「页面」打开 html。不要在 HTML 里写跳转应用的脚本。
+- 业务根仍是 工作流/、记忆区/、运维/、项目/。读：list_notes / search_notes / get_note。写：notebook_append_content。
+- **本地资源**：归属是文件 ID，不是笔记路径。截图和附件不要写成 base64 正文。普通笔记的扩展资源在同名目录里按功能分：附件为 {stem}/assets/，页面为 {stem}/html/。Skill 仍用该目录下的 assets/。资源账本在 resources/catalog.json。正文只插入相对链接。Agent 挂文件用 update_skill(resourcePaths=本机绝对路径)。
 - **任务产品**工作根 = 工作流/；仅网页任务 Skill 默认落 工作流/{name}/SKILL.md + log.md。
 - **项目产品**工作根 = 项目/（+ 记忆区/）；项目方法 Skill = 项目/{项目名}/SKILL.md；收口与智能配置沉淀**必须** update_skill(name=项目/{名})，并可用 configure_project_resources 把 skill:项目/{名}/SKILL.md 钉进 links。
 - **运维类产品**工作根 = 运维/ + 记忆区/；主机约定写记忆册，不要塞进任务区「工作流/」。

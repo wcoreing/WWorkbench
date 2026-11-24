@@ -1,4 +1,5 @@
-import type { Ref } from 'react'
+import { useEffect, useState, type Ref } from 'react'
+import { api } from '../../api/client'
 import type {
   Connection,
   Note,
@@ -9,13 +10,20 @@ import type {
 import { IconPlay } from '../../components/Icons'
 import { EmptyState } from '../../components/EmptyState'
 import { pressProps } from '../../components/compat'
+import { DerivedViewBar } from '../../features/notebook/DerivedViewBar'
+import { HtmlNoteFrame } from '../../features/notebook/HtmlNoteFrame'
 import { MarkdownPreview } from '../../features/notebook/MarkdownPreview'
 import { NotebookMdViewToggle, type NotebookMdViewMode } from '../../features/notebook/NotebookMdViewToggle'
 import { NotebookNoteMoreMenu } from '../../features/notebook/NotebookNoteMoreMenu'
 import { NotebookNoteSettingsMenu } from '../../features/notebook/NotebookNoteSettingsMenu'
 import { NotebookStatusBar } from '../../features/notebook/NotebookStatusBar'
 import { NoteEditor, type NoteEditorHandle } from '../../features/notebook/NoteEditor'
+import { NotebookResourceStrip } from '../../features/notebook/NotebookResourceStrip'
+import { useNotebookAssetIngress } from '../../features/notebook/useNotebookAssetIngress'
+import { useMdSplitScroll } from '../../features/notebook/useMdSplitScroll'
 import type { NotebookEditorFontSize } from '../../features/notebook/notebookEditorFont'
+import { linkedSourceNoteId, sourceNoteIdFromPage } from '../../features/notebook/derivedView'
+import { isHtmlDocument } from '../../features/notebook/noteFileTypes'
 import { basenameRel } from '../../features/notebook/notebookPathOps'
 import { useI18n } from '../../i18n'
 import { openTabContextMenu, type TabContextMenuState } from '../../components/TabContextMenu'
@@ -47,6 +55,9 @@ type Props = {
   updateActiveNote: (patch: Partial<Note>) => void
   runInTerminal: () => void
   insertFilesAsAssets: (files: File[]) => void | Promise<void>
+  insertPathsAsAssets: (paths: string[]) => void | Promise<void>
+  forgetResourceFile: (fileName: string) => void
+  resourceRev: number
   pickAssets: (imagesOnly: boolean) => void | Promise<void>
   insertTemplate: () => void
   duplicateNote: () => void | Promise<void>
@@ -67,6 +78,8 @@ type Props = {
   activeHostName?: string
   activeConnName?: string
   openCreateFile: () => void
+  derivedPageId?: string
+  onOpenNote: (id: string) => void
 }
 
 /** NotebookWorkbenchEditorPane 标签栏 + 编辑/预览主区（与侧栏数据域解耦）。 */
@@ -93,6 +106,9 @@ export function NotebookWorkbenchEditorPane({
   updateActiveNote,
   runInTerminal,
   insertFilesAsAssets,
+  insertPathsAsAssets,
+  forgetResourceFile,
+  resourceRev,
   pickAssets,
   insertTemplate,
   duplicateNote,
@@ -113,8 +129,44 @@ export function NotebookWorkbenchEditorPane({
   activeHostName,
   activeConnName,
   openCreateFile,
+  derivedPageId,
+  onOpenNote,
 }: Props) {
+  const splitScroll = useMdSplitScroll(mdViewMode === 'split')
+  const htmlDoc = isHtmlDocument(activeNote?.language, activeNote?.id)
+  const [htmlSource, setHtmlSource] = useState(false)
+  useEffect(() => {
+    setHtmlSource(false)
+  }, [activeNote?.id])
+  const pairedSourceId = activeNote ? sourceNoteIdFromPage(activeNote.id) : ''
+  const showHtmlPage = Boolean(activeNote) && htmlDoc && (Boolean(pairedSourceId) || !htmlSource)
+  const showDerivedInline = noteMdLike && mdViewMode === 'page' && Boolean(derivedPageId)
+  const [pageHtml, setPageHtml] = useState('')
+  useEffect(() => {
+    if (!showDerivedInline || !derivedPageId) return
+    let cancelled = false
+    api
+      .getNote(derivedPageId)
+      .then((raw) => {
+        if (!cancelled) setPageHtml(String((raw as Note).content || ''))
+      })
+      .catch(() => {
+        if (!cancelled) setPageHtml('')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [showDerivedInline, derivedPageId])
+  const openLinkedSource = (id: string) => {
+    if (activeNote && id === activeNote.id) setMdViewMode('split')
+    else onOpenNote(id)
+  }
   const { t } = useI18n()
+  const ingress = useNotebookAssetIngress({
+    enabled: Boolean(activeNote) && activeNote?.language !== 'image',
+    onFiles: (files) => void insertFilesAsAssets(files),
+    onPaths: (paths) => void insertPathsAsAssets(paths),
+  })
 
   return (
     <main className="app-main notebook-main">
@@ -162,9 +214,29 @@ export function NotebookWorkbenchEditorPane({
               </span>
             </nav>
             <div className="notebook-meta-bar-right">
-              {noteMdLike && (
+              {(showHtmlPage || htmlSource) && !pairedSourceId ? (
+                <button
+                  type="button"
+                  className="wn-btn wn-btn-xs"
+                  {...pressProps(() => setHtmlSource((v) => !v))}
+                >
+                  {showHtmlPage ? t('notebook.viewHtmlSource') : t('notebook.viewHtmlPage')}
+                </button>
+              ) : null}
+              {(noteMdLike || pairedSourceId) && (
                 <>
-                  <NotebookMdViewToggle mode={mdViewMode} onChange={setMdViewMode} />
+                  <NotebookMdViewToggle
+                    mode={pairedSourceId ? 'page' : mdViewMode}
+                    onChange={(mode) => {
+                      if (pairedSourceId && mode !== 'page') {
+                        setMdViewMode(mode)
+                        onOpenNote(pairedSourceId)
+                        return
+                      }
+                      setMdViewMode(mode)
+                    }}
+                    showPage={Boolean(derivedPageId) || Boolean(pairedSourceId)}
+                  />
                   <div className="notebook-meta-divider" aria-hidden />
                 </>
               )}
@@ -214,11 +286,44 @@ export function NotebookWorkbenchEditorPane({
               )}
             </div>
           </div>
+          {activeNote ? (
+            <NotebookResourceStrip
+              noteId={activeNote.id}
+              refreshKey={resourceRev}
+              onForget={forgetResourceFile}
+            />
+          ) : null}
           <div
-            className={`notebook-editor-split${noteEditorSplitClass}`}
+            ref={ingress.setHost}
+            className={`notebook-editor-split notebook-asset-drop${noteEditorSplitClass}${ingress.dragOver ? ' is-drag-over' : ''}`}
             style={{ ['--notebook-editor-font-size' as string]: `${editorFontSize}px` }}
+            onDragOver={ingress.onDragOver}
+            onDragLeave={ingress.onDragLeave}
+            onDrop={ingress.onDrop}
           >
-            {showNoteEditor && (
+            {showDerivedInline && activeNote ? (
+              <>
+                <DerivedViewBar noteId={derivedPageId || activeNote.id} html={pageHtml} onOpen={openLinkedSource} />
+                <HtmlNoteFrame
+                  title={basenameRel(activeNote.id) || activeNote.title}
+                  html={pageHtml}
+                  sourceId={activeNote.id}
+                  onOpenSource={openLinkedSource}
+                />
+              </>
+            ) : null}
+            {showHtmlPage && activeNote && !showDerivedInline ? (
+              <>
+                <DerivedViewBar noteId={activeNote.id} html={activeNote.content} onOpen={onOpenNote} />
+                <HtmlNoteFrame
+                  title={basenameRel(activeNote.id) || activeNote.title}
+                  html={activeNote.content}
+                  sourceId={linkedSourceNoteId(activeNote.id, activeNote.content)}
+                  onOpenSource={onOpenNote}
+                />
+              </>
+            ) : null}
+            {showNoteEditor && !showHtmlPage && !showDerivedInline && (
               <NoteEditor
                 ref={editorRef}
                 noteId={activeNote.id}
@@ -227,12 +332,16 @@ export function NotebookWorkbenchEditorPane({
                 editorFontSize={editorFontSize}
                 onChange={(content) => updateActiveNote({ content })}
                 onRunSelection={runInTerminal}
-                onInsertFiles={insertFilesAsAssets}
+                onScrollRatio={splitScroll.onEditorRatio}
+                onBindScroll={splitScroll.bindEditorScroll}
               />
             )}
             {showNotePreview && (
               <div
+                ref={splitScroll.previewRef}
                 className="notebook-preview-pane"
+                onScroll={splitScroll.onPreviewScroll}
+                tabIndex={0}
                 title={mdViewMode === 'preview' ? t('notebook.previewEditHint') : undefined}
                 onDoubleClick={mdViewMode === 'preview' ? () => setMdViewMode('source') : undefined}
               >
