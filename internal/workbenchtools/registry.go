@@ -587,7 +587,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapGetNote,
-		Description: "按 noteId 读知识库全文（脚本/配置/记忆均可）。动手改某台机前先读其 memory。不要 cat，不要 recall_resource。",
+		Description: "按 noteId 读笔记全文。content 是 Markdown；assets 是同名目录里的附件（link 为相对路径，文本附件含 text，图片只有链接）。不要 cat，不要向这个接口要附件二进制。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{

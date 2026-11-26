@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.24h"
+const AgentRulesVersion = "2026.11.25a"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -128,7 +128,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 ## 7. 文档工作台 = 文件的一种打开方式
 - 文件身份在文件目录（dataDir/files/catalog.json）：稳定 ID + 相对路径。文档用 Markdown / 文本 / HTML 页面打开这些文件。HTML 不另建存储。
 - **派生页面**：放在笔记同名目录的 html/ 下（运维/本地后台.md → 运维/本地后台/html/本地后台.html）。打开 HTML 默认是页面。页头注释 <!-- wwb-view source="相对路径" skill="技能目录" sourceRev="该文件当前 7 位提交" -->。sourceRev 取该文件所在目录仓里这个文件的提交（list_dir_versions 的目录；文件未纳入仓则留空），不要写时间戳。源有新提交或未提交改动时，界面标「源已更新」，不要自动重写。不改 Markdown，不在应用里解析字段。口令不进技能、不进回复。search_notes 不返回 HTML 正文。页面与源笔记按同名目录互相关联：页脚里的源路径点回 Markdown，Markdown 的「页面」打开 html。不要在 HTML 里写跳转应用的脚本。
-- 业务根仍是 工作流/、记忆区/、运维/、项目/。读：list_notes / search_notes / get_note。写：notebook_append_content。
+- 业务根仍是 工作流/、记忆区/、运维/、项目/。读：list_notes / search_notes / get_note。写：notebook_append_content。get_note 的 content 是 Markdown；assets 列出同名目录里的附件，link 是正文相对路径，文本附件带 text，图片只有链接。不要 cat，不要索要附件二进制。
 - **本地资源**：归属是文件 ID，不是笔记路径。截图和附件不要写成 base64 正文。普通笔记的扩展资源在同名目录里按功能分：附件为 {stem}/assets/，页面为 {stem}/html/。Skill 仍用该目录下的 assets/。资源账本在 resources/catalog.json。正文只插入相对链接。Agent 挂文件用 update_skill(resourcePaths=本机绝对路径)。
 - **任务产品**工作根 = 工作流/；仅网页任务 Skill 默认落 工作流/{name}/SKILL.md + log.md。
 - **项目产品**工作根 = 项目/（+ 记忆区/）；项目方法 Skill = 项目/{项目名}/SKILL.md；收口与智能配置沉淀**必须** update_skill(name=项目/{名})，并可用 configure_project_resources 把 skill:项目/{名}/SKILL.md 钉进 links。

@@ -3,10 +3,14 @@ package workbenchtools
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"WWorkbench/internal/model"
 )
+
+const maxAssetTextBytes = 48 << 10
 
 const (
 	maxListNotes   = 80
@@ -119,8 +123,62 @@ func toolGetNote(_ context.Context, d *Deps, raw json.RawMessage) ToolResult {
 		"sshHostId":    n.SSHHostID,
 		"connectionId": n.ConnectionID,
 		"content":      n.Content,
+		"assets":       noteAssetPayload(d, n.ID),
 		"updatedAt":    n.UpdatedAt,
 	})
+}
+
+// noteAssetPayload 同名目录 assets/ 的清单。文本附件带正文，图片只给相对链接。
+func noteAssetPayload(d *Deps, noteID string) []map[string]interface{} {
+	out := []map[string]interface{}{}
+	if d == nil || d.Notebook == nil {
+		return out
+	}
+	list, err := d.Notebook.ListNoteAssets(noteID)
+	if err != nil || len(list) == 0 {
+		return out
+	}
+	for _, a := range list {
+		link := linkFromMarkdown(a.Markdown)
+		item := map[string]interface{}{
+			"name":    a.Name,
+			"mime":    a.MIME,
+			"size":    a.Size,
+			"link":    link,
+			"isImage": a.IsImage,
+		}
+		if !a.IsImage && a.Size > 0 && a.Size <= maxAssetTextBytes && textAsset(a.Name, a.MIME) {
+			if path, err := d.Notebook.AssetAbsPath(a.ID); err == nil {
+				if raw, err := os.ReadFile(path); err == nil {
+					item["text"] = string(raw)
+				}
+			}
+		}
+		out = append(out, item)
+	}
+	return out
+}
+
+func linkFromMarkdown(md string) string {
+	i := strings.LastIndex(md, "](")
+	if i < 0 {
+		return ""
+	}
+	rest := md[i+2:]
+	j := strings.IndexByte(rest, ')')
+	if j < 0 {
+		return ""
+	}
+	return rest[:j]
+}
+
+func textAsset(name, mimeType string) bool {
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".csv", ".tsv", ".txt", ".md", ".json", ".yaml", ".yml", ".log", ".xml":
+		return true
+	}
+	mimeType = strings.ToLower(strings.TrimSpace(mimeType))
+	return strings.HasPrefix(mimeType, "text/") || mimeType == "application/json" || mimeType == "application/csv"
 }
 
 func noteGroupNames(d *Deps) map[string]string {

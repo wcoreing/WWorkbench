@@ -1,5 +1,8 @@
 import { useCallback, useRef, type UIEvent } from 'react'
 
+/** 正文变更后预览重排会把 scrollTop 打回 0，这段时间内不要把它当成用户滚动。 */
+const PREVIEW_HOLD_MS = 150
+
 /** scrollRatio 可见区域在可滚动范围中的位置，0 到 1。 */
 export function scrollRatio(scrollTop: number, scrollHeight: number, clientHeight: number): number {
   const max = scrollHeight - clientHeight
@@ -24,8 +27,22 @@ export function useMdSplitScroll(active: boolean) {
   const previewRef = useRef<HTMLDivElement>(null)
   const applyEditor = useRef<((ratio: number) => boolean) | null>(null)
   const echo = useRef<'editor' | 'preview' | null>(null)
+  const pinnedPreview = useRef<number | null>(null)
+  const pinTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeRef = useRef(active)
   activeRef.current = active
+
+  const holdPreview = useCallback(() => {
+    if (!activeRef.current) return
+    const el = previewRef.current
+    if (!el) return
+    pinnedPreview.current = el.scrollTop
+    if (pinTimer.current) clearTimeout(pinTimer.current)
+    pinTimer.current = setTimeout(() => {
+      pinnedPreview.current = null
+      pinTimer.current = null
+    }, PREVIEW_HOLD_MS)
+  }, [])
 
   const bindEditorScroll = useCallback((fn: ((ratio: number) => boolean) | null) => {
     applyEditor.current = fn
@@ -49,6 +66,15 @@ export function useMdSplitScroll(active: boolean) {
       echo.current = null
       return
     }
+    const pinned = pinnedPreview.current
+    if (pinned != null) {
+      const el = event.currentTarget
+      if (Math.abs(el.scrollTop - pinned) > 1) {
+        echo.current = 'preview'
+        el.scrollTop = pinned
+      }
+      return
+    }
     const el = event.currentTarget
     const apply = applyEditor.current
     if (!apply) return
@@ -57,5 +83,5 @@ export function useMdSplitScroll(active: boolean) {
     if (!apply(ratio)) echo.current = null
   }, [])
 
-  return { previewRef, onEditorRatio, onPreviewScroll, bindEditorScroll }
+  return { previewRef, onEditorRatio, onPreviewScroll, bindEditorScroll, holdPreview }
 }

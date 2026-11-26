@@ -198,6 +198,7 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
   )
 
   const updateContent = (content: string) => {
+    splitScroll.holdPreview()
     setNote((prev) => {
       if (!prev) return prev
       const next = { ...prev, content }

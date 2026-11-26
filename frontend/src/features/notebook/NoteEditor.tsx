@@ -69,6 +69,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
   onBindScrollRef.current = onBindScroll
   const contentRef = useRef(content)
   contentRef.current = content
+  const mountedNoteId = useRef<string | null>(null)
   const editorHeight = useContainerHeight(hostRef, 120)
   const fontSize = Math.max(10, Math.round(editorFontSize))
   const lineHeight = Math.max(14, Math.round(editorFontSize * 1.7))
@@ -136,15 +137,19 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
 
   useEffect(() => {
     const ed = editorRef.current
-    if (!ed) return
-    if (ed.getValue() !== content) {
-      ed.setValue(content)
-    }
+    if (!ed || mountedNoteId.current !== noteId) return
+    if (ed.getValue() === content) return
+    const top = ed.getScrollTop()
+    const selection = ed.getSelection()
+    ed.setValue(content)
+    ed.setScrollTop(top)
+    if (selection) ed.setSelection(selection)
   }, [content, noteId])
 
   const onMount: OnMount = (editorInstance, monaco) => {
     editorRef.current = editorInstance
     monacoRef.current = monaco
+    mountedNoteId.current = noteId
     if (editorInstance.getValue() !== contentRef.current) {
       editorInstance.setValue(contentRef.current)
     }
@@ -184,7 +189,7 @@ export const NoteEditor = forwardRef<NoteEditorHandle, Props>(function NoteEdito
           height={editorHeight}
           language={monacoLang}
           theme={isDarkTheme(theme) ? 'vs-dark' : 'vs'}
-          value={content}
+          defaultValue={content}
           onChange={(v) => onChange(v || '')}
           loading={<div className="empty-hint">…</div>}
           options={{

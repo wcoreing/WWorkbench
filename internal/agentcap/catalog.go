@@ -245,7 +245,7 @@ func Catalog() []Item {
 		},
 		{
 			Name: "get_note", Label: "读取笔记正文", Risk: RiskRead,
-			Description:    "按 noteId 返回 Markdown 全文。当前打开的笔记 id 在界面快照里。笔记在工作台库内，禁止 cat 文件",
+			Description:    "按 noteId 返回 Markdown 全文和 assets 清单（文本附件含正文，图片只给相对链接）。禁止 cat 文件",
 			DefaultEnabled: true,
 		},
 		{

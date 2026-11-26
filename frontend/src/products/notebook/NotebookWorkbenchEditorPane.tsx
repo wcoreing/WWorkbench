@@ -330,7 +330,10 @@ export function NotebookWorkbenchEditorPane({
                 language={activeNote.language}
                 content={activeNote.content}
                 editorFontSize={editorFontSize}
-                onChange={(content) => updateActiveNote({ content })}
+                onChange={(content) => {
+                  splitScroll.holdPreview()
+                  updateActiveNote({ content })
+                }}
                 onRunSelection={runInTerminal}
                 onScrollRatio={splitScroll.onEditorRatio}
                 onBindScroll={splitScroll.bindEditorScroll}
