@@ -302,7 +302,16 @@ func (m *Manager) ListSessionTails(maxLines int) []SessionTail {
 
 // PeekShellMeta 按 sessionId 或 hostId 取可见终端元数据（注入命令前基线；无会话则报错）。
 func (m *Manager) PeekShellMeta(sessionID, hostID string) (SessionTail, error) {
-	s, err := m.resolveShellSession(sessionID, hostID)
+	return m.peekShellMeta(sessionID, hostID, "")
+}
+
+// PeekLocalShellMeta 只在本机会话里取最近有输出的一条，避免本机 shell_run 的基线落到 SSH。
+func (m *Manager) PeekLocalShellMeta() (SessionTail, error) {
+	return m.peekShellMeta("", "", string(kindLocal))
+}
+
+func (m *Manager) peekShellMeta(sessionID, hostID, kind string) (SessionTail, error) {
+	s, err := m.resolveShellSession(sessionID, hostID, kind)
 	if err != nil {
 		return SessionTail{}, err
 	}
@@ -323,7 +332,7 @@ func (m *Manager) PeekShellMeta(sessionID, hostID string) (SessionTail, error) {
 
 // GetShellOutput 按 sessionId 或 hostId 分页读取可见 PTY scrollback。
 func (m *Manager) GetShellOutput(sessionID, hostID string, offsetFromEnd, lines int) (SessionTail, ShellOutputPage, error) {
-	s, err := m.resolveShellSession(sessionID, hostID)
+	s, err := m.resolveShellSession(sessionID, hostID, "")
 	if err != nil {
 		return SessionTail{}, ShellOutputPage{}, err
 	}
@@ -341,7 +350,7 @@ func (m *Manager) GetShellOutput(sessionID, hostID string, offsetFromEnd, lines 
 	return meta, page, nil
 }
 
-func (m *Manager) resolveShellSession(sessionID, hostID string) (*Session, error) {
+func (m *Manager) resolveShellSession(sessionID, hostID, kind string) (*Session, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	if sid := strings.TrimSpace(sessionID); sid != "" {
@@ -352,9 +361,13 @@ func (m *Manager) resolveShellSession(sessionID, hostID string) (*Session, error
 		return s, nil
 	}
 	hid := strings.TrimSpace(hostID)
+	kind = strings.TrimSpace(kind)
 	var best *Session
 	var bestAt time.Time
 	for _, s := range m.sessions {
+		if kind != "" && string(s.Kind) != kind {
+			continue
+		}
 		if hid != "" && s.HostID != hid {
 			continue
 		}

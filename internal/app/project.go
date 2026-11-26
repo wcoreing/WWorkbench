@@ -169,10 +169,9 @@ func (s *Service) OpenWorkbenchProjectStage(id string) ApiResult[model.OpenWorkb
 		return ErrResult[model.OpenWorkbenchProjectStageResultDO](err)
 	}
 	out, err := workbenchtools.OpenProjectStage(deps, workbenchtools.OpenProjectStageOpts{
-		ID:       id,
-		Source:   "ui",
-		NotifyUI: false,
-		Intent:   "打开项目可控舞台",
+		ID:     id,
+		Source: "ui",
+		Intent: "打开项目",
 	})
 	if err != nil {
 		return ErrResult[model.OpenWorkbenchProjectStageResultDO](err)

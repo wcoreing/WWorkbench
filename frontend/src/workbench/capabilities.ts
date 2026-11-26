@@ -113,6 +113,5 @@ export const UI_CAPABILITIES: ReadonlySet<string> = new Set([
   Capability.EnvironmentOpen,
   Capability.SSHForwardOpen,
   Capability.BrowserOpen,
-  Capability.OpenProjectStage,
   Capability.SkillMarketOpen,
 ])

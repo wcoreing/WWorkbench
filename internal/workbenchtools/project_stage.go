@@ -22,7 +22,6 @@ type OpenProjectStageOpts struct {
 	LocalPath string
 	Intent    string
 	Source    string // ui | mcp | cursor
-	NotifyUI  bool   // MCP 路径为 true，由前端开 SSH / 钉 Agent
 }
 
 // NormalizeLocalPath 绝对化并 Clean 本机路径。
@@ -124,7 +123,7 @@ func ensureProjectFromLocalPath(d *Deps, localPath string) (model.WorkbenchProje
 		return model.WorkbenchProjectDO{}, false, err
 	}
 	if d.Radar != nil {
-		d.Radar.EmitAsset(workbench.RadarDomainProject, "project", workbench.RadarOpCreate, saved.ID, "mcp-project-stage-create", saved.Name, true)
+		d.Radar.EmitAsset(workbench.RadarDomainProject, "project", workbench.RadarOpCreate, saved.ID, "mcp-project-stage-create", saved.Name, false)
 	}
 	return saved, true, nil
 }
@@ -202,26 +201,10 @@ func OpenProjectStage(d *Deps, opts OpenProjectStageOpts) (model.OpenWorkbenchPr
 			op = workbench.RadarOpCreate
 		}
 		writeID := "ui-project-stage-open"
-		if opts.NotifyUI || out.Source == "mcp" || out.Source == "cursor" {
+		if out.Source == "mcp" || out.Source == "cursor" {
 			writeID = "mcp-project-stage-open"
 		}
-		d.Radar.EmitAsset(workbench.RadarDomainProject, "project", op, p.ID, writeID, p.Name, true)
-	}
-
-	if opts.NotifyUI && d.UIActions != nil {
-		d.UIActions.Dispatch(UIActionOpenProjectStage, map[string]interface{}{
-			"projectId":           p.ID,
-			"projectName":         p.Name,
-			"localPath":           p.LocalPath,
-			"created":             created,
-			"sshHostIds":          ids,
-			"sshHostIdsOmitted":   omitted,
-			"source":              out.Source,
-			"cursorSyncOk":        syncSum.OK,
-			"cursorSyncN":         syncSum.NSynced,
-			"cursorSyncError":     syncSum.Error,
-			"stageLabel":          "项目舞台 · " + p.Name,
-		})
+		d.Radar.EmitAsset(workbench.RadarDomainProject, "project", op, p.ID, writeID, p.Name, false)
 	}
 
 	if digest := BuildLearningDigest(d, p.ID); digest != nil {
@@ -278,7 +261,6 @@ func toolOpenProjectStage(_ context.Context, d *Deps, raw json.RawMessage) ToolR
 		LocalPath: in.LocalPath,
 		Intent:    in.Intent,
 		Source:    "mcp",
-		NotifyUI:  true,
 	})
 	if err != nil {
 		return Fail(err.Error())
@@ -303,7 +285,7 @@ func toolOpenProjectStage(_ context.Context, d *Deps, raw json.RawMessage) ToolR
 func registerOpenProjectStageTool(r *Registry) {
 	r.add(ToolDef{
 		Name: workbench.CapOpenProjectStage,
-		Description: "打开/对齐 WWorkbench 项目可控舞台：写入 Cursor 舞台规则、同步 Cursor 对话、返回至多 3 个已钉 SSH。" +
+		Description: "对齐当前项目：记下项目、写入 Cursor 规则、同步对话、返回至多 3 个已钉 SSH。不切换界面。" +
 			"传 id 或 localPath；localPath 无匹配项目时自动建项（拒绝 / 与 $HOME）。须 intent。" +
 			"仅动手意图（SSH/部署/查生产/改机/shell）调用；纯读码/改 UI 勿为对齐而调用。localPath=工作区根绝对路径。",
 		Parameters: map[string]interface{}{

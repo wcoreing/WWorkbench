@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.26e"
+const AgentRulesVersion = "2026.11.26g"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -85,7 +85,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - 凡参数能解析到 SSH（hostId / sshHostId / hostOrName / 远端 Docker / SSH 日志源 / SSH 隧道库）的操作，都会先打开并聚焦对应终端 + 状态栏。
 - shell_run = 给人看（注入 pip/下载/训练/脚本/管道），不返回 stdout；返回 sessionId/updatedAt（毫秒基线）。注入后立刻 get_shell_output(waitMs, afterUpdatedAt=该 updatedAt) 等新输出，禁止编造 stdout。
 - 本机建改文件用 write_file / edit / mkdir 等（root=project 或 notebook），不要 shell_run；远端才 shell_run。删除和 *.db / .env / data/ 要确认。
-- **本机多项目**：localShell=true 时必须传 workDir=工作区根绝对路径（与 open_project_stage 的 localPath 一致）。工作台按 workDir 隔离本机标签；忙碌会话会新开标签，避免打断另一项目的长任务。
+- **本机多项目**：localShell=true 时必须传 workDir=工作区根绝对路径（与 open_project_stage 的 localPath 一致）。同一目标复用最近聚焦且空闲的标签（本机看 workDir，远端看 host）；都在忙且要注入命令时才新开，避免打断正在跑的任务。
 - 短命令 waitMs 用 3000～8000；长任务再用 15000～30000（勿默认 90s）。已有新输出会立刻返回（waitedMs 为真实耗时）；勿省略 afterUpdatedAt，否则可能空等到超时。
 - **禁止空等**：正文已含 built in / EXIT:0 / 已回到 shell 提示符（如 user@host %）时，不要再用大 waitMs 以「同一水位」再挂起；直接读当前页判断完成。水位已追上且停在提示符时，工作台最多再空等约 2s 即返回 timedOut。
 - shell_probe = 无头只读短探针，禁止改机器；看磁盘文件用 cat，不要 sed/awk 改文件。
@@ -140,7 +140,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 - **记忆区项目 + Skill 协议**：绑主机的部署等方法落 记忆区/{主机}/项目/{名}/SKILL.md（同一套 get_skill / update_skill）；必须传完整目录路径。
 - **项目本地/远端目录**：约定笔记 frontmatter localPath / remotePath（侧栏右键设置）。发版前读约定或 get_workbench_context.hostProjects；本地改代码用 localPath，远端操作对准 remotePath。
 - **项目产品线**：组合器——选本机文件夹为锚点；gitRemote 空则 detect_project_git / save_project 自动探测 origin。手动「添加资源」可钉 ssh/db/docker/log/http/**note**/skill/backup；**智能配置必须经 Agent**：suggest_project_resources → 核对 → configure_project_resources。list/get/save_project；get_workbench_context.projects。智能配置经验沉淀到 项目/{名}/，不要写进 工作流/。
-- **动手对齐舞台**：若挂了 wworkbench MCP，**仅 SSH/部署/查生产/改本机或远端/shell_run 等动手意图**才 open_project_stage(localPath=工作区根绝对路径, intent=人话目标)；纯读码/改 UI/讨论方案跳过。无匹配则自动建项（拒绝 / 与 $HOME），并写舞台规则、同步对话。勿用自带 Shell 代替改机。
+- **动手对齐项目**：若挂了 wworkbench MCP，**仅 SSH/部署/查生产/改本机或远端/shell_run 等动手意图**才 open_project_stage(localPath=工作区根绝对路径, intent=人话目标)；纯读码/改 UI/讨论方案跳过。无匹配则自动建项（拒绝 / 与 $HOME），并写规则、同步对话。这一步只记下当前项目，不切换界面。勿用自带 Shell 代替改机。
 - **Cursor 对话跨机**：不能靠 requestId。真源={localPath}/.wworkbench/cursor-transcripts/（跟 git）。sync_project_cursor_transcripts(id, intent) 从本机 ~/.cursor/projects/*/agent-transcripts 导入并镜像笔记；换机 pull 后 list_project_cursor_transcripts → get_project_cursor_transcript（默认 md）读最近 1～2 条再续作。禁止整份 jsonl 贴进聊天。
 - **动手改某台机之前**：list_notes(sshHostId, role=memory) → get_note；部署再 get_skill(记忆区/…/项目/…)。
 - **Skill 笔记**（role=skill / **/SKILL.md）：真源。list_skills / get_skill；**优先 get_skill 后自己用工具执行**；跑完 **update_skill**（name=完整目录路径；仅任务区可用短名）沉淀。

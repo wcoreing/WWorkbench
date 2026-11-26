@@ -33,12 +33,10 @@ import { payloadBool, payloadStr } from '../../workbench/commandPayload'
 import { subscribeWorkbenchChanged, takePendingWorkbenchChanged, type WorkbenchChangedEvent } from '../../workbench/workbenchRadar'
 import { pressProps, useDismissOverlays } from '../../components/compat'
 import {
-  loadTerminalWorkspace,
   scheduleTerminalWorkspacePersist,
   toTerminalWorkspaceSnapshot,
 } from '../../stores/terminalWorkspacePersist'
 import { shellSingleQuote } from '../../features/terminal/frequentPaths'
-import { restoreTerminalTab } from '../../features/terminal/restoreTerminalWorkspace'
 import { SSHHostModal } from '../../features/terminal/SSHHostModal'
 import { TerminalAddModal, type TerminalAddKind } from '../../features/terminal/TerminalAddModal'
 import { useSSHTrustConfirm } from '../../features/terminal/useSSHTrustConfirm'
@@ -49,6 +47,7 @@ import { TerminalTabStatusPane } from '../../features/terminal/TerminalTabStatus
 import { ECSMonitorBar } from '../../features/terminal/ECSMonitorBar'
 import { focusTerminalSession } from '../../features/terminal/terminalFocus'
 import { encodeTerminalInject, isSessionShellIdle } from '../../features/terminal/terminalClipboard'
+import { pickAgentTerminalTab, type AgentTabDecision } from './pickAgentTerminalTab'
 import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 import { terminalBackground } from '../../features/terminal/TerminalPane'
 import {
@@ -185,7 +184,6 @@ export function TerminalWorkbench() {
   >(null)
   const [tabCtxMenu, setTabCtxMenu] = useState<TabContextMenuState | null>(null)
   const [deleteHostConfirm, setDeleteHostConfirm] = useState<ShellHost | null>(null)
-  const workspaceRestored = useRef(false)
   const tabsRef = useRef<TerminalTab[]>([])
   const prevProductRef = useRef(activeProduct)
   tabsRef.current = tabs
@@ -240,37 +238,8 @@ export function TerminalWorkbench() {
   }, [setStatusMessage])
 
   useEffect(() => {
-    if (workspaceRestored.current) {
-      refreshHosts()
-      return
-    }
-    workspaceRestored.current = true
-    void (async () => {
-      try {
-        const hostList = await api.listShellHosts()
-        setHosts(hostList)
-        const snap = await loadTerminalWorkspace()
-        if (!snap?.tabs.length) return
-        const restored: TerminalTab[] = []
-        for (const tabSnap of snap.tabs) {
-          try {
-            const tab = await restoreTerminalTab(tabSnap, hostList, confirmTrust)
-            if (tab) restored.push({ ...tab, connectState: 'ready' })
-          } catch {
-            /* 跳过无法恢复的会话 */
-          }
-        }
-        if (!restored.length) return
-        setTabs(restored)
-        const idx = Math.min(Math.max(0, snap.activeTabIndex), restored.length - 1)
-        setActiveTabId(restored[idx].id)
-        setStatusMessage(t('terminal.restored', { count: restored.length }))
-      } catch (e) {
-        setHosts([])
-        setStatusMessage((e as Error).message)
-      }
-    })()
-  }, [refreshHosts, setStatusMessage, confirmTrust, t])
+    void refreshHosts()
+  }, [refreshHosts])
 
   useEffect(() => {
     const apply = async (evt: WorkbenchChangedEvent) => {
@@ -493,42 +462,71 @@ export function TerminalWorkbench() {
     setStatusMessage(t('terminal.cmdInjectFailed'))
   }
 
-  /** findLocalTabForWorkDir 按项目 workDir 找本机标签；无 workDir 时不抢占带 workDir 的 MCP 标签。 */
-  const findLocalTabForWorkDir = (workDir?: string): TerminalTab | undefined => {
-    const key = normalizeWorkDirKey(workDir)
-    const locals = tabsRef.current.filter((t) => t.kind === 'local')
-    if (key) {
-      return (
-        locals.find((t) => normalizeWorkDirKey(t.workDir) === key && t.connectState === 'ready') ||
-        locals.find((t) => normalizeWorkDirKey(t.workDir) === key)
-      )
-    }
-    // 手工/无 workDir：仅复用同样没有 workDir 的本机标签
-    return (
-      locals.find((t) => !normalizeWorkDirKey(t.workDir) && t.connectState === 'ready') ||
-      locals.find((t) => !normalizeWorkDirKey(t.workDir))
-    )
-  }
-
-  /** localTabIdle 本机标签是否空闲可注入。 */
-  const localTabIdle = (tab: TerminalTab): boolean => {
+  /** tabIdle 已连通且画面像停在提示符。无会话尾部时视为可注入。 */
+  const tabIdle = (tab: TerminalTab): boolean => {
     if (tab.connectState !== 'ready') return false
     const sid = firstSessionId(tab.layout)
     if (!sid || !isLiveSessionId(sid)) return true
     return isSessionShellIdle(sid)
   }
 
-  /** nextLocalTitle 同项目忙碌时生成「本机 · 名 · 2」标题。 */
-  const nextLocalTitle = (baseTitle: string, workDir?: string): string => {
+  /** localPool 本机同一 workDir；无 workDir 时不抢占带 workDir 的标签。 */
+  const localPool = (workDir?: string): TerminalTab[] => {
     const key = normalizeWorkDirKey(workDir)
-    const same = tabsRef.current.filter(
-      (t) => t.kind === 'local' && normalizeWorkDirKey(t.workDir) === key,
-    )
-    if (same.length === 0) return baseTitle
-    return `${baseTitle} · ${same.length + 1}`
+    return tabsRef.current.filter((tab) => {
+      if (tab.kind !== 'local') return false
+      const tabKey = normalizeWorkDirKey(tab.workDir)
+      return key ? tabKey === key : !tabKey
+    })
   }
 
-  /** runTerminalLink 打开/聚焦终端；有命令则注入。本机按 workDir 隔离；忙碌则新开。 */
+  /** hostPool 同一 SSH / Docker 主机的标签。 */
+  const hostPool = (hostId: string): TerminalTab[] =>
+    tabsRef.current.filter(
+      (tab) => (tab.kind === 'ssh' || tab.kind === 'docker') && tab.hostId === hostId,
+    )
+
+  /** indexedTitle 同目标已有标签时加「 · N」。 */
+  const indexedTitle = (baseTitle: string, count: number): string => {
+    if (count <= 0) return baseTitle
+    return `${baseTitle} · ${count + 1}`
+  }
+
+  /** applyAgentDecision 执行选标签结果。人单击侧栏不走这里。 */
+  const applyAgentDecision = async (
+    pool: TerminalTab[],
+    decision: AgentTabDecision,
+    initialCommand: string | undefined,
+    spawn: () => Promise<void>,
+  ) => {
+    if (decision.action === 'spawn') {
+      const busy = pool.find((tab) => tab.connectState === 'ready' && !tabIdle(tab))
+      if (busy && initialCommand?.trim()) {
+        setStatusMessage(t('terminal.busyNewTab', { title: busy.title }))
+      }
+      await spawn()
+      return
+    }
+    const tab = pool.find((item) => item.id === decision.tabId)
+    if (!tab) {
+      await spawn()
+      return
+    }
+    setActiveTabId(tab.id)
+    setActiveProduct('terminal')
+    if (decision.action === 'retry') {
+      await retryTabConnect(tab.id)
+    }
+    if (decision.inject && initialCommand?.trim()) {
+      await injectIntoTab(tab.id, initialCommand)
+      return
+    }
+    if (decision.action === 'reuse') {
+      setStatusMessage(t('terminal.connected', { title: tab.title }))
+    }
+  }
+
+  /** runTerminalLink Agent 打开/聚焦终端。同一目标先复用最近聚焦且空闲的标签，都忙才新开。 */
   const runTerminalLink = async (
     hostId?: string,
     localShell?: boolean,
@@ -536,87 +534,50 @@ export function TerminalWorkbench() {
     workDir?: string,
     displayName?: string,
   ) => {
+    const inject = Boolean(initialCommand?.trim())
     if (localShell) {
       const key = normalizeWorkDirKey(workDir)
+      const pool = localPool(key || undefined)
       const baseTitle =
         displayName?.trim() ||
         (key ? `本机 · ${basenameWorkDir(key)}` : t('terminal.localShellTitle'))
-      const existing = findLocalTabForWorkDir(key || undefined)
-      if (existing) {
-        const busy = existing.connectState === 'ready' && initialCommand?.trim() && !localTabIdle(existing)
-        if (busy) {
-          setStatusMessage(t('terminal.localBusyNewTab', { title: existing.title }))
-          await connectLocal(initialCommand, {
-            workDir: key || undefined,
-            title: nextLocalTitle(baseTitle, key || undefined),
-          })
-          return
-        }
-        setActiveTabId(existing.id)
-        setActiveProduct('terminal')
-        if (existing.connectState === 'ready' && initialCommand?.trim()) {
-          await injectIntoTab(existing.id, initialCommand)
-          return
-        }
-        if (existing.connectState === 'ready') {
-          setStatusMessage(t('terminal.connected', { title: existing.title }))
-          return
-        }
-        if (existing.connectState === 'failed' || existing.connectState === 'connecting') {
-          // connecting 孤儿态：直接重开，避免永远转圈
-          await retryTabConnect(existing.id)
-          if (initialCommand?.trim()) {
-            await injectIntoTab(existing.id, initialCommand)
-          }
-          return
-        }
-        return
-      }
-      await connectLocal(initialCommand, {
-        workDir: key || undefined,
-        title: baseTitle,
-      })
-      return
-    }
-
-    const existing = hostId
-      ? tabsRef.current.find(
-          (t) =>
-            (t.kind === 'ssh' || t.kind === 'docker') &&
-            t.hostId === hostId &&
-            t.connectState === 'ready',
-        ) ||
-        tabsRef.current.find(
-          (t) => (t.kind === 'ssh' || t.kind === 'docker') && t.hostId === hostId,
-        )
-      : null
-    if (existing) {
-      setActiveTabId(existing.id)
-      setActiveProduct('terminal')
-      if (existing.connectState === 'ready' && initialCommand?.trim()) {
-        await injectIntoTab(existing.id, initialCommand)
-        return
-      }
-      if (existing.connectState === 'ready') {
-        setStatusMessage(t('terminal.connected', { title: existing.title }))
-        return
-      }
-      if (existing.connectState === 'failed' || existing.connectState === 'connecting') {
-        await retryTabConnect(existing.id)
-        if (initialCommand?.trim()) {
-          await injectIntoTab(existing.id, initialCommand)
-        }
-        return
-      }
+      const decision = pickAgentTerminalTab(
+        pool.map((tab) => ({
+          id: tab.id,
+          connectState: tab.connectState,
+          focusedAt: tab.focusedAt,
+          idle: tabIdle(tab),
+        })),
+        inject,
+      )
+      await applyAgentDecision(pool, decision, initialCommand, () =>
+        connectLocal(initialCommand, {
+          workDir: key || undefined,
+          title: indexedTitle(baseTitle, pool.length),
+        }),
+      )
       return
     }
     if (!hostId) return
-    let host = hosts.find((h) => h.id === hostId)
-    if (!host) {
-      host = await api.getShellHost(hostId)
-      setHosts((prev) => (prev.some((h) => h.id === hostId) ? prev : [...prev, host!]))
-    }
-    await connectHost(host, initialCommand)
+    const pool = hostPool(hostId)
+    const decision = pickAgentTerminalTab(
+      pool.map((tab) => ({
+        id: tab.id,
+        connectState: tab.connectState,
+        focusedAt: tab.focusedAt,
+        idle: tabIdle(tab),
+      })),
+      inject,
+    )
+    await applyAgentDecision(pool, decision, initialCommand, async () => {
+      let host = hosts.find((item) => item.id === hostId)
+      if (!host) {
+        host = await api.getShellHost(hostId)
+        setHosts((prev) => (prev.some((item) => item.id === hostId) ? prev : [...prev, host!]))
+      }
+      const base = host.kind === 'docker' ? host.name : `${host.user}@${host.host}:${host.port || 22}`
+      await connectHost(host, initialCommand, indexedTitle(base, pool.length))
+    })
   }
 
   const connectLocal = async (
@@ -695,12 +656,14 @@ export function TerminalWorkbench() {
     return info.sessionId
   }
 
-  const connectHost = async (host: ShellHost, initialCommand?: string) => {
+  const connectHost = async (host: ShellHost, initialCommand?: string, titleOverride?: string) => {
     if (host.kind === 'docker' && host.running === false) {
       setStatusMessage(t('terminal.containerStoppedHint', { name: host.name }))
       return
     }
-    const title = host.kind === 'docker' ? host.name : `${host.user}@${host.host}:${host.port || 22}`
+    const title =
+      titleOverride?.trim() ||
+      (host.kind === 'docker' ? host.name : `${host.user}@${host.host}:${host.port || 22}`)
     const tabId = createPendingTab({
       hostId: host.id,
       kind: host.kind === 'docker' ? 'docker' : 'ssh',

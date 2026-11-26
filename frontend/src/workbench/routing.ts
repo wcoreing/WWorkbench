@@ -28,8 +28,6 @@ export function capabilityToProductId(capability: string): ProductId | null {
       return 'environment'
     case Capability.BrowserOpen:
       return 'browser'
-    case Capability.OpenProjectStage:
-      return 'project'
     default:
       return null
   }

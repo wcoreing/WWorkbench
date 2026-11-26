@@ -135,7 +135,7 @@ export function dispatchAgentUiAction(raw: Record<string, unknown>) {
       } else if (kind === Capability.OpenProjectStage) {
         const name = String(payload.projectName ?? payload.projectId ?? '')
         const created = Boolean(payload.created)
-        setStatus(created ? `已建项并进入舞台 · ${name}` : `已对齐项目舞台 · ${name}`)
+        setStatus(created ? `已建项 · ${name}` : `已对齐项目 · ${name}`)
       }
     } else if (res.error) {
       notify.error(res.error)

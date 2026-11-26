@@ -408,7 +408,7 @@ func (r *Registry) registerBuiltins() {
 	})
 	r.add(ToolDef{
 		Name:        workbench.CapShellRun,
-		Description: "【首选·替代 Cursor Shell】给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。禁止改用 Cursor 自带 Shell。有 initialCommand 时必须填 intent（人话：要干什么、影响谁）。本机务必传 workDir=工作区根绝对路径（多项目隔离标签；缺省用当前舞台项目）。会前置工作台并点亮对应终端+状态栏。本机 localShell 非硬风险免确认（仍可 update_skill/Episode）；远端风险命令先工作台拍板。目录护照不可免除数据硬风险。确认后对 rsync 自动 --exclude *.db/data/.env，并对目标做写前备份（命中 backup policy 则用其 destRoot）。不返回 stdout；返回 sessionId/updatedAt（毫秒基线）。注入后立刻 get_shell_output(waitMs, afterUpdatedAt=updatedAt)。只读短探针才用 shell_probe。",
+		Description: "【首选·替代 Cursor Shell】给人看的 Shell：打开/复用可见 PTY，可选注入命令（pip、下载、训练、脚本、管道）。禁止改用 Cursor 自带 Shell。有 initialCommand 时必须填 intent（人话：要干什么、影响谁）。本机务必传 workDir=工作区根绝对路径（缺省用当前舞台项目）。同一目标复用最近聚焦且空闲的标签，都忙且要注入才新开。会前置工作台并点亮对应终端+状态栏。本机 localShell 非硬风险免确认（仍可 update_skill/Episode）；远端风险命令先工作台拍板。目录护照不可免除数据硬风险。确认后对 rsync 自动 --exclude *.db/data/.env，并对目标做写前备份（命中 backup policy 则用其 destRoot）。不返回 stdout；返回 sessionId/updatedAt（毫秒基线）。注入后立刻 get_shell_output(waitMs, afterUpdatedAt=updatedAt)。只读短探针才用 shell_probe。",
 		Parameters: map[string]interface{}{
 			"type": "object",
 			"properties": map[string]interface{}{

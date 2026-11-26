@@ -42,7 +42,7 @@ func (m *Manager) WaitShellOutput(ctx context.Context, sessionID, hostID string,
 	if waitMs > MaxShellWaitMs {
 		waitMs = MaxShellWaitMs
 	}
-	s, err := m.resolveShellSession(sessionID, hostID)
+	s, err := m.resolveShellSession(sessionID, hostID, "")
 	if err != nil {
 		return false, 0, err
 	}

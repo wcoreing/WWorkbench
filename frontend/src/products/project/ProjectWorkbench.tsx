@@ -15,35 +15,15 @@ import { NOTEBOOK_ROOT_PROJECT } from '../../features/notebook/businessRoots'
 import { useI18n } from '../../i18n'
 import { notify } from '../../notify'
 import { useAppStore } from '../../stores/appStore'
-import {
-  isPanelReadyKind,
-  loadStageLayout,
-  openResource,
-  ResourceStage,
-  saveStageLayout,
-  useResourceWindowStore,
-  type ResourceKind,
-  type ResourceWindow,
-} from '../../workbench/resourceWindow'
-import { Capability } from '../../workbench/capabilities'
-import { useWorkbenchCommand } from '../../stores/productLink'
+import { isPanelReadyKind, openResource, type ResourceKind } from '../../workbench/resourceWindow'
 import { subscribeWorkbenchChanged } from '../../workbench/workbenchRadar'
 import { model } from '../../../wailsjs/go/models'
 import { ProjectAssetPicker } from './ProjectAssetPicker'
 import './project.css'
 
-type OpenStageResult = {
-  project?: WorkbenchProject
-  created?: boolean
-  sshHostIds?: string[]
-  cursorSync?: { ok?: boolean; nSynced?: number; error?: string }
-  note?: string
-}
 
 const LAST_PROJECT_SETTING = 'last_workbench_project_id'
 const MENTION_KINDS: AgentMentionKind[] = ['ssh', 'database', 'docker', 'log', 'http', 'note']
-/** 稳定空数组：避免 stage selector 每次新引用。 */
-const EMPTY_STAGE_PANELS: ResourceWindow[] = []
 const LEGACY_EXPERIENCE_KEY = 'wwb.project.experience.'
 
 function emptyDraft(): WorkbenchProject {
@@ -177,23 +157,17 @@ function linksFingerprint(links: WorkbenchProjectLink[]): string {
     .join('|')
 }
 
-/** ProjectWorkbench 项目组合产品：文件夹锚点 + 跨产品资源钉扎 + 资源舞台。 */
+/** ProjectWorkbench 项目：文件夹锚点、钉住的资源。打开资源用弹窗。 */
 export function ProjectWorkbench() {
   const { t } = useI18n()
   const { setStatusMessage, setAgentSurface, activeProduct } = useAppStore()
   const [items, setItems] = useState<WorkbenchProject[]>([])
   const [activeId, setActiveId] = useState('')
   const [draft, setDraft] = useState<WorkbenchProject>(emptyDraft())
-  const stageEnteredIdRef = useRef('')
-  const enterStageBusyRef = useRef(false)
   const [busy, setBusy] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(false)
-  const [selectedKeys, setSelectedKeys] = useState<Record<string, boolean>>({})
   const restoredRef = useRef(false)
-  const stageLayoutRestoredRef = useRef('')
-  const stageLayoutReadyRef = useRef(false)
-  const stageLayoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const load = useCallback(async () => {
     const list = await api.listWorkbenchProjects()
@@ -253,90 +227,16 @@ export function ProjectWorkbench() {
     }
   }
 
-  const applyStageResult = useCallback(
-    (out: OpenStageResult, fallback?: WorkbenchProject) => {
-      const project = out.project || fallback
-      if (!project?.id) return
-      const links = hydrateProjectLinks(project)
-      setActiveId(project.id)
-      setDraft({ ...project, links, gitRemote: project.gitRemote || '' })
-      const stageKeyId = project.id
-      for (const hostId of out.sshHostIds || []) {
-        const link = links.find((l) => l.kind === 'ssh' && l.id === hostId)
-        openResource({
-          kind: 'ssh',
-          resourceId: hostId,
-          title: link?.label || hostId,
-          presentation: 'panel',
-          stageKey: stageKeyId,
-        })
-      }
-      const mentions = normalizeLinks(links)
-        .filter((l) => MENTION_KINDS.includes(l.kind as AgentMentionKind))
-        .map((l) => ({
-          kind: l.kind as AgentMentionKind,
-          id: l.id,
-          label: l.label || l.id,
-        }))
-      const skills = normalizeLinks(links)
-        .filter((l) => l.kind === 'skill')
-        .map((l) => l.id)
-      if (mentions.length || skills.length) {
-        openAgentDraft({
-          mentions,
-          skillIds: skills.length ? skills : undefined,
-        })
-      }
-      const name = project.name || project.localPath || project.id
-      if (out.created) {
-        notify.success(t('project.enterStageCreated', { name }))
-      } else {
-        notify.success(t('project.enterStageOk', { name }))
-      }
-      if (out.cursorSync && out.cursorSync.ok === false && out.cursorSync.error) {
-        notify.info(t('project.enterStageSyncFail', { error: out.cursorSync.error }))
-      }
-    },
-    [t],
-  )
-
-  const enterProjectStage = useCallback(
-    async (p: WorkbenchProject, opts?: { force?: boolean }) => {
-      const id = (p.id || '').trim()
-      if (!id) {
-        notify.error(t('project.enterStageNeedSave'))
-        return
-      }
-      if (!opts?.force && stageEnteredIdRef.current === id) return
-      if (enterStageBusyRef.current) return
-      enterStageBusyRef.current = true
-      try {
-        const out = (await api.openWorkbenchProjectStage(id)) as OpenStageResult
-        stageEnteredIdRef.current = id
-        applyStageResult(out, p)
-      } catch (e) {
-        notify.error((e as Error).message)
-      } finally {
-        enterStageBusyRef.current = false
-      }
-    },
-    [applyStageResult, t],
-  )
-
   const selectProject = (p: WorkbenchProject) => {
     setActiveId(p.id)
     const links = hydrateProjectLinks(p)
     const base = { ...p, links, gitRemote: p.gitRemote || '' }
     setDraft(base)
-    setSelectedKeys({})
-    stageLayoutRestoredRef.current = ''
-    stageLayoutReadyRef.current = false
     if (p.id) {
       void api.setAppSetting(LAST_PROJECT_SETTING, p.id).catch(() => {})
       if (linksFingerprint(links) !== linksFingerprint(p.links)) {
         void api.saveWorkbenchProject(toDO(base)).catch(() => {})
       }
-      void enterProjectStage(base)
     }
     if (!(p.gitRemote || '').trim() && (p.localPath || '').trim()) {
       void fillGitRemote(p.localPath, '').then((gitRemote) => {
@@ -365,53 +265,6 @@ export function ProjectWorkbench() {
     })()
   }, [load])
 
-  useWorkbenchCommand(Capability.OpenProjectStage, (cmd) => {
-    const payload = cmd.payload || {}
-    const projectId = String(payload.projectId ?? '').trim()
-    if (!projectId) return
-    if (stageEnteredIdRef.current === projectId && !payload.force) {
-      // MCP 再对齐：刷新列表选中，但不重复开终端
-      void load().then((list) => {
-        const hit = list.find((p) => p.id === projectId)
-        if (hit) {
-          setActiveId(hit.id)
-          setDraft({ ...hit, links: hydrateProjectLinks(hit), gitRemote: hit.gitRemote || '' })
-        }
-      })
-      return
-    }
-    stageEnteredIdRef.current = projectId
-    const sshHostIds = Array.isArray(payload.sshHostIds)
-      ? payload.sshHostIds.map((x) => String(x)).filter(Boolean)
-      : []
-    applyStageResult(
-      {
-        created: Boolean(payload.created),
-        sshHostIds,
-        cursorSync: {
-          ok: payload.cursorSyncOk !== false,
-          nSynced: Number(payload.cursorSyncN || 0),
-          error: payload.cursorSyncError ? String(payload.cursorSyncError) : undefined,
-        },
-        project: {
-          id: projectId,
-          name: String(payload.projectName || ''),
-          localPath: String(payload.localPath || ''),
-          gitRemote: '',
-          links: [],
-          createdAt: 0,
-          updatedAt: 0,
-        },
-      },
-    )
-    void load().then((list) => {
-      const hit = list.find((p) => p.id === projectId)
-      if (!hit) return
-      setActiveId(hit.id)
-      setDraft({ ...hit, links: hydrateProjectLinks(hit), gitRemote: hit.gitRemote || '' })
-    })
-  })
-
   const projectMentions = useCallback((): WorkbenchAssetRef[] => {
     return normalizeLinks(draft.links)
       .filter((l) => MENTION_KINDS.includes(l.kind as AgentMentionKind))
@@ -421,10 +274,6 @@ export function ProjectWorkbench() {
         label: l.label || l.id,
       }))
   }, [draft.links])
-
-  const stageKey = draft.id || 'project-draft'
-  const stagePanels = useResourceWindowStore((s) => s.panelsByStage[stageKey] ?? EMPTY_STAGE_PANELS)
-  const stageOpen = stagePanels.length > 0
 
   /** 总结经验：交给助手把稳定步骤写回项目 Skill。 */
   const distillSkill = () => {
@@ -469,96 +318,16 @@ export function ProjectWorkbench() {
 
   const flatLinks = useMemo(() => normalizeLinks(draft.links), [draft.links])
 
-  const selectedLinks = useMemo(() => {
-    return normalizeLinks(draft.links).filter((l) => selectedKeys[`${l.kind}:${l.id}`])
-  }, [draft.links, selectedKeys])
-
-  const toggleSelectLink = (link: WorkbenchProjectLink) => {
-    const key = `${link.kind}:${link.id}`
-    setSelectedKeys((prev) => {
-      const next = { ...prev }
-      if (next[key]) delete next[key]
-      else next[key] = true
-      return next
-    })
-  }
-
-  const openLinkedResource = (
-    link: WorkbenchProjectLink,
-    presentation: 'panel' | 'dialog' | 'product' = 'dialog',
-  ) => {
+  /** openLinkedResource 在弹窗里打开资源；没有弹窗表面时进入对应产品。 */
+  const openLinkedResource = (link: WorkbenchProjectLink) => {
     const kind = link.kind as ResourceKind
     openResource({
       kind,
       resourceId: link.id,
       title: link.label || link.id,
-      presentation:
-        (presentation === 'panel' || presentation === 'dialog') && !isPanelReadyKind(kind)
-          ? 'product'
-          : presentation,
-      stageKey,
+      presentation: isPanelReadyKind(kind) ? 'dialog' : 'product',
     })
   }
-
-  const openSelectedToStage = () => {
-    const ready = selectedLinks.filter((l) => isPanelReadyKind(l.kind as ResourceKind))
-    for (const link of ready) {
-      openLinkedResource(link, 'panel')
-    }
-    setSelectedKeys({})
-  }
-
-  // 恢复项目舞台布局（仅空舞台时）；完成前禁止把空布局写回覆盖。
-  useEffect(() => {
-    const id = draft.id
-    if (!id) {
-      stageLayoutReadyRef.current = false
-      return
-    }
-    if (stageLayoutRestoredRef.current === id) return
-    stageLayoutRestoredRef.current = id
-    stageLayoutReadyRef.current = false
-    void loadStageLayout(id)
-      .then((items) => {
-        const current = useResourceWindowStore.getState().panelsByStage[id]
-        if (!current?.length && items.length) {
-          for (const item of items.slice(0, 4)) {
-            if (!isPanelReadyKind(item.kind)) continue
-            openResource({
-              kind: item.kind,
-              resourceId: item.resourceId,
-              title: item.title,
-              presentation: 'panel',
-              stageKey: id,
-            })
-          }
-        }
-      })
-      .finally(() => {
-        if (stageLayoutRestoredRef.current === id) stageLayoutReadyRef.current = true
-      })
-  }, [draft.id])
-
-  // 持久化舞台布局
-  useEffect(() => {
-    const id = draft.id
-    if (!id || !stageLayoutReadyRef.current) return
-    if (stageLayoutSaveTimer.current) clearTimeout(stageLayoutSaveTimer.current)
-    stageLayoutSaveTimer.current = setTimeout(() => {
-      if (!stageLayoutReadyRef.current || stageLayoutRestoredRef.current !== id) return
-      void saveStageLayout(
-        id,
-        stagePanels.map((p) => ({
-          kind: p.kind,
-          resourceId: p.resourceId,
-          title: p.title,
-        })),
-      ).catch(() => {})
-    }, 400)
-    return () => {
-      if (stageLayoutSaveTimer.current) clearTimeout(stageLayoutSaveTimer.current)
-    }
-  }, [draft.id, stagePanels])
 
   const pickFolder = async () => {
     try {
@@ -816,14 +585,6 @@ export function ProjectWorkbench() {
                   <button type="button" className="wn-btn wn-btn-primary wn-btn-sm" disabled={busy || !draft.localPath} {...pressProps(() => void save())}>
                     {t('project.save')}
                   </button>
-                  <button
-                    type="button"
-                    className="wn-btn wn-btn-sm wn-btn-tool"
-                    disabled={busy || !draft.id}
-                    {...pressProps(() => void enterProjectStage(draft, { force: true }))}
-                  >
-                    {t('project.enterStage')}
-                  </button>
                   <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" disabled={busy} {...pressProps(distillSkill)}>
                     {t('project.distill')}
                   </button>
@@ -841,7 +602,7 @@ export function ProjectWorkbench() {
                 </div>
               </header>
 
-              <div className={`project-workspace${stageOpen ? ' is-split' : ''}`}>
+              <div className="project-workspace">
                 <section className="project-resources">
                   <div className="project-links-header">
                     <div className="project-section-title">
@@ -849,16 +610,6 @@ export function ProjectWorkbench() {
                       {linkCount > 0 ? <span className="project-links-count">{linkCount}</span> : null}
                     </div>
                     <div className="project-links-header-actions">
-                      {selectedLinks.length > 0 ? (
-                        <button
-                          type="button"
-                          className="wn-btn wn-btn-sm wn-btn-primary"
-                          title={t('project.openSelectedStageHint')}
-                          {...pressProps(openSelectedToStage)}
-                        >
-                          {t('project.openSelectedStage', { n: String(selectedLinks.length) })}
-                        </button>
-                      ) : null}
                       <button type="button" className="wn-btn wn-btn-sm wn-btn-tool" {...pressProps(() => void runSmartConfigViaAgent())}>
                         <span>{t('project.smartConfig')}</span>
                       </button>
@@ -888,23 +639,9 @@ export function ProjectWorkbench() {
                     ) : (
                       <ul className="project-links">
                         {flatLinks.map((link) => {
-                          const kind = link.kind as ResourceKind
-                          const canPanel = isPanelReadyKind(kind)
                           const key = `${link.kind}:${link.id}`
-                          const checked = !!selectedKeys[key]
                           return (
-                            <li
-                              key={key}
-                              className={`project-link-row${checked ? ' is-selected' : ''}`}
-                            >
-                              <input
-                                type="checkbox"
-                                className="project-link-check"
-                                checked={checked}
-                                title={t('project.selectForStage')}
-                                onClick={(e) => e.stopPropagation()}
-                                onChange={() => toggleSelectLink(link)}
-                              />
+                            <li key={key} className="project-link-row">
                               <span className="project-link-kind" data-kind={link.kind}>
                                 {t(kindLabelKey(link.kind))}
                               </span>
@@ -916,16 +653,14 @@ export function ProjectWorkbench() {
                                 <span className="project-link-label">{link.label || link.id}</span>
                               </div>
                               <div className="project-link-actions">
-                                {canPanel ? (
-                                  <button
-                                    type="button"
-                                    className="wn-btn wn-btn-sm wn-btn-tool"
-                                    title={t('resourceWindow.openAsPanel')}
-                                    {...pressProps(() => openLinkedResource(link, 'panel'))}
-                                  >
-                                    {t('resourceWindow.openAsPanelShort')}
-                                  </button>
-                                ) : null}
+                                <button
+                                  type="button"
+                                  className="wn-btn wn-btn-sm wn-btn-tool"
+                                  title={t('resourceWindow.openAsPanel')}
+                                  {...pressProps(() => openLinkedResource(link))}
+                                >
+                                  {t('resourceWindow.openAsPanelShort')}
+                                </button>
                                 <button
                                   type="button"
                                   className="wn-btn wn-btn-icon wn-btn-sm"
@@ -942,13 +677,6 @@ export function ProjectWorkbench() {
                     )}
                   </div>
                 </section>
-
-                {stageOpen ? (
-                  <section className="project-stage-dock" aria-label={t('resourceWindow.stageTitle')}>
-                    <div className="project-section-title">{t('resourceWindow.stageTitle')}</div>
-                    <ResourceStage stageKey={stageKey} hideEmpty />
-                  </section>
-                ) : null}
               </div>
             </>
           )}

@@ -9,6 +9,7 @@ import (
 
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/store"
+	"WWorkbench/internal/terminal"
 	"WWorkbench/internal/workbench"
 
 	"github.com/google/uuid"
@@ -229,13 +230,13 @@ func dispatchShellRun(d *Deps, in openTerminalArgs) ToolResult {
 			"opened":         true,
 			"kind":           "local",
 			"initialCommand": cmd,
-			"note": "已切换到本机终端（按 workDir 隔离标签；忙碌则新开）。命令将自动输入。" +
-				"随后 get_shell_output(waitMs, afterUpdatedAt=本返回的 updatedAt)；若 session 对不上，用 get_workbench_context.openTerminals 取最新本机 sessionId。",
+			"note": "已切换到本机终端。同一 workDir 复用最近聚焦且空闲的标签，都忙才新开。命令将自动输入。" +
+				"随后 get_shell_output(waitMs, afterUpdatedAt=本返回的 updatedAt)。sessionId 是已有本机会话的基线；若本次新开了标签，改用 get_workbench_context.openTerminals 里最新的 local 会话。",
 		}
 		if workDir != "" {
 			out["workDir"] = workDir
 		}
-		attachShellBaseline(d, out, "", "")
+		attachShellBaseline(d, out, "", "", true)
 		d.UIActions.Dispatch(UIActionShellRun, payload)
 		return OKData(out)
 	}
@@ -274,19 +275,27 @@ func dispatchShellRun(d *Deps, in openTerminalArgs) ToolResult {
 		"host":           host.Host,
 		"user":           host.User,
 		"initialCommand": cmd,
-		"note":           "已切换到 SSH 终端；命令将自动输入。随后 get_shell_output(waitMs, afterUpdatedAt=本返回的 updatedAt)。",
+		"note": "已切换到 SSH 终端。同一主机复用最近聚焦且空闲的标签，都忙才新开。命令将自动输入。" +
+			"随后 get_shell_output(waitMs, afterUpdatedAt=本返回的 updatedAt)。sessionId 是该主机已有会话的基线；若本次新开了标签，改用 get_workbench_context.openTerminals 里该 hostId 最新的会话。",
 	}
-	attachShellBaseline(d, out, "", host.ID)
+	attachShellBaseline(d, out, "", host.ID, false)
 	d.UIActions.Dispatch(UIActionShellRun, payload)
 	return OKData(out)
 }
 
 // attachShellBaseline 写入注入前的 sessionId/updatedAt（毫秒），供后续 afterUpdatedAt。
-func attachShellBaseline(d *Deps, out map[string]interface{}, sessionID, hostID string) {
+// localOnly 时只取本机会话，避免基线落到另一台 SSH。
+func attachShellBaseline(d *Deps, out map[string]interface{}, sessionID, hostID string, localOnly bool) {
 	if d == nil || d.Terminals == nil || out == nil {
 		return
 	}
-	meta, err := d.Terminals.PeekShellMeta(sessionID, hostID)
+	var meta terminal.SessionTail
+	var err error
+	if localOnly {
+		meta, err = d.Terminals.PeekLocalShellMeta()
+	} else {
+		meta, err = d.Terminals.PeekShellMeta(sessionID, hostID)
+	}
 	if err != nil {
 		return
 	}

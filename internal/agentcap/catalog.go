@@ -644,8 +644,8 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
-			Name: "open_project_stage", Label: "打开项目舞台", Risk: RiskWrite,
-			Description:    "按 id/localPath 对齐项目舞台（可自动建项）；写规则、同步对话、返回 SSH与 learningDigest",
+			Name: "open_project_stage", Label: "对齐当前项目", Risk: RiskWrite,
+			Description:    "按 id/localPath 对齐当前项目（可自动建项）；写规则、同步对话、返回 SSH 与 learningDigest。不切换界面",
 			DefaultEnabled: true,
 		},
 		{
