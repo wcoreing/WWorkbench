@@ -6,22 +6,23 @@ import "strings"
 type Domain string
 
 const (
-	DomainCore     Domain = "core"
-	DomainTerminal Domain = "terminal"
-	DomainCloud    Domain = "cloud"
-	DomainDatabase Domain = "database"
+	DomainCore        Domain = "core"
+	DomainTerminal    Domain = "terminal"
+	DomainCloud       Domain = "cloud"
+	DomainDatabase    Domain = "database"
 	DomainNotebook    Domain = "notebook"
 	DomainSkillMarket Domain = "skillmarket"
 	DomainProject     Domain = "project"
-	DomainBrowser  Domain = "browser"
-	DomainDesktop  Domain = "desktop"
-	DomainDocker   Domain = "docker"
-	DomainBackup   Domain = "backup"
-	DomainHTTP     Domain = "http"
-	DomainLogs     Domain = "logs"
-	DomainPlugin   Domain = "plugin"
-	DomainEnv      Domain = "environment"
-	DomainOther    Domain = "other"
+	DomainBrowser     Domain = "browser"
+	DomainDesktop     Domain = "desktop"
+	DomainDocker      Domain = "docker"
+	DomainBackup      Domain = "backup"
+	DomainHTTP        Domain = "http"
+	DomainLogs        Domain = "logs"
+	DomainPlugin      Domain = "plugin"
+	DomainEnv         Domain = "environment"
+	DomainFiles       Domain = "files"
+	DomainOther       Domain = "other"
 )
 
 // DomainOf 按工具名归域（注意力收敛：重域默认关）。
@@ -32,6 +33,10 @@ func DomainOf(name string) Domain {
 		n == "offer_choices", n == "get_agent_rules", n == "agent_chat", n == "agent_confirm",
 		n == "get_task_summary":
 		return DomainCore
+	case n == "list_tree", n == "read_file", n == "grep", n == "write_file", n == "edit",
+		n == "mkdir", n == "create_file", n == "rename_path", n == "move_path", n == "copy_path",
+		n == "delete_path", n == "batch_delete_paths", n == "batch_move_paths":
+		return DomainFiles
 	case strings.HasPrefix(n, "browser_"), n == "task_record", n == "list_task_runs",
 		n == "get_task_run", n == "replay_task_step", n == "list_mcp_logs", n == "get_mcp_log":
 		return DomainBrowser
@@ -52,8 +57,8 @@ func DomainOf(name string) Domain {
 		n == "publish_skill_market", n == "install_skill_market":
 		return DomainSkillMarket
 	case strings.Contains(n, "skill"), strings.Contains(n, "dir_version"), n == "list_notes",
-		n == "get_note", n == "search_notes", n == "notebook_append_content", n == "publish_agent_skill",
-		n == "run_skill", n == "distill_skill":
+		n == "get_note", n == "search_notes", n == "notebook_append_content", n == "package_note_view",
+		n == "publish_agent_skill", n == "run_skill", n == "distill_skill":
 		return DomainNotebook
 	case strings.Contains(n, "project"), strings.Contains(n, "cursor_transcript"),
 		n == "ensure_cursor_stage_rule", n == "offer_episode_close", n == "close_learning_episode",
@@ -158,6 +163,8 @@ func DomainLabel(d Domain) string {
 		return "日志"
 	case DomainEnv:
 		return "环境"
+	case DomainFiles:
+		return "文件"
 	case DomainPlugin:
 		return "插件"
 	default:

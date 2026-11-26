@@ -147,6 +147,7 @@ func (r *Registry) add(def ToolDef) {
 }
 
 func (r *Registry) registerBuiltins() {
+	registerFileTools(r)
 	r.add(ToolDef{
 		Name: workbench.CapGetAgentRules,
 		Description: "可选：按 domain 复核系统约束分片（terminal/cloud/database/browser/desktop/notebook/backup/plugin/all）。" +
@@ -596,6 +597,20 @@ func (r *Registry) registerBuiltins() {
 			"required": []interface{}{"noteId"},
 		},
 		Handler: toolGetNote,
+	})
+	r.add(ToolDef{
+		Name:        workbench.CapPackageNoteView,
+		Description: "用系统共用的 Vite 构建笔记 view/ 工程（index.html、src、components），产物写入 html/{主名}.html。没有 view 时先复制初始模板，已有文件不覆盖。view 里不要放 node_modules。noteId 是源 Markdown。已有页面会被覆盖。",
+		Parameters: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"noteId": map[string]interface{}{"type": "string", "description": "源 Markdown 的笔记 ID"},
+				"skill":  map[string]interface{}{"type": "string", "description": "写入页头的技能目录，如 运维/账号HTML视图"},
+				"intent": intentProp(),
+			},
+			"required": []interface{}{"noteId"},
+		},
+		Handler: toolPackageNoteView,
 	})
 	r.add(ToolDef{
 		Name: workbench.CapNotebookAppend,

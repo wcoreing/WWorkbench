@@ -1,8 +1,9 @@
-/** DerivedView 页头注释里的来源、技能和源提交。应用只读这三项。 */
+/** DerivedView 页头注释里的来源、技能、源提交，以及页面运行时。 */
 export type DerivedView = {
   source: string
   skill: string
   sourceRev: string
+  runtime: string
 }
 
 /** FileStamp 该源文件在目录仓中的当前提交。 */
@@ -15,11 +16,11 @@ export type FileStamp = {
 const VIEW_COMMENT = /<!--\s*wwb-view\b([^>]*)-->/i
 const ATTR = /([A-Za-z]+)\s*=\s*"([^"]*)"/g
 
-/** parseDerivedView 读取 HTML 页头的 wwb-view 注释。没有注释时三项皆空。 */
+/** parseDerivedView 读取 HTML 页头的 wwb-view 注释。没有注释时皆空。 */
 export function parseDerivedView(html: string): DerivedView {
   const head = (html || '').slice(0, 2000)
   const block = VIEW_COMMENT.exec(head)
-  const view: DerivedView = { source: '', skill: '', sourceRev: '' }
+  const view: DerivedView = { source: '', skill: '', sourceRev: '', runtime: '' }
   if (!block) return view
   const body = block[1] || ''
   for (const match of body.matchAll(ATTR)) {
@@ -28,6 +29,7 @@ export function parseDerivedView(html: string): DerivedView {
     if (key === 'source') view.source = value
     else if (key === 'skill') view.skill = value
     else if (key === 'sourceRev') view.sourceRev = value
+    else if (key === 'runtime') view.runtime = value
   }
   return view
 }
@@ -47,6 +49,47 @@ export function linkedSourceNoteId(noteId: string, html: string): string {
 }
 
 const SOURCE_LINK_MARK = 'data-wwb-open-source'
+
+/** rewriteDerivedAssetRefs 把页面里的 ../assets/文件 改成附件地址。srcdoc 没有笔记目录。 */
+export function rewriteDerivedAssetRefs(html: string, pageNoteId: string): string {
+  const source = sourceNoteIdFromPage(pageNoteId)
+  const slash = (pageNoteId || '').lastIndexOf('/')
+  if (!source || slash < 0 || !html) return html
+  const fromDir = pageNoteId.slice(0, slash)
+  const assetsRoot = `${source.replace(/\.md$/i, '')}/assets/`
+  const prefix = `/notebook-assets/${source.split('/').map(encodeURIComponent).join('/')}/`
+  return html.replace(
+    /(^|[^:\w-])(:?)(src|href)(\s*=\s*)("([^"]*)"|'([^']*)')/gi,
+    (full, lead: string, colon: string, attr: string, eq: string, quoted: string, dbl?: string, sgl?: string) => {
+      const raw = dbl != null ? dbl : sgl
+      if (raw == null) return full
+      const resolved = resolveNotebookRel(fromDir, raw)
+      if (!resolved || !resolved.startsWith(assetsRoot)) return full
+      const file = resolved.slice(assetsRoot.length)
+      if (!file || file.includes('/') || file === '.' || file === '..') return full
+      const quote = quoted.startsWith("'") ? "'" : '"'
+      return `${lead}${colon}${attr}${eq}${quote}${prefix}${encodeURIComponent(file)}${quote}`
+    },
+  )
+}
+
+function resolveNotebookRel(fromDir: string, raw: string): string | null {
+  const value = (raw || '').trim()
+  if (!value || /^(?:[a-z][a-z0-9+.-]*:|\/\/|#|\/)/i.test(value)) return null
+  const pathOnly = value.split(/[?#]/)[0]
+  const stack = fromDir.split('/').filter(Boolean)
+  for (const seg of pathOnly.split('/')) {
+    if (seg === '' || seg === '.') continue
+    if (seg === '..') {
+      if (stack.length === 0) return null
+      stack.pop()
+      continue
+    }
+    if (seg.includes('\\')) return null
+    stack.push(seg)
+  }
+  return stack.join('/')
+}
 
 /** withDerivedSourceLink 让页面里的源路径点回笔记。脚本只能通知这一个路径。 */
 export function withDerivedSourceLink(html: string, sourceId: string): string {

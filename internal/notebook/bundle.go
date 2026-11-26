@@ -93,6 +93,7 @@ func rewriteBundleStem(mdPath, oldStem, newStem string) {
 	text := string(raw)
 	next := strings.ReplaceAll(text, oldStem+"/assets/", newStem+"/assets/")
 	next = strings.ReplaceAll(next, oldStem+"/html/", newStem+"/html/")
+	next = strings.ReplaceAll(next, oldStem+"/view/", newStem+"/view/")
 	next = strings.ReplaceAll(next, oldStem+".assets/", newStem+"/assets/")
 	if next == text {
 		return

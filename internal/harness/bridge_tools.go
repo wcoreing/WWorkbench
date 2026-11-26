@@ -23,21 +23,9 @@ func IsMemoryTool(name string) bool {
 	return ok
 }
 
-// SkillToolDefs 仅保留磁盘 read_file；list_skills / get_skill 由工作台笔记 SSOT 注册。
+// SkillToolDefs 工作台注册表已提供 read_file / write_file。这里不再另塞一份指向应用数据目录的定义。
 func SkillToolDefs() []workbenchtools.ToolDef {
-	return []workbenchtools.ToolDef{
-		{
-			Name:        "read_file",
-			Description: "读取项目内文本（相对 ningharness 根）。工作流脚本优先看笔记本 工作流/{name}/scripts/ 与「## 脚本」。",
-			Parameters: map[string]interface{}{
-				"type":     "object",
-				"required": []string{"rel_path"},
-				"properties": map[string]interface{}{
-					"rel_path": map[string]interface{}{"type": "string", "description": "相对项目根路径"},
-				},
-			},
-		},
-	}
+	return nil
 }
 
 // MemoryToolDefs 供 LLM 的 harness 记忆工具定义。

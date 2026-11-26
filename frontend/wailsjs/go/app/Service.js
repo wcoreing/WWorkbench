@@ -866,6 +866,10 @@ export function OpenWorkbenchProjectStage(arg1) {
   return window['go']['app']['Service']['OpenWorkbenchProjectStage'](arg1);
 }
 
+export function PackageNoteView(arg1, arg2) {
+  return window['go']['app']['Service']['PackageNoteView'](arg1, arg2);
+}
+
 export function PickDockerComposeDirectory(arg1) {
   return window['go']['app']['Service']['PickDockerComposeDirectory'](arg1);
 }
@@ -1300,6 +1304,10 @@ export function UploadSFTPFile(arg1, arg2) {
 
 export function UseEnvVersion(arg1, arg2, arg3) {
   return window['go']['app']['Service']['UseEnvVersion'](arg1, arg2, arg3);
+}
+
+export function WaitTerminalPrompt(arg1, arg2) {
+  return window['go']['app']['Service']['WaitTerminalPrompt'](arg1, arg2);
 }
 
 export function WriteSFTPText(arg1, arg2, arg3) {

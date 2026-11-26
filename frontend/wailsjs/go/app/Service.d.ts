@@ -437,6 +437,8 @@ export function OpenTerminal(arg1:string,arg2:number,arg3:number):Promise<app.Ap
 
 export function OpenWorkbenchProjectStage(arg1:string):Promise<app.ApiResult_WWorkbench_internal_model_OpenWorkbenchProjectStageResultDO_>;
 
+export function PackageNoteView(arg1:string,arg2:string):Promise<app.ApiResult_map_string_interface____>;
+
 export function PickDockerComposeDirectory(arg1:string):Promise<app.ApiResult_string_>;
 
 export function PickEnvScanDirectory():Promise<app.ApiResult_string_>;
@@ -654,6 +656,8 @@ export function UpdateSkill(arg1:workbenchtools.UpdateSkillArgs):Promise<app.Api
 export function UploadSFTPFile(arg1:string,arg2:string):Promise<app.ApiResult_WWorkbench_internal_model_TransferResultDO_>;
 
 export function UseEnvVersion(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
+
+export function WaitTerminalPrompt(arg1:string,arg2:number):Promise<app.ApiResult_bool_>;
 
 export function WriteSFTPText(arg1:string,arg2:string,arg3:string):Promise<app.ApiResult_bool_>;
 

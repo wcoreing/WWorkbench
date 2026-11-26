@@ -48,7 +48,7 @@ import { TerminalSplitView } from '../../features/terminal/TerminalSplitView'
 import { TerminalTabStatusPane } from '../../features/terminal/TerminalTabStatusPane'
 import { ECSMonitorBar } from '../../features/terminal/ECSMonitorBar'
 import { focusTerminalSession } from '../../features/terminal/terminalFocus'
-import { isSessionShellIdle } from '../../features/terminal/terminalClipboard'
+import { encodeTerminalInject, isSessionShellIdle } from '../../features/terminal/terminalClipboard'
 import { useScrollActiveTabIntoView } from '../../hooks/useScrollActiveTabIntoView'
 import { terminalBackground } from '../../features/terminal/TerminalPane'
 import {
@@ -450,17 +450,23 @@ export function TerminalWorkbench() {
     )
   }
 
-  /** writeInitialCommand 连接建立后向终端写入并执行命令（带重试）。成功 true。 */
+  /** writeInitialCommand 等到交互提示符后再写入。登录脚本期间不注入。成功 true。 */
   const writeInitialCommand = async (sessionId: string, command?: string): Promise<boolean> => {
     if (!command?.trim()) return true
-    const data = command.endsWith('\r') || command.endsWith('\n') ? command : `${command}\r`
-    for (let i = 0; i < 8; i++) {
-      await new Promise((r) => setTimeout(r, 200 + i * 150))
+    let ready = false
+    try {
+      ready = await api.waitTerminalPrompt(sessionId, 12_000)
+    } catch {
+      return false
+    }
+    if (!ready) return false
+    const data = encodeTerminalInject(command)
+    for (let i = 0; i < 3; i++) {
       try {
         await api.writeTerminal(sessionId, data)
         return true
       } catch {
-        /* PTY 可能尚未就绪或已断开 */
+        await new Promise((r) => setTimeout(r, 200))
       }
     }
     return false
@@ -641,7 +647,8 @@ export function TerminalWorkbench() {
           cmd = cd
         }
       }
-      await writeInitialCommand(info.sessionId, cmd)
+      const wrote = await writeInitialCommand(info.sessionId, cmd)
+      if (!wrote && cmd?.trim()) setStatusMessage(t('terminal.cmdInjectFailed'))
     } catch (e) {
       const message = (e as Error).message
       if (!tabsRef.current.some((t) => t.id === tabId)) return
@@ -710,7 +717,8 @@ export function TerminalWorkbench() {
       if (!tabsRef.current.some((t) => t.id === tabId)) return
       activateTab(tabId, { sessionId: info.sessionId, title: info.title || title })
       setStatusMessage(connectedStatus(info.title || title, info))
-      await writeInitialCommand(info.sessionId, initialCommand)
+      const wrote = await writeInitialCommand(info.sessionId, initialCommand)
+      if (!wrote && initialCommand?.trim()) setStatusMessage(t('terminal.cmdInjectFailed'))
     } catch (e) {
       const message = (e as Error).message
       if (!tabsRef.current.some((t) => t.id === tabId)) return

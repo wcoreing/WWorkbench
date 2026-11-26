@@ -527,7 +527,6 @@ export function NotebookWorkbench() {
     insertFilesAsAssets,
     insertPathsAsAssets,
     forgetResourceFile,
-    resourceRev,
     pickAssets,
     closeTab,
     closeOtherTabs,
@@ -637,7 +636,6 @@ export function NotebookWorkbench() {
           insertFilesAsAssets={insertFilesAsAssets}
           insertPathsAsAssets={insertPathsAsAssets}
           forgetResourceFile={forgetResourceFile}
-          resourceRev={resourceRev}
           pickAssets={pickAssets}
           insertTemplate={insertTemplate}
           duplicateNote={duplicateNote}

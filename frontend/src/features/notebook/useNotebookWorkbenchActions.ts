@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useState,
   type Dispatch,
   type RefObject,
   type SetStateAction,
@@ -88,7 +87,6 @@ export function useNotebookWorkbenchActions(opts: {
     t,
   } = opts
 
-  const [resourceRev, setResourceRev] = useState(0)
 
   const openCreateFile = (groupId = opsRoot) => {
     setNewFileGroupId(groupId)
@@ -223,7 +221,6 @@ export function useNotebookWorkbenchActions(opts: {
           snippets.push(asset.markdown)
         }
         appendAssetMarkdown(snippets)
-        setResourceRev((n) => n + 1)
         notify.success(
           snippets.length === 1
             ? t('notebook.assetInserted')
@@ -243,7 +240,6 @@ export function useNotebookWorkbenchActions(opts: {
         const assets = await api.importNotebookResources(activeNote.id, paths)
         if (!assets.length) return
         appendAssetMarkdown(assets.map((a) => a.markdown))
-        setResourceRev((n) => n + 1)
         notify.success(
           assets.length === 1
             ? t('notebook.assetInserted')
@@ -276,7 +272,6 @@ export function useNotebookWorkbenchActions(opts: {
         const assets = await api.pickNotebookAssets(activeNote.id, imagesOnly)
         if (!assets.length) return
         appendAssetMarkdown(assets.map((a) => a.markdown))
-        setResourceRev((n) => n + 1)
         notify.success(
           assets.length === 1
             ? t('notebook.assetInserted')
@@ -457,7 +452,6 @@ export function useNotebookWorkbenchActions(opts: {
     insertFilesAsAssets,
     insertPathsAsAssets,
     forgetResourceFile,
-    resourceRev,
     pickAssets,
     closeTab,
     closeOtherTabs,

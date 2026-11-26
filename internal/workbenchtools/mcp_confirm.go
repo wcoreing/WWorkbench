@@ -215,6 +215,9 @@ func ProductForTool(toolName string) string {
 	case workbench.CapSkillMarketOpen, workbench.CapListSkillMarket, workbench.CapListSkillShelf,
 		workbench.CapPublishSkillMarket, workbench.CapInstallSkillMarket:
 		return "skillmarket"
+	case "list_tree", "read_file", "grep", "write_file", "edit", "mkdir", "create_file",
+		"rename_path", "move_path", "copy_path", "delete_path", "batch_delete_paths", "batch_move_paths":
+		return "notebook"
 	default:
 		return "terminal"
 	}

@@ -84,6 +84,7 @@ export function monacoLanguageForNote(language: string): string {
   if (id === 'py') return 'python'
   if (id === 'yml') return 'yaml'
   if (id === 'htm') return 'html'
+  if (id === 'vue') return 'html'
   if (id === 'dockerfile') return 'dockerfile'
   if (id === 'makefile') return 'makefile'
   if (id === 'toml') return 'ini'

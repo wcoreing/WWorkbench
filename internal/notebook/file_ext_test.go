@@ -14,12 +14,28 @@ func TestLanguageFromFilenameIPLikeMD(t *testing.T) {
 		{"plain.md", "markdown"},
 		{"SKILL.md", "markdown"},
 		{"run.sh", "shell"},
+		{"App.vue", "vue"},
+		{"rows.csv", "plaintext"},
 		{"v0.54.502.md", "markdown"},
 	}
 	for _, c := range cases {
 		if got := languageFromFilename(c.name); got != c.want {
 			t.Fatalf("%s: got %q want %q", c.name, got, c.want)
 		}
+	}
+}
+
+func TestNotebookTreeIncludesAnyVisibleFile(t *testing.T) {
+	for _, name := range []string{"App.vue", "rows.csv", "note.md", "main.js"} {
+		if !isNotebookContentFile(name) {
+			t.Fatalf("hidden from tree: %s", name)
+		}
+	}
+	if isNotebookContentFile(".DS_Store") || isNotebookContentFile("") {
+		t.Fatal("dotfile should stay out")
+	}
+	if !skipNotebookDir("node_modules") || skipNotebookDir("view") {
+		t.Fatal("dir skip")
 	}
 }
 

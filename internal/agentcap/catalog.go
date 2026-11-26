@@ -94,8 +94,68 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
-			Name: "read_file", Label: "读取项目文件", Risk: RiskRead,
-			Description:    "读取 ningharness 项目内文本（相对根路径）",
+			Name: "list_tree", Label: "列出文件树", Risk: RiskRead,
+			Description:    "列出 project / notebook / harness 根下的文件树",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "read_file", Label: "读取文件", Risk: RiskRead,
+			Description:    "读取文本。root=project|notebook|harness，rel_path 相对该根。harness 只用于 system/skills",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "grep", Label: "搜索文件内容", Risk: RiskRead,
+			Description:    "在所选根内搜索文本",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "write_file", Label: "写入文件", Risk: RiskWrite,
+			Description:    "整文件写入相对路径。本机直接落盘；*.db / .env / data/ 需确认",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "edit", Label: "局部修改文件", Risk: RiskWrite,
+			Description:    "old_string 精确替换。小改用本工具，整文件用 write_file",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "mkdir", Label: "创建目录", Risk: RiskWrite,
+			Description:    "在所选根下创建目录；已存在报错",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "create_file", Label: "创建空文件", Risk: RiskWrite,
+			Description:    "创建空文件；父目录自动建；已存在报错",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "rename_path", Label: "同级改名", Risk: RiskWrite,
+			Description:    "同级改名。跨目录用 move_path",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "move_path", Label: "移动路径", Risk: RiskWrite,
+			Description:    "移动文件或目录；目标勿已存在",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "copy_path", Label: "复制路径", Risk: RiskWrite,
+			Description:    "复制文件或目录",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "delete_path", Label: "删除路径", Risk: RiskWrite,
+			Description:    "删除文件或目录。须确认",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "batch_delete_paths", Label: "批量删除", Risk: RiskWrite,
+			Description:    "批量删除。须确认",
+			DefaultEnabled: true,
+		},
+		{
+			Name: "batch_move_paths", Label: "批量移动", Risk: RiskWrite,
+			Description:    "批量移入目标目录；重名自动避让",
 			DefaultEnabled: true,
 		},
 		{
@@ -190,7 +250,7 @@ func Catalog() []Item {
 		},
 		{
 			Name: "execute_sql", Label: "执行 SQL", Risk: RiskWrite,
-			Description:  "readonly=true 时仅 SELECT/SHOW/EXPLAIN 等；写入类 SQL 需用户弹窗确认",
+			Description:    "readonly=true 时仅 SELECT/SHOW/EXPLAIN 等；写入类 SQL 需用户弹窗确认",
 			DefaultEnabled: true,
 		},
 		{
@@ -249,6 +309,11 @@ func Catalog() []Item {
 			DefaultEnabled: true,
 		},
 		{
+			Name: "package_note_view", Label: "打包笔记 Vue 视图", Risk: RiskWrite,
+			Description:    "用共用 Vite 构建该笔记的 view 工程，写出 html 页面。没有 view 时先复制初始模板，已有文件不覆盖。view 内不安装依赖",
+			DefaultEnabled: true,
+		},
+		{
 			Name: "list_docker_contexts", Label: "列出 Docker 上下文", Risk: RiskRead,
 			Description:    "本地与 SSH 远端 Docker 上下文",
 			DefaultEnabled: true,
@@ -270,17 +335,17 @@ func Catalog() []Item {
 		},
 		{
 			Name: "start_container", Label: "启动容器", Risk: RiskWrite,
-			Description:  "启动已存在容器；执行前需用户确认",
+			Description:    "启动已存在容器；执行前需用户确认",
 			DefaultEnabled: true,
 		},
 		{
 			Name: "stop_container", Label: "停止容器", Risk: RiskWrite,
-			Description:  "停止运行中容器；执行前需用户确认",
+			Description:    "停止运行中容器；执行前需用户确认",
 			DefaultEnabled: true,
 		},
 		{
 			Name: "remove_container", Label: "删除容器", Risk: RiskWrite,
-			Description:  "强制删除容器；执行前需用户确认（勿用 shell_probe docker rm）",
+			Description:    "强制删除容器；执行前需用户确认（勿用 shell_probe docker rm）",
 			DefaultEnabled: true,
 		},
 		{
@@ -320,7 +385,7 @@ func Catalog() []Item {
 		},
 		{
 			Name: "execute_http", Label: "执行 HTTP 请求", Risk: RiskWrite,
-			Description:  "优先 requestId；GET/HEAD 直执；变更类方法需用户确认",
+			Description:    "优先 requestId；GET/HEAD 直执；变更类方法需用户确认",
 			DefaultEnabled: true,
 		},
 		{

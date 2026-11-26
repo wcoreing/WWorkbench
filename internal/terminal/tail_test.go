@@ -29,6 +29,39 @@ func TestLooksLikeShellPromptIdle(t *testing.T) {
 	if looksLikeShellPromptIdle(tail2) {
 		t.Fatal("mid-build should not look like prompt")
 	}
+	heredoc := newOutputTail()
+	heredoc.append([]byte("cat > a <<'EOF'\nheredoc> "))
+	if looksLikeShellPromptIdle(heredoc) {
+		t.Fatal("heredoc continuation is not a prompt")
+	}
+	starship := newOutputTail()
+	starship.append([]byte("\r\n❯ "))
+	if !looksLikeShellPromptIdle(starship) {
+		t.Fatal("unicode prompt")
+	}
+}
+
+func TestWaitShellPrompt(t *testing.T) {
+	m := NewManager(nil)
+	sid := "s-prompt"
+	ts := &Session{ID: sid, tail: newOutputTail()}
+	m.sessions[sid] = ts
+	go func() {
+		time.Sleep(60 * time.Millisecond)
+		ts.tail.append([]byte("weining@host % "))
+	}()
+	ok, err := m.WaitShellPrompt(context.Background(), sid, 2000)
+	if err != nil || !ok {
+		t.Fatalf("ready=%v err=%v", ok, err)
+	}
+
+	stuck := "s-heredoc"
+	m.sessions[stuck] = &Session{ID: stuck, tail: newOutputTail()}
+	m.sessions[stuck].tail.append([]byte("heredoc> "))
+	ok, err = m.WaitShellPrompt(context.Background(), stuck, 300)
+	if err != nil || ok {
+		t.Fatalf("heredoc ready=%v err=%v", ok, err)
+	}
 }
 
 func TestWaitQuietReturnsAfterSilence(t *testing.T) {

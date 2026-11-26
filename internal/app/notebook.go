@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -621,6 +622,29 @@ func (s *Service) NoteFileRevision(fileRel string) ApiResult[map[string]interfac
 	return OkResult(map[string]interface{}{
 		"rel": rev.Rel, "repo": rev.Repo, "enabled": rev.Enabled,
 		"short": rev.Short, "dirty": rev.Dirty,
+	})
+}
+
+// PackageNoteView 用共用 Vite 构建该笔记的 view 工程，写出同名目录里的页面。
+func (s *Service) PackageNoteView(noteID, skill string) ApiResult[map[string]interface{}] {
+	if s.notebook == nil {
+		return ErrResult[map[string]interface{}](errno.New(errno.CodeInvalidArg, "笔记本未就绪", ""))
+	}
+	ctx := s.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	out, err := s.notebook.PackageVueView(ctx, noteID, skill)
+	if err != nil {
+		return ErrResult[map[string]interface{}](err)
+	}
+	if s.radar != nil {
+		s.radar.EmitNotebookPath(workbench.RadarOpCreate, []string{out.HTML}, "package-note-view", out.HTML, false)
+		s.radar.EmitNotebookNote(workbench.RadarOpUpdate, out.HTML, "package-note-view", out.HTML, false)
+	}
+	return OkResult(map[string]interface{}{
+		"noteId": out.NoteID, "view": out.View, "html": out.HTML,
+		"sourceRev": out.SourceRev, "bytes": out.Bytes, "seeded": out.Seeded,
 	})
 }
 

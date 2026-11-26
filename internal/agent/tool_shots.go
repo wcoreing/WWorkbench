@@ -41,7 +41,11 @@ func isVisionScreenshotTool(name string) bool {
 
 // decorateToolMessage 工具正文 + 截图外置引用（进模时由 historyToSchema 挂多模态）。
 func decorateToolMessage(root, sessionID, taskID, toolName string, result workbenchtools.ToolResult, resourceID int64) (content string, preview []model.AgentChatImageDO) {
-	content = formatToolMessage(result, resourceID)
+	if body, ok := fileToolMessage(toolName, result, resourceID); ok {
+		content = body
+	} else {
+		content = formatToolMessage(result, resourceID)
+	}
 	if toolName == workbench.CapDesktopScreenshot && result.OK {
 		content = windowShotCaption + "\n" + content
 	}

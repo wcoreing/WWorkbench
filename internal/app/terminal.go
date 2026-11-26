@@ -1,6 +1,8 @@
 package app
 
 import (
+	"context"
+
 	dockersvc "WWorkbench/internal/docker"
 	"WWorkbench/internal/model"
 	"WWorkbench/internal/session"
@@ -226,6 +228,19 @@ func (s *Service) CloseTerminal(sessionID string) ApiResult[bool] {
 		return ErrResult[bool](err)
 	}
 	return OkResult(true)
+}
+
+// WaitTerminalPrompt 等到会话出现交互提示符。登录脚本未结束时返回 false。
+func (s *Service) WaitTerminalPrompt(sessionID string, timeoutMs int) ApiResult[bool] {
+	ctx := s.ctx
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ready, err := s.terminals.WaitShellPrompt(ctx, sessionID, timeoutMs)
+	if err != nil {
+		return ErrResult[bool](err)
+	}
+	return OkResult(ready)
 }
 
 // WriteTerminal 向终端写入输入。

@@ -16,13 +16,14 @@ import { pressProps } from '../../components/compat'
 import { NoteEditor } from './NoteEditor'
 import { MarkdownPreview } from './MarkdownPreview'
 import { NotebookMdViewToggle, type NotebookMdViewMode } from './NotebookMdViewToggle'
-import { NotebookResourceStrip } from './NotebookResourceStrip'
+import { useGenerateNotePage } from './useGenerateNotePage'
 import { NotebookSidebar } from './NotebookSidebar'
 import { NotebookStatusBar } from './NotebookStatusBar'
 import { applyNoteRoleFields } from './noteFrontmatter'
 import { DerivedViewBar } from './DerivedViewBar'
 import { linkedSourceNoteId, siblingHtmlNoteId, sourceNoteIdFromPage } from './derivedView'
 import { HtmlNoteFrame } from './HtmlNoteFrame'
+import { useDerivedPageHtml } from './useDerivedPageHtml'
 import { isHtmlDocument, isMarkdownLikeLanguage } from './noteFileTypes'
 import { skillImageSrc } from './notebookAssetLinks'
 import { fileToBase64DataURL } from './notebookAssets'
@@ -81,7 +82,6 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
   const [search, setSearch] = useState('')
   const [selectedFolderId, setSelectedFolderId] = useState('')
   const [refreshing, setRefreshing] = useState(false)
-  const [resourceRev, setResourceRev] = useState(0)
   const noteRef = useRef<Note | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   noteRef.current = note
@@ -251,7 +251,6 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
         snippets.push(asset.markdown)
       }
       appendMarkdown(snippets.join('\n\n') + '\n')
-      setResourceRev((n) => n + 1)
       notify.success(
         snippets.length === 1
           ? t('notebook.assetInserted')
@@ -269,7 +268,6 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
       const assets = await api.importNotebookResources(cur.id, paths)
       if (!assets.length) return
       appendMarkdown(assets.map((a) => a.markdown).join('\n\n') + '\n')
-      setResourceRev((n) => n + 1)
       notify.success(
         assets.length === 1
           ? t('notebook.assetInserted')
@@ -460,28 +458,15 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
   const showPage = mdLike && mdViewMode === 'page' && Boolean(derivedPageId)
   const showEditor = Boolean(note) && !isImage && !showPage && (!mdLike || mdViewMode !== 'preview')
   const showPreview = Boolean(note) && !isImage && !showPage && mdLike && mdViewMode !== 'source'
-  const [pageHtml, setPageHtml] = useState('')
+  const pageHtml = useDerivedPageHtml(showPage, derivedPageId)
+  const generateNoteId = pairedSourceId || (mdLike && note ? note.id : '')
+  const { generating, generate } = useGenerateNotePage(generateNoteId)
   useEffect(() => {
     if (note && sourceNoteIdFromPage(note.id)) setMdViewMode('page')
   }, [note?.id])
   useEffect(() => {
     if (mdViewMode === 'page' && !derivedPageId) setMdViewMode('split')
   }, [mdViewMode, derivedPageId])
-  useEffect(() => {
-    if (!showPage || !derivedPageId) return
-    let cancelled = false
-    api
-      .getNote(derivedPageId)
-      .then((raw) => {
-        if (!cancelled) setPageHtml(String((raw as Note).content || ''))
-      })
-      .catch(() => {
-        if (!cancelled) setPageHtml('')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [showPage, derivedPageId])
   const splitClass =
     showEditor && showPreview ? ' with-preview' : !showEditor && showPreview ? ' preview-only' : ''
 
@@ -507,6 +492,7 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
             <HtmlNoteFrame
               title={note.title || note.id}
               html={pageHtml}
+              pageNoteId={derivedPageId}
               sourceId={note.id}
               onOpenSource={(id) => {
                 if (id === note.id) setMdViewMode('split')
@@ -520,6 +506,7 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
             <HtmlNoteFrame
               title={note.title || note.id}
               html={note.content}
+              pageNoteId={note.id}
               sourceId={linkedSourceNoteId(note.id, note.content)}
               onOpenSource={(id) => void openNote(id)}
             />
@@ -546,14 +533,11 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
             onDoubleClick={mdViewMode === 'preview' ? () => setMdViewMode('source') : undefined}
           >
             <div className="notebook-md-preview">
-              <MarkdownPreview content={note.content} noteId={note.id} />
+              <MarkdownPreview content={note.content} noteId={note.id} onForgetAsset={forgetResourceFile} />
             </div>
           </div>
         ) : null}
       </div>
-      {note && !isImage ? (
-        <NotebookResourceStrip noteId={note.id} refreshKey={resourceRev} onForget={forgetResourceFile} />
-      ) : null}
       <NotebookStatusBar
         note={note}
         saveStatus={saveStatus}
@@ -602,6 +586,8 @@ export const NotebookIDE = forwardRef<NotebookIDEHandle, Props>(function Noteboo
                 setMdViewMode(mode)
               }}
               showPage={Boolean(derivedPageId)}
+              onGenerate={generateNoteId ? () => void generate() : undefined}
+              generating={generating}
             />
           ) : null}
           <button

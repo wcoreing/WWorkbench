@@ -132,6 +132,18 @@ export function looksLikeIdleShellPrompt(tail: string): boolean {
   return false
 }
 
+const bracketPasteMin = 240
+
+/** encodeTerminalInject 短命令用回车提交。多行或较长内容在提示符之后用括号粘贴，避免行编辑把正文当按键。 */
+export function encodeTerminalInject(command: string): string {
+  const body = command.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n+$/, '')
+  const multiline = body.includes('\n')
+  if (!multiline && body.length < bracketPasteMin) {
+    return `${body}\r`
+  }
+  return `\u001b[200~${body}\n\u001b[201~\r`
+}
+
 /** isSessionShellIdle 指定会话是否像空闲（无尾部数据时保守视为空闲，允许首注）。 */
 export function isSessionShellIdle(sessionId: string): boolean {
   const tail = readSessionShellTail(sessionId)

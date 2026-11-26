@@ -1,5 +1,4 @@
 import { useEffect, useState, type Ref } from 'react'
-import { api } from '../../api/client'
 import type {
   Connection,
   Note,
@@ -12,13 +11,14 @@ import { EmptyState } from '../../components/EmptyState'
 import { pressProps } from '../../components/compat'
 import { DerivedViewBar } from '../../features/notebook/DerivedViewBar'
 import { HtmlNoteFrame } from '../../features/notebook/HtmlNoteFrame'
+import { useDerivedPageHtml } from '../../features/notebook/useDerivedPageHtml'
 import { MarkdownPreview } from '../../features/notebook/MarkdownPreview'
 import { NotebookMdViewToggle, type NotebookMdViewMode } from '../../features/notebook/NotebookMdViewToggle'
+import { useGenerateNotePage } from '../../features/notebook/useGenerateNotePage'
 import { NotebookNoteMoreMenu } from '../../features/notebook/NotebookNoteMoreMenu'
 import { NotebookNoteSettingsMenu } from '../../features/notebook/NotebookNoteSettingsMenu'
 import { NotebookStatusBar } from '../../features/notebook/NotebookStatusBar'
 import { NoteEditor, type NoteEditorHandle } from '../../features/notebook/NoteEditor'
-import { NotebookResourceStrip } from '../../features/notebook/NotebookResourceStrip'
 import { useNotebookAssetIngress } from '../../features/notebook/useNotebookAssetIngress'
 import { useMdSplitScroll } from '../../features/notebook/useMdSplitScroll'
 import type { NotebookEditorFontSize } from '../../features/notebook/notebookEditorFont'
@@ -57,7 +57,6 @@ type Props = {
   insertFilesAsAssets: (files: File[]) => void | Promise<void>
   insertPathsAsAssets: (paths: string[]) => void | Promise<void>
   forgetResourceFile: (fileName: string) => void
-  resourceRev: number
   pickAssets: (imagesOnly: boolean) => void | Promise<void>
   insertTemplate: () => void
   duplicateNote: () => void | Promise<void>
@@ -108,7 +107,6 @@ export function NotebookWorkbenchEditorPane({
   insertFilesAsAssets,
   insertPathsAsAssets,
   forgetResourceFile,
-  resourceRev,
   pickAssets,
   insertTemplate,
   duplicateNote,
@@ -139,24 +137,11 @@ export function NotebookWorkbenchEditorPane({
     setHtmlSource(false)
   }, [activeNote?.id])
   const pairedSourceId = activeNote ? sourceNoteIdFromPage(activeNote.id) : ''
+  const generateNoteId = pairedSourceId || (noteMdLike && activeNote ? activeNote.id : '')
+  const { generating, generate } = useGenerateNotePage(generateNoteId)
   const showHtmlPage = Boolean(activeNote) && htmlDoc && (Boolean(pairedSourceId) || !htmlSource)
   const showDerivedInline = noteMdLike && mdViewMode === 'page' && Boolean(derivedPageId)
-  const [pageHtml, setPageHtml] = useState('')
-  useEffect(() => {
-    if (!showDerivedInline || !derivedPageId) return
-    let cancelled = false
-    api
-      .getNote(derivedPageId)
-      .then((raw) => {
-        if (!cancelled) setPageHtml(String((raw as Note).content || ''))
-      })
-      .catch(() => {
-        if (!cancelled) setPageHtml('')
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [showDerivedInline, derivedPageId])
+  const pageHtml = useDerivedPageHtml(showDerivedInline, derivedPageId || '')
   const openLinkedSource = (id: string) => {
     if (activeNote && id === activeNote.id) setMdViewMode('split')
     else onOpenNote(id)
@@ -236,6 +221,8 @@ export function NotebookWorkbenchEditorPane({
                       setMdViewMode(mode)
                     }}
                     showPage={Boolean(derivedPageId) || Boolean(pairedSourceId)}
+                    onGenerate={generateNoteId ? () => void generate() : undefined}
+                    generating={generating}
                   />
                   <div className="notebook-meta-divider" aria-hidden />
                 </>
@@ -286,13 +273,6 @@ export function NotebookWorkbenchEditorPane({
               )}
             </div>
           </div>
-          {activeNote ? (
-            <NotebookResourceStrip
-              noteId={activeNote.id}
-              refreshKey={resourceRev}
-              onForget={forgetResourceFile}
-            />
-          ) : null}
           <div
             ref={ingress.setHost}
             className={`notebook-editor-split notebook-asset-drop${noteEditorSplitClass}${ingress.dragOver ? ' is-drag-over' : ''}`}
@@ -307,6 +287,7 @@ export function NotebookWorkbenchEditorPane({
                 <HtmlNoteFrame
                   title={basenameRel(activeNote.id) || activeNote.title}
                   html={pageHtml}
+                  pageNoteId={derivedPageId || ''}
                   sourceId={activeNote.id}
                   onOpenSource={openLinkedSource}
                 />
@@ -318,6 +299,7 @@ export function NotebookWorkbenchEditorPane({
                 <HtmlNoteFrame
                   title={basenameRel(activeNote.id) || activeNote.title}
                   html={activeNote.content}
+                  pageNoteId={activeNote.id}
                   sourceId={linkedSourceNoteId(activeNote.id, activeNote.content)}
                   onOpenSource={onOpenNote}
                 />
@@ -360,7 +342,11 @@ export function NotebookWorkbenchEditorPane({
                     </button>
                   </div>
                 )}
-                <MarkdownPreview content={activeNote.content} noteId={activeNote.id} />
+                <MarkdownPreview
+                  content={activeNote.content}
+                  noteId={activeNote.id}
+                  onForgetAsset={forgetResourceFile}
+                />
               </div>
             )}
           </div>

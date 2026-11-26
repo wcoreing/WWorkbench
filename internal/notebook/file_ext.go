@@ -17,20 +17,22 @@ func ensureNoteDiskName(name string) string {
 	return name + ".md"
 }
 
-// isNotebookContentFile 是否纳入笔记本文件树扫描。
+// isNotebookContentFile 是否纳入笔记本文件树。不按扩展名过滤；隐藏文件除外。
 func isNotebookContentFile(name string) bool {
-	lower := strings.ToLower(strings.TrimSpace(name))
-	if lower == "" {
+	name = strings.TrimSpace(name)
+	if name == "" || name == "." || name == ".." {
 		return false
 	}
-	if strings.HasSuffix(lower, ".skill.md") {
+	return !strings.HasPrefix(name, ".")
+}
+
+// skipNotebookDir 隐藏目录与依赖目录不进文件树。
+func skipNotebookDir(name string) bool {
+	if name == "" || strings.HasPrefix(name, ".") {
 		return true
 	}
-	switch strings.ToLower(filepath.Ext(lower)) {
-	case ".md", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx",
-		".py", ".sh", ".bash", ".zsh", ".json", ".yaml", ".yml",
-		".sql", ".html", ".htm", ".css", ".txt", ".toml", ".ini",
-		".dockerfile", ".png", ".jpg", ".jpeg", ".webp", ".gif":
+	switch name {
+	case "node_modules", "__pycache__":
 		return true
 	default:
 		return false
@@ -40,7 +42,7 @@ func isNotebookContentFile(name string) bool {
 // knownNotebookExt 是否为笔记本识别的真实内容扩展（避免 IP/版本号里的点被当成扩展）。
 func knownNotebookExt(ext string) bool {
 	switch strings.ToLower(strings.TrimSpace(ext)) {
-	case ".md", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx",
+	case ".md", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue",
 		".py", ".sh", ".bash", ".zsh", ".json", ".yaml", ".yml",
 		".sql", ".html", ".htm", ".css", ".txt", ".toml", ".ini",
 		".dockerfile", ".png", ".jpg", ".jpeg", ".webp", ".gif":
@@ -75,9 +77,11 @@ func languageFromFilename(name string) string {
 		}
 	}
 	ext := filepath.Ext(lower)
-	if !knownNotebookExt(ext) {
-		// 未知「扩展」（含 IP/版本号里的点）按 markdown 笔记处理
+	if ext == "" {
 		return "markdown"
+	}
+	if !knownNotebookExt(ext) {
+		return "plaintext"
 	}
 	switch strings.ToLower(ext) {
 	case ".md":
@@ -98,6 +102,8 @@ func languageFromFilename(name string) string {
 		return "sql"
 	case ".html", ".htm":
 		return "html"
+	case ".vue":
+		return "vue"
 	case ".css":
 		return "css"
 	case ".png", ".jpg", ".jpeg", ".webp", ".gif":

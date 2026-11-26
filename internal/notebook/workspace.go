@@ -24,6 +24,8 @@ const (
 	BundleAssetsName = "assets"
 	// BundleHTMLName 同名目录中的派生页面。foo.md → foo/html/foo.html
 	BundleHTMLName = "html"
+	// BundleViewName 同名目录中的 Vue 工程。foo.md → foo/view/（index.html、src、components）。
+	BundleViewName = "view"
 )
 
 type workspaceMeta struct {

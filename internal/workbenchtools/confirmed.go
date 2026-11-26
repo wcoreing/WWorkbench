@@ -74,6 +74,13 @@ func ExecuteConfirmed(ctx context.Context, d *Deps, toolName, argsJSON string) T
 		return RunWorkflowConfirmed(ctx, d, argsJSON)
 	case workbench.CapDesktopAct:
 		return DesktopActConfirmed(ctx, d, argsJSON)
+	case "write_file", "edit", "mkdir", "create_file",
+		"rename_path", "move_path", "copy_path",
+		"delete_path", "batch_delete_paths", "batch_move_paths":
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		return dispatchFileTool(context.WithValue(ctx, fileExecKey{}, true), d, toolName, json.RawMessage(argsJSON))
 	default:
 		return Fail("未知待确认工具: " + toolName)
 	}
@@ -133,8 +140,8 @@ func AwaitConfirmAndExecute(ctx context.Context, d *Deps, toolName string, args 
 		return out
 	}
 
-	// 非 shell 工具：信任账本命中则直接执行（shell 已在 toolOpenTerminal 跳过 NeedsConfirm）
-	if !stepConfirmTool(toolName) && trustMatchFromArgs(d, toolName, args, "") {
+	// 非 shell 工具：信任账本命中则直接执行。删除和数据文件预览带 hardRisk，不跳过确认。
+	if !stepConfirmTool(toolName) && !previewHardRisk(res.Data) && trustMatchFromArgs(d, toolName, args, "") {
 		MarkLatestIntentApproved(ctx, toolName, intent, true)
 		out = AttachTeachEnvelope(ctx, toolName, args, ExecuteConfirmed(ctx, d, toolName, string(args)))
 		MaybeEmitSkillOfferWithArgs(d, toolName, args, out)
@@ -241,4 +248,3 @@ func confirmImpactHint(toolName string, args json.RawMessage) string {
 		return toolName
 	}
 }
-

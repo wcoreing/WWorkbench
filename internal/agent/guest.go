@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	maxAgentSteps        = 30
+	maxAgentSteps        = 500
 	maxChoiceJSONRetries = 3
 	/** 同一轮连续进度轮询上限：超过则结束本轮，交给用户继续。 */
 	maxProgressPolls = 3
@@ -176,7 +176,7 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 				continue
 			}
 
-			result := g.r.harness.CallTool(ctx, name, args)
+			result := g.invokeTool(ctx, name, args, perms)
 			// 写工具不再走侧栏确认：NeedsConfirm 时直接执行 Confirmed 路径。
 			if result.NeedsConfirm {
 				result = g.r.executeConfirmed(ctx, name, string(args))
@@ -282,6 +282,17 @@ func (g *workbenchGuest) Run(ctx context.Context, in guest.Input) (string, error
 type confirmAwaitItem struct {
 	callID, name, summary string
 	preview               json.RawMessage
+}
+
+// invokeTool 读文件与搜索走注册表，避开 Gateway 对工具输出的 16000 字裁切。
+func (g *workbenchGuest) invokeTool(ctx context.Context, name string, args json.RawMessage, perms map[string]bool) workbenchtools.ToolResult {
+	if g.r != nil && g.r.tools != nil && (name == "read_file" || name == "grep") {
+		return g.r.tools.Invoke(ctx, name, args, perms)
+	}
+	if g.r == nil || g.r.harness == nil {
+		return workbenchtools.Fail("工具未就绪")
+	}
+	return g.r.harness.CallTool(ctx, name, args)
 }
 
 func (g *workbenchGuest) appendToolResult(root, callID, toolName string, result workbenchtools.ToolResult, rid int64) []model.AgentChatImageDO {

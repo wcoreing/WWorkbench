@@ -26,6 +26,36 @@ export function parseNotebookAssetHref(href: string): { noteId: string; file: st
   return { noteId, file }
 }
 
+function attrValue(attrs: string, name: string): string {
+  const re = new RegExp(`${name}\\s*=\\s*("([^"]*)"|'([^']*)')`, 'i')
+  const m = attrs.match(re)
+  return m?.[2] ?? m?.[3] ?? ''
+}
+
+/** withPreviewAssetDeletes 在预览里的笔记附件后面加上删除按钮。 */
+export function withPreviewAssetDeletes(html: string, deleteLabel: string): string {
+  const label = deleteLabel
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+  const button = (file: string) => {
+    const safe = file.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')
+    return `<button type="button" class="md-asset-delete" data-asset-file="${safe}">${label}</button>`
+  }
+  let out = html.replace(/<img\b([^>]*)>/gi, (full, attrs: string) => {
+    const parsed = parseNotebookAssetHref(attrValue(attrs, 'src'))
+    if (!parsed) return full
+    return `${full}${button(parsed.file)}`
+  })
+  out = out.replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (full, attrs: string) => {
+    const parsed = parseNotebookAssetHref(attrValue(attrs, 'href'))
+    if (!parsed) return full
+    return `${full}${button(parsed.file)}`
+  })
+  return out
+}
+
 /** rewriteNotebookAssetLinks 把磁盘相对附件链接映射为 AssetServer URL，供预览渲染。 */
 export function rewriteNotebookAssetLinks(content: string, noteId: string): string {
   const id = (noteId || '').trim()

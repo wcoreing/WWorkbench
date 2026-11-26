@@ -36,6 +36,7 @@ export const Capability = {
   ListNotes: 'list_notes',
   SearchNotes: 'search_notes',
   GetNote: 'get_note',
+  PackageNoteView: 'package_note_view',
   SftpOpen: 'sftp_open',
   DockerContextOpen: 'docker_context_open',
   LogsOpen: 'logs_open',

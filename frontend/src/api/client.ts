@@ -72,6 +72,7 @@ import {
   OpenNotebookAsset,
   CloseTerminal,
   WriteTerminal,
+  WaitTerminalPrompt,
   ResizeTerminal,
   OpenSFTPSession,
   CloseSFTPSession,
@@ -290,6 +291,7 @@ import {
   SearchNotes,
   GetNote,
   NoteFileRevision,
+  PackageNoteView,
   SaveNote,
   DeleteNote,
   DeleteNotes,
@@ -694,6 +696,8 @@ export const api = {
     unwrap(() => OpenLocalTerminal(cols, rows)),
   closeTerminal: (sessionId: string) => unwrap(() => CloseTerminal(sessionId)),
   writeTerminal: (sessionId: string, data: string) => unwrap(() => WriteTerminal(sessionId, data)),
+  waitTerminalPrompt: (sessionId: string, timeoutMs = 12000) =>
+    unwrap(() => WaitTerminalPrompt(sessionId, timeoutMs)),
   resizeTerminal: (sessionId: string, cols: number, rows: number) =>
     unwrap(() => ResizeTerminal(sessionId, cols, rows)),
   openSFTPSession: (hostId: string) => unwrap(() => OpenSFTPSession(hostId)) as Promise<SFTPSessionInfo>,
@@ -1083,6 +1087,15 @@ export const api = {
       dirty?: boolean
       rel?: string
       repo?: string
+    },
+  packageNoteView: async (noteId: string, skill = '') =>
+    (await unwrap(() => PackageNoteView(noteId, skill))) as {
+      noteId?: string
+      view?: string
+      html?: string
+      sourceRev?: string
+      bytes?: number
+      seeded?: boolean
     },
   listDirVersions: async (dirRel: string, limit = 24) =>
     (await unwrap(() => ListDirVersions(dirRel, limit))) as {

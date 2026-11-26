@@ -10,7 +10,7 @@ import (
 )
 
 // AgentRulesVersion 规则文本版本（与 App 版本可不同步，规则变更时递增）。
-const AgentRulesVersion = "2026.11.25a"
+const AgentRulesVersion = "2026.11.26e"
 
 const agentRulesAckTTL = 2 * time.Hour
 
@@ -84,6 +84,7 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 ## 3. 终端与舞台
 - 凡参数能解析到 SSH（hostId / sshHostId / hostOrName / 远端 Docker / SSH 日志源 / SSH 隧道库）的操作，都会先打开并聚焦对应终端 + 状态栏。
 - shell_run = 给人看（注入 pip/下载/训练/脚本/管道），不返回 stdout；返回 sessionId/updatedAt（毫秒基线）。注入后立刻 get_shell_output(waitMs, afterUpdatedAt=该 updatedAt) 等新输出，禁止编造 stdout。
+- 本机建改文件用 write_file / edit / mkdir 等（root=project 或 notebook），不要 shell_run；远端才 shell_run。删除和 *.db / .env / data/ 要确认。
 - **本机多项目**：localShell=true 时必须传 workDir=工作区根绝对路径（与 open_project_stage 的 localPath 一致）。工作台按 workDir 隔离本机标签；忙碌会话会新开标签，避免打断另一项目的长任务。
 - 短命令 waitMs 用 3000～8000；长任务再用 15000～30000（勿默认 90s）。已有新输出会立刻返回（waitedMs 为真实耗时）；勿省略 afterUpdatedAt，否则可能空等到超时。
 - **禁止空等**：正文已含 built in / EXIT:0 / 已回到 shell 提示符（如 user@host %）时，不要再用大 waitMs 以「同一水位」再挂起；直接读当前页判断完成。水位已追上且停在提示符时，工作台最多再空等约 2s 即返回 timedOut。
@@ -127,9 +128,9 @@ const AgentRulesText = `WWorkbench 外置 Agent 系统约束（必须遵守）
 
 ## 7. 文档工作台 = 文件的一种打开方式
 - 文件身份在文件目录（dataDir/files/catalog.json）：稳定 ID + 相对路径。文档用 Markdown / 文本 / HTML 页面打开这些文件。HTML 不另建存储。
-- **派生页面**：放在笔记同名目录的 html/ 下（运维/本地后台.md → 运维/本地后台/html/本地后台.html）。打开 HTML 默认是页面。页头注释 <!-- wwb-view source="相对路径" skill="技能目录" sourceRev="该文件当前 7 位提交" -->。sourceRev 取该文件所在目录仓里这个文件的提交（list_dir_versions 的目录；文件未纳入仓则留空），不要写时间戳。源有新提交或未提交改动时，界面标「源已更新」，不要自动重写。不改 Markdown，不在应用里解析字段。口令不进技能、不进回复。search_notes 不返回 HTML 正文。页面与源笔记按同名目录互相关联：页脚里的源路径点回 Markdown，Markdown 的「页面」打开 html。不要在 HTML 里写跳转应用的脚本。
+- **派生页面**：放在笔记同名目录的 html/ 下（运维/本地后台.md → 运维/本地后台/html/本地后台.html）。打开 HTML 默认是页面。页头注释 <!-- wwb-view source="相对路径" skill="技能目录" sourceRev="该文件当前 7 位提交" -->。sourceRev 取该文件所在目录仓里这个文件的提交（list_dir_versions 的目录；文件未纳入仓则留空），不要写时间戳。源有新提交或未提交改动时，界面标「源已更新」，不要自动重写。不改 Markdown，不在应用里解析字段。口令不进技能、不进回复。search_notes 不返回 HTML 正文。页面与源笔记按同名目录互相关联：页脚里的源路径点回 Markdown，Markdown 的「页面」打开 html。不要在 HTML 里写跳转应用的脚本。每个 Markdown 的 Vue 工程在同名目录 view/（index.html、src/main.js、src/App.vue、src/components）。入口可以 import vue。package_note_view 用系统里的同一套 Vite 构建到 html/。view 不存在时先复制初始模板，已有文件不覆盖。模板不含笔记正文。文档工具栏「生成」把技能「运维/账号HTML视图」和当前 Markdown 交给侧栏 Agent 自动开跑。Agent 按技能写 view 再 package_note_view，不要停在初始模板。view 里不要放 node_modules、package.json、vite.config。不要手写 html/。
 - 业务根仍是 工作流/、记忆区/、运维/、项目/。读：list_notes / search_notes / get_note。写：notebook_append_content。get_note 的 content 是 Markdown；assets 列出同名目录里的附件，link 是正文相对路径，文本附件带 text，图片只有链接。不要 cat，不要索要附件二进制。
-- **本地资源**：归属是文件 ID，不是笔记路径。截图和附件不要写成 base64 正文。普通笔记的扩展资源在同名目录里按功能分：附件为 {stem}/assets/，页面为 {stem}/html/。Skill 仍用该目录下的 assets/。资源账本在 resources/catalog.json。正文只插入相对链接。Agent 挂文件用 update_skill(resourcePaths=本机绝对路径)。
+- **本地资源**：归属是文件 ID，不是笔记路径。截图和附件不要写成 base64 正文。普通笔记的扩展资源在同名目录里按功能分：附件为 {stem}/assets/，Vue 工程为 {stem}/view/，页面为 {stem}/html/。Skill 仍用该目录下的 assets/。资源账本在 resources/catalog.json。正文只插入相对链接。Agent 挂文件用 update_skill(resourcePaths=本机绝对路径)。
 - **任务产品**工作根 = 工作流/；仅网页任务 Skill 默认落 工作流/{name}/SKILL.md + log.md。
 - **项目产品**工作根 = 项目/（+ 记忆区/）；项目方法 Skill = 项目/{项目名}/SKILL.md；收口与智能配置沉淀**必须** update_skill(name=项目/{名})，并可用 configure_project_resources 把 skill:项目/{名}/SKILL.md 钉进 links。
 - **运维类产品**工作根 = 运维/ + 记忆区/；主机约定写记忆册，不要塞进任务区「工作流/」。
@@ -293,6 +294,7 @@ func requiresAgentRulesAck(name string) bool {
 	case workbench.CapShellRun,
 		workbench.CapExecuteSQL,
 		workbench.CapNotebookAppend,
+		workbench.CapPackageNoteView,
 		workbench.CapEditPluginPackFile,
 		workbench.CapWritePluginPackFile,
 		workbench.CapBuildPluginPackUI,
@@ -337,7 +339,10 @@ func requiresAgentRulesAck(name string) bool {
 		workbench.CapBrowserAttach,
 		workbench.CapDesktopAct,
 		workbench.CapDesktopLaunch,
-		workbench.CapSyncProjectCursorTranscripts:
+		workbench.CapSyncProjectCursorTranscripts,
+		"write_file", "edit", "mkdir", "create_file",
+		"rename_path", "move_path", "copy_path",
+		"delete_path", "batch_delete_paths", "batch_move_paths":
 		return true
 	default:
 		return false

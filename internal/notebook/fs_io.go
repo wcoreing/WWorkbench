@@ -83,7 +83,7 @@ func (s *Service) listGroupsFS() ([]model.NotebookGroupDO, error) {
 			return nil
 		}
 		name := d.Name()
-		if strings.HasPrefix(name, ".") {
+		if skipNotebookDir(name) {
 			return filepath.SkipDir
 		}
 		rel, relErr := filepath.Rel(root, path)
@@ -190,7 +190,7 @@ func (s *Service) listNotesFS() ([]model.NoteSummaryDO, error) {
 		}
 		name := d.Name()
 		if d.IsDir() {
-			if path != root && strings.HasPrefix(name, ".") {
+			if path != root && skipNotebookDir(name) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -304,7 +304,7 @@ func (s *Service) ExportDocsForSync(onProgress func(done, total int, path string
 		}
 		name := d.Name()
 		if d.IsDir() {
-			if path != root && strings.HasPrefix(name, ".") {
+			if path != root && skipNotebookDir(name) {
 				return filepath.SkipDir
 			}
 			return nil
